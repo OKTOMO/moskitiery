@@ -596,7 +596,26 @@ function App() {
         </div>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
           <div style={{fontSize:12,color:"#3a6a3a"}}>{orders.length} zamówień · ☁</div>
-          <button onClick={()=>{localStorage.removeItem('active_profile');setActiveProfile("");}} style={{fontSize:10,background:"transparent",border:"1px solid #1e3a1e",borderRadius:4,color:"#3a6a3a",padding:"4px 10px",cursor:"pointer"}}>⇄ profil</button>
+          <div style={{position:"relative",display:"inline-block"}}>
+              <button onClick={()=>{
+                const menu=document.getElementById('profile-menu');
+                menu.style.display=menu.style.display==='block'?'none':'block';
+              }} style={{fontSize:10,background:"transparent",border:"1px solid #1e3a1e",borderRadius:4,color:"#3a6a3a",padding:"4px 10px",cursor:"pointer"}}>⇄ {currentProfile.nazwa} ▾</button>
+              <div id="profile-menu" style={{display:"none",position:"absolute",right:0,top:"110%",background:"#0e1420",border:"1px solid #1e3a1e",borderRadius:6,zIndex:100,minWidth:140}}>
+                {PROFILE.map(p=>(
+                  <div key={p.id} onClick={()=>{
+                    localStorage.setItem('active_profile',p.id);
+                    setActiveProfile(p.id);
+                    document.getElementById('profile-menu').style.display='none';
+                  }} style={{padding:"8px 14px",cursor:"pointer",color:p.id===activeProfile?"#7fcf7f":"#5a8a5a",fontSize:12,borderBottom:"1px solid #0e1a0e"}}>
+                    {p.nazwa}
+                  </div>
+                ))}
+                <div onClick={()=>{localStorage.removeItem('active_profile');setActiveProfile("");document.getElementById('profile-menu').style.display='none';}} style={{padding:"8px 14px",cursor:"pointer",color:"#3a5a3a",fontSize:11}}>
+                  ← Ekran wyboru
+                </div>
+              </div>
+            </div>
         </div>
       </div>
 
@@ -1098,9 +1117,9 @@ function App() {
                   <div style={{fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:800,color:"#7fcf7f",marginBottom:12}}>🕸️ Siatka</div>
                   <table style={{width:"100%",fontSize:13}}>
                     <tbody>
-                      {[["Czarna 100cm",siatkaCzarna100],["Czarna 140cm",siatkaCzarna140],["Czarna 160cm",siatkaCzarna160],["Szara 100cm",siatkaSzara100],["Szara 140cm",siatkaSzara140],["Szara 160cm",siatkaSzara160]].map(([l,v])=>v>0?(
-                        <tr key={l}><td style={{color:"#5a8a5a",paddingBottom:4}}>{l}</td><td style={{textAlign:"right",color:"#9fcf9f",fontWeight:700}}>{r2(v)} mb</td></tr>
-                      ):null)}
+                      {[["Czarna 100cm",siatkaCzarna100],["Czarna 140cm",siatkaCzarna140],["Czarna 160cm",siatkaCzarna160],["Szara 100cm",siatkaSzara100],["Szara 140cm",siatkaSzara140],["Szara 160cm",siatkaSzara160]].map(([l,v])=>(
+                        <tr key={l}><td style={{color:"#5a8a5a",paddingBottom:4}}>{l}</td><td style={{textAlign:"right",color:v>0?"#9fcf9f":"#2a4a2a",fontWeight:700}}>{r2(v)} mb</td></tr>
+                      ))}
                       <tr style={{borderTop:"1px solid #1e3a1e"}}><td style={{color:"#7fcf7f",paddingTop:8,fontWeight:700}}>RAZEM</td><td style={{textAlign:"right",color:"#7fcf7f",fontWeight:700,paddingTop:8}}>{r2(siatkaCzarna100+siatkaCzarna140+siatkaCzarna160+siatkaSzara100+siatkaSzara140+siatkaSzara160)} mb</td></tr>
                     </tbody>
                   </table>
