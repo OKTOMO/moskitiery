@@ -424,7 +424,7 @@ function App() {
     localStorage.setItem('allegro_active', kontaId);
     setAllegroActive(kontaId);
     try {
-      const r = await fetch('https://allegro.pl/auth/oauth/device',{
+      const r = await fetch('https://allegro-proxy.favour-biuro.workers.dev/device',{
         method:'POST',
         headers:{'Authorization':'Basic '+btoa(clientId+':'+secret),'Content-Type':'application/x-www-form-urlencoded'},
         body:'client_id='+encodeURIComponent(clientId)
@@ -441,7 +441,7 @@ function App() {
         attempts++;
         if(attempts>60){clearInterval(poll);setAllegroLoading(false);setAllegroError("Timeout — spróbuj ponownie");return;}
         try{
-          const tr = await fetch('https://allegro.pl/auth/oauth/token',{
+          const tr = await fetch('https://allegro-proxy.favour-biuro.workers.dev/token',{
             method:'POST',
             headers:{'Authorization':'Basic '+btoa(clientId+':'+secret),'Content-Type':'application/x-www-form-urlencoded'},
             body:'grant_type=urn:ietf:params:oauth:grant-type:device_code&device_code='+encodeURIComponent(deviceCode)
@@ -465,7 +465,7 @@ function App() {
     if(!tok){setAllegroError("Nie jesteś zalogowany do Allegro");return;}
     setAllegroLoading(true); setAllegroError("");
     try{
-      const r=await fetch('https://api.allegro.pl/messaging/threads?limit=20',{
+      const r=await fetch('https://allegro-proxy.favour-biuro.workers.dev/api/messaging/threads?limit=20',{
         headers:{'Authorization':'Bearer '+tok,'Accept':'application/vnd.allegro.public.v1+json'}
       });
       if(r.status===401){setAllegroToken("");localStorage.removeItem('allegro_token');setAllegroError("Sesja wygasła, zaloguj się ponownie");setAllegroLoading(false);return;}
@@ -474,7 +474,7 @@ function App() {
       const threads=d.threads||[];
       const messagesArr=[];
       for(const t of threads.slice(0,10)){
-        const mr=await fetch('https://api.allegro.pl/messaging/threads/'+t.id+'/messages',{
+        const mr=await fetch('https://allegro-proxy.favour-biuro.workers.dev/api/messaging/threads/'+t.id+'/messages',{
           headers:{'Authorization':'Bearer '+tok,'Accept':'application/vnd.allegro.public.v1+json'}
         });
         const md=await mr.json();
