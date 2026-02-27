@@ -486,9 +486,11 @@ function App() {
     window.location.href=url;
   }
 
-  async function allegroLoadMessages(tokenParam){
+  async function allegroLoadMessages(tokenParam, kontaId){
     const tok=tokenParam||allegroToken;
     if(!tok){setAllegroError("Nie jesteś zalogowany do Allegro");return;}
+    if(kontaId) setAllegroActive(kontaId);
+    setAllegroMessages([]);
     setAllegroLoading(true); setAllegroError("");
     try{
       const r=await fetch('https://allegro-proxy.favour-biuro.workers.dev/api/messaging/threads?limit=20',{
@@ -820,7 +822,7 @@ function App() {
                         {token
                           ? <div style={{display:"flex",gap:6,alignItems:"center"}}>
                               <span style={{fontSize:10,color:"#5a9a5a"}}>✅ zalogowany</span>
-                              <button className="btn-sm" onClick={()=>{setAllegroActive(k.id);allegroLoadMessages(token);}}>📬 Pobierz</button>
+                              <button className="btn-sm" onClick={()=>allegroLoadMessages(token, k.id)}>📬 Pobierz</button>
                               <button className="btn-del" style={{padding:"3px 8px",fontSize:11}} onClick={()=>{
                                 const tokens={...allegroTokens};delete tokens[k.id];
                                 localStorage.setItem('allegro_tokens',JSON.stringify(tokens));setAllegroTokens(tokens);
@@ -853,6 +855,9 @@ function App() {
                 <a href="https://allegro.pl/wyloguj" target="_blank" rel="noreferrer" style={{fontSize:11,color:"#7a6a4a",textDecoration:"none",marginLeft:"auto"}}>↩ Wyloguj z Allegro (zmiana konta)</a>
               </div>
             )}
+            <div style={{marginBottom:8,textAlign:"right"}}>
+              <a href="https://allegro.pl/wyloguj" target="_blank" rel="noreferrer" style={{fontSize:11,color:"#4a5a4a",textDecoration:"none"}}>↩ Wyloguj z Allegro (zmiana konta)</a>
+            </div>
             {allegroMessages.length>0&&(
               <div className="card" style={{padding:0,overflow:"hidden"}}>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
@@ -866,10 +871,10 @@ function App() {
                   <tbody>
                     {allegroMessages.map((msg,i)=>(
                       <tr key={i} className="tr" style={{background:msg.unread?"#0d1a0d":"transparent"}}>
-                        <td style={{padding:"10px",color:"#a0cf9f",fontWeight:msg.unread?700:400}}>{msg.interlocutor}</td>
-                        <td style={{padding:"10px",color:"#7a9a7a",maxWidth:150,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{msg.subject}</td>
-                        <td style={{padding:"10px",color:"#5a7a5a",maxWidth:250,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{msg.lastMessage}</td>
-                        <td style={{padding:"10px",color:"#4a6a4a",fontSize:11}}>{msg.date?new Date(msg.date).toLocaleDateString("pl-PL"):""}</td>
+                        <td style={{padding:"10px",color:"#d0efd0",fontWeight:700,fontSize:13}}>{msg.interlocutor}</td>
+                        <td style={{padding:"10px",color:"#b0cfb0",fontWeight:600,fontSize:13,maxWidth:150,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{msg.subject}</td>
+                        <td style={{padding:"10px",color:"#c0dfc0",fontSize:13,maxWidth:250,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{msg.lastMessage}</td>
+                        <td style={{padding:"10px",color:"#9abf9a",fontSize:12,fontWeight:600}}>{msg.date?new Date(msg.date).toLocaleDateString("pl-PL"):""}</td>
                         <td style={{padding:"10px"}}><button className="btn-sm" onClick={()=>allegroUseMessage(msg)}>→ Użyj</button></td>
                       </tr>
                     ))}
