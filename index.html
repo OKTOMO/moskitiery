@@ -813,6 +813,12 @@ function App() {
             </div>
 
             {allegroMessages.length>0&&(
+              <div style={{marginBottom:8,display:"flex",alignItems:"center",gap:10}}>
+                <span style={{fontSize:12,color:"#5a9a5a"}}>📬 Wiadomości konta: <strong style={{color:"#9fcf9f"}}>{allegroActive}</strong></span>
+                <a href="https://allegro.pl/logout" target="_blank" rel="noreferrer" style={{fontSize:11,color:"#7a6a4a",textDecoration:"none",marginLeft:"auto"}}>↩ Wyloguj z Allegro (zmiana konta)</a>
+              </div>
+            )}
+            {allegroMessages.length>0&&(
               <div className="card" style={{padding:0,overflow:"hidden"}}>
                 <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
                   <thead>
