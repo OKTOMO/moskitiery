@@ -424,10 +424,9 @@ function App() {
     localStorage.setItem('allegro_active', kontaId);
     setAllegroActive(kontaId);
     try {
-      const r = await fetch('https://allegro-proxy.favour-biuro.workers.dev/device',{
+      const r = await fetch('https://allegro-proxy.favour-biuro.workers.dev/device?client_id='+encodeURIComponent(clientId),{
         method:'POST',
-        headers:{'Authorization':'Basic '+btoa(clientId+':'+secret),'Content-Type':'application/x-www-form-urlencoded'},
-        body:'client_id='+encodeURIComponent(clientId)
+        headers:{'Authorization':'Basic '+btoa(clientId+':'+secret)}
       });
       const d = await r.json();
       if(d.error){setAllegroError("Błąd: "+d.error_description);setAllegroLoading(false);return;}
@@ -441,10 +440,9 @@ function App() {
         attempts++;
         if(attempts>60){clearInterval(poll);setAllegroLoading(false);setAllegroError("Timeout — spróbuj ponownie");return;}
         try{
-          const tr = await fetch('https://allegro-proxy.favour-biuro.workers.dev/token',{
+          const tr = await fetch('https://allegro-proxy.favour-biuro.workers.dev/token?device_code='+encodeURIComponent(deviceCode),{
             method:'POST',
-            headers:{'Authorization':'Basic '+btoa(clientId+':'+secret),'Content-Type':'application/x-www-form-urlencoded'},
-            body:'grant_type=urn:ietf:params:oauth:grant-type:device_code&device_code='+encodeURIComponent(deviceCode)
+            headers:{'Authorization':'Basic '+btoa(clientId+':'+secret)}
           });
           const td = await tr.json();
           if(td.access_token){
