@@ -459,7 +459,7 @@ function App() {
       const r=await fetch('https://allegro-proxy.favour-biuro.workers.dev/api/messaging/threads?limit=20',{
         headers:{'Authorization':'Bearer '+tok,'Accept':'application/vnd.allegro.public.v1+json'}
       });
-      if(r.status===401){setAllegroToken("");localStorage.removeItem('allegro_token');setAllegroError("Sesja wygasła, zaloguj się ponownie");setAllegroLoading(false);return;}
+      if(r.status===401){const t={...allegroTokens};delete t[allegroActive];localStorage.setItem('allegro_tokens',JSON.stringify(t));setAllegroTokens(t);setAllegroError("Sesja wygasła, zaloguj się ponownie");setAllegroLoading(false);return;}
       const d=await r.json();
       // For each thread get messages
       const threads=d.threads||[];
