@@ -71,6 +71,12 @@ const BLASZKI_ROZMIARY = [0,3,5,7,9,12,15,18,20,22,25];
 const DOMYSLNA_GLEBOKOS = 12;
 const STORAGE_KEY = "mosk_orders";
 const FIRMY = [{kod:"F",nazwa:"Favour"},{kod:"A",nazwa:"Arlis"},{kod:"E",nazwa:"Everis"},{kod:"AP",nazwa:"Albama"}];
+const PROFILE = [
+  {id:"F",  nazwa:"Favour",  konta:["favo5","staroleska_pl","sinlook_pl"],  kolor:"#2a5a2a"},
+  {id:"A",  nazwa:"Arlis",   konta:["arlis_pl"],                             kolor:"#2a3a5a"},
+  {id:"E",  nazwa:"Everis",  konta:["everis_pl"],                            kolor:"#3a2a5a"},
+  {id:"AP", nazwa:"Albama",  konta:["albama_eu","pedroshop_pl_365"],         kolor:"#5a3a2a"},
+];
 const ALLEGRO_KONTA = [
   // Favour (F)
   {id:"favo5",           label:"favo5",            firma:"F"},
@@ -268,6 +274,7 @@ table.main tr:nth-child(even) td{background:#f8f8f8}
 
 // ─── APP ─────────────────────────────────────────────────────────────────────
 function App() {
+  const [activeProfile,setActiveProfile]=useState(()=>localStorage.getItem('active_profile')||"");
   const [tab,setTab]=useState(()=>new URLSearchParams(window.location.search).has("code")?"allegro":"nowe");
   const [orders,setOrders]=useState([]);
   const [loading,setLoading]=useState(true);
@@ -397,6 +404,7 @@ function App() {
   }
 
   const filteredOrders=orders.filter(o=>{
+    if(o.firma && o.firma!==currentProfile.id) return false;
     if(filterMonth&&getMonth(o.data)!==filterMonth) return false;
     if(filterKolor&&!o.pozycje.some(p=>p.kolorRamki?.includes(filterKolor))) return false;
     if(filterFirma&&o.firma!==filterFirma) return false;
@@ -405,7 +413,8 @@ function App() {
   });
 
   const months=[...new Set(orders.map(o=>getMonth(o.data)))].sort().reverse();
-  const statsAll=getStats(orders);
+  const profileOrders=orders.filter(o=>!o.firma||o.firma===currentProfile.id);
+  const statsAll=getStats(profileOrders);
   const statsFilt=getStats(filteredOrders);
 
   function exportCSV(){
@@ -534,16 +543,61 @@ function App() {
     </div>
   );
 
+  // Profile selector screen
+  if(!activeProfile){
+    return (
+      <div style={{minHeight:"100vh",background:"#0a0f0a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'Syne',sans-serif"}}>
+        <div style={{fontSize:28,fontWeight:900,color:"#7fcf7f",marginBottom:8,letterSpacing:2}}>🦟 MosquitoApp</div>
+        <div style={{fontSize:13,color:"#3a6a3a",marginBottom:48}}>Wybierz profil firmy</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,width:360}}>
+          {PROFILE.map(p=>(
+            <button key={p.id} onClick={()=>{
+              localStorage.setItem('active_profile',p.id);
+              setActiveProfile(p.id);
+            }} style={{
+              padding:"24px 16px",
+              background:p.kolor+"33",
+              border:"2px solid "+p.kolor,
+              borderRadius:12,
+              cursor:"pointer",
+              color:"#d0f0d0",
+              fontFamily:"'Syne',sans-serif",
+              fontWeight:800,
+              fontSize:18,
+              letterSpacing:1,
+              transition:"all .2s"
+            }}>
+              {p.nazwa}
+              <div style={{fontSize:10,fontWeight:400,color:"#5a8a5a",marginTop:6}}>
+                {p.konta.join(", ")}
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const currentProfile = PROFILE.find(p=>p.id===activeProfile)||PROFILE[0];
+
   return (
     <div style={{minHeight:"100vh",background:"#0c1018",color:"#e8ece8",fontFamily:"'IBM Plex Mono','Courier New',monospace"}}>
       <style>{CSS}</style>
 
       <div style={{borderBottom:"1px solid #1e2e1e",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e1420"}}>
         <div>
-          <div style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:800,color:"#7fcf7f",letterSpacing:".05em"}}>MOSKITIERY PCV</div>
+          <div style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:800,color:"#7fcf7f",letterSpacing:".05em"}}>
+            🦟 MosquitoApp
+            <span style={{fontSize:11,fontWeight:600,color:"#5a9a5a",background:"#0d1a0d",border:"1px solid #1a3a1a",borderRadius:4,padding:"3px 8px",marginLeft:10}}>
+              {currentProfile.nazwa}
+            </span>
+          </div>
           <div style={{fontSize:10,color:"#3a6a3a",letterSpacing:".2em",textTransform:"uppercase"}}>System zarządzania zamówieniami</div>
         </div>
-        <div style={{fontSize:12,color:"#3a6a3a"}}>{orders.length} zamówień · ☁</div>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <div style={{fontSize:12,color:"#3a6a3a"}}>{orders.length} zamówień · ☁</div>
+          <button onClick={()=>{localStorage.removeItem('active_profile');setActiveProfile("");}} style={{fontSize:10,background:"transparent",border:"1px solid #1e3a1e",borderRadius:4,color:"#3a6a3a",padding:"4px 10px",cursor:"pointer"}}>⇄ profil</button>
+        </div>
       </div>
 
       <div style={{display:"flex",borderBottom:"1px solid #1e2a1e",paddingLeft:16,background:"#0e1420"}}>
@@ -813,7 +867,7 @@ function App() {
                   setAllegroCreds(true);setTimeout(()=>setAllegroCreds(false),2000);
                 }}>{allegroCreds?"✓ Zapisano":"💾 Zapisz dane logowania"}</button>
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                  {ALLEGRO_KONTA.map(k=>{
+                  {ALLEGRO_KONTA.filter(k=>currentProfile.konta.includes(k.id)).map(k=>{
                     const token=allegroTokens[k.id]||"";
                     return (
                       <div key={k.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"#0a0f0a",border:"1px solid #1a2a1a",borderRadius:6}}>
@@ -904,6 +958,7 @@ function App() {
 
           // Filter orders by firm
           const filteredOrders = orders.filter(o => {
+            if(o.firma && o.firma!==currentProfile.id) return false;
             if(prodFirma!=="all" && o.firma!==prodFirma) return false;
             if(prodDataOd && o.data < prodDataOd) return false;
             if(prodDataDo && o.data > prodDataDo) return false;
