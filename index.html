@@ -403,6 +403,7 @@ function App() {
     return {totalMosk,totalLinka:Math.round(totalLinka*10)/10,totalBlaszki,totalM2:Math.round(totalM2*100)/100,kolorCount};
   }
 
+  const currentProfile = PROFILE.find(p=>p.id===activeProfile)||PROFILE[0];
   const filteredOrders=orders.filter(o=>{
     if(o.firma && o.firma!==currentProfile.id) return false;
     if(filterMonth&&getMonth(o.data)!==filterMonth) return false;
@@ -577,8 +578,6 @@ function App() {
       </div>
     );
   }
-
-  const currentProfile = PROFILE.find(p=>p.id===activeProfile)||PROFILE[0];
 
   return (
     <div style={{minHeight:"100vh",background:"#0c1018",color:"#e8ece8",fontFamily:"'IBM Plex Mono','Courier New',monospace"}}>
