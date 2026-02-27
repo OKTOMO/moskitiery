@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="pl"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Moskitiery PCV</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head><body>
+<div id="root"></div>
+<script>
+const SETTINGS_KEY = 'mosk_jsonbin_settings';
+
+function getSettings() {
+  try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); } catch { return {}; }
+}
+function saveSettings(s) {
+  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
+}
+window.jsonbinSettings = { getSettings, saveSettings };
+
+window.storage = {
+  async get(key) {
+    const { apiKey, binId } = getSettings();
+    if (!apiKey || !binId) return null;
+    try {
+      const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
+        headers: { 'X-Master-Key': apiKey }
+      });
+      const data = await res.json();
+      // obsługa zarówno [] jak i {"orders":[]}
+      let record = data.record;
+      if (Array.isArray(record)) {
+        return { key, value: JSON.stringify(record) };
+      } else if (record && Array.isArray(record.orders)) {
+        return { key, value: JSON.stringify(record.orders) };
+      }
+      return { key, value: '[]' };
+    } catch { return null; }
+  },
+
+  async set(key, value) {
+    const { apiKey, binId } = getSettings();
+    if (!apiKey || !binId) {
+      localStorage.setItem(key, value);
+      return { key, value };
+    }
+    try {
+      const orders = JSON.parse(value);
+      await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'X-Master-Key': apiKey },
+        body: JSON.stringify(orders)
+      });
+      return { key, value };
+    } catch { return null; }
+  },
+
+  async delete(key) { return window.storage.set(key, '[]'); },
+  async list() { return { keys: ['mosk_orders'] }; }
+};
+
+</script>
+<script type="text/babel">
+const { useState, useEffect } = React;
+
+const KOLORY_RAMKI = ["Biały","Czarny","Antracyt","Brąz","Złoty dąb","Mahoń","Winchester","Srebrny","Złoty","Inne"];
+const KOLORY_SIATKI = ["Czarna","Szara"];
+const PROFIL_GLEBOKOS = 9;
+const BLASZKI_ROZMIARY = [0,3,5,7,9,12,15,18,20,22,25];
+const DOMYSLNA_GLEBOKOS = 12;
+const STORAGE_KEY = "mosk_orders";
+const FIRMY = [{kod:"F",nazwa:"Favour"},{kod:"A",nazwa:"Arlis"},{kod:"E",nazwa:"Everis"},{kod:"AP",nazwa:"Albama"}];
+const ALLEGRO_KONTA = [
+  // Favour (F)
+  {id:"favo5",           label:"favo5",            firma:"F"},
+  {id:"staroleska_pl",   label:"staroleska_pl",    firma:"F"},
+  {id:"sinlook_pl",      label:"sinlook_pl",       firma:"F"},
+  // Arlis (A)
+  {id:"arlis_pl",        label:"arlis_pl",         firma:"A"},
+  // Everis (E)
+  {id:"everis_pl",       label:"everis_pl",        firma:"E"},
+  // Albama (AP)
+  {id:"albama_eu",       label:"albama_eu",        firma:"AP"},
+  {id:"pedroshop_pl_365",label:"pedroshop_pl_365", firma:"AP"},
+];
+
+function obliczRozmiarBlaszki(g) {
+  const v=parseFloat(g)||DOMYSLNA_GLEBOKOS, pot=v-PROFIL_GLEBOKOS;
+  const pas=BLASZKI_ROZMIARY.find(r=>r>=pot);
+  return pas!==undefined?pas:BLASZKI_ROZMIARY[BLASZKI_ROZMIARY.length-1];
+}
+// JEDN na wiersz: ((szer*2 + wys*2) * szt) / 10  [wzór z Excela]
+function obliczJedn(s, w, ilosc) {
+  if(!s||!w) return 0;
+  const il = parseFloat(ilosc)||1;
+  return Math.round(((parseFloat(s)*2 + parseFloat(w)*2) * il) / 10 * 10) / 10;
+}
+// Linka łączna: ((sum_szer*2) + (sum_wys*2)*1.1) / 100  [wzór z Excela]
+function obliczLinkeLaczna(pozycje) {
+  let sS=0, sW=0;
+  pozycje.forEach(p=>{ const il=parseFloat(p.ilosc)||1; sS+=(parseFloat(p.szerokosc)||0)*il; sW+=(parseFloat(p.wysokosc)||0)*il; });
+  return Math.round(((sS*2)+(sW*2)*1.1)/100*10)/10;
+}
+function obliczLinke(s,w){ return obliczJedn(s,w,1); }
+function getMonth(iso){ return iso?iso.slice(0,7):""; }
+function formatDate(iso){ if(!iso) return ""; return new Date(iso).toLocaleDateString("pl-PL"); }
+function nextNumer(orders,firma) {
+  const rok=new Date().getFullYear().toString().slice(-2);
+  const pat=new RegExp(`^(\\d+)\\.${rok} ${firma}$`);
+  const nums=orders.map(o=>o.numerZlecenia).filter(n=>n&&pat.test(n)).map(n=>parseInt(n.match(pat)[1]));
+  return `${(nums.length?Math.max(...nums):0)+1}.${rok} ${firma}`;
+}
+
+async function cloudLoad() {
+  try{ const r=await window.storage.get(STORAGE_KEY,true); return r?JSON.parse(r.value):[]; }catch{return [];}
+}
+async function cloudSave(o){ try{await window.storage.set(STORAGE_KEY,JSON.stringify(o),true);}catch{} }
+
+async function parseAI(msg, adres) {
+  const prompt=`Wyodrębnij dane z dwóch źródeł i zwróć TYLKO JSON bez markdown:
+{
+  "pozycje":[{"szerokosc":number,"wysokosc":number,"glebokosc":number_or_null,"kolorRamki":string_or_null,"kolorSiatki":string_or_null,"ilosc":number}],
+  "klientImie":string,
+  "klientMiasto":string,
+  "telefon":string,
+  "uwagi":string
+}
+Zasady wymiarów: Szer=B cm, Wys=A cm, Głęb=C mm; brak głębokości=null; brak siatki=null;
+Kolor ramki z listy: Biały/Czarny/Antracyt RAL 7016/Brąz/Złoty dąb/Mahoń/Winchester/Srebrny/Złoty/Inne
+Kolor siatki: Czarna lub Szara
+WAŻNE: Jeśli klient podał kilka pozycji o identycznych wymiarach i kolorach, scal je w jedną pozycję sumując ilości. Np. trzy pozycje 67x214 Antracyt = jedna pozycja 67x214 ilosc:3.
+
+WIADOMOŚĆ OD KLIENTA (wymiary i kolory):
+${msg||"(brak)"}
+
+DANE ADRESOWE Z ALLEGRO (imię, nazwisko, miasto, telefon):
+${adres||"(brak)"}
+
+Imię i nazwisko wpisz w formacie: Nazwisko Imię (najpierw nazwisko). Wyciągnij miasto z adresu.`;
+
+  const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:prompt}]})});
+  const d=await r.json();
+  return JSON.parse((d.content?.[0]?.text||"{}").replace(/```json|```/g,"").trim());
+}
+
+function pustaPoz(){ return {szerokosc:"",wysokosc:"",glebokosc:String(DOMYSLNA_GLEBOKOS),kolorRamki:"Antracyt",kolorSiatki:"Czarna",ilosc:1}; }
+function pustyForm(firma="F"){ return {data:new Date().toISOString().slice(0,10),firma,klientImie:"",klientMiasto:"",telefon:"",uwagi:"",pozycje:[pustaPoz()]}; }
+
+// ─── PDF ──────────────────────────────────────────────────────────────────────
+function drukujPDF(order) {
+  const firmaNazwa=FIRMY.find(f=>f.kod===order.firma)?.nazwa||order.firma||"";
+  const firma=order.firma||"?";
+  const totalMosk=order.pozycje.reduce((a,p)=>a+(parseFloat(p.ilosc)||1),0);
+  const totalLinka=obliczLinkeLaczna(order.pozycje);
+  const totalBlaszki=order.pozycje.reduce((a,p)=>a+8*(parseFloat(p.ilosc)||1),0);
+
+  const MIN_ROWS = 8;
+  const pozycjeRows = order.pozycje.map((p,i)=>{
+    const s=parseFloat(p.szerokosc)||0, w=parseFloat(p.wysokosc)||0;
+    const gl=parseFloat(p.glebokosc)||DOMYSLNA_GLEBOKOS;
+    const il=parseFloat(p.ilosc)||1;
+    const jedn=obliczJedn(s,w,il);
+    const blaszRoz=obliczRozmiarBlaszki(gl);
+    return `<tr>
+      <td>${i+1}</td><td>MOS. PCV.</td>
+      <td style="font-size:9px">${jedn||""}</td>
+      <td style="font-size:12px;font-weight:700">${s||""}</td>
+      <td style="font-size:12px;font-weight:700">${w||""}</td>
+      <td style="font-size:11px;font-weight:600">${p.kolorRamki||""}</td>
+      <td style="font-size:11px;font-weight:600">${p.kolorSiatki||""}</td>
+      <td style="font-size:12px;font-weight:700">${blaszRoz}</td>
+      <td style="font-size:12px;font-weight:700">${il}</td>
+    </tr>`;
+  });
+  const emptyRows = Array.from({length:Math.max(0, MIN_ROWS - order.pozycje.length)}, (_,i)=>`<tr>
+    <td>${order.pozycje.length+i+1}</td><td>MOS. PCV.</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
+  </tr>`);
+  const rows = [...pozycjeRows, ...emptyRows].join("");
+
+  const html=`<!DOCTYPE html><html lang="pl"><head><meta charset="utf-8">
+<title>${order.numerZlecenia||""} ${order.klientImie||""} ${order.klientMiasto||""}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;font-size:11px;padding:14px 18px;color:#000;background:#fff}
+.header{display:grid;grid-template-columns:120px 1fr;gap:10px;margin-bottom:10px;border-bottom:2px solid #000;padding-bottom:8px}
+.big-litera{font-size:80px;font-weight:900;line-height:1;color:#000;display:flex;align-items:center;justify-content:center;border:2px solid #000;padding:4px 10px}
+.info-box{display:flex;flex-direction:column;justify-content:space-between}
+.info-top{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.info-top-left{font-size:10px;color:#555}
+.klient-table{width:100%;border-collapse:collapse;font-size:11px}
+.klient-table td{border:1px solid #aaa;padding:3px 6px}
+.klient-table .lbl{background:#f0e8c0;font-weight:700;width:60px;text-align:center}
+.nr-box{text-align:right;font-size:22px;font-weight:900;color:#cc0000}
+table.main{width:100%;border-collapse:collapse;margin-bottom:8px;font-size:10px}
+table.main th{background:#222;color:#fff;padding:4px 4px;text-align:center;border:1px solid #555;font-size:9px;line-height:1.2}
+table.main td{padding:3px 4px;text-align:center;border:1px solid #aaa;height:18px}
+table.main tr:nth-child(even) td{background:#f8f8f8}
+.summary{border:2px solid #000;padding:6px 12px;margin-top:6px;font-size:11px;display:flex;gap:24px;align-items:center}
+.summary-box{border:2px solid #000;padding:4px 16px;font-size:14px;font-weight:900;min-width:60px;text-align:center}
+.uwagi-box{margin-top:6px;font-size:10px;min-height:22px;border-bottom:1px solid #aaa;padding-bottom:4px}
+.bottom{margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:10px}
+.bottom-item{display:flex;align-items:center;gap:8px}
+.bottom-val{border:2px solid #000;padding:3px 14px;font-size:14px;font-weight:900}
+.btn-druk{margin-top:14px;padding:8px 20px;background:#222;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px}
+@media print{.btn-druk{display:none}}
+</style></head><body>
+
+<div class="header">
+  <div class="big-litera">${firma}</div>
+  <div style="border:1px solid #aaa;border-left:none;display:grid;grid-template-columns:130px 1fr">
+    <div style="background:#f0e8c0;border:1px solid #ddd;padding:4px 8px;font-weight:700;font-size:10px;color:#555">FIRMA</div>
+    <div style="border:1px solid #ddd;padding:4px 8px;font-size:13px;font-weight:700">${firmaNazwa}</div>
+    <div style="background:#f0e8c0;border:1px solid #ddd;padding:4px 8px;font-weight:700;font-size:10px;color:#555">KLIENT</div>
+    <div style="border:1px solid #ddd;padding:4px 8px;font-size:13px;font-weight:700">${order.klientImie||"—"}</div>
+    <div style="background:#f0e8c0;border:1px solid #ddd;padding:4px 8px;font-weight:700;font-size:10px;color:#555">MIASTO</div>
+    <div style="border:1px solid #ddd;padding:4px 8px;font-size:13px;font-weight:700">${order.klientMiasto||"—"}${order.telefon?" · "+order.telefon:""}</div>
+    <div style="background:#f0e8c0;border:1px solid #ddd;padding:4px 8px;font-weight:700;font-size:10px;color:#555">DATA ZAMÓWIENIA</div>
+    <div style="border:1px solid #ddd;padding:4px 8px;font-size:13px;font-weight:700">${formatDate(order.data)}</div>
+    <div style="background:#f0e8c0;border:1px solid #ddd;padding:4px 8px;font-weight:700;font-size:10px;color:#555">NR ZAMÓWIENIA</div>
+    <div style="border:1px solid #ddd;padding:8px;font-size:26px;font-weight:900;color:#cc0000">${order.numerZlecenia||"—"}</div>
+  </div>
+</div>
+
+<table class="main">
+  <thead>
+    <tr>
+      <th>LP</th><th>SYSTEM</th><th>JEDN<br>(mb)</th>
+      <th>SZERO-<br>KOŚĆ<br>(cm)</th><th>WYSO-<br>KOŚĆ<br>(cm)</th>
+      <th>KOLOR RAMKI</th><th>KOLOR SIATKI</th>
+      <th>BLASZKA<br>(mm)</th><th>SZT.</th>
+    </tr>
+  </thead>
+  <tbody>${rows}</tbody>
+</table>
+
+<div style="margin-bottom:10px">
+  <div style="font-weight:700;font-size:11px;margin-bottom:6px">UWAGI${order.uwagi?" · "+order.uwagi:""}</div>
+  <div style="border-bottom:1px solid #aaa;min-height:18px;margin-bottom:6px"></div>
+  <div style="border-bottom:1px solid #aaa;min-height:18px;margin-bottom:6px"></div>
+  <div style="border-bottom:1px solid #aaa;min-height:18px;margin-bottom:6px"></div>
+  <div style="border-bottom:1px solid #aaa;min-height:18px"></div>
+</div>
+
+<div style="margin-top:8px;font-size:11px"><strong>Ilość moskitier RAZEM: ${totalMosk}</strong></div>
+
+<div style="margin-top:8px;display:flex;gap:30px;align-items:center">
+  <div class="bottom-item">
+    <span>LINKA/USZCZELKA ilość metrów bieżących:</span>
+    <span class="bottom-val">${totalLinka}</span>
+  </div>
+  <div class="bottom-item" style="margin-left:20px">
+    <span>Ilość BLASZEK:</span>
+    <span class="bottom-val">${totalBlaszki}</span>
+  </div>
+</div>
+
+<button class="btn-druk" onclick="window.print()">🖨 Drukuj / Zapisz PDF</button>
+</body></html>`;
+
+  const pdfName=`${order.numerZlecenia||"zlecenie"} ${order.klientImie||""} ${order.klientMiasto||""}`.trim();
+  const orig=document.title; document.title=pdfName;
+  const w=window.open("","_blank");
+  if(!w){alert("Zezwól na wyskakujące okna dla tej strony.");document.title=orig;return;}
+  w.document.write(html); w.document.close(); w.focus();
+  setTimeout(()=>{document.title=orig;},2000);
+}
+
+// ─── APP ─────────────────────────────────────────────────────────────────────
+function App() {
+  const [tab,setTab]=useState(()=>new URLSearchParams(window.location.search).has("code")?"allegro":"nowe");
+  const [orders,setOrders]=useState([]);
+  const [loading,setLoading]=useState(true);
+  const [wiadomosc,setWiadomosc]=useState("");
+  const [adres,setAdres]=useState("");
+  const [parsing,setParsing]=useState(false);
+  const [form,setForm]=useState(pustyForm());
+  const [numerOverride,setNumerOverride]=useState("");
+  const [saved,setSaved]=useState(false);
+  const [search,setSearch]=useState("");
+  const [filterMonth,setFilterMonth]=useState("");
+  const [filterKolor,setFilterKolor]=useState("");
+  const [filterFirma,setFilterFirma]=useState("");
+  const [settings,setSettings]=useState(()=>window.jsonbinSettings.getSettings());
+  const [settingsSaved,setSettingsSaved]=useState(false);
+  const [allegroTokens,setAllegroTokens]=useState(()=>{
+    try{return JSON.parse(localStorage.getItem('allegro_tokens')||'{}');}catch{return {};}
+  });
+  const [allegroActive,setAllegroActive]=useState(()=>localStorage.getItem('allegro_active')||"favo5");
+  const [allegroMessages,setAllegroMessages]=useState([]);
+  const [allegroLoading,setAllegroLoading]=useState(false);
+  const [allegroError,setAllegroError]=useState("");
+  const [allegroClientId,setAllegroClientId]=useState(()=>localStorage.getItem('allegro_client_id')||"");
+  const [allegroClientSecret,setAllegroClientSecret]=useState(()=>localStorage.getItem('allegro_client_secret')||"");
+  const [allegroCreds,setAllegroCreds]=useState(false);
+  const [allegroUrl,setAllegroUrl]=useState("");
+  const allegroToken = allegroTokens[allegroActive]||"";
+
+  useEffect(()=>{cloudLoad().then(d=>{setOrders(d);setLoading(false);});
+            }).catch(e=>console.log('Token error:',e));
+      }
+    }
+  },[]);
+  function updateOrders(next){setOrders(next);cloudSave(next);}
+
+  async function handleParse() {
+    if(!wiadomosc.trim()&&!adres.trim()) return;
+    setParsing(true); setSaved(false);
+    try {
+      const r=await parseAI(wiadomosc,adres);
+      setForm(f=>({
+        ...f,
+        klientImie:   r.klientImie   ||f.klientImie,
+        klientMiasto: r.klientMiasto ||f.klientMiasto,
+        telefon:      r.telefon      ||f.telefon,
+        uwagi:        r.uwagi        ||f.uwagi,
+        pozycje: r.pozycje?.length ? r.pozycje.map(p=>({
+          szerokosc:   p.szerokosc   ||"",
+          wysokosc:    p.wysokosc    ||"",
+          glebokosc:   p.glebokosc!=null?String(p.glebokosc):String(DOMYSLNA_GLEBOKOS),
+          kolorRamki:  p.kolorRamki  ||"Antracyt",
+          kolorSiatki: p.kolorSiatki ||"Czarna",
+          ilosc:       p.ilosc       ||1
+        })):f.pozycje
+      }));
+    } catch(e){ alert("Błąd parsowania AI: "+e.message); }
+    setParsing(false);
+  }
+
+  function updPoz(i,field,val){
+    setForm(f=>{const p=[...f.pozycje];p[i]={...p[i],[field]:val};return {...f,pozycje:p};});
+  }
+
+  function handleSave(){
+    const numer=numerOverride||nextNumer(orders,form.firma);
+    const order={
+      id:Date.now(), numerZlecenia:numer, firma:form.firma, data:form.data,
+      klientImie:form.klientImie, klientMiasto:form.klientMiasto,
+      telefon:form.telefon, uwagi:form.uwagi,
+      pozycje:form.pozycje.map(p=>({
+        ...p,
+        glebokosc:    p.glebokosc||String(DOMYSLNA_GLEBOKOS),
+        kolorSiatki:  p.kolorSiatki||"Czarna",
+        linka:        obliczLinke(p.szerokosc,p.wysokosc),
+        blaszRozmiar: obliczRozmiarBlaszki(p.glebokosc||DOMYSLNA_GLEBOKOS),
+      }))
+    };
+    updateOrders([order,...orders]);
+    setSaved(true);
+    setWiadomosc(""); setAdres(""); setForm(pustyForm(form.firma)); setNumerOverride("");
+  }
+
+  function getStats(ords){
+    let totalMosk=0,totalLinka=0,totalBlaszki=0,totalM2=0;
+    const kolorCount={};
+    ords.forEach(o=>o.pozycje.forEach(p=>{
+      const il=parseFloat(p.ilosc)||1;
+      totalMosk+=il;
+      totalLinka+=obliczJedn(p.szerokosc,p.wysokosc,il);
+      totalBlaszki+=8*il;
+      totalM2+=(parseFloat(p.szerokosc)||0)*(parseFloat(p.wysokosc)||0)/10000*il;
+      const k=p.kolorRamki||"Inne"; kolorCount[k]=(kolorCount[k]||0)+il;
+    }));
+    return {totalMosk,totalLinka:Math.round(totalLinka*10)/10,totalBlaszki,totalM2:Math.round(totalM2*100)/100,kolorCount};
+  }
+
+  const filteredOrders=orders.filter(o=>{
+    if(filterMonth&&getMonth(o.data)!==filterMonth) return false;
+    if(filterKolor&&!o.pozycje.some(p=>p.kolorRamki?.includes(filterKolor))) return false;
+    if(filterFirma&&o.firma!==filterFirma) return false;
+    if(search&&!`${o.numerZlecenia||""} ${o.klientImie} ${o.klientMiasto}`.toLowerCase().includes(search.toLowerCase())) return false;
+    return true;
+  });
+
+  const months=[...new Set(orders.map(o=>getMonth(o.data)))].sort().reverse();
+  const statsAll=getStats(orders);
+  const statsFilt=getStats(filteredOrders);
+
+  function exportCSV(){
+    const rows=[["Nr zlecenia","Firma","Data","Klient","Miasto","Tel","Szer","Wys","Głęb","Kolor ramki","Kolor siatki","Blaszka","Blaszek","Linka","Ilość"]];
+    orders.forEach(o=>o.pozycje.forEach(p=>{
+      const il=parseFloat(p.ilosc)||1;
+      rows.push([o.numerZlecenia,o.firma,o.data,o.klientImie,o.klientMiasto,o.telefon,p.szerokosc,p.wysokosc,p.glebokosc,p.kolorRamki,p.kolorSiatki,p.blaszRozmiar||obliczRozmiarBlaszki(p.glebokosc),8*il,(p.linka||obliczLinke(p.szerokosc,p.wysokosc))*il,il]);
+    }));
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(new Blob(["\uFEFF"+rows.map(r=>r.join(";")).join("\n")],{type:"text/csv;charset=utf-8;"}));
+    a.download="zamowienia.csv"; a.click();
+  }
+
+  const CSS=`
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@700;800&display=swap');
+    *{box-sizing:border-box;margin:0;padding:0}
+    ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:#3a6a3a;border-radius:3px}
+    textarea,input,select{background:#1e2330;color:#f0f0e8;border:1px solid #3a4a3a;border-radius:5px;padding:9px 11px;font-family:inherit;font-size:14px;outline:none;transition:border-color .2s;width:100%}
+    textarea:focus,input:focus,select:focus{border-color:#5fbf5f;background:#222836}
+    button{cursor:pointer;font-family:inherit;border:none;border-radius:5px;transition:all .15s}
+    .tab{padding:11px 20px;background:transparent;color:#7a9a7a;border-bottom:2px solid transparent;border-radius:0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600}
+    .tab.on{color:#7fcf7f;border-bottom-color:#7fcf7f}
+    .tab:hover{color:#bbb}
+    .btn{background:#1e3a1e;color:#9fcf9f;padding:10px 20px;font-size:13px;border:1px solid #3a6a3a;font-weight:600}
+    .btn:hover{background:#2a5a2a;color:#c0e8c0}.btn:disabled{opacity:.35;cursor:default}
+    .btn-sm{padding:5px 14px;font-size:12px;background:#182818;color:#7fcf7f;border:1px solid #2a4a2a;font-weight:600}
+    .btn-sm:hover{background:#1e3a1e}
+    .btn-pdf{background:#1e2a3e;color:#90b8df;border:1px solid #2a4a6a;padding:5px 14px;font-size:12px;font-weight:600}
+    .btn-pdf:hover{background:#2a3a50}
+    .btn-del{background:#2e1a1a;color:#df8080;border:1px solid #4a2a2a;padding:5px 12px;font-size:12px}
+    .btn-del:hover{background:#3e2a2a}
+    .card{background:#141a22;border:1px solid #243024;border-radius:8px;padding:18px}
+    .lbl{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#7fcf7f;margin-bottom:5px;display:block;font-weight:600}
+    .stat{background:#0d1a0d;border:1px solid #1e3e1e;border-radius:6px;padding:12px 16px}
+    .stat-n{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:#7fcf7f}
+    .stat-l{font-size:10px;color:#3a6a3a;letter-spacing:.1em;text-transform:uppercase;margin-top:2px}
+    .tr{border-bottom:1px solid #1a221a}.tr:hover{background:#121a12}
+    .badge{display:inline-block;padding:2px 9px;border-radius:3px;font-size:11px;font-weight:700}
+    .b-g{background:#1a3a1a;color:#7fcf7f}
+    .firma-badge{display:inline-block;padding:2px 8px;border-radius:3px;font-size:11px;font-weight:800;background:#2a2a0a;color:#dfcf5f}
+    .calc{margin-top:8px;padding:8px 12px;background:#080f08;border:1px solid #1e3a1e;border-radius:5px;font-size:12px;display:flex;gap:14px;flex-wrap:wrap}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .spin{animation:spin 1s linear infinite;display:inline-block}
+    @media(max-width:700px){.grid2{grid-template-columns:1fr!important}.hide-mob{display:none!important}}
+  `;
+
+  async function allegroLogin(kontaId){
+    const clientId=localStorage.getItem('allegro_client_id')||"";
+    const secret=localStorage.getItem('allegro_client_secret')||"";
+    if(!clientId||!secret){setAllegroError("Najpierw wpisz i zapisz Client ID oraz Client Secret");return;}
+    setAllegroError(""); setAllegroUrl(""); setAllegroLoading(true);
+    localStorage.setItem('allegro_active', kontaId);
+    setAllegroActive(kontaId);
+    try {
+      const r = await fetch('https://allegro.pl/auth/oauth/device',{
+        method:'POST',
+        headers:{'Authorization':'Basic '+btoa(clientId+':'+secret),'Content-Type':'application/x-www-form-urlencoded'},
+        body:'client_id='+encodeURIComponent(clientId)
+      });
+      const d = await r.json();
+      if(d.error){setAllegroError("Błąd: "+d.error_description);setAllegroLoading(false);return;}
+      setAllegroUrl(d.verification_uri_complete||d.verification_uri);
+      setAllegroError("KOD: "+d.user_code);
+      // Poll for token
+      const interval = d.interval||5;
+      const deviceCode = d.device_code;
+      let attempts = 0;
+      const poll = setInterval(async()=>{
+        attempts++;
+        if(attempts>60){clearInterval(poll);setAllegroLoading(false);setAllegroError("Timeout — spróbuj ponownie");return;}
+        try{
+          const tr = await fetch('https://allegro.pl/auth/oauth/token',{
+            method:'POST',
+            headers:{'Authorization':'Basic '+btoa(clientId+':'+secret),'Content-Type':'application/x-www-form-urlencoded'},
+            body:'grant_type=urn:ietf:params:oauth:grant-type:device_code&device_code='+encodeURIComponent(deviceCode)
+          });
+          const td = await tr.json();
+          if(td.access_token){
+            clearInterval(poll);
+            const tokens={...allegroTokens};
+            tokens[kontaId]=td.access_token;
+            localStorage.setItem('allegro_tokens',JSON.stringify(tokens));
+            setAllegroTokens({...tokens});
+            setAllegroUrl(""); setAllegroError(""); setAllegroLoading(false);
+          }
+        }catch(e){}
+      }, interval*1000);
+    }catch(e){setAllegroError("Błąd połączenia: "+e.message);setAllegroLoading(false);}
+  }
+
+  async function allegroLoadMessages(tokenParam){
+    const tok=tokenParam||allegroToken;
+    if(!tok){setAllegroError("Nie jesteś zalogowany do Allegro");return;}
+    setAllegroLoading(true); setAllegroError("");
+    try{
+      const r=await fetch('https://api.allegro.pl/messaging/threads?limit=20',{
+        headers:{'Authorization':'Bearer '+tok,'Accept':'application/vnd.allegro.public.v1+json'}
+      });
+      if(r.status===401){setAllegroToken("");localStorage.removeItem('allegro_token');setAllegroError("Sesja wygasła, zaloguj się ponownie");setAllegroLoading(false);return;}
+      const d=await r.json();
+      // For each thread get messages
+      const threads=d.threads||[];
+      const messagesArr=[];
+      for(const t of threads.slice(0,10)){
+        const mr=await fetch('https://api.allegro.pl/messaging/threads/'+t.id+'/messages',{
+          headers:{'Authorization':'Bearer '+tok,'Accept':'application/vnd.allegro.public.v1+json'}
+        });
+        const md=await mr.json();
+        const msgs=md.messages||[];
+        const lastMsg=msgs[msgs.length-1];
+        messagesArr.push({
+          threadId:t.id,
+          interlocutor:t.interlocutor?.login||"—",
+          subject:t.subject||"—",
+          lastMessage:lastMsg?.text||"",
+          date:lastMsg?.createdAt||"",
+          unread:t.hasUnreadMessages
+        });
+      }
+      setAllegroMessages(messagesArr);
+    }catch(e){setAllegroError("Błąd: "+e.message);}
+    setAllegroLoading(false);
+  }
+
+  function allegroUseMessage(msg){
+    setWiadomosc(msg.lastMessage);
+    setTab("nowe");
+  }
+
+  if(loading) return (
+    <div style={{minHeight:"100vh",background:"#0c1018",display:"flex",alignItems:"center",justifyContent:"center",color:"#5a9a5a",fontFamily:"monospace",fontSize:15}}>
+      <style>{"@keyframes spin{to{transform:rotate(360deg)}}"}</style>
+      <span style={{animation:"spin 1s linear infinite",display:"inline-block",marginRight:12}}>⟳</span> Ładowanie...
+    </div>
+  );
+
+  return (
+    <div style={{minHeight:"100vh",background:"#0c1018",color:"#e8ece8",fontFamily:"'IBM Plex Mono','Courier New',monospace"}}>
+      <style>{CSS}</style>
+
+      <div style={{borderBottom:"1px solid #1e2e1e",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e1420"}}>
+        <div>
+          <div style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:800,color:"#7fcf7f",letterSpacing:".05em"}}>MOSKITIERY PCV</div>
+          <div style={{fontSize:10,color:"#3a6a3a",letterSpacing:".2em",textTransform:"uppercase"}}>System zarządzania zamówieniami</div>
+        </div>
+        <div style={{fontSize:12,color:"#3a6a3a"}}>{orders.length} zamówień · ☁</div>
+      </div>
+
+      <div style={{display:"flex",borderBottom:"1px solid #1e2a1e",paddingLeft:16,background:"#0e1420"}}>
+        {[["nowe","➕ Nowe"],["baza","📋 Baza"],["stat","📊 Stat"],["kalk","🧮 Kalkulator"],["allegro","🛒 Allegro"],["ustawienia","⚙️ Chmura"]].map(([id,l])=>(
+          <button key={id} className={`tab ${tab===id?"on":""}`} onClick={()=>setTab(id)}>{l}</button>
+        ))}
+      </div>
+
+      <div style={{padding:16,maxWidth:1100,margin:"0 auto"}}>
+
+        {/* ══ NOWE ══ */}
+        {tab==="nowe" && (
+          <div className="grid2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+            <div style={{display:"flex",flexDirection:"column",gap:14}}>
+
+              {/* Wiadomość + adres */}
+              <div className="card">
+                <span className="lbl" style={{marginBottom:10}}>Wiadomość od klienta (wymiary, kolory)</span>
+                <textarea value={wiadomosc} onChange={e=>setWiadomosc(e.target.value)}
+                  placeholder={"Wklej wiadomość z Allegro...\n\nNp: SZEROKOŚĆ B: 56.2, WYSOKOŚĆ A: 67,\nKOLOR: Antracyt, SIATKA: Czarna"}
+                  style={{height:120,resize:"vertical",marginBottom:10}}/>
+
+                <span className="lbl" style={{marginBottom:6}}>Dane adresowe z Allegro (opcjonalne)</span>
+                <textarea value={adres} onChange={e=>setAdres(e.target.value)}
+                  placeholder={"Wklej dane adresowe z Allegro:\n\nNp: Kowalski Jan\nul. Kwiatowa 5/10\n00-001 Warszawa\nPL +48600000000"}
+                  style={{height:90,resize:"vertical",marginBottom:10}}/>
+
+                <button className="btn" style={{width:"100%"}} onClick={handleParse} disabled={parsing||(!wiadomosc.trim()&&!adres.trim())}>
+                  {parsing?<><span className="spin">⟳</span> Parsowanie AI...</>:"🤖 Parsuj z AI →"}
+                </button>
+              </div>
+
+              {/* Dane zamówienia */}
+              <div className="card">
+                <span className="lbl" style={{marginBottom:10}}>Dane zamówienia</span>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+                  <div>
+                    <span className="lbl">Firma</span>
+                    <select value={form.firma} onChange={e=>setForm(f=>({...f,firma:e.target.value}))}>
+                      {FIRMY.map(f=><option key={f.kod} value={f.kod}>{f.kod} — {f.nazwa}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <span className="lbl">Data</span>
+                    <input type="date" value={form.data} onChange={e=>setForm(f=>({...f,data:e.target.value}))}/>
+                  </div>
+                  <div>
+                    <span className="lbl">Klient (nazwisko imię)</span>
+                    <input value={form.klientImie} onChange={e=>setForm(f=>({...f,klientImie:e.target.value}))} placeholder="Kowalski Jan"/>
+                  </div>
+                  <div>
+                    <span className="lbl">Miasto</span>
+                    <input value={form.klientMiasto} onChange={e=>setForm(f=>({...f,klientMiasto:e.target.value}))} placeholder="Warszawa"/>
+                  </div>
+                  <div>
+                    <span className="lbl">Telefon</span>
+                    <input value={form.telefon} onChange={e=>setForm(f=>({...f,telefon:e.target.value}))} placeholder="600 000 000"/>
+                  </div>
+                  <div>
+                    <span className="lbl">Nr zlecenia</span>
+                    <input 
+                      value={numerOverride||(loading?"ładowanie...":nextNumer(orders,form.firma))} 
+                      onChange={e=>setNumerOverride(e.target.value)}
+                      placeholder={loading?"...":nextNumer(orders,form.firma)}
+                      style={{background:"#0d1a0d",color:loading?"#4a6a4a":"#dfcf5f",fontWeight:800,fontSize:15}}
+                      readOnly={loading}
+                    />
+                    {numerOverride&&<span style={{fontSize:10,color:"#6a8a6a",cursor:"pointer"}} onClick={()=>setNumerOverride("")}>↩ reset do auto</span>}
+                  </div>
+                </div>
+                <div>
+                  <span className="lbl">Uwagi</span>
+                  <input value={form.uwagi} onChange={e=>setForm(f=>({...f,uwagi:e.target.value}))} placeholder="Dodatkowe uwagi..."/>
+                </div>
+              </div>
+            </div>
+
+            {/* Pozycje */}
+            <div className="card" style={{display:"flex",flexDirection:"column",gap:12}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span className="lbl">Pozycje ({form.pozycje.length})</span>
+                <button className="btn-sm" onClick={()=>setForm(f=>({...f,pozycje:[...f.pozycje,pustaPoz()]}))}>+ Dodaj</button>
+              </div>
+
+              <div style={{overflowY:"auto",maxHeight:480,display:"flex",flexDirection:"column",gap:10}}>
+              {form.pozycje.map((poz,i)=>{
+                const s=parseFloat(poz.szerokosc), w=parseFloat(poz.wysokosc), g=parseFloat(poz.glebokosc)||DOMYSLNA_GLEBOKOS;
+                const linka=s&&w?obliczJedn(s,w,poz.ilosc):null;
+                const blaszRoz=obliczRozmiarBlaszki(g);
+                return (
+                  <div key={i} style={{background:"#0c1a0c",border:"1px solid #1e3a1e",borderRadius:6,padding:14,flexShrink:0}}>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
+                      <span style={{fontSize:13,color:"#5a9a5a",fontWeight:700}}>Pozycja {i+1}</span>
+                      {form.pozycje.length>1&&<button className="btn-del" onClick={()=>setForm(f=>({...f,pozycje:f.pozycje.filter((_,j)=>j!==i)}))}>✕</button>}
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 60px",gap:8,marginBottom:8}}>
+                      <div><span className="lbl">Szer. B (cm)</span><input type="number" step="0.1" value={poz.szerokosc} onChange={e=>updPoz(i,"szerokosc",e.target.value)}/></div>
+                      <div><span className="lbl">Wys. A (cm)</span><input type="number" step="0.1" value={poz.wysokosc} onChange={e=>updPoz(i,"wysokosc",e.target.value)}/></div>
+                      <div><span className="lbl">Głęb. C (mm)</span><input type="number" step="0.5" value={poz.glebokosc} onChange={e=>updPoz(i,"glebokosc",e.target.value)} placeholder={String(DOMYSLNA_GLEBOKOS)}/></div>
+                      <div><span className="lbl">Szt.</span><input type="number" min="1" value={poz.ilosc} onChange={e=>updPoz(i,"ilosc",e.target.value)}/></div>
+                    </div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                      <div><span className="lbl">Kolor ramki</span>
+                        <select value={poz.kolorRamki} onChange={e=>updPoz(i,"kolorRamki",e.target.value)}>
+                          {KOLORY_RAMKI.map(k=><option key={k}>{k}</option>)}
+                        </select>
+                      </div>
+                      <div><span className="lbl">Kolor siatki</span>
+                        <select value={poz.kolorSiatki} onChange={e=>updPoz(i,"kolorSiatki",e.target.value)}>
+                          {KOLORY_SIATKI.map(k=><option key={k}>{k}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    {linka!==null&&(
+                      <div className="calc">
+                        <span style={{color:"#5a9a5a"}}>🔗 JEDN: <strong style={{color:"#9fcf9f"}}>{obliczJedn(poz.szerokosc,poz.wysokosc,poz.ilosc)} mb</strong></span>
+                        <span style={{color:"#5a9a5a"}}>📎 Blaszek: <strong style={{color:"#9fcf9f"}}>8 szt</strong></span>
+                        <span style={{color:"#5a9a5a"}}>📐 <strong style={{color:"#dfdf8f"}}>{blaszRoz} mm</strong>
+                          <span style={{color:"#3a6a3a",fontSize:11}}> ({g}-9={g-9}→{blaszRoz})</span>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              </div>
+
+              <button className="btn" style={{width:"100%",padding:"12px",fontSize:14}}
+                onClick={handleSave} disabled={!form.klientImie&&!form.klientMiasto&&!form.pozycje[0].szerokosc}>
+                💾 Zapisz zamówienie
+              </button>
+              {saved&&<div style={{textAlign:"center",color:"#7fcf7f",fontSize:12,marginTop:4}}>✓ Zapisano i zsynchronizowano ☁</div>}
+            </div>
+          </div>
+        )}
+
+        {/* ══ BAZA ══ */}
+        {tab==="baza" && (
+          <div>
+            <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Szukaj..." style={{width:220}}/>
+              <select value={filterFirma} onChange={e=>setFilterFirma(e.target.value)} style={{width:"auto"}}>
+                <option value="">Wszystkie firmy</option>
+                {FIRMY.map(f=><option key={f.kod} value={f.kod}>{f.kod} — {f.nazwa}</option>)}
+              </select>
+              <select value={filterMonth} onChange={e=>setFilterMonth(e.target.value)} style={{width:"auto"}}>
+                <option value="">Wszystkie miesiące</option>
+                {months.map(m=><option key={m} value={m}>{m}</option>)}
+              </select>
+              <select value={filterKolor} onChange={e=>setFilterKolor(e.target.value)} style={{width:"auto"}}>
+                <option value="">Wszystkie kolory</option>
+                {KOLORY_RAMKI.map(k=><option key={k} value={k}>{k}</option>)}
+              </select>
+              <span style={{marginLeft:"auto",fontSize:12,color:"#4a7a4a"}}>{filteredOrders.length} zamówień</span>
+              <button className="btn-sm" onClick={exportCSV}>⬇ CSV</button>
+            </div>
+
+            {filteredOrders.length>0&&(
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:12}}>
+                {[["Moskitier",statsFilt.totalMosk+" szt"],["Linka",statsFilt.totalLinka+" mb"],["Blaszki",statsFilt.totalBlaszki+" szt"],["Siatka",statsFilt.totalM2+" m²"]].map(([l,v])=>(
+                  <div key={l} className="stat" style={{padding:"8px 12px"}}>
+                    <div style={{fontFamily:"'Syne',sans-serif",fontSize:18,fontWeight:800,color:"#7fcf7f"}}>{v}</div>
+                    <div style={{fontSize:10,color:"#3a6a3a",letterSpacing:".1em",textTransform:"uppercase"}}>{l}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="card" style={{padding:0,overflow:"hidden"}}>
+              <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                <thead>
+                  <tr style={{borderBottom:"2px solid #1e3a1e",background:"#0c1a0c"}}>
+                    {["Nr zlecenia","Data","Klient","Miasto","Mosk.","Linka","Blaszki","Kolory","",""].map((h,i)=>(
+                      <th key={i} style={{padding:"10px 10px",textAlign:"left",fontSize:10,color:"#3a7a3a",letterSpacing:".1em",textTransform:"uppercase",fontWeight:700}}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredOrders.length===0&&<tr><td colSpan={10} style={{textAlign:"center",padding:28,color:"#2a4a2a",fontSize:13}}>Brak zamówień</td></tr>}
+                  {filteredOrders.map(o=>{
+                    const il=o.pozycje.reduce((a,p)=>a+(parseFloat(p.ilosc)||1),0);
+                    const lnk=obliczLinkeLaczna(o.pozycje);
+                    const kol=[...new Set(o.pozycje.map(p=>p.kolorRamki))].join(", ");
+                    return (
+                      <tr key={o.id} className="tr">
+                        <td style={{padding:"10px 10px"}}>
+                          <span className="firma-badge">{o.firma||"?"}</span>
+                          <span style={{marginLeft:6,color:"#dfcf5f",fontWeight:700}}>{o.numerZlecenia||"—"}</span>
+                        </td>
+                        <td style={{padding:"10px 10px",color:"#7a9a7a"}}>{formatDate(o.data)}</td>
+                        <td style={{padding:"10px 10px",color:"#a0cf9f"}}>{o.klientImie||"—"}</td>
+                        <td style={{padding:"10px 10px",color:"#7a9a7a"}}>{o.klientMiasto||"—"}</td>
+                        <td style={{padding:"10px 10px",textAlign:"center"}}><span className="badge b-g">{il}</span></td>
+                        <td style={{padding:"10px 10px",textAlign:"center"}}>{Math.round(lnk*10)/10} mb</td>
+                        <td style={{padding:"10px 10px",textAlign:"center"}}>{il*8}</td>
+                        <td style={{padding:"10px 10px",fontSize:11,color:"#5a8a5a",maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} className="hide-mob">{kol}</td>
+                        <td style={{padding:"10px 10px"}}><button className="btn-pdf" onClick={()=>drukujPDF(o)}>📄 PDF</button></td>
+                        <td style={{padding:"10px 10px"}}><button className="btn-del" onClick={()=>{if(confirm("Usunąć "+o.numerZlecenia+"?"))updateOrders(orders.filter(x=>x.id!==o.id))}}>🗑</button></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ══ STATYSTYKI ══ */}
+        {tab==="stat" && (
+          <div>
+            <div style={{fontSize:11,color:"#3a6a3a",letterSpacing:".15em",textTransform:"uppercase",marginBottom:14}}>Łącznie ({orders.length} zamówień)</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}} className="grid2">
+              {[["Moskitier",statsAll.totalMosk,"szt"],["Linka",statsAll.totalLinka,"mb"],["Blaszki",statsAll.totalBlaszki,"szt"],["Siatka",statsAll.totalM2,"m²"]].map(([l,v,u])=>(
+                <div key={l} className="stat"><div className="stat-n">{v}</div><div style={{fontSize:12,color:"#7fcf7f"}}>{u}</div><div className="stat-l">{l}</div></div>
+              ))}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}} className="grid2">
+              <div className="card">
+                <span className="lbl" style={{marginBottom:12}}>Kolory ramek</span>
+                {Object.entries(statsAll.kolorCount).sort((a,b)=>b[1]-a[1]).map(([k,v])=>{
+                  const pct=statsAll.totalMosk?Math.round(v/statsAll.totalMosk*100):0;
+                  return (<div key={k} style={{marginBottom:10}}>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:3,fontSize:12}}>
+                      <span style={{color:"#9fcf9f"}}>{k}</span>
+                      <span style={{color:"#7fcf7f"}}>{v} szt ({pct}%)</span>
+                    </div>
+                    <div style={{height:3,background:"#1a2a1a",borderRadius:2}}>
+                      <div style={{height:"100%",width:`${pct}%`,background:"linear-gradient(90deg,#1e5a1e,#7fcf7f)",borderRadius:2}}/>
+                    </div>
+                  </div>);
+                })}
+              </div>
+              <div className="card">
+                <span className="lbl" style={{marginBottom:12}}>Miesięcznie</span>
+                {months.slice(0,18).map(m=>{
+                  const mo=orders.filter(o=>getMonth(o.data)===m);
+                  const s=getStats(mo);
+                  return (<div key={m} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #141e14",fontSize:12}}>
+                    <span style={{color:"#7a9a7a",minWidth:70}}>{m}</span>
+                    <span style={{color:"#9fcf9f"}}>{mo.length} zam.</span>
+                    <span style={{color:"#7a9a7a"}}>{s.totalMosk} szt</span>
+                    <span style={{color:"#5a7a5a"}}>{s.totalLinka} mb</span>
+                  </div>);
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ══ ALLEGRO ══ */}
+        {tab==="allegro" && (
+          <div style={{maxWidth:900}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
+              <div className="card">
+                <div style={{fontFamily:"'Syne',sans-serif",fontSize:16,fontWeight:800,color:"#7fcf7f",marginBottom:14}}>🛒 Konta Allegro</div>
+                <div style={{marginBottom:10}}>
+                  <span className="lbl">Client ID</span>
+                  <input value={allegroClientId} onChange={e=>setAllegroClientId(e.target.value)} placeholder="Client ID z developer.allegro.pl" style={{fontFamily:"monospace",fontSize:12}}/>
+                </div>
+                <div style={{marginBottom:10}}>
+                  <span className="lbl">Client Secret</span>
+                  <input value={allegroClientSecret} onChange={e=>setAllegroClientSecret(e.target.value)} type="password" placeholder="Client Secret" style={{fontFamily:"monospace",fontSize:12}}/>
+                </div>
+                <button className="btn-sm" style={{marginBottom:14,width:"100%"}} onClick={()=>{
+                  localStorage.setItem('allegro_client_id',allegroClientId);
+                  localStorage.setItem('allegro_client_secret',allegroClientSecret);
+                  setAllegroCreds(true);setTimeout(()=>setAllegroCreds(false),2000);
+                }}>{allegroCreds?"✓ Zapisano":"💾 Zapisz dane logowania"}</button>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {ALLEGRO_KONTA.map(k=>{
+                    const token=allegroTokens[k.id]||"";
+                    return (
+                      <div key={k.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"#0a0f0a",border:"1px solid #1a2a1a",borderRadius:6}}>
+                        <span style={{flex:1,fontWeight:700,color:"#7a9a7a"}}>{k.label}</span>
+                        <span style={{fontSize:10,color:"#3a5a3a",marginRight:4}}>{k.firma}</span>
+                        {token
+                          ? <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                              <span style={{fontSize:10,color:"#5a9a5a"}}>✅ zalogowany</span>
+                              <button className="btn-sm" onClick={()=>{setAllegroActive(k.id);allegroLoadMessages(token);}}>📬 Pobierz</button>
+                              <button className="btn-del" style={{padding:"3px 8px",fontSize:11}} onClick={()=>{
+                                const tokens={...allegroTokens};delete tokens[k.id];
+                                localStorage.setItem('allegro_tokens',JSON.stringify(tokens));setAllegroTokens(tokens);
+                              }}>✕</button>
+                            </div>
+                          : <button className="btn-sm" onClick={()=>allegroLogin(k.id)}>🔑 Zaloguj</button>
+                        }
+                      </div>
+                    );
+                  })}
+                </div>
+                {allegroUrl&&<a href={allegroUrl} target="_blank" rel="noreferrer" style={{display:"block",marginTop:12,padding:"10px",background:"#1e3a1e",color:"#9fcf9f",borderRadius:6,textAlign:"center",fontWeight:700,fontSize:14,textDecoration:"none"}}>🔑 Kliknij tutaj aby zalogować się przez Allegro</a>}
+                {allegroError&&<div style={{marginTop:10,color:"#df8080",fontSize:12}}>{allegroError}</div>}
+              </div>
+              <div className="card">
+                <div style={{fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:800,color:"#7fcf7f",marginBottom:10}}>ℹ️ Jak to działa</div>
+                <div style={{fontSize:12,color:"#5a8a5a",lineHeight:1.7}}>
+                  1. Wpisz Client ID i Client Secret z <strong style={{color:"#7a9a7a"}}>developer.allegro.pl</strong><br/>
+                  2. Kliknij <strong style={{color:"#7a9a7a"}}>"Zaloguj przez Allegro"</strong><br/>
+                  3. Zaloguj się na swoje konto Allegro<br/>
+                  4. Wróć tutaj i pobierz wiadomości<br/>
+                  5. Kliknij <strong style={{color:"#7a9a7a"}}>"Użyj"</strong> przy wiadomości → AI ją sparsuje
+                </div>
+              </div>
+            </div>
+
+            {allegroMessages.length>0&&(
+              <div className="card" style={{padding:0,overflow:"hidden"}}>
+                <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                  <thead>
+                    <tr style={{borderBottom:"2px solid #1e3a1e",background:"#0c1a0c"}}>
+                      {["Kupujący","Temat","Ostatnia wiadomość","Data",""].map((h,i)=>(
+                        <th key={i} style={{padding:"10px",textAlign:"left",fontSize:10,color:"#3a7a3a",letterSpacing:".1em",textTransform:"uppercase"}}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allegroMessages.map((msg,i)=>(
+                      <tr key={i} className="tr" style={{background:msg.unread?"#0d1a0d":"transparent"}}>
+                        <td style={{padding:"10px",color:"#a0cf9f",fontWeight:msg.unread?700:400}}>{msg.interlocutor}</td>
+                        <td style={{padding:"10px",color:"#7a9a7a",maxWidth:150,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{msg.subject}</td>
+                        <td style={{padding:"10px",color:"#5a7a5a",maxWidth:250,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{msg.lastMessage}</td>
+                        <td style={{padding:"10px",color:"#4a6a4a",fontSize:11}}>{msg.date?new Date(msg.date).toLocaleDateString("pl-PL"):""}</td>
+                        <td style={{padding:"10px"}}><button className="btn-sm" onClick={()=>allegroUseMessage(msg)}>→ Użyj</button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ══ KALKULATOR ══ */}
+        {tab==="kalk" && (
+          <div style={{height:"calc(100vh - 120px)"}}>
+            <iframe
+              src="https://www.oktomo.pl/kalkulator1/"
+              style={{width:"100%",height:"100%",border:"none",borderRadius:8}}
+              title="Kalkulator OKTOMO"
+            />
+          </div>
+        )}
+
+        {/* ══ USTAWIENIA ══ */}
+        {tab==="ustawienia" && (
+          <div>
+            <div className="card" style={{maxWidth:520}}>
+              <div style={{fontFamily:"'Syne',sans-serif",fontSize:16,fontWeight:800,color:"#7fcf7f",marginBottom:14}}>☁ Synchronizacja JSONBin</div>
+              <div style={{marginBottom:14}}>
+                <span className="lbl">Master Key</span>
+                <input value={settings.apiKey||""} onChange={e=>setSettings(s=>({...s,apiKey:e.target.value}))} placeholder="$2b$10$..." style={{fontFamily:"monospace",fontSize:12}}/>
+              </div>
+              <div style={{marginBottom:14}}>
+                <span className="lbl">Bin ID</span>
+                <input value={settings.binId||""} onChange={e=>setSettings(s=>({...s,binId:e.target.value}))} placeholder="64f3a1b2c8a3e12345678901" style={{fontFamily:"monospace",fontSize:12}}/>
+              </div>
+              <button className="btn" onClick={()=>{window.jsonbinSettings.saveSettings(settings);setSettingsSaved(true);setTimeout(()=>setSettingsSaved(false),2000);}}>
+                💾 Zapisz
+              </button>
+              {settingsSaved&&<span style={{marginLeft:12,color:"#7fcf7f",fontSize:12}}>✓ Zapisano!</span>}
+              <div style={{marginTop:14,padding:"8px 12px",background:settings.apiKey&&settings.binId?"#0c180c":"#1a1000",border:`1px solid ${settings.apiKey&&settings.binId?"#1a3a1a":"#3a2a00"}`,borderRadius:4,fontSize:12,color:settings.apiKey&&settings.binId?"#5a9a5a":"#8a7a3a"}}>
+                {settings.apiKey&&settings.binId?"✅ Synchronizacja aktywna":"⚠️ Brak konfiguracji — dane lokalne"}
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(React.StrictMode,null,React.createElement(App)));
+</script>
+</body></html>
