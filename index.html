@@ -294,6 +294,9 @@ function App() {
   const [allegroClientSecret,setAllegroClientSecret]=useState(()=>localStorage.getItem('allegro_client_secret')||"");
   const [allegroCreds,setAllegroCreds]=useState(false);
   const [allegroUrl,setAllegroUrl]=useState("");
+  const [allegroRefreshes,setAllegroRefreshes]=useState(()=>{
+    try{return JSON.parse(localStorage.getItem('allegro_refreshes')||'{}');}catch{return {};}
+  });
   const [prodFirma,setProdFirma]=useState("all");
   const [prodOdpadProfil,setProdOdpadProfil]=useState(1.1);
   const [prodOdpadSiatka,setProdOdpadSiatka]=useState(1.1);
@@ -318,8 +321,11 @@ function App() {
         }).then(r=>r.json()).then(d=>{
           if(d.access_token){
             const tokens=JSON.parse(localStorage.getItem('allegro_tokens')||'{}');
+            const refreshes=JSON.parse(localStorage.getItem('allegro_refreshes')||'{}');
             tokens[kontaId]=d.access_token;
+            if(d.refresh_token) refreshes[kontaId]=d.refresh_token;
             localStorage.setItem('allegro_tokens',JSON.stringify(tokens));
+            localStorage.setItem('allegro_refreshes',JSON.stringify(refreshes));
             setAllegroTokens({...tokens});
             setTab('allegro');
           }
@@ -446,6 +452,30 @@ function App() {
     @media(max-width:700px){.grid2{grid-template-columns:1fr!important}.hide-mob{display:none!important}}
   `;
 
+  async function allegroRefresh(kontaId){
+    const clientId=localStorage.getItem('allegro_client_id')||'';
+    const secret=localStorage.getItem('allegro_client_secret')||'';
+    const refreshes=JSON.parse(localStorage.getItem('allegro_refreshes')||'{}');
+    const rt=refreshes[kontaId];
+    if(!rt||!clientId||!secret) return false;
+    try{
+      const r=await fetch('https://allegro-proxy.favour-biuro.workers.dev/refresh?refresh_token='+encodeURIComponent(rt),{
+        method:'POST',
+        headers:{'Authorization':'Basic '+btoa(clientId+':'+secret)}
+      });
+      const d=await r.json();
+      if(d.access_token){
+        const tokens=JSON.parse(localStorage.getItem('allegro_tokens')||'{}');
+        tokens[kontaId]=d.access_token;
+        if(d.refresh_token) refreshes[kontaId]=d.refresh_token;
+        localStorage.setItem('allegro_tokens',JSON.stringify(tokens));
+        localStorage.setItem('allegro_refreshes',JSON.stringify(refreshes));
+        setAllegroTokens({...tokens});
+        return true;
+      }
+    }catch(e){}
+    return false;
+  }
   function allegroLogin(kontaId){
     const clientId=localStorage.getItem('allegro_client_id')||"";
     const secret=localStorage.getItem('allegro_client_secret')||"";
@@ -464,7 +494,7 @@ function App() {
       const r=await fetch('https://allegro-proxy.favour-biuro.workers.dev/api/messaging/threads?limit=20',{
         headers:{'Authorization':'Bearer '+tok,'Accept':'application/vnd.allegro.public.v1+json'}
       });
-      if(r.status===401){const t={...allegroTokens};delete t[allegroActive];localStorage.setItem('allegro_tokens',JSON.stringify(t));setAllegroTokens(t);setAllegroError("Sesja wygasła, zaloguj się ponownie");setAllegroLoading(false);return;}
+      if(r.status===401){const refreshed=await allegroRefresh(allegroActive);if(refreshed){allegroLoadMessages(allegroTokens[allegroActive]);return;}const t={...allegroTokens};delete t[allegroActive];localStorage.setItem('allegro_tokens',JSON.stringify(t));setAllegroTokens(t);setAllegroError('Sesja wygasła — zaloguj się ponownie');setAllegroLoading(false);return;}
       const d=await r.json();
       // For each thread get messages
       const threads=d.threads||[];
