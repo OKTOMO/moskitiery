@@ -2,7 +2,7 @@
 <html lang="pl"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Moskitiery PCV</title>
+<title>MosquitoApp</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -297,6 +297,8 @@ function App() {
   const [prodFirma,setProdFirma]=useState("all");
   const [prodOdpadProfil,setProdOdpadProfil]=useState(1.1);
   const [prodOdpadSiatka,setProdOdpadSiatka]=useState(1.1);
+  const [prodDataOd,setProdDataOd]=useState("");
+  const [prodDataDo,setProdDataDo]=useState("");
   const allegroToken = allegroTokens[allegroActive]||"";
 
   useEffect(()=>{
@@ -866,7 +868,12 @@ function App() {
           const STRUKTURA_KOLORY = ["Złoty Dąb","Ciemny Dąb","Turner Oak","Orzech","Winchester","Mahoń"];
 
           // Filter orders by firm
-          const filteredOrders = orders.filter(o => prodFirma==="all" || o.firma===prodFirma);
+          const filteredOrders = orders.filter(o => {
+            if(prodFirma!=="all" && o.firma!==prodFirma) return false;
+            if(prodDataOd && o.data < prodDataOd) return false;
+            if(prodDataDo && o.data > prodDataDo) return false;
+            return true;
+          });
 
           // Aggregate production data
           let profilRAL = 0, profilStruktura = 0;
@@ -956,6 +963,28 @@ function App() {
                   <span className="lbl">Odpad siatka</span>
                   <input type="number" value={prodOdpadSiatka} onChange={e=>setProdOdpadSiatka(parseFloat(e.target.value)||1.1)} step="0.01" style={{width:70}}/>
                 </div>
+                <div>
+                  <span className="lbl">Od</span>
+                  <input type="date" value={prodDataOd} onChange={e=>setProdDataOd(e.target.value)} style={{width:130}}/>
+                </div>
+                <div>
+                  <span className="lbl">Do</span>
+                  <input type="date" value={prodDataDo} onChange={e=>setProdDataDo(e.target.value)} style={{width:130}}/>
+                </div>
+                <button className="btn-sm" onClick={()=>{
+                  const now=new Date();
+                  const mon=new Date(now.getFullYear(),now.getMonth(),1);
+                  setProdDataOd(mon.toISOString().slice(0,10));
+                  setProdDataDo(now.toISOString().slice(0,10));
+                }}>Ten miesiąc</button>
+                <button className="btn-sm" onClick={()=>{
+                  const now=new Date();
+                  const day=now.getDay()||7;
+                  const mon=new Date(now); mon.setDate(now.getDate()-day+1);
+                  setProdDataOd(mon.toISOString().slice(0,10));
+                  setProdDataDo(now.toISOString().slice(0,10));
+                }}>Ten tydzień</button>
+                <button className="btn-sm" onClick={()=>{setProdDataOd("");setProdDataDo("");}}>Wszystkie</button>
                 <span style={{fontSize:11,color:"#3a6a3a",marginLeft:"auto"}}>
                   {filteredOrders.length} zamówień
                 </span>
