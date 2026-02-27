@@ -145,7 +145,9 @@ ${adres||"(brak)"}
 
 Imię i nazwisko wpisz w formacie: Nazwisko Imię (najpierw nazwisko). Wyciągnij miasto z adresu.`;
 
-  const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:prompt}]})});
+  const claudeKey=localStorage.getItem("claude_api_key")||"";
+  if(!claudeKey){throw new Error("Brak klucza API Claude — wpisz go w ustawieniach");}
+  const r=await fetch("https://allegro-proxy.favour-biuro.workers.dev/ai",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":claudeKey},body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:prompt}]})});
   const d=await r.json();
   return JSON.parse((d.content?.[0]?.text||"{}").replace(/```json|```/g,"").trim());
 }
@@ -1161,6 +1163,8 @@ function App() {
               <div style={{marginBottom:14}}>
                 <span className="lbl">Master Key</span>
                 <input value={settings.apiKey||""} onChange={e=>setSettings(s=>({...s,apiKey:e.target.value}))} placeholder="$2b$10$..." style={{fontFamily:"monospace",fontSize:12}}/>
+                <span className="lbl" style={{marginTop:12}}>Klucz API Claude (AI parsowanie)</span>
+                <input value={localStorage.getItem("claude_api_key")||""} onChange={e=>localStorage.setItem("claude_api_key",e.target.value)} placeholder="sk-ant-..." style={{fontFamily:"monospace",fontSize:12}}/>
               </div>
               <div style={{marginBottom:14}}>
                 <span className="lbl">Bin ID</span>
