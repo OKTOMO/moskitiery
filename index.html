@@ -281,7 +281,7 @@ function App() {
   const [wiadomosc,setWiadomosc]=useState("");
   const [adres,setAdres]=useState("");
   const [parsing,setParsing]=useState(false);
-  const [form,setForm]=useState(pustyForm());
+  const [form,setForm]=useState(()=>pustyForm(localStorage.getItem("active_profile")||"F"));
   const [numerOverride,setNumerOverride]=useState("");
   const [saved,setSaved]=useState(false);
   const [search,setSearch]=useState("");
@@ -587,7 +587,7 @@ function App() {
         <div>
           <div style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:800,color:"#7fcf7f",letterSpacing:".05em"}}>
             🦟 MosquitoApp
-            <span style={{fontSize:11,fontWeight:600,color:"#5a9a5a",background:"#0d1a0d",border:"1px solid #1a3a1a",borderRadius:4,padding:"3px 8px",marginLeft:10}}>
+            <span style={{fontSize:16,fontWeight:900,color:"#9fcf9f",background:"#0d1a0d",border:"1px solid #2a5a2a",borderRadius:6,padding:"4px 14px",marginLeft:10,letterSpacing:1}}>
               {currentProfile.nazwa}
             </span>
           </div>
@@ -605,6 +605,8 @@ function App() {
                   <div key={p.id} onClick={()=>{
                     localStorage.setItem('active_profile',p.id);
                     setActiveProfile(p.id);
+                    setForm(f=>({...f,firma:p.id}));
+                    setNumerOverride('');
                     document.getElementById('profile-menu').style.display='none';
                   }} style={{padding:"8px 14px",cursor:"pointer",color:p.id===activeProfile?"#7fcf7f":"#5a8a5a",fontSize:12,borderBottom:"1px solid #0e1a0e"}}>
                     {p.nazwa}
