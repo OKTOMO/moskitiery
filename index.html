@@ -294,6 +294,9 @@ function App() {
   const [allegroClientSecret,setAllegroClientSecret]=useState(()=>localStorage.getItem('allegro_client_secret')||"");
   const [allegroCreds,setAllegroCreds]=useState(false);
   const [allegroUrl,setAllegroUrl]=useState("");
+  const [prodFirma,setProdFirma]=useState("all");
+  const [prodOdpadProfil,setProdOdpadProfil]=useState(1.1);
+  const [prodOdpadSiatka,setProdOdpadSiatka]=useState(1.1);
   const allegroToken = allegroTokens[allegroActive]||"";
 
   useEffect(()=>{
@@ -510,7 +513,7 @@ function App() {
       </div>
 
       <div style={{display:"flex",borderBottom:"1px solid #1e2a1e",paddingLeft:16,background:"#0e1420"}}>
-        {[["nowe","➕ Nowe"],["baza","📋 Baza"],["stat","📊 Stat"],["kalk","🧮 Kalkulator"],["allegro","🛒 Allegro"],["ustawienia","⚙️ Chmura"]].map(([id,l])=>(
+        {[["nowe","➕ Nowe"],["baza","📋 Baza"],["stat","📊 Stat"],["kalk","🧮 Kalkulator"],["allegro","🛒 Allegro"],["produkcja","🏭 Produkcja"],["ustawienia","⚙️ Chmura"]].map(([id,l])=>(
           <button key={id} className={`tab ${tab===id?"on":""}`} onClick={()=>setTab(id)}>{l}</button>
         ))}
       </div>
@@ -815,7 +818,7 @@ function App() {
             {allegroMessages.length>0&&(
               <div style={{marginBottom:8,display:"flex",alignItems:"center",gap:10}}>
                 <span style={{fontSize:12,color:"#5a9a5a"}}>📬 Wiadomości konta: <strong style={{color:"#9fcf9f"}}>{allegroActive}</strong></span>
-                <a href="https://allegro.pl/logout" target="_blank" rel="noreferrer" style={{fontSize:11,color:"#7a6a4a",textDecoration:"none",marginLeft:"auto"}}>↩ Wyloguj z Allegro (zmiana konta)</a>
+                <a href="https://allegro.pl/wyloguj" target="_blank" rel="noreferrer" style={{fontSize:11,color:"#7a6a4a",textDecoration:"none",marginLeft:"auto"}}>↩ Wyloguj z Allegro (zmiana konta)</a>
               </div>
             )}
             {allegroMessages.length>0&&(
@@ -856,6 +859,161 @@ function App() {
           </div>
         )}
 
+
+        {/* ══ PRODUKCJA ══ */}
+        {tab==="produkcja" && (()=>{
+          const RAL_KOLORY = ["Biały","Brąz","Antracyt","Czarny"];
+          const STRUKTURA_KOLORY = ["Złoty Dąb","Ciemny Dąb","Turner Oak","Orzech","Winchester","Mahoń"];
+
+          // Filter orders by firm
+          const filteredOrders = orders.filter(o => prodFirma==="all" || o.firma===prodFirma);
+
+          // Aggregate production data
+          let profilRAL = 0, profilStruktura = 0;
+          let siatkaCzarna100=0, siatkaCzarna140=0, siatkaCzarna160=0;
+          let siatkaSzara100=0, siatkaSzara140=0, siatkaSzara160=0;
+          let narozniki=0, uszczelka=0, blaszki=0, blachowkret=0;
+          let radełko=0, instrukcja=0, karton=0;
+          let poprzeczki=0, laczniki=0;
+
+          filteredOrders.forEach(o=>{
+            const pozOkno = (o.pozycje||[]).filter(p=>!p.isDrzwi);
+            let totalSztOk = 0;
+            pozOkno.forEach(p=>{
+              const szer = parseFloat(p.szerokosc)||0;
+              const wys = parseFloat(p.wysokosc)||0;
+              const il = parseInt(p.ilosc)||1;
+              const kR = p.kolorRamki||"";
+              const kS = p.kolorSiatki||"Czarna";
+              if(!szer||!wys) return;
+
+              // Profil mb
+              const profilCm = ((szer-3.4)*2 + (wys-3.4)*2) * prodOdpadProfil;
+              const profilMb = profilCm/100 * il;
+              if(RAL_KOLORY.some(k=>kR.includes(k))) profilRAL += profilMb;
+              else profilStruktura += profilMb;
+
+              // Siatka
+              const krotszy = Math.min(szer, wys);
+              const dluzszy = Math.max(szer, wys);
+              const siatkaDl = (dluzszy + 20)/100 * il; // mb
+              if(krotszy <= 90){
+                if(kS==="Szara") siatkaSzara100+=siatkaDl; else siatkaCzarna100+=siatkaDl;
+              } else if(krotszy <= 130){
+                if(kS==="Szara") siatkaSzara140+=siatkaDl; else siatkaCzarna140+=siatkaDl;
+              } else {
+                if(kS==="Szara") siatkaSzara160+=siatkaDl; else siatkaCzarna160+=siatkaDl;
+              }
+
+              // Narożniki 5 szt/szt
+              narozniki += 5*il;
+
+              // Uszczelka mb (obwód)
+              const uszMb = ((szer+wys)*2)/100 * il;
+              uszczelka += uszMb;
+
+              // Blaszki i blachowkręty
+              const bl = parseInt(p.blaszRozmiar)||0;
+              const blIl = parseInt(p.blaszIlosc)||(bl?8:0);
+              blaszki += blIl*il;
+              blachowkret += blIl*il;
+
+              // Poprzeczka gdy max>=170
+              if(Math.max(szer,wys)>=170){
+                const popDl = (krotszy-3.4)/100 * il;
+                poprzeczki += popDl;
+                laczniki += 2*il;
+              }
+
+              totalSztOk += il;
+            });
+
+            if(totalSztOk>0){
+              radełko += 1;
+              instrukcja += 1;
+              karton += Math.ceil(totalSztOk/5);
+            }
+          });
+
+          const r2 = v=>Math.round(v*100)/100;
+
+          return (
+            <div style={{maxWidth:900}}>
+              {/* Filters & settings */}
+              <div style={{display:"flex",gap:12,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
+                <div>
+                  <span className="lbl">Firma</span>
+                  <select value={prodFirma} onChange={e=>setProdFirma(e.target.value)}>
+                    <option value="all">Wszystkie</option>
+                    {FIRMY.map(f=><option key={f.kod} value={f.kod}>{f.nazwa}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <span className="lbl">Odpad profil</span>
+                  <input type="number" value={prodOdpadProfil} onChange={e=>setProdOdpadProfil(parseFloat(e.target.value)||1.1)} step="0.01" style={{width:70}}/>
+                </div>
+                <div>
+                  <span className="lbl">Odpad siatka</span>
+                  <input type="number" value={prodOdpadSiatka} onChange={e=>setProdOdpadSiatka(parseFloat(e.target.value)||1.1)} step="0.01" style={{width:70}}/>
+                </div>
+                <span style={{fontSize:11,color:"#3a6a3a",marginLeft:"auto"}}>
+                  {filteredOrders.length} zamówień
+                </span>
+              </div>
+
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+                {/* Profil */}
+                <div className="card">
+                  <div style={{fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:800,color:"#7fcf7f",marginBottom:12}}>🔩 Profil aluminiowy</div>
+                  <table style={{width:"100%",fontSize:13}}>
+                    <tbody>
+                      <tr><td style={{color:"#5a8a5a",paddingBottom:6}}>RAL (Biały/Brąz/Antracyt/Czarny)</td><td style={{textAlign:"right",color:"#9fcf9f",fontWeight:700}}>{r2(profilRAL)} mb</td></tr>
+                      <tr><td style={{color:"#5a8a5a"}}>Struktura drewna</td><td style={{textAlign:"right",color:"#9fcf9f",fontWeight:700}}>{r2(profilStruktura)} mb</td></tr>
+                      <tr style={{borderTop:"1px solid #1e3a1e"}}><td style={{color:"#7fcf7f",paddingTop:8,fontWeight:700}}>RAZEM</td><td style={{textAlign:"right",color:"#7fcf7f",fontWeight:700,paddingTop:8}}>{r2(profilRAL+profilStruktura)} mb</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Siatka */}
+                <div className="card">
+                  <div style={{fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:800,color:"#7fcf7f",marginBottom:12}}>🕸️ Siatka</div>
+                  <table style={{width:"100%",fontSize:13}}>
+                    <tbody>
+                      {[["Czarna 100cm",siatkaCzarna100],["Czarna 140cm",siatkaCzarna140],["Czarna 160cm",siatkaCzarna160],["Szara 100cm",siatkaSzara100],["Szara 140cm",siatkaSzara140],["Szara 160cm",siatkaSzara160]].map(([l,v])=>v>0?(
+                        <tr key={l}><td style={{color:"#5a8a5a",paddingBottom:4}}>{l}</td><td style={{textAlign:"right",color:"#9fcf9f",fontWeight:700}}>{r2(v)} mb</td></tr>
+                      ):null)}
+                      <tr style={{borderTop:"1px solid #1e3a1e"}}><td style={{color:"#7fcf7f",paddingTop:8,fontWeight:700}}>RAZEM</td><td style={{textAlign:"right",color:"#7fcf7f",fontWeight:700,paddingTop:8}}>{r2(siatkaCzarna100+siatkaCzarna140+siatkaCzarna160+siatkaSzara100+siatkaSzara140+siatkaSzara160)} mb</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Akcesoria */}
+                <div className="card">
+                  <div style={{fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:800,color:"#7fcf7f",marginBottom:12}}>🔧 Akcesoria</div>
+                  <table style={{width:"100%",fontSize:13}}>
+                    <tbody>
+                      {[["Narożniki",narozniki,"szt"],["Uszczelka",r2(uszczelka),"mb"],["Blaszki",blaszki,"szt"],["Blachowkręty",blachowkret,"szt"],["Poprzeczki",r2(poprzeczki),"mb"],["Łączniki poprzeczek",laczniki,"szt"]].map(([l,v,u])=>(
+                        <tr key={l}><td style={{color:"#5a8a5a",paddingBottom:6}}>{l}</td><td style={{textAlign:"right",color:"#9fcf9f",fontWeight:700}}>{v} {u}</td></tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Opakowanie */}
+                <div className="card">
+                  <div style={{fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:800,color:"#7fcf7f",marginBottom:12}}>📦 Opakowanie & narzędzia</div>
+                  <table style={{width:"100%",fontSize:13}}>
+                    <tbody>
+                      {[["Karton",karton,"szt"],["Instrukcja",instrukcja,"szt"],["Radełko",radełko,"szt"]].map(([l,v,u])=>(
+                        <tr key={l}><td style={{color:"#5a8a5a",paddingBottom:6}}>{l}</td><td style={{textAlign:"right",color:"#9fcf9f",fontWeight:700}}>{v} {u}</td></tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
         {/* ══ USTAWIENIA ══ */}
         {tab==="ustawienia" && (
           <div>
