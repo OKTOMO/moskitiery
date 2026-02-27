@@ -296,11 +296,7 @@ function App() {
   const [allegroUrl,setAllegroUrl]=useState("");
   const allegroToken = allegroTokens[allegroActive]||"";
 
-  useEffect(()=>{cloudLoad().then(d=>{setOrders(d);setLoading(false);});
-            }).catch(e=>console.log('Token error:',e));
-      }
-    }
-  },[]);
+  useEffect(()=>{cloudLoad().then(d=>{setOrders(d);setLoading(false);});},[]);
   function updateOrders(next){setOrders(next);cloudSave(next);}
 
   async function handleParse() {
