@@ -296,7 +296,32 @@ function App() {
   const [allegroUrl,setAllegroUrl]=useState("");
   const allegroToken = allegroTokens[allegroActive]||"";
 
-  useEffect(()=>{cloudLoad().then(d=>{setOrders(d);setLoading(false);});},[]);
+  useEffect(()=>{
+    cloudLoad().then(d=>{setOrders(d);setLoading(false);});
+    // Handle OAuth callback
+    const params=new URLSearchParams(window.location.search);
+    const code=params.get('code');
+    if(code){
+      const clientId=localStorage.getItem('allegro_client_id')||"";
+      const secret=localStorage.getItem('allegro_client_secret')||"";
+      const kontaId=localStorage.getItem('allegro_active')||"favo5";
+      if(clientId&&secret){
+        window.history.replaceState({},'','/moskitiery');
+        fetch('https://allegro-proxy.favour-biuro.workers.dev/token?code='+encodeURIComponent(code),{
+          method:'POST',
+          headers:{'Authorization':'Basic '+btoa(clientId+':'+secret)}
+        }).then(r=>r.json()).then(d=>{
+          if(d.access_token){
+            const tokens=JSON.parse(localStorage.getItem('allegro_tokens')||'{}');
+            tokens[kontaId]=d.access_token;
+            localStorage.setItem('allegro_tokens',JSON.stringify(tokens));
+            setAllegroTokens({...tokens});
+            setTab('allegro');
+          }
+        }).catch(e=>console.log('token error',e));
+      }
+    }
+  },[]);
   function updateOrders(next){setOrders(next);cloudSave(next);}
 
   async function handleParse() {
@@ -416,46 +441,14 @@ function App() {
     @media(max-width:700px){.grid2{grid-template-columns:1fr!important}.hide-mob{display:none!important}}
   `;
 
-  async function allegroLogin(kontaId){
+  function allegroLogin(kontaId){
     const clientId=localStorage.getItem('allegro_client_id')||"";
     const secret=localStorage.getItem('allegro_client_secret')||"";
     if(!clientId||!secret){setAllegroError("Najpierw wpisz i zapisz Client ID oraz Client Secret");return;}
-    setAllegroError(""); setAllegroUrl(""); setAllegroLoading(true);
     localStorage.setItem('allegro_active', kontaId);
     setAllegroActive(kontaId);
-    try {
-      const r = await fetch('https://allegro-proxy.favour-biuro.workers.dev/device?client_id='+encodeURIComponent(clientId),{
-        method:'POST',
-        headers:{'Authorization':'Basic '+btoa(clientId+':'+secret)}
-      });
-      const d = await r.json();
-      if(d.error){setAllegroError("Błąd: "+d.error_description);setAllegroLoading(false);return;}
-      setAllegroUrl(d.verification_uri_complete||d.verification_uri);
-      setAllegroError("KOD: "+d.user_code);
-      // Poll for token
-      const interval = d.interval||5;
-      const deviceCode = d.device_code;
-      let attempts = 0;
-      const poll = setInterval(async()=>{
-        attempts++;
-        if(attempts>60){clearInterval(poll);setAllegroLoading(false);setAllegroError("Timeout — spróbuj ponownie");return;}
-        try{
-          const tr = await fetch('https://allegro-proxy.favour-biuro.workers.dev/token?device_code='+encodeURIComponent(deviceCode),{
-            method:'POST',
-            headers:{'Authorization':'Basic '+btoa(clientId+':'+secret)}
-          });
-          const td = await tr.json();
-          if(td.access_token){
-            clearInterval(poll);
-            const tokens={...allegroTokens};
-            tokens[kontaId]=td.access_token;
-            localStorage.setItem('allegro_tokens',JSON.stringify(tokens));
-            setAllegroTokens({...tokens});
-            setAllegroUrl(""); setAllegroError(""); setAllegroLoading(false);
-          }
-        }catch(e){}
-      }, interval*1000);
-    }catch(e){setAllegroError("Błąd połączenia: "+e.message);setAllegroLoading(false);}
+    const url='https://allegro.pl/auth/oauth/authorize?response_type=code&client_id='+encodeURIComponent(clientId)+'&redirect_uri='+encodeURIComponent('https://oktomo.github.io/moskitiery');
+    window.location.href=url;
   }
 
   async function allegroLoadMessages(tokenParam){
