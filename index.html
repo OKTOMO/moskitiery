@@ -308,6 +308,7 @@ function App() {
   });
   const [prodFirma,setProdFirma]=useState("all");
   const [prodOdpadProfil,setProdOdpadProfil]=useState(1.1);
+  const [claudeKey,setClaudeKey]=useState(()=>localStorage.getItem("claude_api_key")||"");
   const [prodOdpadSiatka,setProdOdpadSiatka]=useState(1.1);
   const [prodDataOd,setProdDataOd]=useState("");
   const [prodDataDo,setProdDataDo]=useState("");
@@ -1164,7 +1165,7 @@ function App() {
                 <span className="lbl">Master Key</span>
                 <input value={settings.apiKey||""} onChange={e=>setSettings(s=>({...s,apiKey:e.target.value}))} placeholder="$2b$10$..." style={{fontFamily:"monospace",fontSize:12}}/>
                 <span className="lbl" style={{marginTop:12}}>Klucz API Claude (AI parsowanie)</span>
-                <input value={localStorage.getItem("claude_api_key")||""} onChange={e=>localStorage.setItem("claude_api_key",e.target.value)} placeholder="sk-ant-..." style={{fontFamily:"monospace",fontSize:12}}/>
+                <input value={claudeKey} onChange={e=>{setClaudeKey(e.target.value);localStorage.setItem("claude_api_key",e.target.value);}} placeholder="sk-ant-..." style={{fontFamily:"monospace",fontSize:12}}/>
               </div>
               <div style={{marginBottom:14}}>
                 <span className="lbl">Bin ID</span>
