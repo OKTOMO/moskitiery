@@ -133,6 +133,7 @@ async function parseAI(msg, adres) {
   "uwagi":string
 }
 Zasady wymiarów: Szer=B cm, Wys=A cm, Głęb=C mm; brak głębokości=null; brak siatki=null;
+WAŻNE: "Grubość ramy/profilu" to NIE jest głębokość C. Głębokość C to głębokość wnęki okiennej. Jeśli klient poda grubość ramy lub profilu, zignoruj to i ustaw głębokość=null.
 Kolor ramki z listy: Biały/Czarny/Antracyt RAL 7016/Brąz/Złoty dąb/Mahoń/Winchester/Srebrny/Złoty/Inne
 Kolor siatki: Czarna lub Szara
 WAŻNE: Jeśli klient podał kilka pozycji o identycznych wymiarach i kolorach, scal je w jedną pozycję sumując ilości. Np. trzy pozycje 67x214 Antracyt = jedna pozycja 67x214 ilosc:3.
@@ -390,6 +391,7 @@ function App() {
     updateOrders([order,...orders]);
     setSaved(true);
     setWiadomosc(""); setAdres(""); setForm(pustyForm(form.firma)); setNumerOverride("");
+    drukujPDF(order);
   }
 
   function getStats(ords){
@@ -818,6 +820,7 @@ function App() {
                         <td style={{padding:"10px 10px",textAlign:"center"}}>{il*8}</td>
                         <td style={{padding:"10px 10px",fontSize:11,color:"#5a8a5a",maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} className="hide-mob">{kol}</td>
                         <td style={{padding:"10px 10px"}}><button className="btn-pdf" onClick={()=>drukujPDF(o)}>📄 PDF</button></td>
+                        <td style={{padding:"10px 10px"}}><button className="btn-pdf" style={{background:"#2a4a6a"}} onClick={()=>{setForm({data:o.data,firma:o.firma,klientImie:o.klientImie,klientMiasto:o.klientMiasto,telefon:o.telefon,uwagi:o.uwagi,pozycje:o.pozycje.map(p=>({...p}))});setNumerOverride(o.numerZlecenia);updateOrders(orders.filter(x=>x.id!==o.id));setTab("nowe");setSaved(false);}}>✏️</button></td>
                         <td style={{padding:"10px 10px"}}><button className="btn-del" onClick={()=>{if(confirm("Usunąć "+o.numerZlecenia+"?"))updateOrders(orders.filter(x=>x.id!==o.id))}}>🗑</button></td>
                       </tr>
                     );
