@@ -1064,7 +1064,7 @@ function App() {
               const ordsAll=histOrders[histYear]||[];
               const ords=ordsAll.filter(o=>{
                 if(histMonth&&!(o.data||"").startsWith(histMonth)) return false;
-                if(histSearch&&!`${o.numerZlecenia||""} ${o.klientImie||""} ${o.klientMiasto||}`.toLowerCase().includes(histSearch.toLowerCase())) return false;
+                if(histSearch&&!`${o.numerZlecenia||""} ${o.klientImie||""} ${o.klientMiasto||""}`.toLowerCase().includes(histSearch.toLowerCase())) return false;
                 return true;
               });
               if(ords.length===0) return <div style={{color:"#3a6a3a",textAlign:"center",padding:40}}>Brak danych — importuj plik CSV<br/><span style={{fontSize:11,opacity:.7}}>Format: ten sam co eksport ⬇ CSV z zakładki Baza</span></div>;
