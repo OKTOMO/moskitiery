@@ -163,6 +163,30 @@ Imię i nazwisko wpisz w formacie: Nazwisko Imię (najpierw nazwisko). Wyciągni
 }
 
 function pustaPoz(){ return {szerokosc:"",wysokosc:"",glebokosc:String(DOMYSLNA_GLEBOKOS),kolorRamki:"Antracyt",kolorSiatki:"Czarna",ilosc:1}; }
+function pustaPozDrzwi(){ return {isDrzwi:true,szerokosc:"",wysokosc:"",kolorRamki:"Antracyt",kolorSiatki:"Czarna",zawias:"L",poprzeczka:true,ilosc:1}; }
+function obliczDrzwi(pozycje){
+  let profilMb=0,narozniki=0,poprzeczki=0,uchwyty=0,zawiasy=0,samodomykajace=0,magnesy=0,klamki=0,uszczelkaMb=0,szczotkaMb=0,kartony=0,radelka=0,instrukcje=0,wkrety=0;
+  (pozycje||[]).filter(p=>p.isDrzwi).forEach(p=>{
+    const s=parseFloat(p.szerokosc)||0, w=parseFloat(p.wysokosc)||0, il=parseInt(p.ilosc)||1;
+    if(!s||!w) return;
+    const sP=s+4, wP=w+4;
+    profilMb += ((sP*2+wP*2)/100)*il;
+    narozniki += 4*il;
+    if(p.poprzeczka){ poprzeczki+=il; uchwyty+=2*il; }
+    zawiasy += 2*il;
+    if(parseInt(p.samodomykajacy)>0) samodomykajace += parseInt(p.samodomykajacy);
+    magnesy += 3*il;
+    klamki += 2*il;
+    uszczelkaMb += ((2*sP+wP)*1.1/100)*il;
+    szczotkaMb += ((sP+wP)*1.1/100)*il;
+    kartony += il;
+    radelka += il;
+    instrukcje += il;
+    wkrety += 12*il;
+  });
+  const r=v=>Math.round(v*100)/100;
+  return {profilMb:r(profilMb),narozniki,poprzeczki,uchwyty,zawiasy,samodomykajace,magnesy,klamki,uszczelkaMb:r(uszczelkaMb),szczotkaMb:r(szczotkaMb),kartony,radelka,instrukcje,wkrety};
+}
 function pustyForm(firma="F"){ return {data:new Date().toISOString().slice(0,10),firma,klientImie:"",klientMiasto:"",telefon:"",uwagi:"",pozycje:[pustaPoz()]}; }
 
 // ─── PDF ──────────────────────────────────────────────────────────────────────
@@ -269,6 +293,128 @@ table.main tr:nth-child(even) td{background:#f5f5f5}
   const a=document.createElement("a");
   const pdfName=`${order.numerZlecenia||"zlecenie"}_${(order.klientImie||"").replace(/\s+/g,"_")}_${(order.klientMiasto||"").replace(/\s+/g,"_")}.html`;
   a.href=url; a.download=pdfName; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),3000);
+}
+
+// ─── PDF DRZWI ───────────────────────────────────────────────────────────────
+function drukujPDF_drzwi(order) {
+  const firmaNazwa=FIRMY.find(f=>f.kod===order.firma)?.nazwa||order.firma||"";
+  const firma=order.firma||"?";
+  const pozDrzwi=(order.pozycje||[]).filter(p=>p.isDrzwi);
+  const totalSzt=pozDrzwi.reduce((a,p)=>a+(parseInt(p.ilosc)||1),0);
+  const d=obliczDrzwi(pozDrzwi);
+
+  const MIN_ROWS=5;
+  const dataRows=pozDrzwi.map((p,i)=>{
+    const s=parseFloat(p.szerokosc)||0, w=parseFloat(p.wysokosc)||0;
+    const sP=s+4, wP=w+4;
+    const il=parseInt(p.ilosc)||1;
+    const popDl=p.poprzeczka?Math.round((sP-8.8)*10)/10:"—";
+    const samoLabel=parseInt(p.samodomykajacy)>0?` ⚡SAMO×${p.samodomykajacy}`:"";
+    return `<tr>
+      <td>${i+1}</td><td>MOS.DRzW.</td>
+      <td class="wymiar">${s}</td><td class="wymiar">${w}</td>
+      <td class="wymiar">${sP}</td><td class="wymiar">${wP}</td>
+      <td class="wymiar">${popDl}</td>
+      <td class="kolor">${p.kolorRamki||""}</td>
+      <td class="kolor">${p.kolorSiatki||""}</td>
+      <td>${(p.zawias||"L")+samoLabel}</td>
+      <td class="wymiar">${il}</td>
+      <td class="wymiar">${p.poprzeczka?il:0}</td>
+      ${p.uwagi?`<td colspan="12" style="text-align:left;font-size:9px;color:#555;font-style:italic">→ ${p.uwagi}</td>`:""}
+    </tr>`;
+  });
+  const emptyRows=Array.from({length:Math.max(0,MIN_ROWS-pozDrzwi.length)},(_,i)=>`<tr>
+    <td>${pozDrzwi.length+i+1}</td><td>MOS.DRzW.</td><td>0</td><td>0</td><td></td><td></td><td></td><td></td><td></td><td></td><td>0</td><td>0</td>
+  </tr>`);
+  const rows=[...dataRows,...emptyRows].join("");
+
+  const html=`<!DOCTYPE html><html lang="pl"><head><meta charset="utf-8">
+<title>${order.numerZlecenia||""} ${order.klientImie||""} DRZWI</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;font-size:10px;padding:10px 14px;color:#000;background:#fff;width:297mm}
+.header{display:flex;margin-bottom:8px;border:1px solid #000}
+.big-litera{font-size:54px;font-weight:900;display:flex;align-items:center;justify-content:center;border-right:1px solid #000;padding:6px 12px;min-width:80px}
+.info-grid{display:grid;grid-template-columns:70px 1fr;flex:1}
+.info-grid .lbl{background:#f0e8c0;border-bottom:1px solid #ccc;border-right:1px solid #ccc;padding:3px 6px;font-weight:700;font-size:9px;color:#555;display:flex;align-items:center}
+.info-grid .val{border-bottom:1px solid #ccc;padding:3px 7px;font-size:12px;font-weight:700;display:flex;align-items:center}
+.info-grid .val.nr{font-size:20px;font-weight:900;color:#cc0000}
+table.main{width:100%;border-collapse:collapse;margin-bottom:6px}
+table.main th{background:#1a2a4a;color:#fff;padding:4px 3px;text-align:center;border:1px solid #555;font-size:8px;line-height:1.3}
+table.main td{padding:1px 3px;text-align:center;border:1px solid #bbb;height:22px;font-size:10px}
+table.main td.wymiar{font-size:14px;font-weight:900}
+table.main td.kolor{font-size:11px;font-weight:700}
+.sklad{margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.sklad table{width:100%;border-collapse:collapse;font-size:10px}
+.sklad table th{background:#2a3a1a;color:#fff;padding:4px;text-align:left;font-size:9px}
+.sklad table td{padding:3px 6px;border-bottom:1px solid #ddd}
+.sklad table td.val{text-align:right;font-weight:900;font-size:13px}
+.uwagi-label{font-weight:700;font-size:10px;margin:4px 0 2px}
+.uwagi-line{border-bottom:1px solid #aaa;min-height:14px;margin-bottom:3px}
+</style></head><body>
+
+<div class="header">
+  <div class="big-litera">🚪${firma}</div>
+  <div class="info-grid">
+    <div class="lbl">KLIENT</div><div class="val">${order.klientImie||"—"}</div>
+    <div class="lbl">MIASTO</div><div class="val">${order.klientMiasto||"—"}${order.telefon?" &nbsp;·&nbsp; "+order.telefon:""}</div>
+    <div class="lbl">DATA</div><div class="val">${formatDate(order.data)}</div>
+    <div class="lbl">NR ZAM.</div><div class="val nr">${order.numerZlecenia||"—"} ${firma} 🚪</div>
+  </div>
+</div>
+
+<table class="main">
+  <thead><tr>
+    <th>LP</th><th>SYSTEM</th>
+    <th>SZER.<br>OTWORU</th><th>WYS.<br>OTWORU</th>
+    <th>SZER.<br>PROFILU×2</th><th>WYS.<br>PROFILU×2</th>
+    <th>POPRZECZKA<br>×1</th>
+    <th>KOLOR RAMKI</th><th>KOLOR SIATKI</th>
+    <th>ZAWIAS</th><th>ILOŚĆ</th><th>POPRZ.<br>SZT</th>
+  </tr></thead>
+  <tbody>${rows}</tbody>
+</table>
+
+<div class="uwagi-label">UWAGI${order.uwagi?" — "+order.uwagi:""}</div>
+<div class="uwagi-line"></div>
+
+<div class="sklad">
+  <table>
+    <thead><tr><th>SKŁAD ZESTAWU</th><th style="text-align:right">ILOŚĆ</th><th></th></tr></thead>
+    <tbody>
+      <tr><td>Profil</td><td class="val">${d.profilMb}</td><td>mb</td></tr>
+      <tr><td>Narożnik (frez)</td><td class="val">${d.narozniki}</td><td>szt + śruby</td></tr>
+      <tr><td>Poprzeczka</td><td class="val">${d.poprzeczki}</td><td>szt</td></tr>
+      <tr><td>Uchwyt poprzeczki (L+P)</td><td class="val">${d.uchwyty}</td><td>kpl + śruby</td></tr>
+      <tr><td>Zawias uniwersalny</td><td class="val">${d.zawiasy}</td><td>szt + śruby</td></tr>
+      ${d.samodomykajace>0?`<tr><td>Zawias samodomykający</td><td class="val">${d.samodomykajace}</td><td>szt + śruby</td></tr>`:""}
+      <tr><td>Magnes + blaszka</td><td class="val">${d.magnesy}</td><td>szt + śruby</td></tr>
+      <tr><td>Klamka</td><td class="val">${d.klamki}</td><td>szt + śruby</td></tr>
+      <tr><td>Siatka</td><td class="val">na wymiar</td><td></td></tr>
+      <tr><td>Lizak</td><td class="val">${totalSzt}</td><td>szt</td></tr>
+    </tbody>
+  </table>
+  <table>
+    <thead><tr><th>MATERIAŁY</th><th style="text-align:right">ILOŚĆ</th><th></th></tr></thead>
+    <tbody>
+      <tr><td>Uszczelka/linka</td><td class="val">${d.uszczelkaMb}</td><td>mb</td></tr>
+      <tr><td>Szczotka 5.5/6</td><td class="val">${d.szczotkaMb}</td><td>mb</td></tr>
+      <tr><td>Karton</td><td class="val">${d.kartony}</td><td>szt</td></tr>
+      <tr><td>Radełko</td><td class="val">${d.radelka}</td><td>szt</td></tr>
+      <tr><td>Instrukcja</td><td class="val">${d.instrukcje}</td><td>szt</td></tr>
+      <tr><td>Wkręty</td><td class="val">${d.wkrety}</td><td>szt</td></tr>
+    </tbody>
+  </table>
+</div>
+
+</body></html>`;
+
+  const blob=new Blob([html],{type:"text/html;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  const nm=`${order.numerZlecenia||"zlecenie"}_${(order.klientImie||"").replace(/\s+/g,"_")}_DRZWI.html`;
+  a.href=url; a.download=nm; a.click();
   setTimeout(()=>URL.revokeObjectURL(url),3000);
 }
 
@@ -413,7 +559,10 @@ function App() {
       id:Date.now(), numerZlecenia:numer, firma:form.firma, data:form.data,
       klientImie:form.klientImie, klientMiasto:form.klientMiasto,
       telefon:form.telefon, uwagi:form.uwagi,
-      pozycje:form.pozycje.map(p=>({
+      pozycje:form.pozycje.map(p=>p.isDrzwi?({
+        ...p,
+        kolorSiatki: p.kolorSiatki||"Czarna",
+      }):({
         ...p,
         glebokosc:    p.glebokosc||String(DOMYSLNA_GLEBOKOS),
         kolorSiatki:  p.kolorSiatki||"Czarna",
@@ -424,7 +573,10 @@ function App() {
     updateOrders([order,...orders]);
     setSaved(true);
     setWiadomosc(""); setAdres(""); setForm(pustyForm(form.firma)); setNumerOverride("");
-    drukujPDF(order);
+    const hasDrzwiPos=order.pozycje.some(p=>p.isDrzwi);
+    const hasOknaPos=order.pozycje.some(p=>!p.isDrzwi);
+    if(hasOknaPos) drukujPDF(order);
+    if(hasDrzwiPos) drukujPDF_drzwi(order);
   }
 
   function getStats(ords){
@@ -756,9 +908,12 @@ function App() {
 
             {/* Pozycje */}
             <div className="card" style={{display:"flex",flexDirection:"column",gap:12}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
                 <span className="lbl">Pozycje ({form.pozycje.length})</span>
-                <button className="btn-sm" onClick={()=>setForm(f=>({...f,pozycje:[...f.pozycje,pustaPoz()]}))}>+ Dodaj</button>
+                <div style={{display:"flex",gap:6}}>
+                  <button className="btn-sm" onClick={()=>setForm(f=>({...f,pozycje:[...f.pozycje,pustaPoz()]}))}>+ Okno</button>
+                  <button className="btn-sm" style={{background:"#1e2a3e",color:"#90b8df",borderColor:"#2a4a6a"}} onClick={()=>setForm(f=>({...f,pozycje:[...f.pozycje,pustaPozDrzwi()]}))}>+ Drzwi</button>
+                </div>
               </div>
 
               <div style={{overflowY:"auto",maxHeight:480,display:"flex",flexDirection:"column",gap:10}}>
@@ -769,35 +924,91 @@ function App() {
                 return (
                   <div key={i} style={{background:"#0c1a0c",border:"1px solid #1e3a1e",borderRadius:6,padding:14,flexShrink:0}}>
                     <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
-                      <span style={{fontSize:13,color:"#5a9a5a",fontWeight:700}}>Pozycja {i+1}</span>
+                      <span style={{fontSize:13,color:poz.isDrzwi?"#90b8df":"#5a9a5a",fontWeight:700}}>{poz.isDrzwi?"🚪":"🪟"} Pozycja {i+1} {poz.isDrzwi?"— DRZWI":""}</span>
                       {form.pozycje.length>1&&<button className="btn-del" onClick={()=>setForm(f=>({...f,pozycje:f.pozycje.filter((_,j)=>j!==i)}))}>✕</button>}
                     </div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 60px",gap:8,marginBottom:8}}>
-                      <div><span className="lbl">Szer. B (cm)</span><input type="number" step="0.1" value={poz.szerokosc} onChange={e=>updPoz(i,"szerokosc",e.target.value)}/></div>
-                      <div><span className="lbl">Wys. A (cm)</span><input type="number" step="0.1" value={poz.wysokosc} onChange={e=>updPoz(i,"wysokosc",e.target.value)}/></div>
-                      <div><span className="lbl">Głęb. C (mm)</span><input type="number" step="0.5" value={poz.glebokosc} onChange={e=>updPoz(i,"glebokosc",e.target.value)} placeholder={String(DOMYSLNA_GLEBOKOS)}/></div>
-                      <div><span className="lbl">Szt.</span><input type="number" min="1" value={poz.ilosc} onChange={e=>updPoz(i,"ilosc",e.target.value)}/></div>
-                    </div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                      <div><span className="lbl">Kolor ramki</span>
-                        <select value={poz.kolorRamki} onChange={e=>updPoz(i,"kolorRamki",e.target.value)}>
-                          {KOLORY_RAMKI.map(k=><option key={k}>{k}</option>)}
-                        </select>
-                      </div>
-                      <div><span className="lbl">Kolor siatki</span>
-                        <select value={poz.kolorSiatki} onChange={e=>updPoz(i,"kolorSiatki",e.target.value)}>
-                          {KOLORY_SIATKI.map(k=><option key={k}>{k}</option>)}
-                        </select>
-                      </div>
-                    </div>
-                    {linka!==null&&(
-                      <div className="calc">
-                        <span style={{color:"#5a9a5a"}}>🔗 JEDN: <strong style={{color:"#9fcf9f"}}>{obliczJedn(poz.szerokosc,poz.wysokosc,poz.ilosc)} mb</strong></span>
-                        <span style={{color:"#5a9a5a"}}>📎 Blaszek: <strong style={{color:"#9fcf9f"}}>8 szt</strong></span>
-                        <span style={{color:"#5a9a5a"}}>📐 <strong style={{color:"#dfdf8f"}}>{blaszRoz} mm</strong>
-                          <span style={{color:"#3a6a3a",fontSize:11}}> (głęb {g}mm → blaszka {blaszRoz}mm)</span>
-                        </span>
-                      </div>
+                    {poz.isDrzwi?(
+                      <>
+                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 60px",gap:8,marginBottom:8}}>
+                          <div><span className="lbl">Szer. otworu (cm)</span><input type="number" step="0.1" value={poz.szerokosc} onChange={e=>updPoz(i,"szerokosc",e.target.value)}/></div>
+                          <div><span className="lbl">Wys. otworu (cm)</span><input type="number" step="0.1" value={poz.wysokosc} onChange={e=>updPoz(i,"wysokosc",e.target.value)}/></div>
+                          <div><span className="lbl">Szt.</span><input type="number" min="1" value={poz.ilosc} onChange={e=>updPoz(i,"ilosc",e.target.value)}/></div>
+                        </div>
+                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 80px",gap:8}}>
+                          <div><span className="lbl">Kolor ramki</span>
+                            <select value={poz.kolorRamki} onChange={e=>updPoz(i,"kolorRamki",e.target.value)}>
+                              {KOLORY_RAMKI.map(k=><option key={k}>{k}</option>)}
+                            </select>
+                          </div>
+                          <div><span className="lbl">Kolor siatki</span>
+                            <select value={poz.kolorSiatki} onChange={e=>updPoz(i,"kolorSiatki",e.target.value)}>
+                              {KOLORY_SIATKI.map(k=><option key={k}>{k}</option>)}
+                            </select>
+                          </div>
+                          <div><span className="lbl">Zawias</span>
+                            <select value={poz.zawias||"L"} onChange={e=>updPoz(i,"zawias",e.target.value)}>
+                              <option value="L">Lewy (L)</option>
+                              <option value="P">Prawy (P)</option>
+                            </select>
+                          </div>
+                          <div><span className="lbl">Poprzeczka</span>
+                            <select value={poz.poprzeczka?"tak":"nie"} onChange={e=>updPoz(i,"poprzeczka",e.target.value==="tak")}>
+                              <option value="tak">Tak</option>
+                              <option value="nie">Nie</option>
+                            </select>
+                          </div>
+                          <div><span className="lbl">Samodom. szt</span>
+                            <input type="number" min="0" value={poz.samodomykajacy||0} onChange={e=>updPoz(i,"samodomykajacy",parseInt(e.target.value)||0)} style={{width:"100%"}}/>
+                          </div>
+                        </div>
+                        {poz.szerokosc&&poz.wysokosc&&(()=>{
+                          const s=parseFloat(poz.szerokosc), w=parseFloat(poz.wysokosc), il=parseInt(poz.ilosc)||1;
+                          const sP=s+4, wP=w+4;
+                          const uszMb=Math.round((2*sP+wP)*1.1/100*il*100)/100;
+                          const szcMb=Math.round((sP+wP)*1.1/100*il*100)/100;
+                          return <div className="calc">
+                            <span style={{color:"#90b8df"}}>📐 Profil: <strong>{Math.round((sP*2+wP*2)/100*il*100)/100} mb</strong></span>
+                            <span style={{color:"#90b8df"}}>🔩 Uszczelka: <strong>{uszMb} mb</strong></span>
+                            <span style={{color:"#90b8df"}}>🖌 Szczotka: <strong>{szcMb} mb</strong></span>
+                            <span style={{color:"#90b8df"}}>📦 Karton: <strong>{il} szt</strong></span>
+                            {poz.samodomykajacy>0&&<span style={{color:"#dfcf5f",fontWeight:700}}>⚡ Samodomykające: <strong>{poz.samodomykajacy} szt</strong></span>}
+                          </div>;
+                        })()}
+                        <div style={{marginTop:8}}>
+                          <span className="lbl">Uwagi</span>
+                          <input value={poz.uwagi||""} onChange={e=>updPoz(i,"uwagi",e.target.value)} placeholder="Uwagi do pozycji..."/>
+                        </div>
+                      </>
+                    ):(
+                      <>
+                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 60px",gap:8,marginBottom:8}}>
+                          <div><span className="lbl">Szer. B (cm)</span><input type="number" step="0.1" value={poz.szerokosc} onChange={e=>updPoz(i,"szerokosc",e.target.value)}/></div>
+                          <div><span className="lbl">Wys. A (cm)</span><input type="number" step="0.1" value={poz.wysokosc} onChange={e=>updPoz(i,"wysokosc",e.target.value)}/></div>
+                          <div><span className="lbl">Głęb. C (mm)</span><input type="number" step="0.5" value={poz.glebokosc} onChange={e=>updPoz(i,"glebokosc",e.target.value)} placeholder={String(DOMYSLNA_GLEBOKOS)}/></div>
+                          <div><span className="lbl">Szt.</span><input type="number" min="1" value={poz.ilosc} onChange={e=>updPoz(i,"ilosc",e.target.value)}/></div>
+                        </div>
+                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                          <div><span className="lbl">Kolor ramki</span>
+                            <select value={poz.kolorRamki} onChange={e=>updPoz(i,"kolorRamki",e.target.value)}>
+                              {KOLORY_RAMKI.map(k=><option key={k}>{k}</option>)}
+                            </select>
+                          </div>
+                          <div><span className="lbl">Kolor siatki</span>
+                            <select value={poz.kolorSiatki} onChange={e=>updPoz(i,"kolorSiatki",e.target.value)}>
+                              {KOLORY_SIATKI.map(k=><option key={k}>{k}</option>)}
+                            </select>
+                          </div>
+                        </div>
+                        {linka!==null&&(
+                          <div className="calc">
+                            <span style={{color:"#5a9a5a"}}>🔗 JEDN: <strong style={{color:"#9fcf9f"}}>{obliczJedn(poz.szerokosc,poz.wysokosc,poz.ilosc)} mb</strong></span>
+                            <span style={{color:"#5a9a5a"}}>📎 Blaszek: <strong style={{color:"#9fcf9f"}}>8 szt</strong></span>
+                            <span style={{color:"#5a9a5a"}}>📐 <strong style={{color:"#dfdf8f"}}>{blaszRoz} mm</strong>
+                              <span style={{color:"#3a6a3a",fontSize:11}}> (głęb {g}mm → blaszka {blaszRoz}mm)</span>
+                            </span>
+                          </div>
+                        )}
+                      </>
                     )}
                   </div>
                 );
@@ -862,6 +1073,7 @@ function App() {
                   {filteredOrders.length===0&&<tr><td colSpan={10} style={{textAlign:"center",padding:28,color:"#2a4a2a",fontSize:13}}>Brak zamówień</td></tr>}
                   {filteredOrders.map(o=>{
                     const il=o.pozycje.reduce((a,p)=>a+(parseFloat(p.ilosc)||1),0);
+                    const hasDrzwi=o.pozycje.some(p=>p.isDrzwi);
                     const lnk=obliczLinkeLaczna(o.pozycje);
                     const kol=[...new Set(o.pozycje.map(p=>p.kolorRamki))].join(", ");
                     const kolSiatki=[...new Set(o.pozycje.map(p=>p.kolorSiatki).filter(Boolean))].join(", ");
@@ -869,6 +1081,7 @@ function App() {
                       <tr key={o.id} className="tr">
                         <td style={{padding:"10px 10px"}}>
                           <span className="firma-badge">{o.firma||"?"}</span>
+                          {hasDrzwi&&<span style={{marginLeft:4,fontSize:11}}>🚪</span>}
                           <span style={{marginLeft:6,color:"#dfcf5f",fontWeight:700}}>{o.numerZlecenia||"—"}</span>
                         </td>
                         <td style={{padding:"10px 10px",color:"#7a9a7a"}}>{formatDate(o.data)}</td>
@@ -879,7 +1092,10 @@ function App() {
                         <td style={{padding:"10px 10px",textAlign:"center"}}>{il*8}</td>
                         <td style={{padding:"10px 10px",fontSize:11,color:"#5a8a5a",maxWidth:110,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} className="hide-mob">{kol}</td>
                         <td style={{padding:"10px 10px",fontSize:11,color:"#4a7a8a",maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} className="hide-mob">{kolSiatki}</td>
-                        <td style={{padding:"10px 10px"}}><button className="btn-pdf" onClick={()=>drukujPDF(o)}>📄 PDF</button></td>
+                        <td style={{padding:"10px 10px",display:"flex",gap:4}}>
+                          {o.pozycje.some(p=>!p.isDrzwi)&&<button className="btn-pdf" onClick={()=>drukujPDF(o)}>🪟 PDF</button>}
+                          {o.pozycje.some(p=>p.isDrzwi)&&<button className="btn-pdf" style={{background:"#1a2a4a"}} onClick={()=>drukujPDF_drzwi(o)}>🚪 PDF</button>}
+                        </td>
                         <td style={{padding:"10px 10px"}}><button className="btn-pdf" style={{background:"#2a4a6a"}} onClick={()=>{setForm({data:o.data,firma:o.firma,klientImie:o.klientImie,klientMiasto:o.klientMiasto,telefon:o.telefon,uwagi:o.uwagi,pozycje:o.pozycje.map(p=>({...p}))});setNumerOverride(o.numerZlecenia);updateOrders(orders.filter(x=>x.id!==o.id));setTab("nowe");setSaved(false);}}>✏️</button></td>
                         <td style={{padding:"10px 10px"}}><button className="btn-del" onClick={()=>{if(confirm("Usunąć "+o.numerZlecenia+"?"))updateOrders(orders.filter(x=>x.id!==o.id))}}>🗑</button></td>
                       </tr>
@@ -1204,6 +1420,16 @@ function App() {
             }
           });
 
+          // Drzwi
+          let drzwiProfilMb=0,drzwiNarozniki=0,drzwiPoprzeczki=0,drzwiUchwyty=0,drzwiZawiasy=0,drzwiSamodomykajace=0,drzwiMagnesy=0,drzwiKlamki=0,drzwiUszczelka=0,drzwiSzczotka=0,drzwiKartony=0,drzwiRadelka=0,drzwiInstrukcje=0,drzwiWkrety=0;
+          filteredOrders.forEach(o=>{
+            const pD=obliczDrzwi((o.pozycje||[]).filter(p=>p.isDrzwi));
+            drzwiProfilMb+=pD.profilMb; drzwiNarozniki+=pD.narozniki; drzwiPoprzeczki+=pD.poprzeczki;
+            drzwiUchwyty+=pD.uchwyty; drzwiZawiasy+=pD.zawiasy; drzwiMagnesy+=pD.magnesy;
+            drzwiKlamki+=pD.klamki; drzwiUszczelka+=pD.uszczelkaMb; drzwiSzczotka+=pD.szczotkaMb;
+            drzwiSamodomykajace+=pD.samodomykajace; drzwiKartony+=pD.kartony; drzwiRadelka+=pD.radelka; drzwiInstrukcje+=pD.instrukcje; drzwiWkrety+=pD.wkrety;
+          });
+
           const r2 = v=>Math.round(v*100)/100;
 
           return (
@@ -1302,6 +1528,22 @@ function App() {
                   </table>
                 </div>
               </div>
+
+              {/* Drzwi */}
+              {drzwiKartony>0&&(
+                <div className="card" style={{gridColumn:"1/-1"}}>
+                  <div style={{fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:800,color:"#90b8df",marginBottom:12}}>🚪 Drzwi moskitierowe</div>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8}}>
+                    {[["Profil",r2(drzwiProfilMb),"mb"],["Uszczelka",r2(drzwiUszczelka),"mb"],["Szczotka",r2(drzwiSzczotka),"mb"],["Narożniki",drzwiNarozniki,"szt"],["Poprzeczki",drzwiPoprzeczki,"szt"],["Uchwyty poprz.",drzwiUchwyty,"szt"],["Zawiasy",drzwiZawiasy,"szt"],["Magnesy",drzwiMagnesy,"szt"],["Klamki",drzwiKlamki,"szt"],["Samodomykające",drzwiSamodomykajace,"szt"],["Kartony",drzwiKartony,"szt"],["Radełka",drzwiRadelka,"szt"],["Wkręty",drzwiWkrety,"szt"]].map(([l,v,u])=>(
+                      <div key={l} style={{background:"#0c1428",border:"1px solid #1e2a4e",borderRadius:6,padding:"8px 12px"}}>
+                        <div style={{fontSize:16,fontWeight:900,color:"#90b8df"}}>{v}</div>
+                        <div style={{fontSize:10,color:"#4a6a9a"}}>{u}</div>
+                        <div style={{fontSize:10,color:"#3a5a8a",letterSpacing:".05em"}}>{l}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })()}
