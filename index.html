@@ -143,7 +143,9 @@ STRUKTURA JSON:
     {
       "isDrzwi": false,
       "szerokosc": number,
+      "szer2": number_or_null,
       "wysokosc": number,
+      "wys2": number_or_null,
       "glebokosc": number_or_null,
       "kolorRamki": string,
       "kolorSiatki": string,
@@ -168,8 +170,11 @@ DLA OKIEN (isDrzwi:false):
 - Blaszka, blaszki, clips, blaszek, mm blaszki — to BLASZKA MONTAŻOWA, ignoruj przy parsowaniu wymiarów
 
 DLA DRZWI (isDrzwi:true):
-- szerokosc = szerokość otworu drzwiowego w cm
-- wysokosc = wysokość otworu drzwiowego w cm
+- szerokosc = MNIEJSZA z podanych szerokości (cm)
+- szer2 = WIĘKSZA z podanych szerokości (cm), jeśli klient podał dwa wymiary szer; null jeśli jeden
+- wysokosc = MNIEJSZA z podanych wysokości (cm)
+- wys2 = WIĘKSZA z podanych wysokości (cm), jeśli klient podał dwa wymiary wys; null jeśli jedna
+- Przykład: klient pisze "98,5 / 102,5 x 216,5 / 220,5" → szerokosc=98.5, szer2=102.5, wysokosc=216.5, wys2=220.5
 - glebokosc = null (drzwi nie mają głębokości)
 - zawias = "L" lub "P" (lewy/prawy) — jeśli nie podano = "L"
 - poprzeczka = true/false — jeśli nie podano = true
@@ -204,7 +209,7 @@ ${adres||"(brak)"}`;
 }
 
 function pustaPoz(){ return {szerokosc:"",wysokosc:"",glebokosc:String(DOMYSLNA_GLEBOKOS),kolorRamki:"Antracyt",kolorSiatki:"Czarna",ilosc:1}; }
-function pustaPozDrzwi(){ return {isDrzwi:true,szerokosc:"",wysokosc:"",kolorRamki:"Antracyt",kolorSiatki:"Czarna",zawias:"L",poprzeczka:true,ilosc:1}; }
+function pustaPozDrzwi(){ return {isDrzwi:true,szerokosc:"",szer2:"",wysokosc:"",wys2:"",kolorRamki:"Antracyt",kolorSiatki:"Czarna",zawias:"L",poprzeczka:true,samodomykajacy:0,ilosc:1,uwagi:""}; }
 function obliczDrzwi(pozycje){
   let profilMb=0,narozniki=0,poprzeczki=0,uchwyty=0,zawiasy=0,samodomykajace=0,magnesy=0,klamki=0,uszczelkaMb=0,szczotkaMb=0,kartony=0,radelka=0,instrukcje=0,wkrety=0;
   (pozycje||[]).filter(p=>p.isDrzwi).forEach(p=>{
@@ -226,7 +231,19 @@ function obliczDrzwi(pozycje){
     wkrety += 12*il;
   });
   const r=v=>Math.round(v*100)/100;
-  return {profilMb:r(profilMb),narozniki,poprzeczki,uchwyty,zawiasy,samodomykajace,magnesy,klamki,uszczelkaMb:r(uszczelkaMb),szczotkaMb:r(szczotkaMb),kartony,radelka,instrukcje,wkrety};
+  // siatka - jak w oknie, szer zawsze mniejszy wymiar drzwi
+  let siatkaCz100=0,siatkaCz140=0,siatkaCz160=0,siatkaSz100=0,siatkaSz140=0,siatkaSz160=0;
+  (pozycje||[]).filter(p=>p.isDrzwi).forEach(p=>{
+    const s=parseFloat(p.szerokosc)||0, w=parseFloat(p.wysokosc)||0, il=parseInt(p.ilosc)||1;
+    if(!s||!w) return;
+    const dluzszy=Math.max(s,w), krotszy=Math.min(s,w);
+    const siatkaDl=Math.round((dluzszy+20)/100*il*100)/100;
+    const kS=p.kolorSiatki||"Czarna";
+    if(krotszy<=90){ if(kS==="Szara") siatkaSz100+=siatkaDl; else siatkaCz100+=siatkaDl; }
+    else if(krotszy<=130){ if(kS==="Szara") siatkaSz140+=siatkaDl; else siatkaCz140+=siatkaDl; }
+    else { if(kS==="Szara") siatkaSz160+=siatkaDl; else siatkaCz160+=siatkaDl; }
+  });
+  return {profilMb:r(profilMb),narozniki,poprzeczki,uchwyty,zawiasy,samodomykajace,magnesy,klamki,uszczelkaMb:r(uszczelkaMb),szczotkaMb:r(szczotkaMb),kartony,radelka,instrukcje,wkrety,siatkaCz100:r(siatkaCz100),siatkaCz140:r(siatkaCz140),siatkaCz160:r(siatkaCz160),siatkaSz100:r(siatkaSz100),siatkaSz140:r(siatkaSz140),siatkaSz160:r(siatkaSz160)};
 }
 function pustyForm(firma="F"){ return {data:new Date().toISOString().slice(0,10),firma,klientImie:"",klientMiasto:"",telefon:"",uwagi:"",pozycje:[pustaPoz()]}; }
 
@@ -314,6 +331,7 @@ table.main tr:nth-child(even) td{background:#f5f5f5}
   <tbody>${rows}</tbody>
 </table>
 
+<div style="font-size:8px;color:#888;margin-bottom:4px">* MAX — drugi wymiar podany przez klienta (informacyjnie — sprawdzić kolizję zawiasów/magnesów)</div>
 <div class="uwagi-label">UWAGI${order.uwagi?" — "+order.uwagi:""}</div>
 <div class="uwagi-line"></div>
 <div class="uwagi-line"></div>
@@ -350,23 +368,28 @@ function drukujPDF_drzwi(order) {
     const s=parseFloat(p.szerokosc)||0, w=parseFloat(p.wysokosc)||0;
     const sP=s+4, wP=w+4;
     const il=parseInt(p.ilosc)||1;
-    const popDl=p.poprzeczka?Math.round((sP-8.8)*10)/10:"—";
+    const popDl=p.poprzeczka?Math.round((s+4-8.8)*10)/10:"—";
     const samoLabel=parseInt(p.samodomykajacy)>0?` ⚡SAMO×${p.samodomykajacy}`:"";
+    const szer2Val=parseFloat(p.szer2)||"";
+    const wys2Val=parseFloat(p.wys2)||"";
+    const krotszy=Math.min(s,w);
+    const siatkaSzer=krotszy<=90?"100cm":krotszy<=130?"140cm":"160cm";
     return `<tr>
       <td>${i+1}</td><td>MOS.DRzW.</td>
-      <td class="wymiar">${s}</td><td class="wymiar">${w}</td>
-      <td class="wymiar">${sP}</td><td class="wymiar">${wP}</td>
+      <td class="wymiar">${s}</td><td class="wymiar" style="color:${szer2Val?"#c05000":"#bbb"}">${szer2Val||"—"}</td>
+      <td class="wymiar">${w}</td><td class="wymiar" style="color:${wys2Val?"#c05000":"#bbb"}">${wys2Val||"—"}</td>
       <td class="wymiar">${popDl}</td>
       <td class="kolor">${p.kolorRamki||""}</td>
       <td class="kolor">${p.kolorSiatki||""}</td>
+      <td style="font-size:9px;font-weight:700">${siatkaSzer}</td>
       <td>${(p.zawias||"L")+samoLabel}</td>
       <td class="wymiar">${il}</td>
       <td class="wymiar">${p.poprzeczka?il:0}</td>
-      ${p.uwagi?`<td colspan="12" style="text-align:left;font-size:9px;color:#555;font-style:italic">→ ${p.uwagi}</td>`:""}
+      ${p.uwagi?`<td colspan="13" style="text-align:left;font-size:9px;color:#555;font-style:italic">→ ${p.uwagi}</td>`:""}
     </tr>`;
   });
   const emptyRows=Array.from({length:Math.max(0,MIN_ROWS-pozDrzwi.length)},(_,i)=>`<tr>
-    <td>${pozDrzwi.length+i+1}</td><td>MOS.DRzW.</td><td>0</td><td>0</td><td></td><td></td><td></td><td></td><td></td><td></td><td>0</td><td>0</td>
+    <td>${pozDrzwi.length+i+1}</td><td>MOS.DRzW.</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td>
   </tr>`);
   const rows=[...dataRows,...emptyRows].join("");
 
@@ -408,15 +431,16 @@ table.main td.kolor{font-size:11px;font-weight:700}
 <table class="main">
   <thead><tr>
     <th>LP</th><th>SYSTEM</th>
-    <th>SZER.<br>OTWORU</th><th>WYS.<br>OTWORU</th>
-    <th>SZER.<br>PROFILU×2</th><th>WYS.<br>PROFILU×2</th>
+    <th>SZER.<br>MIN</th><th>SZER.<br>MAX*</th>
+    <th>WYS.<br>MIN</th><th>WYS.<br>MAX*</th>
     <th>POPRZECZKA<br>×1</th>
-    <th>KOLOR RAMKI</th><th>KOLOR SIATKI</th>
+    <th>KOLOR RAMKI</th><th>KOLOR SIATKI</th><th>SIATKA</th>
     <th>ZAWIAS</th><th>ILOŚĆ</th><th>POPRZ.<br>SZT</th>
   </tr></thead>
   <tbody>${rows}</tbody>
 </table>
 
+<div style="font-size:8px;color:#888;margin-bottom:4px">* MAX — drugi wymiar podany przez klienta (informacyjnie — sprawdzić kolizję zawiasów/magnesów)</div>
 <div class="uwagi-label">UWAGI${order.uwagi?" — "+order.uwagi:""}</div>
 <div class="uwagi-line"></div>
 
@@ -433,6 +457,12 @@ table.main td.kolor{font-size:11px;font-weight:700}
       <tr><td>Magnes + blaszka</td><td class="val">${d.magnesy}</td><td>szt + śruby</td></tr>
       <tr><td>Klamka</td><td class="val">${d.klamki}</td><td>szt + śruby</td></tr>
       <tr><td>Siatka</td><td class="val">na wymiar</td><td></td></tr>
+      ${d.siatkaCz100>0?`<tr><td style="padding-left:12px;color:#555">↳ Czarna 100cm</td><td class="val">${d.siatkaCz100}</td><td>mb</td></tr>`:""}
+      ${d.siatkaCz140>0?`<tr><td style="padding-left:12px;color:#555">↳ Czarna 140cm</td><td class="val">${d.siatkaCz140}</td><td>mb</td></tr>`:""}
+      ${d.siatkaCz160>0?`<tr><td style="padding-left:12px;color:#555">↳ Czarna 160cm</td><td class="val">${d.siatkaCz160}</td><td>mb</td></tr>`:""}
+      ${d.siatkaSz100>0?`<tr><td style="padding-left:12px;color:#555">↳ Szara 100cm</td><td class="val">${d.siatkaSz100}</td><td>mb</td></tr>`:""}
+      ${d.siatkaSz140>0?`<tr><td style="padding-left:12px;color:#555">↳ Szara 140cm</td><td class="val">${d.siatkaSz140}</td><td>mb</td></tr>`:""}
+      ${d.siatkaSz160>0?`<tr><td style="padding-left:12px;color:#555">↳ Szara 160cm</td><td class="val">${d.siatkaSz160}</td><td>mb</td></tr>`:""}
       <tr><td>Lizak</td><td class="val">${totalSzt}</td><td>szt</td></tr>
     </tbody>
   </table>
@@ -589,7 +619,9 @@ function App() {
         pozycje: r.pozycje?.length ? r.pozycje.map(p=>p.isDrzwi?({
           isDrzwi:        true,
           szerokosc:      p.szerokosc   ||"",
+          szer2:          p.szer2       ||"",
           wysokosc:       p.wysokosc    ||"",
+          wys2:           p.wys2        ||"",
           kolorRamki:     p.kolorRamki  ||"Antracyt",
           kolorSiatki:    p.kolorSiatki ||"Czarna",
           zawias:         p.zawias      ||"L",
@@ -1029,9 +1061,23 @@ function App() {
                     </div>
                     {poz.isDrzwi?(
                       <>
-                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 60px",gap:8,marginBottom:8}}>
-                          <div><span className="lbl">Szer. otworu (cm)</span><input type="number" step="0.1" value={poz.szerokosc} onChange={e=>updPoz(i,"szerokosc",e.target.value)}/></div>
-                          <div><span className="lbl">Wys. otworu (cm)</span><input type="number" step="0.1" value={poz.wysokosc} onChange={e=>updPoz(i,"wysokosc",e.target.value)}/></div>
+                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 60px",gap:8,marginBottom:8}}>
+                          <div>
+                            <span className="lbl">Szer. MIN (cm)</span>
+                            <input type="number" step="0.1" value={poz.szerokosc} onChange={e=>updPoz(i,"szerokosc",e.target.value)}/>
+                          </div>
+                          <div>
+                            <span className="lbl" style={{color:"#5a7a5a"}}>Szer. MAX (cm)</span>
+                            <input type="number" step="0.1" value={poz.szer2||""} onChange={e=>updPoz(i,"szer2",e.target.value)} style={{borderColor:"#1e4a1e"}} placeholder="opcjonalnie"/>
+                          </div>
+                          <div>
+                            <span className="lbl">Wys. MIN (cm)</span>
+                            <input type="number" step="0.1" value={poz.wysokosc} onChange={e=>updPoz(i,"wysokosc",e.target.value)}/>
+                          </div>
+                          <div>
+                            <span className="lbl" style={{color:"#5a7a5a"}}>Wys. MAX (cm)</span>
+                            <input type="number" step="0.1" value={poz.wys2||""} onChange={e=>updPoz(i,"wys2",e.target.value)} style={{borderColor:"#1e4a1e"}} placeholder="opcjonalnie"/>
+                          </div>
                           <div><span className="lbl">Szt.</span><input type="number" min="1" value={poz.ilosc} onChange={e=>updPoz(i,"ilosc",e.target.value)}/></div>
                         </div>
                         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr 80px",gap:8}}>
