@@ -231,7 +231,7 @@ ${adres||"(brak)"}`;
 }
 
 function pustaPoz(){ return {szerokosc:"",wysokosc:"",glebokosc:String(DOMYSLNA_GLEBOKOS),kolorRamki:"Antracyt",kolorSiatki:"Czarna",ilosc:1}; }
-function pustaPozDrzwi(){ return {isDrzwi:true,szerokosc:"",szer2:"",wysokosc:"",wys2:"",kolorRamki:"Antracyt",kolorSiatki:"Czarna",zawias:"L",poprzeczka:true,samodomykajacy:0,ilosc:1,uwagi:""}; }
+function pustaPozDrzwi(){ return {isDrzwi:true,szerokosc:"",szer2:"",wysokosc:"",wys2:"",kolorRamki:"Antracyt",kolorSiatki:"Czarna",zawias:"L",poprzeczka:true,samodomykajacyL:0,samodomykajacyP:0,ilosc:1,uwagi:""}; }
 function obliczDrzwi(pozycje){
   let profilMb=0,narozniki=0,poprzeczki=0,uchwyty=0,zawiasy=0,samodomykajace=0,magnesy=0,klamki=0,uszczelkaMb=0,szczotkaMb=0,kartony=0,radelka=0,instrukcje=0,wkrety=0;
   (pozycje||[]).filter(p=>p.isDrzwi).forEach(p=>{
@@ -242,7 +242,7 @@ function obliczDrzwi(pozycje){
     narozniki += 4*il;
     if(p.poprzeczka){ poprzeczki+=il; uchwyty+=2*il; }
     zawiasy += 2*il;
-    if(parseInt(p.samodomykajacy)>0) samodomykajace += parseInt(p.samodomykajacy);
+    samodomykajace += (parseInt(p.samodomykajacyL)||0) + (parseInt(p.samodomykajacyP)||0);
     magnesy += 3*il;
     klamki += 2*il;
     uszczelkaMb += ((2*sP+wP)*1.1/100)*il;
@@ -290,7 +290,7 @@ function drukujPDF(order) {
       <td class="wymiar">${s||""}</td>
       <td class="wymiar">${w||""}</td>
       <td class="kolor">${p.kolorRamki||""}</td>
-      <td class="kolor">${(p.kolorSiatki||"").replace("Czarna","Czarn.").replace("Szara","Szara")}</td>
+      <td class="kolor">${p.kolorSiatki||""}</td>
       <td class="wymiar">${blaszRoz}</td>
       <td class="wymiar">${il}</td>
     </tr>`;
@@ -392,8 +392,8 @@ function drukujPDF_drzwi(order) {
     const sP=s+4, wP=w+4;
     const il=parseInt(p.ilosc)||1;
     const popDl=p.poprzeczka?Math.round((s+4-8.8)*10)/10:"—";
-    const samoLabel=parseInt(p.samodomykajacy)>0?` ⚡SAMO×${p.samodomykajacy}`:"";
-    const szer2Val=parseFloat(p.szer2)||"";
+    const samoL=parseInt(p.samodomykajacyL)||0, samoP=parseInt(p.samodomykajacyP)||0;
+    const samoLabel=(samoL||samoP)?` ⚡L=${samoL} P=${samoP}`:"";    const szer2Val=parseFloat(p.szer2)||"";
     const wys2Val=parseFloat(p.wys2)||"";
     const krotszy=Math.min(s,w);
     const siatkaSzer=krotszy<=90?"100cm":krotszy<=130?"140cm":"160cm";
@@ -404,9 +404,9 @@ function drukujPDF_drzwi(order) {
       <td class="wymiar">${w}</td><td class="wymiar" style="color:#ccc">${wys2Val||"—"}</td>
       <td class="wymiar" style="${popDl==='—'?'color:#cc3300':''}">${popDl}</td>
       <td class="kolor">${p.kolorRamki||""}</td>
-      <td class="kolor">${(p.kolorSiatki||"").replace("Czarna","Czarn.").replace("Szara","Szara")}</td>
+      <td class="kolor">${p.kolorSiatki||""}</td>
       <td style="font-size:9px;font-weight:700">${siatkaSzer}</td>
-      <td style="font-weight:700">${(p.zawias||"L")} <span style="font-size:11px">×2</span>${samoLabel}</td>
+      <td style="font-weight:700">2${samoLabel}</td>
       <td class="wymiar">${il}</td>
       <td class="wymiar">${p.poprzeczka?il:0}</td>
       ${p.uwagi?`<td colspan="13" style="text-align:left;font-size:9px;color:#555;font-style:italic">→ ${p.uwagi}</td>`:""}
@@ -442,15 +442,16 @@ table.main td.kolor{font-size:10px;font-weight:700}
 .uwagi-line{border-bottom:1px solid #aaa;min-height:14px;margin-bottom:3px}
 </style></head><body>
 
-<div class="header">
+<div class="header" style="display:flex;align-items:stretch">
   <div class="big-litera">🚪${firma}</div>
-  <div class="info-grid">
+  <div class="info-grid" style="flex:1">
     <div class="lbl">KLIENT</div><div class="val">${order.klientImie||"—"}</div>
     <div class="lbl">ADRES</div><div class="val">${order.klientUlica||""} ${order.klientKod?"· "+order.klientKod:""} ${order.klientMiasto||"—"}</div>
     <div class="lbl">TEL</div><div class="val">${order.telefon||"—"}</div>
     <div class="lbl">DATA</div><div class="val">${formatDate(order.data)}</div>
     <div class="lbl">NR ZAM.</div><div class="val nr">${order.numerZlecenia||"—"} 🚪</div>
   </div>
+  ${(()=>{const tL=pozDrzwi.reduce((a,p)=>a+(parseInt(p.samodomykajacyL)||0),0),tP=pozDrzwi.reduce((a,p)=>a+(parseInt(p.samodomykajacyP)||0),0);return (tL||tP)?`<div style="border:2px solid #cc0000;padding:6px 12px;text-align:center;min-width:120px"><div style="font-size:9px;font-weight:700;color:#cc0000;margin-bottom:4px">ZAWIAS SAMODOMYKAJĄCY</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;text-align:center"><div><div style="font-size:9px">L</div><div style="font-size:24px;font-weight:900">${tL}</div></div><div><div style="font-size:9px">P</div><div style="font-size:24px;font-weight:900">${tP}</div></div></div></div>`:"";})()}
 </div>
 
 <table class="main">
@@ -652,7 +653,8 @@ function App() {
           kolorSiatki:    p.kolorSiatki ||"Czarna",
           zawias:         p.zawias      ||"L",
           poprzeczka:     p.poprzeczka!=null?p.poprzeczka:true,
-          samodomykajacy: p.samodomykajacy||0,
+          samodomykajacyL: p.samodomykajacyL||0,
+          samodomykajacyP: p.samodomykajacyP||0,
           ilosc:          p.ilosc       ||1,
           uwagi:          p.uwagi       ||""
         }):({
@@ -1134,14 +1136,19 @@ function App() {
                             </select>
                           </div>
                           <div><span className="lbl">Poprzeczka</span>
-                            <select value={poz.poprzeczka?"tak":"nie"} onChange={e=>updPoz(i,"poprzeczka",e.target.value==="tak")}
-                              style={{color:poz.poprzeczka?"inherit":"#df5f5f"}}>
+                            <select value={poz.poprzeczka===false||poz.poprzeczka==="false"?"nie":"tak"} onChange={e=>{updPoz(i,"poprzeczka",e.target.value==="tak");}}
+                              style={{color:(poz.poprzeczka===false||poz.poprzeczka==="false")?"#df5f5f":"inherit"}}>
                               <option value="tak">✓ Tak</option>
                               <option value="nie">✗ Nie</option>
                             </select>
                           </div>
-                          <div><span className="lbl">Samodom. szt</span>
-                            <input type="number" min="0" value={poz.samodomykajacy||0} onChange={e=>updPoz(i,"samodomykajacy",parseInt(e.target.value)||0)} style={{width:"100%"}}/>
+                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:4}}>
+                            <div><span className="lbl">Samodom. L</span>
+                              <input type="number" min="0" value={poz.samodomykajacyL||0} onChange={e=>updPoz(i,"samodomykajacyL",parseInt(e.target.value)||0)}/>
+                            </div>
+                            <div><span className="lbl">Samodom. P</span>
+                              <input type="number" min="0" value={poz.samodomykajacyP||0} onChange={e=>updPoz(i,"samodomykajacyP",parseInt(e.target.value)||0)}/>
+                            </div>
                           </div>
                         </div>
                         {poz.szerokosc&&poz.wysokosc&&(()=>{
@@ -1154,8 +1161,8 @@ function App() {
                             <span style={{color:"#90b8df"}}>🔩 Uszczelka: <strong>{uszMb} mb</strong></span>
                             <span style={{color:"#90b8df"}}>🖌 Szczotka: <strong>{szcMb} mb</strong></span>
                             <span style={{color:"#90b8df"}}>📦 Karton: <strong>{il} szt</strong></span>
-                            {poz.samodomykajacy>0&&<span style={{color:"#dfcf5f",fontWeight:700}}>⚡ Samodomykające: <strong>{poz.samodomykajacy} szt</strong></span>}
-                            {!poz.poprzeczka&&<span style={{color:"#df5f5f",fontWeight:700}}>✗ BEZ POPRZECZKI</span>}
+                            {(poz.samodomykajacyL>0||poz.samodomykajacyP>0)&&<span style={{color:"#dfcf5f",fontWeight:700}}>⚡ Samodom: L={poz.samodomykajacyL||0} P={poz.samodomykajacyP||0}</span>}
+                            {(poz.poprzeczka===false||poz.poprzeczka==="false")&&<span style={{color:"#df5f5f",fontWeight:700}}>✗ BEZ POPRZECZKI</span>}
                           </div>;
                         })()}
                         <div style={{marginTop:8}}>
