@@ -277,6 +277,8 @@ function App() {
   const [activeProfile,setActiveProfile]=useState(()=>localStorage.getItem('active_profile')||"");
   const [tab,setTab]=useState(()=>new URLSearchParams(window.location.search).has("code")?"allegro":"nowe");
   const [histYear,setHistYear]=useState("2025");
+  const [histMonth,setHistMonth]=useState("");
+  const [histSearch,setHistSearch]=useState("");
   const [histOrders,setHistOrders]=useState(()=>{try{return JSON.parse(localStorage.getItem("hist_orders")||"{}")}catch{return{}}});
   function importHistCSV(year,text){
     const lines=text.trim().split(/\r?\n/);
@@ -851,7 +853,7 @@ function App() {
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
                 <thead>
                   <tr style={{borderBottom:"2px solid #1e3a1e",background:"#0c1a0c"}}>
-                    {["Nr zlecenia","Data","Klient","Miasto","Mosk.","Linka","Blaszki","Kolory","",""].map((h,i)=>(
+                    {["Nr zlecenia","Data","Klient","Miasto","Mosk.","Linka","Blaszki","Ramka","Siatka","","",""].map((h,i)=>(
                       <th key={i} style={{padding:"10px 10px",textAlign:"left",fontSize:10,color:"#3a7a3a",letterSpacing:".1em",textTransform:"uppercase",fontWeight:700}}>{h}</th>
                     ))}
                   </tr>
@@ -862,6 +864,7 @@ function App() {
                     const il=o.pozycje.reduce((a,p)=>a+(parseFloat(p.ilosc)||1),0);
                     const lnk=obliczLinkeLaczna(o.pozycje);
                     const kol=[...new Set(o.pozycje.map(p=>p.kolorRamki))].join(", ");
+                    const kolSiatki=[...new Set(o.pozycje.map(p=>p.kolorSiatki).filter(Boolean))].join(", ");
                     return (
                       <tr key={o.id} className="tr">
                         <td style={{padding:"10px 10px"}}>
@@ -874,7 +877,8 @@ function App() {
                         <td style={{padding:"10px 10px",textAlign:"center"}}><span className="badge b-g">{il}</span></td>
                         <td style={{padding:"10px 10px",textAlign:"center"}}>{Math.round(lnk*10)/10} mb</td>
                         <td style={{padding:"10px 10px",textAlign:"center"}}>{il*8}</td>
-                        <td style={{padding:"10px 10px",fontSize:11,color:"#5a8a5a",maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} className="hide-mob">{kol}</td>
+                        <td style={{padding:"10px 10px",fontSize:11,color:"#5a8a5a",maxWidth:110,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} className="hide-mob">{kol}</td>
+                        <td style={{padding:"10px 10px",fontSize:11,color:"#4a7a8a",maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} className="hide-mob">{kolSiatki}</td>
                         <td style={{padding:"10px 10px"}}><button className="btn-pdf" onClick={()=>drukujPDF(o)}>📄 PDF</button></td>
                         <td style={{padding:"10px 10px"}}><button className="btn-pdf" style={{background:"#2a4a6a"}} onClick={()=>{setForm({data:o.data,firma:o.firma,klientImie:o.klientImie,klientMiasto:o.klientMiasto,telefon:o.telefon,uwagi:o.uwagi,pozycje:o.pozycje.map(p=>({...p}))});setNumerOverride(o.numerZlecenia);updateOrders(orders.filter(x=>x.id!==o.id));setTab("nowe");setSaved(false);}}>✏️</button></td>
                         <td style={{padding:"10px 10px"}}><button className="btn-del" onClick={()=>{if(confirm("Usunąć "+o.numerZlecenia+"?"))updateOrders(orders.filter(x=>x.id!==o.id))}}>🗑</button></td>
@@ -1025,12 +1029,24 @@ function App() {
         {tab==="historia" && (
           <div>
             <div style={{fontSize:11,color:"#3a6a3a",letterSpacing:".15em",textTransform:"uppercase",marginBottom:14}}>📁 Historia zamówień</div>
-            <div style={{display:"flex",gap:10,marginBottom:16,alignItems:"center"}}>
+            <div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center",flexWrap:"wrap"}}>
               {["2024","2025","2026"].map(y=>(
-                <button key={y} className={`tab ${histYear===y?"on":""}`} onClick={()=>setHistYear(y)} style={{padding:"7px 18px"}}>{y}</button>
+                <button key={y} className={`tab ${histYear===y?"on":""}`} onClick={()=>setHistYear(y)} style={{padding:"6px 16px"}}>{y}</button>
               ))}
-              <label className="btn-sm" style={{cursor:"pointer",marginLeft:16}}>
-                📂 Importuj CSV {histYear}
+              <span style={{color:"#3a6a3a",margin:"0 4px"}}>|</span>
+              {(histOrders[histYear]||[]).length>0&&(()=>{
+                const miesiace=[...new Set((histOrders[histYear]||[]).map(o=>o.data?o.data.slice(0,7):"").filter(Boolean))].sort().reverse();
+                return miesiace.map(m=>{
+                  const [yr,mn]=m.split("-");
+                  const nazwy=["","Sty","Lut","Mar","Kwi","Maj","Cze","Lip","Sie","Wrz","Paź","Lis","Gru"];
+                  return <button key={m} className={`tab ${histMonth===m?"on":""}`} onClick={()=>setHistMonth(histMonth===m?"":m)} style={{padding:"5px 10px",fontSize:11}}>{nazwy[parseInt(mn)]||mn}</button>;
+                });
+              })()}
+            </div>
+            <div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center",flexWrap:"wrap"}}>
+              <input value={histSearch} onChange={e=>setHistSearch(e.target.value)} placeholder="🔍 Szukaj klienta, miasta..." style={{width:220,fontSize:12}}/>
+              <label className="btn-sm" style={{cursor:"pointer"}}>
+                📂 Importuj CSV → {histYear}{histMonth?" / "+histMonth.slice(5):""}
                 <input type="file" accept=".csv" style={{display:"none"}} onChange={e=>{
                   const file=e.target.files[0]; if(!file) return;
                   const reader=new FileReader();
@@ -1042,9 +1058,15 @@ function App() {
               {(histOrders[histYear]||[]).length>0&&(
                 <button className="btn-sm" style={{color:"#cf7f7f",borderColor:"#6a2a2a"}} onClick={()=>{if(confirm("Usunąć dane roku "+histYear+"?")){const u={...histOrders};delete u[histYear];setHistOrders(u);localStorage.setItem("hist_orders",JSON.stringify(u));}}}>🗑 Wyczyść {histYear}</button>
               )}
+              {(histOrders[histYear]||[]).length>0&&<span style={{marginLeft:"auto",fontSize:11,color:"#4a7a4a"}}>{(histOrders[histYear]||[]).length} zamówień</span>}
             </div>
             {(()=>{
-              const ords=histOrders[histYear]||[];
+              const ordsAll=histOrders[histYear]||[];
+              const ords=ordsAll.filter(o=>{
+                if(histMonth&&!(o.data||"").startsWith(histMonth)) return false;
+                if(histSearch&&!`${o.numerZlecenia||""} ${o.klientImie||""} ${o.klientMiasto||}`.toLowerCase().includes(histSearch.toLowerCase())) return false;
+                return true;
+              });
               if(ords.length===0) return <div style={{color:"#3a6a3a",textAlign:"center",padding:40}}>Brak danych — importuj plik CSV<br/><span style={{fontSize:11,opacity:.7}}>Format: ten sam co eksport ⬇ CSV z zakładki Baza</span></div>;
               const s=getHistStats(ords);
               return <>
