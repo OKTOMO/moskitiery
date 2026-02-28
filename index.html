@@ -530,7 +530,7 @@ function App() {
   function saveFaktury(f){setFaktury(f);localStorage.setItem("faktury",JSON.stringify(f));}
   function nextFvNumer(firma){
     const rok=new Date().getFullYear().toString().slice(-2);
-    const pat=new RegExp(\`^FV/(\\d+)/\${rok}/\${firma}\$\`);
+    const pat=new RegExp("^FV/(\\d+)/"+rok+"/"+firma+"$");
     const nums=faktury.map(f=>f.numer).filter(n=>n&&pat.test(n)).map(n=>parseInt(n.match(pat)[1]));
     return \`FV/\${(nums.length?Math.max(...nums):0)+1}/\${rok}/\${firma}\`;
   }
