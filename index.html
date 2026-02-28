@@ -188,6 +188,7 @@ WAŻNE:
 - Identyczne pozycje (same wymiary+kolory+typ) → scal sumując ilości
 - Imię/nazwisko w formacie: Nazwisko Imię
 - Miasto wyciągnij z adresu
+- WYMIARY: szerokosc zawsze mniejsza wartość, wysokosc zawsze większa. Np. klient podał "214 x 81,5" → szerokosc=81.5, wysokosc=214. Dotyczy zarówno okien jak i drzwi.
 
 WIADOMOŚĆ OD KLIENTA:
 ${msg||"(brak)"}
@@ -292,7 +293,7 @@ table.main tr:nth-child(even) td{background:#f5f5f5}
     <div class="lbl">KLIENT</div><div class="val">${order.klientImie||"—"}</div>
     <div class="lbl">MIASTO</div><div class="val">${order.klientMiasto||"—"}${order.telefon?" &nbsp;·&nbsp; "+order.telefon:""}</div>
     <div class="lbl">DATA</div><div class="val">${formatDate(order.data)}</div>
-    <div class="lbl">NR ZAM.</div><div class="val nr">${order.numerZlecenia||"—"} ${firma}</div>
+    <div class="lbl">NR ZAM.</div><div class="val nr">${order.numerZlecenia||"—"}</div>
   </div>
 </div>
 
@@ -400,7 +401,7 @@ table.main td.kolor{font-size:11px;font-weight:700}
     <div class="lbl">KLIENT</div><div class="val">${order.klientImie||"—"}</div>
     <div class="lbl">MIASTO</div><div class="val">${order.klientMiasto||"—"}${order.telefon?" &nbsp;·&nbsp; "+order.telefon:""}</div>
     <div class="lbl">DATA</div><div class="val">${formatDate(order.data)}</div>
-    <div class="lbl">NR ZAM.</div><div class="val nr">${order.numerZlecenia||"—"} ${firma} 🚪</div>
+    <div class="lbl">NR ZAM.</div><div class="val nr">${order.numerZlecenia||"—"} 🚪</div>
   </div>
 </div>
 
@@ -571,6 +572,14 @@ function App() {
     setParsing(true); setSaved(false);
     try {
       const r=await parseAI(wiadomosc,adres,parseTyp);
+      // Jeśli typ wybrany ręcznie, nadpisz isDrzwi we wszystkich pozycjach
+      if(r.pozycje?.length && parseTyp==="drzwi") r.pozycje.forEach(p=>{ p.isDrzwi=true; });
+      if(r.pozycje?.length && parseTyp==="okno")  r.pozycje.forEach(p=>{ p.isDrzwi=false; });
+      // Zawsze: szerokosc = mniejszy wymiar, wysokosc = większy
+      if(r.pozycje?.length) r.pozycje.forEach(p=>{
+        const s=parseFloat(p.szerokosc)||0, w=parseFloat(p.wysokosc)||0;
+        if(s>w && w>0){ p.szerokosc=w; p.wysokosc=s; }
+      });
       setForm(f=>({
         ...f,
         klientImie:   r.klientImie   ||f.klientImie,
