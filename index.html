@@ -92,9 +92,18 @@ const ALLEGRO_KONTA = [
 ];
 
 function obliczRozmiarBlaszki(g) {
-  const v=parseFloat(g)||DOMYSLNA_GLEBOKOS, pot=v-PROFIL_GLEBOKOS;
-  const pas=BLASZKI_ROZMIARY.find(r=>r>=pot);
-  return pas!==undefined?pas:BLASZKI_ROZMIARY[BLASZKI_ROZMIARY.length-1];
+  const v=parseFloat(g)||DOMYSLNA_GLEBOKOS;
+  if(v<=10) return 0;
+  if(v<=12) return 3;
+  if(v<=14) return 5;
+  if(v<=16) return 7;
+  if(v<=18) return 9;
+  if(v<=21) return 12;
+  if(v<=25) return 15;
+  if(v<=28) return 18;
+  if(v<=30) return 20;
+  if(v<=32) return 22;
+  return 25;
 }
 // JEDN na wiersz: ((szer*2 + wys*2) * szt) / 10  [wzór z Excela]
 function obliczJedn(s, w, ilosc) {
@@ -173,13 +182,13 @@ function drukujPDF(order) {
     const blaszRoz=obliczRozmiarBlaszki(gl);
     return `<tr>
       <td>${i+1}</td><td>MOS. PCV.</td>
-      <td style="font-size:9px">${jedn||""}</td>
-      <td style="font-size:12px;font-weight:700">${s||""}</td>
-      <td style="font-size:12px;font-weight:700">${w||""}</td>
-      <td style="font-size:11px;font-weight:600">${p.kolorRamki||""}</td>
-      <td style="font-size:11px;font-weight:600">${p.kolorSiatki||""}</td>
-      <td style="font-size:12px;font-weight:700">${blaszRoz}</td>
-      <td style="font-size:12px;font-weight:700">${il}</td>
+      <td class="jedn">${jedn||""}</td>
+      <td class="wymiar">${s||""}</td>
+      <td class="wymiar">${w||""}</td>
+      <td class="kolor">${p.kolorRamki||""}</td>
+      <td class="kolor">${p.kolorSiatki||""}</td>
+      <td class="wymiar">${blaszRoz}</td>
+      <td class="wymiar">${il}</td>
     </tr>`;
   });
   const emptyRows = Array.from({length:Math.max(0, MIN_ROWS - order.pozycje.length)}, (_,i)=>`<tr>
@@ -191,94 +200,115 @@ function drukujPDF(order) {
 <title>${order.numerZlecenia||""} ${order.klientImie||""} ${order.klientMiasto||""}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Arial,sans-serif;font-size:11px;padding:14px 18px;color:#000;background:#fff}
-.header{display:grid;grid-template-columns:120px 1fr;gap:10px;margin-bottom:10px;border-bottom:2px solid #000;padding-bottom:8px}
-.big-litera{font-size:80px;font-weight:900;line-height:1;color:#000;display:flex;align-items:center;justify-content:center;border:2px solid #000;padding:4px 10px}
-.info-box{display:flex;flex-direction:column;justify-content:space-between}
-.info-top{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.info-top-left{font-size:10px;color:#555}
-.klient-table{width:100%;border-collapse:collapse;font-size:11px}
-.klient-table td{border:1px solid #aaa;padding:3px 6px}
-.klient-table .lbl{background:#f0e8c0;font-weight:700;width:60px;text-align:center}
-.nr-box{text-align:right;font-size:22px;font-weight:900;color:#cc0000}
-table.main{width:100%;border-collapse:collapse;margin-bottom:8px;font-size:10px}
-table.main th{background:#222;color:#fff;padding:4px 4px;text-align:center;border:1px solid #555;font-size:9px;line-height:1.2}
-table.main td{padding:3px 4px;text-align:center;border:1px solid #aaa;height:18px}
-table.main tr:nth-child(even) td{background:#f8f8f8}
-.summary{border:2px solid #000;padding:6px 12px;margin-top:6px;font-size:11px;display:flex;gap:24px;align-items:center}
-.summary-box{border:2px solid #000;padding:4px 16px;font-size:14px;font-weight:900;min-width:60px;text-align:center}
-.uwagi-box{margin-top:6px;font-size:10px;min-height:22px;border-bottom:1px solid #aaa;padding-bottom:4px}
-.bottom{margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:10px}
-.bottom-item{display:flex;align-items:center;gap:8px}
-.bottom-val{border:2px solid #000;padding:3px 14px;font-size:14px;font-weight:900}
-.btn-druk{margin-top:14px;padding:8px 20px;background:#222;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:12px}
-@media print{.btn-druk{display:none}}
+body{font-family:Arial,sans-serif;font-size:10px;padding:10px 14px;color:#000;background:#fff;width:210mm}
+.header{display:flex;margin-bottom:8px;border:1px solid #000}
+.big-litera{font-size:60px;font-weight:900;line-height:1;color:#000;display:flex;align-items:center;justify-content:center;border-right:1px solid #000;padding:6px 12px;min-width:80px}
+.info-grid{display:grid;grid-template-columns:80px 1fr;flex:1}
+.info-grid .lbl{background:#f0e8c0;border-bottom:1px solid #ccc;border-right:1px solid #ccc;padding:3px 6px;font-weight:700;font-size:9px;color:#555;display:flex;align-items:center}
+.info-grid .val{border-bottom:1px solid #ccc;padding:3px 7px;font-size:12px;font-weight:700;display:flex;align-items:center}
+.info-grid .val.nr{font-size:20px;font-weight:900;color:#cc0000}
+table.main{width:100%;border-collapse:collapse;margin-bottom:6px}
+table.main th{background:#222;color:#fff;padding:5px 3px;text-align:center;border:1px solid #555;font-size:8px;line-height:1.3}
+table.main td{padding:1px 3px;text-align:center;border:1px solid #bbb;height:24px;font-size:10px}
+table.main td.wymiar{font-size:15px;font-weight:900}
+table.main td.kolor{font-size:11px;font-weight:700}
+table.main td.jedn{font-size:9px}
+table.main tr:nth-child(even) td{background:#f5f5f5}
+.uwagi-label{font-weight:700;font-size:10px;margin:4px 0 2px}
+.uwagi-line{border-bottom:1px solid #aaa;min-height:14px;margin-bottom:3px}
+.bottom{margin-top:8px;display:flex;gap:20px;align-items:center;font-size:10px}
+.bottom-val{border:2px solid #000;padding:2px 14px;font-size:15px;font-weight:900;display:inline-block;min-width:52px;text-align:center}
+.razem{font-size:11px;font-weight:700;margin-top:6px}
+@media print{body{padding:6px 10px}}
 </style></head><body>
 
 <div class="header">
   <div class="big-litera">${firma}</div>
-  <div style="border:1px solid #aaa;border-left:none;display:grid;grid-template-columns:130px 1fr">
-    <div style="background:#f0e8c0;border:1px solid #ddd;padding:4px 8px;font-weight:700;font-size:10px;color:#555">FIRMA</div>
-    <div style="border:1px solid #ddd;padding:4px 8px;font-size:13px;font-weight:700">${firmaNazwa}</div>
-    <div style="background:#f0e8c0;border:1px solid #ddd;padding:4px 8px;font-weight:700;font-size:10px;color:#555">KLIENT</div>
-    <div style="border:1px solid #ddd;padding:4px 8px;font-size:13px;font-weight:700">${order.klientImie||"—"}</div>
-    <div style="background:#f0e8c0;border:1px solid #ddd;padding:4px 8px;font-weight:700;font-size:10px;color:#555">MIASTO</div>
-    <div style="border:1px solid #ddd;padding:4px 8px;font-size:13px;font-weight:700">${order.klientMiasto||"—"}${order.telefon?" · "+order.telefon:""}</div>
-    <div style="background:#f0e8c0;border:1px solid #ddd;padding:4px 8px;font-weight:700;font-size:10px;color:#555">DATA ZAMÓWIENIA</div>
-    <div style="border:1px solid #ddd;padding:4px 8px;font-size:13px;font-weight:700">${formatDate(order.data)}</div>
-    <div style="background:#f0e8c0;border:1px solid #ddd;padding:4px 8px;font-weight:700;font-size:10px;color:#555">NR ZAMÓWIENIA</div>
-    <div style="border:1px solid #ddd;padding:8px;font-size:26px;font-weight:900;color:#cc0000">${order.numerZlecenia||"—"}</div>
+  <div class="info-grid">
+    <div class="lbl">KLIENT</div><div class="val">${order.klientImie||"—"}</div>
+    <div class="lbl">MIASTO</div><div class="val">${order.klientMiasto||"—"}${order.telefon?" &nbsp;·&nbsp; "+order.telefon:""}</div>
+    <div class="lbl">DATA</div><div class="val">${formatDate(order.data)}</div>
+    <div class="lbl">NR ZAM.</div><div class="val nr">${order.numerZlecenia||"—"} ${firma}</div>
   </div>
 </div>
 
 <table class="main">
   <thead>
     <tr>
-      <th>LP</th><th>SYSTEM</th><th>JEDN<br>(mb)</th>
-      <th>SZERO-<br>KOŚĆ<br>(cm)</th><th>WYSO-<br>KOŚĆ<br>(cm)</th>
-      <th>KOLOR RAMKI</th><th>KOLOR SIATKI</th>
-      <th>BLASZKA<br>(mm)</th><th>SZT.</th>
+      <th style="width:26px">LP</th>
+      <th>SYSTEM</th>
+      <th style="width:44px">JEDN (mb)</th>
+      <th style="width:64px">SZEROKOŚĆ (cm)</th>
+      <th style="width:64px">WYSOKOŚĆ (cm)</th>
+      <th>KOLOR RAMKI</th>
+      <th>KOLOR SIATKI</th>
+      <th style="width:54px">BLASZKA (mm)</th>
+      <th style="width:34px">SZT.</th>
     </tr>
   </thead>
   <tbody>${rows}</tbody>
 </table>
 
-<div style="margin-bottom:10px">
-  <div style="font-weight:700;font-size:11px;margin-bottom:6px">UWAGI${order.uwagi?" · "+order.uwagi:""}</div>
-  <div style="border-bottom:1px solid #aaa;min-height:18px;margin-bottom:6px"></div>
-  <div style="border-bottom:1px solid #aaa;min-height:18px;margin-bottom:6px"></div>
-  <div style="border-bottom:1px solid #aaa;min-height:18px;margin-bottom:6px"></div>
-  <div style="border-bottom:1px solid #aaa;min-height:18px"></div>
+<div class="uwagi-label">UWAGI${order.uwagi?" — "+order.uwagi:""}</div>
+<div class="uwagi-line"></div>
+<div class="uwagi-line"></div>
+
+<div class="razem">Ilość moskitier RAZEM: ${totalMosk}</div>
+
+<div class="bottom">
+  <span>LINKA/USZCZELKA ilość metrów bieżących:</span>
+  <span class="bottom-val">${totalLinka}</span>
+  <span style="margin-left:16px">Ilość BLASZEK:</span>
+  <span class="bottom-val">${totalBlaszki}</span>
 </div>
 
-<div style="margin-top:8px;font-size:11px"><strong>Ilość moskitier RAZEM: ${totalMosk}</strong></div>
-
-<div style="margin-top:8px;display:flex;gap:30px;align-items:center">
-  <div class="bottom-item">
-    <span>LINKA/USZCZELKA ilość metrów bieżących:</span>
-    <span class="bottom-val">${totalLinka}</span>
-  </div>
-  <div class="bottom-item" style="margin-left:20px">
-    <span>Ilość BLASZEK:</span>
-    <span class="bottom-val">${totalBlaszki}</span>
-  </div>
-</div>
-
-<button class="btn-druk" onclick="window.print()">🖨 Drukuj / Zapisz PDF</button>
 </body></html>`;
 
-  const pdfName=`${order.numerZlecenia||"zlecenie"} ${order.klientImie||""} ${order.klientMiasto||""}`.trim();
-  const orig=document.title; document.title=pdfName;
-  const w=window.open("","_blank");
-  if(!w){alert("Zezwól na wyskakujące okna dla tej strony.");document.title=orig;return;}
-  w.document.write(html); w.document.close(); w.focus();
-  setTimeout(()=>{document.title=orig;},2000);
+  const blob=new Blob([html],{type:"text/html;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  const pdfName=`${order.numerZlecenia||"zlecenie"}_${(order.klientImie||"").replace(/\s+/g,"_")}_${(order.klientMiasto||"").replace(/\s+/g,"_")}.html`;
+  a.href=url; a.download=pdfName; a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),3000);
 }
 
 // ─── APP ─────────────────────────────────────────────────────────────────────
 function App() {
   const [activeProfile,setActiveProfile]=useState(()=>localStorage.getItem('active_profile')||"");
   const [tab,setTab]=useState(()=>new URLSearchParams(window.location.search).has("code")?"allegro":"nowe");
+  const [histYear,setHistYear]=useState("2025");
+  const [histOrders,setHistOrders]=useState(()=>{try{return JSON.parse(localStorage.getItem("hist_orders")||"{}")}catch{return{}}});
+  function importHistCSV(year,text){
+    const lines=text.trim().split(/\r?\n/);
+    const header=lines[0].split(";").map(h=>h.trim().toLowerCase());
+    const idx=(n)=>header.findIndex(h=>h.includes(n));
+    const iNr=idx("nr"),iFirma=idx("firma"),iData=idx("data"),iKlient=Math.max(idx("klient"),idx("imię")),iMiasto=idx("miasto"),iTel=idx("tel"),iSzer=idx("szer"),iWys=idx("wys"),iGl=idx("głęb"),iKR=idx("ramki"),iKS=idx("siatki"),iBl=idx("blaszka"),iIl=idx("ilość");
+    const grouped={};
+    for(let i=1;i<lines.length;i++){
+      const cols=lines[i].split(";");
+      if(cols.length<5||!cols[iSzer]) continue;
+      const nr=cols[iNr]||("IMP-"+i);
+      if(!grouped[nr]) grouped[nr]={id:Date.now()+i,numerZlecenia:nr,firma:cols[iFirma]||"F",data:cols[iData]||"",klientImie:cols[iKlient]||"",klientMiasto:cols[iMiasto]||"",telefon:cols[iTel]||"",uwagi:"",pozycje:[]};
+      grouped[nr].pozycje.push({szerokosc:cols[iSzer]||"",wysokosc:cols[iWys]||"",glebokosc:cols[iGl]||"",kolorRamki:cols[iKR]||"",kolorSiatki:cols[iKS]||"",blaszRozmiar:cols[iBl]||"",ilosc:cols[iIl]||1});
+    }
+    const arr=Object.values(grouped);
+    const updated={...histOrders,[year]:arr};
+    setHistOrders(updated);
+    localStorage.setItem("hist_orders",JSON.stringify(updated));
+    alert("Wgrano "+arr.length+" zamówień do roku "+year);
+  }
+  function getHistStats(ords){
+    let totalMosk=0,totalLinka=0,totalBlaszki=0;
+    const firmaCount={};
+    ords.forEach(o=>o.pozycje.forEach(p=>{
+      const il=parseFloat(p.ilosc)||1;
+      totalMosk+=il;
+      totalLinka+=(parseFloat(p.linka)||obliczLinke(parseFloat(p.szerokosc)||0,parseFloat(p.wysokosc)||0))*il;
+      totalBlaszki+=8*il;
+      firmaCount[o.firma]=(firmaCount[o.firma]||0)+il;
+    }));
+    return {totalMosk,totalLinka:Math.round(totalLinka*10)/10,totalBlaszki,firmaCount};
+  }
   const [orders,setOrders]=useState([]);
   const [loading,setLoading]=useState(true);
   const [wiadomosc,setWiadomosc]=useState("");
@@ -291,6 +321,7 @@ function App() {
   const [filterMonth,setFilterMonth]=useState("");
   const [filterKolor,setFilterKolor]=useState("");
   const [filterFirma,setFilterFirma]=useState("");
+  const [filterYear,setFilterYear]=useState("wszystkie");
   const [settings,setSettings]=useState(()=>window.jsonbinSettings.getSettings());
   const [settingsSaved,setSettingsSaved]=useState(false);
   const [allegroTokens,setAllegroTokens]=useState(()=>{
@@ -414,11 +445,13 @@ function App() {
     if(filterMonth&&getMonth(o.data)!==filterMonth) return false;
     if(filterKolor&&!o.pozycje.some(p=>p.kolorRamki?.includes(filterKolor))) return false;
     if(filterFirma&&o.firma!==filterFirma) return false;
+    if(filterYear&&filterYear!=="wszystkie"&&!( o.data&&o.data.startsWith(filterYear))) return false;
     if(search&&!`${o.numerZlecenia||""} ${o.klientImie} ${o.klientMiasto}`.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
   const months=[...new Set(orders.map(o=>getMonth(o.data)))].sort().reverse();
+  const years=[...new Set(orders.map(o=>o.data?o.data.slice(0,4):"").filter(Boolean))].sort().reverse();
   const profileOrders=orders.filter(o=>!o.firma||o.firma===currentProfile.id);
   const statsAll=getStats(profileOrders);
   const statsFilt=getStats(filteredOrders);
@@ -625,15 +658,34 @@ function App() {
         </div>
       </div>
 
-      <div style={{display:"flex",borderBottom:"1px solid #1e2a1e",paddingLeft:16,background:"#0e1420"}}>
-        {[["nowe","➕ Nowe"],["baza","📋 Baza"],["stat","📊 Stat"],["kalk","🧮 Kalkulator"],["allegro","🛒 Allegro"],["produkcja","🏭 Produkcja"],["ustawienia","⚙️ Chmura"]].map(([id,l])=>(
+      <div style={{display:"flex",borderBottom:"1px solid #1e2a1e",paddingLeft:16,background:"#0e1420",flexWrap:"wrap"}}>
+        {[["nowe","➕ Dodaj zamówienie"],["baza","📋 Zamówienia"],["stat","📊 Stat"],["produkcja","🏭 Produkcja"],["kalk","🧮 Kalkulator"]].map(([id,l])=>(
           <button key={id} className={`tab ${tab===id?"on":""}`} onClick={()=>setTab(id)}>{l}</button>
         ))}
+        <button className={`tab ${(tab==="allegro"||tab==="ustawienia"||tab==="historia")?"on":""}`} onClick={()=>{
+          const pin=localStorage.getItem("admin_pin");
+          if(!pin){
+            const np=prompt("Brak PIN-u. Ustaw PIN (4 cyfry):");
+            if(!np||!/[0-9]{4}/.test(np)){alert("PIN musi mieć dokładnie 4 cyfry.");return;}
+            localStorage.setItem("admin_pin",np);
+            setTab("allegro");return;
+          }
+          const entered=prompt("PIN administratora:");
+          if(entered===pin) setTab("allegro");
+          else alert("Błędny PIN.");
+        }}>🔒 Admin</button>
       </div>
+      {(tab==="allegro"||tab==="ustawienia"||tab==="historia")&&(
+        <div style={{background:"#080e08",borderBottom:"1px solid #1e2a1e",display:"flex",gap:0,paddingLeft:32}}>
+          <button className={`tab ${tab==="allegro"?"on":""}`} onClick={()=>setTab("allegro")} style={{fontSize:11,padding:"7px 14px"}}>🛒 Allegro</button>
+          <button className={`tab ${tab==="ustawienia"?"on":""}`} onClick={()=>setTab("ustawienia")} style={{fontSize:11,padding:"7px 14px"}}>⚙️ Chmura</button>
+          <button className={`tab ${tab==="historia"?"on":""}`} onClick={()=>setTab("historia")} style={{fontSize:11,padding:"7px 14px"}}>📁 Historia</button>
+        </div>
+      )}
 
       <div style={{padding:16,maxWidth:1100,margin:"0 auto"}}>
 
-        {/* ══ NOWE ══ */}
+        {/* ══ DODAJ ZAMÓWIENIE ══ */}
         {tab==="nowe" && (
           <div className="grid2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
             <div style={{display:"flex",flexDirection:"column",gap:14}}>
@@ -741,7 +793,7 @@ function App() {
                         <span style={{color:"#5a9a5a"}}>🔗 JEDN: <strong style={{color:"#9fcf9f"}}>{obliczJedn(poz.szerokosc,poz.wysokosc,poz.ilosc)} mb</strong></span>
                         <span style={{color:"#5a9a5a"}}>📎 Blaszek: <strong style={{color:"#9fcf9f"}}>8 szt</strong></span>
                         <span style={{color:"#5a9a5a"}}>📐 <strong style={{color:"#dfdf8f"}}>{blaszRoz} mm</strong>
-                          <span style={{color:"#3a6a3a",fontSize:11}}> ({g}-9={g-9}→{blaszRoz})</span>
+                          <span style={{color:"#3a6a3a",fontSize:11}}> (głęb {g}mm → blaszka {blaszRoz}mm)</span>
                         </span>
                       </div>
                     )}
@@ -759,7 +811,7 @@ function App() {
           </div>
         )}
 
-        {/* ══ BAZA ══ */}
+        {/* ══ ZAMÓWIENIA ══ */}
         {tab==="baza" && (
           <div>
             <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
@@ -767,6 +819,10 @@ function App() {
               <select value={filterFirma} onChange={e=>setFilterFirma(e.target.value)} style={{width:"auto"}}>
                 <option value="">Wszystkie firmy</option>
                 {FIRMY.map(f=><option key={f.kod} value={f.kod}>{f.kod} — {f.nazwa}</option>)}
+              </select>
+              <select value={filterYear} onChange={e=>{setFilterYear(e.target.value);setFilterMonth("");}} style={{width:"auto"}}>
+                <option value="wszystkie">Wszystkie lata</option>
+                {years.map(y=><option key={y} value={y}>{y}</option>)}
               </select>
               <select value={filterMonth} onChange={e=>setFilterMonth(e.target.value)} style={{width:"auto"}}>
                 <option value="">Wszystkie miesiące</option>
@@ -966,6 +1022,74 @@ function App() {
         )}
 
         {/* ══ KALKULATOR ══ */}
+        {tab==="historia" && (
+          <div>
+            <div style={{fontSize:11,color:"#3a6a3a",letterSpacing:".15em",textTransform:"uppercase",marginBottom:14}}>📁 Historia zamówień</div>
+            <div style={{display:"flex",gap:10,marginBottom:16,alignItems:"center"}}>
+              {["2024","2025","2026"].map(y=>(
+                <button key={y} className={`tab ${histYear===y?"on":""}`} onClick={()=>setHistYear(y)} style={{padding:"7px 18px"}}>{y}</button>
+              ))}
+              <label className="btn-sm" style={{cursor:"pointer",marginLeft:16}}>
+                📂 Importuj CSV {histYear}
+                <input type="file" accept=".csv" style={{display:"none"}} onChange={e=>{
+                  const file=e.target.files[0]; if(!file) return;
+                  const reader=new FileReader();
+                  reader.onload=ev=>importHistCSV(histYear,ev.target.result);
+                  reader.readAsText(file,"UTF-8");
+                  e.target.value="";
+                }}/>
+              </label>
+              {(histOrders[histYear]||[]).length>0&&(
+                <button className="btn-sm" style={{color:"#cf7f7f",borderColor:"#6a2a2a"}} onClick={()=>{if(confirm("Usunąć dane roku "+histYear+"?")){const u={...histOrders};delete u[histYear];setHistOrders(u);localStorage.setItem("hist_orders",JSON.stringify(u));}}}>🗑 Wyczyść {histYear}</button>
+              )}
+            </div>
+            {(()=>{
+              const ords=histOrders[histYear]||[];
+              if(ords.length===0) return <div style={{color:"#3a6a3a",textAlign:"center",padding:40}}>Brak danych — importuj plik CSV<br/><span style={{fontSize:11,opacity:.7}}>Format: ten sam co eksport ⬇ CSV z zakładki Baza</span></div>;
+              const s=getHistStats(ords);
+              return <>
+                <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
+                  {[["Moskitier",s.totalMosk,"szt"],["Linka",s.totalLinka,"mb"],["Blaszki",s.totalBlaszki,"szt"]].map(([l,v,u])=>(
+                    <div key={l} className="stat"><div className="stat-n">{v}</div><div style={{fontSize:12,color:"#7fcf7f"}}>{u}</div><div className="stat-l">{l}</div></div>
+                  ))}
+                </div>
+                <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:16}}>
+                  {Object.entries(s.firmaCount).map(([f,n])=>(
+                    <div key={f} style={{background:"#182818",border:"1px solid #2a4a2a",borderRadius:6,padding:"6px 14px",fontSize:12}}>
+                      <span className="firma-badge">{f}</span><span style={{color:"#9fcf9f",fontWeight:700,marginLeft:8}}>{n} szt</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{overflowX:"auto"}}>
+                  <table className="main" style={{fontSize:11}}>
+                    <thead><tr style={{background:"#1a2a1a"}}>
+                      <th>Nr</th><th>Firma</th><th>Data</th><th>Klient</th><th>Miasto</th><th>Szer</th><th>Wys</th><th>Głęb</th><th>Kolor ramki</th><th>Kolor siatki</th><th>Bl.</th><th>Szt</th>
+                    </tr></thead>
+                    <tbody>
+                      {ords.flatMap(o=>o.pozycje.map((p,i)=>(
+                        <tr key={o.id+"-"+i} className="tr">
+                          {i===0?<td rowSpan={o.pozycje.length} style={{color:"#dfcf5f",fontWeight:700,verticalAlign:"top",paddingTop:8}}>{o.numerZlecenia}</td>:null}
+                          {i===0?<td rowSpan={o.pozycje.length} style={{verticalAlign:"top",paddingTop:8}}><span className="firma-badge">{o.firma}</span></td>:null}
+                          {i===0?<td rowSpan={o.pozycje.length} style={{color:"#7a9a7a",verticalAlign:"top",paddingTop:8,fontSize:10}}>{o.data}</td>:null}
+                          {i===0?<td rowSpan={o.pozycje.length} style={{color:"#a0cf9f",verticalAlign:"top",paddingTop:8}}>{o.klientImie}</td>:null}
+                          {i===0?<td rowSpan={o.pozycje.length} style={{color:"#7a9a7a",verticalAlign:"top",paddingTop:8,fontSize:10}}>{o.klientMiasto}</td>:null}
+                          <td style={{fontWeight:700}}>{p.szerokosc}</td>
+                          <td style={{fontWeight:700}}>{p.wysokosc}</td>
+                          <td style={{fontSize:10}}>{p.glebokosc}</td>
+                          <td style={{fontSize:10}}>{p.kolorRamki}</td>
+                          <td style={{fontSize:10}}>{p.kolorSiatki}</td>
+                          <td>{p.blaszRozmiar}</td>
+                          <td style={{fontWeight:700}}>{p.ilosc}</td>
+                        </tr>
+                      )))}
+                    </tbody>
+                  </table>
+                </div>
+              </>;
+            })()}
+          </div>
+        )}
+
         {tab==="kalk" && (
           <div style={{height:"calc(100vh - 120px)"}}>
             <iframe
