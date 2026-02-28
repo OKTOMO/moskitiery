@@ -393,15 +393,16 @@ function drukujPDF_drzwi(order) {
     const wys2Val=parseFloat(p.wys2)||"";
     const krotszy=Math.min(s,w);
     const siatkaSzer=krotszy<=90?"100cm":krotszy<=130?"140cm":"160cm";
-    return `<tr>
+    const rowBg=i===0?"background:#e8f0ff":i%2===0?"background:#f8f8f8":"";
+    return `<tr style="${rowBg}">
       <td>${i+1}</td><td>MOS.DRzW.</td>
       <td class="wymiar">${s}</td><td class="wymiar" style="color:#ccc">${szer2Val||"—"}</td>
       <td class="wymiar">${w}</td><td class="wymiar" style="color:#ccc">${wys2Val||"—"}</td>
-      <td class="wymiar">${popDl}</td>
+      <td class="wymiar" style="${popDl==='—'?'color:#cc3300':''}">${popDl}</td>
       <td class="kolor">${(p.kolorRamki||"").replace("Turner Oak","T.Oak").replace("Ciemny Dąb","C.Dąb").replace("Złoty Dąb","Z.Dąb").replace("Winchester","Winch.")}</td>
       <td class="kolor">${(p.kolorSiatki||"").replace("Czarna","Czarn.").replace("Szara","Szara")}</td>
       <td style="font-size:9px;font-weight:700">${siatkaSzer}</td>
-      <td>${(p.zawias||"L")+samoLabel}</td>
+      <td style="font-weight:700">${(p.zawias||"L")+samoLabel} <span style="color:#888;font-size:9px">×${parseInt(p.samodomykajacy)>0?1:2}</span></td>
       <td class="wymiar">${il}</td>
       <td class="wymiar">${p.poprzeczka?il:0}</td>
       ${p.uwagi?`<td colspan="13" style="text-align:left;font-size:9px;color:#555;font-style:italic">→ ${p.uwagi}</td>`:""}
@@ -1116,9 +1117,10 @@ function App() {
                             </select>
                           </div>
                           <div><span className="lbl">Poprzeczka</span>
-                            <select value={poz.poprzeczka?"tak":"nie"} onChange={e=>updPoz(i,"poprzeczka",e.target.value==="tak")}>
-                              <option value="tak">Tak</option>
-                              <option value="nie">Nie</option>
+                            <select value={poz.poprzeczka?"tak":"nie"} onChange={e=>updPoz(i,"poprzeczka",e.target.value==="tak")}
+                              style={{color:poz.poprzeczka?"inherit":"#df5f5f"}}>
+                              <option value="tak">✓ Tak</option>
+                              <option value="nie">✗ Nie</option>
                             </select>
                           </div>
                           <div><span className="lbl">Samodom. szt</span>
@@ -1136,6 +1138,7 @@ function App() {
                             <span style={{color:"#90b8df"}}>🖌 Szczotka: <strong>{szcMb} mb</strong></span>
                             <span style={{color:"#90b8df"}}>📦 Karton: <strong>{il} szt</strong></span>
                             {poz.samodomykajacy>0&&<span style={{color:"#dfcf5f",fontWeight:700}}>⚡ Samodomykające: <strong>{poz.samodomykajacy} szt</strong></span>}
+                            {!poz.poprzeczka&&<span style={{color:"#df5f5f",fontWeight:700}}>✗ BEZ POPRZECZKI</span>}
                           </div>;
                         })()}
                         <div style={{marginTop:8}}>
