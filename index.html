@@ -132,8 +132,10 @@ async function cloudLoad() {
 }
 async function cloudSave(o){ try{await window.storage.set(STORAGE_KEY,JSON.stringify(o),true);}catch{} }
 
-async function parseAI(msg, adres) {
+async function parseAI(msg, adres, typ) {
   const prompt=`Wyodrębnij dane z wiadomości i zwróć TYLKO JSON bez markdown.
+
+TYP ZAMÓWIENIA: ${typ==="drzwi"?"DRZWI MOSKITIEROWE — ustaw isDrzwi:true dla wszystkich pozycji":"OKNA MOSKITIEROWE — ustaw isDrzwi:false dla wszystkich pozycji"}
 
 STRUKTURA JSON:
 {
@@ -500,6 +502,7 @@ function App() {
   const [wiadomosc,setWiadomosc]=useState("");
   const [adres,setAdres]=useState("");
   const [parsing,setParsing]=useState(false);
+  const [parseTyp,setParseTyp]=useState("okno");
   const [form,setForm]=useState(()=>pustyForm(localStorage.getItem("active_profile")||"F"));
   const [numerOverride,setNumerOverride]=useState("");
   const [saved,setSaved]=useState(false);
@@ -567,7 +570,7 @@ function App() {
     if(!wiadomosc.trim()&&!adres.trim()) return;
     setParsing(true); setSaved(false);
     try {
-      const r=await parseAI(wiadomosc,adres);
+      const r=await parseAI(wiadomosc,adres,parseTyp);
       setForm(f=>({
         ...f,
         klientImie:   r.klientImie   ||f.klientImie,
@@ -914,8 +917,19 @@ function App() {
                   placeholder={"Wklej dane adresowe z Allegro:\n\nNp: Kowalski Jan\nul. Kwiatowa 5/10\n00-001 Warszawa\nPL +48600000000"}
                   style={{height:90,resize:"vertical",marginBottom:10}}/>
 
+                <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:6}}>
+                  <span style={{fontSize:11,color:"#3a6a3a"}}>Parsuj jako:</span>
+                  <button onClick={()=>setParseTyp("okno")} style={{padding:"4px 12px",fontSize:11,borderRadius:4,border:"1px solid",cursor:"pointer",
+                    background:parseTyp==="okno"?"#1a3a1a":"transparent",
+                    color:parseTyp==="okno"?"#9fcf9f":"#3a6a3a",
+                    borderColor:parseTyp==="okno"?"#2a6a2a":"#1e3a1e"}}>🪟 Okno</button>
+                  <button onClick={()=>setParseTyp("drzwi")} style={{padding:"4px 12px",fontSize:11,borderRadius:4,border:"1px solid",cursor:"pointer",
+                    background:parseTyp==="drzwi"?"#1a2a4a":"transparent",
+                    color:parseTyp==="drzwi"?"#90b8df":"#3a5a8a",
+                    borderColor:parseTyp==="drzwi"?"#2a4a8a":"#1e2a4e"}}>🚪 Drzwi</button>
+                </div>
                 <button className="btn" style={{width:"100%"}} onClick={handleParse} disabled={parsing||(!wiadomosc.trim()&&!adres.trim())}>
-                  {parsing?<><span className="spin">⟳</span> Parsowanie AI...</>:"🤖 Parsuj z AI →"}
+                  {parsing?<><span className="spin">⟳</span> Parsowanie AI...</>:`🤖 Parsuj z AI → ${parseTyp==="drzwi"?"(drzwi)":"(okna)"}`}
                 </button>
               </div>
 
