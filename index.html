@@ -188,10 +188,10 @@ WAŻNE:
 - Miasto wyciągnij z adresu
 
 WIADOMOŚĆ OD KLIENTA:
-\${msg||"(brak)"}
+${msg||"(brak)"}
 
 DANE ADRESOWE Z ALLEGRO:
-\${adres||"(brak)"}\`;
+${adres||"(brak)"}`;
 
   const claudeKey=localStorage.getItem("claude_api_key")||"";
   if(!claudeKey){throw new Error("Brak klucza API Claude — wpisz go w ustawieniach");}
