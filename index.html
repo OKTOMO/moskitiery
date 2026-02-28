@@ -153,6 +153,8 @@ STRUKTURA JSON:
     }
   ],
   "klientImie": string,
+  "klientUlica": string,
+  "klientKod": string,
   "klientMiasto": string,
   "telefon": string,
   "uwagi": string
@@ -211,7 +213,8 @@ KOLOR SIATKI: Czarna lub Szara (domyślnie Czarna)
 WAŻNE:
 - Identyczne pozycje (same wymiary+kolory+typ) → scal sumując ilości
 - Imię/nazwisko w formacie: Nazwisko Imię
-- Miasto wyciągnij z adresu
+- Imię/nazwisko w formacie: Nazwisko Imię
+- Z adresu wyciągnij: klientUlica (ulica + nr domu), klientKod (XX-XXX), klientMiasto (miejscowość)
 - WYMIARY: szerokosc zawsze mniejsza wartość, wysokosc zawsze większa. Np. klient podał "214 x 81,5" → szerokosc=81.5, wysokosc=214. Dotyczy zarówno okien jak i drzwi.
 
 WIADOMOŚĆ OD KLIENTA:
@@ -264,7 +267,7 @@ function obliczDrzwi(pozycje){
   });
   return {profilMb:r(profilMb),narozniki,poprzeczki,uchwyty,zawiasy,samodomykajace,magnesy,klamki,uszczelkaMb:r(uszczelkaMb),szczotkaMb:r(szczotkaMb),kartony,radelka,instrukcje,wkrety,siatkaCz100:r(siatkaCz100),siatkaCz140:r(siatkaCz140),siatkaCz160:r(siatkaCz160),siatkaSz100:r(siatkaSz100),siatkaSz140:r(siatkaSz140),siatkaSz160:r(siatkaSz160)};
 }
-function pustyForm(firma="F"){ return {data:new Date().toISOString().slice(0,10),firma,klientImie:"",klientMiasto:"",telefon:"",uwagi:"",pozycje:[pustaPoz()]}; }
+function pustyForm(firma="F"){ return {data:new Date().toISOString().slice(0,10),firma,klientImie:"",klientUlica:"",klientKod:"",klientMiasto:"",telefon:"",uwagi:"",pozycje:[pustaPoz()]}; }
 
 // ─── PDF ──────────────────────────────────────────────────────────────────────
 function drukujPDF(order) {
@@ -286,7 +289,7 @@ function drukujPDF(order) {
       <td class="jedn">${jedn||""}</td>
       <td class="wymiar">${s||""}</td>
       <td class="wymiar">${w||""}</td>
-      <td class="kolor">${(p.kolorRamki||"").replace("Turner Oak","T.Oak").replace("Ciemny Dąb","C.Dąb").replace("Złoty Dąb","Z.Dąb").replace("Winchester","Winch.")}</td>
+      <td class="kolor">${p.kolorRamki||""}</td>
       <td class="kolor">${(p.kolorSiatki||"").replace("Czarna","Czarn.").replace("Szara","Szara")}</td>
       <td class="wymiar">${blaszRoz}</td>
       <td class="wymiar">${il}</td>
@@ -327,7 +330,8 @@ table.main tr:nth-child(even) td{background:#f5f5f5}
   <div class="big-litera">${firma}</div>
   <div class="info-grid">
     <div class="lbl">KLIENT</div><div class="val">${order.klientImie||"—"}</div>
-    <div class="lbl">MIASTO</div><div class="val">${order.klientMiasto||"—"}${order.telefon?" &nbsp;·&nbsp; "+order.telefon:""}</div>
+    <div class="lbl">ADRES</div><div class="val">${order.klientUlica||""} ${order.klientKod?"· "+order.klientKod:""} ${order.klientMiasto||"—"}</div>
+    <div class="lbl">TEL</div><div class="val">${order.telefon||"—"}</div>
     <div class="lbl">DATA</div><div class="val">${formatDate(order.data)}</div>
     <div class="lbl">NR ZAM.</div><div class="val nr">${order.numerZlecenia||"—"}</div>
   </div>
@@ -399,10 +403,10 @@ function drukujPDF_drzwi(order) {
       <td class="wymiar">${s}</td><td class="wymiar" style="color:#ccc">${szer2Val||"—"}</td>
       <td class="wymiar">${w}</td><td class="wymiar" style="color:#ccc">${wys2Val||"—"}</td>
       <td class="wymiar" style="${popDl==='—'?'color:#cc3300':''}">${popDl}</td>
-      <td class="kolor">${(p.kolorRamki||"").replace("Turner Oak","T.Oak").replace("Ciemny Dąb","C.Dąb").replace("Złoty Dąb","Z.Dąb").replace("Winchester","Winch.")}</td>
+      <td class="kolor">${p.kolorRamki||""}</td>
       <td class="kolor">${(p.kolorSiatki||"").replace("Czarna","Czarn.").replace("Szara","Szara")}</td>
       <td style="font-size:9px;font-weight:700">${siatkaSzer}</td>
-      <td style="font-weight:700">${(p.zawias||"L")+samoLabel} <span style="color:#888;font-size:9px">×${parseInt(p.samodomykajacy)>0?1:2}</span></td>
+      <td style="font-weight:700">${(p.zawias||"L")} <span style="font-size:11px">×2</span>${samoLabel}</td>
       <td class="wymiar">${il}</td>
       <td class="wymiar">${p.poprzeczka?il:0}</td>
       ${p.uwagi?`<td colspan="13" style="text-align:left;font-size:9px;color:#555;font-style:italic">→ ${p.uwagi}</td>`:""}
@@ -442,7 +446,8 @@ table.main td.kolor{font-size:10px;font-weight:700}
   <div class="big-litera">🚪${firma}</div>
   <div class="info-grid">
     <div class="lbl">KLIENT</div><div class="val">${order.klientImie||"—"}</div>
-    <div class="lbl">MIASTO</div><div class="val">${order.klientMiasto||"—"}${order.telefon?" &nbsp;·&nbsp; "+order.telefon:""}</div>
+    <div class="lbl">ADRES</div><div class="val">${order.klientUlica||""} ${order.klientKod?"· "+order.klientKod:""} ${order.klientMiasto||"—"}</div>
+    <div class="lbl">TEL</div><div class="val">${order.telefon||"—"}</div>
     <div class="lbl">DATA</div><div class="val">${formatDate(order.data)}</div>
     <div class="lbl">NR ZAM.</div><div class="val nr">${order.numerZlecenia||"—"} 🚪</div>
   </div>
@@ -632,6 +637,8 @@ function App() {
       setForm(f=>({
         ...f,
         klientImie:   r.klientImie   ||f.klientImie,
+        klientUlica:  r.klientUlica  ||f.klientUlica,
+        klientKod:    r.klientKod    ||f.klientKod,
         klientMiasto: r.klientMiasto ||f.klientMiasto,
         telefon:      r.telefon      ||f.telefon,
         uwagi:        f.uwagi, // uwagi klienta NIE lecą automatycznie
@@ -678,7 +685,7 @@ function App() {
     const numer=numerOverride||nextNumer(orders,form.firma);
     const order={
       id:Date.now(), numerZlecenia:numer, firma:form.firma, data:form.data,
-      klientImie:form.klientImie, klientMiasto:form.klientMiasto,
+      klientImie:form.klientImie, klientUlica:form.klientUlica||"", klientKod:form.klientKod||"", klientMiasto:form.klientMiasto,
       telefon:form.telefon, uwagi:form.uwagi,
       pozycje:form.pozycje.map(p=>p.isDrzwi?({
         ...p,
@@ -1012,8 +1019,18 @@ function App() {
                     <input value={form.klientImie} onChange={e=>setForm(f=>({...f,klientImie:e.target.value}))} placeholder="Kowalski Jan"/>
                   </div>
                   <div>
-                    <span className="lbl">Miasto</span>
-                    <input value={form.klientMiasto} onChange={e=>setForm(f=>({...f,klientMiasto:e.target.value}))} placeholder="Warszawa"/>
+                    <span className="lbl">Ulica</span>
+                    <input value={form.klientUlica||""} onChange={e=>setForm(f=>({...f,klientUlica:e.target.value}))} placeholder="ul. Kwiatowa 5/2"/>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"90px 1fr",gap:8}}>
+                    <div>
+                      <span className="lbl">Kod</span>
+                      <input value={form.klientKod||""} onChange={e=>setForm(f=>({...f,klientKod:e.target.value}))} placeholder="00-000"/>
+                    </div>
+                    <div>
+                      <span className="lbl">Miasto</span>
+                      <input value={form.klientMiasto} onChange={e=>setForm(f=>({...f,klientMiasto:e.target.value}))} placeholder="Warszawa"/>
+                    </div>
                   </div>
                   <div>
                     <span className="lbl">Telefon</span>
