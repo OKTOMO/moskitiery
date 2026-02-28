@@ -286,8 +286,8 @@ function drukujPDF(order) {
       <td class="jedn">${jedn||""}</td>
       <td class="wymiar">${s||""}</td>
       <td class="wymiar">${w||""}</td>
-      <td class="kolor">${p.kolorRamki||""}</td>
-      <td class="kolor">${p.kolorSiatki||""}</td>
+      <td class="kolor">${(p.kolorRamki||"").replace("Turner Oak","T.Oak").replace("Ciemny Dąb","C.Dąb").replace("Złoty Dąb","Z.Dąb").replace("Winchester","Winch.")}</td>
+      <td class="kolor">${(p.kolorSiatki||"").replace("Czarna","Czarn.").replace("Szara","Szara")}</td>
       <td class="wymiar">${blaszRoz}</td>
       <td class="wymiar">${il}</td>
     </tr>`;
@@ -395,11 +395,11 @@ function drukujPDF_drzwi(order) {
     const siatkaSzer=krotszy<=90?"100cm":krotszy<=130?"140cm":"160cm";
     return `<tr>
       <td>${i+1}</td><td>MOS.DRzW.</td>
-      <td class="wymiar">${s}</td><td class="wymiar" style="color:${szer2Val?"#c05000":"#bbb"}">${szer2Val||"—"}</td>
-      <td class="wymiar">${w}</td><td class="wymiar" style="color:${wys2Val?"#c05000":"#bbb"}">${wys2Val||"—"}</td>
+      <td class="wymiar">${s}</td><td class="wymiar" style="color:#ccc">${szer2Val||"—"}</td>
+      <td class="wymiar">${w}</td><td class="wymiar" style="color:#ccc">${wys2Val||"—"}</td>
       <td class="wymiar">${popDl}</td>
-      <td class="kolor">${p.kolorRamki||""}</td>
-      <td class="kolor">${p.kolorSiatki||""}</td>
+      <td class="kolor">${(p.kolorRamki||"").replace("Turner Oak","T.Oak").replace("Ciemny Dąb","C.Dąb").replace("Złoty Dąb","Z.Dąb").replace("Winchester","Winch.")}</td>
+      <td class="kolor">${(p.kolorSiatki||"").replace("Czarna","Czarn.").replace("Szara","Szara")}</td>
       <td style="font-size:9px;font-weight:700">${siatkaSzer}</td>
       <td>${(p.zawias||"L")+samoLabel}</td>
       <td class="wymiar">${il}</td>
@@ -425,9 +425,9 @@ body{font-family:Arial,sans-serif;font-size:10px;padding:10px 14px;color:#000;ba
 .info-grid .val.nr{font-size:20px;font-weight:900;color:#cc0000}
 table.main{width:100%;border-collapse:collapse;margin-bottom:6px}
 table.main th{background:#1a2a4a;color:#fff;padding:4px 3px;text-align:center;border:1px solid #555;font-size:8px;line-height:1.3}
-table.main td{padding:1px 3px;text-align:center;border:1px solid #bbb;height:22px;font-size:10px}
-table.main td.wymiar{font-size:14px;font-weight:900}
-table.main td.kolor{font-size:11px;font-weight:700}
+table.main td{padding:1px 3px;text-align:center;border:1px solid #bbb;height:26px;font-size:10px}
+table.main td.wymiar{font-size:18px;font-weight:900}
+table.main td.kolor{font-size:10px;font-weight:700}
 .sklad{margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .sklad table{width:100%;border-collapse:collapse;font-size:10px}
 .sklad table th{background:#2a3a1a;color:#fff;padding:4px;text-align:left;font-size:9px}
@@ -468,13 +468,13 @@ table.main td.kolor{font-size:11px;font-weight:700}
     <thead><tr><th>SKŁAD ZESTAWU</th><th style="text-align:right">ILOŚĆ</th><th></th></tr></thead>
     <tbody>
       <tr><td>Profil</td><td class="val">${d.profilMb}</td><td>mb</td></tr>
-      <tr><td>Narożnik (frez)</td><td class="val">${d.narozniki}</td><td>szt + śruby</td></tr>
+      <tr><td>Narożnik (frez)</td><td class="val">${d.narozniki}</td><td>szt</td></tr>
       <tr><td>Poprzeczka</td><td class="val">${d.poprzeczki}</td><td>szt</td></tr>
-      <tr><td>Uchwyt poprzeczki (L+P)</td><td class="val">${d.uchwyty}</td><td>kpl + śruby</td></tr>
-      <tr><td>Zawias uniwersalny</td><td class="val">${d.zawiasy}</td><td>szt + śruby</td></tr>
-      ${d.samodomykajace>0?`<tr><td>Zawias samodomykający</td><td class="val">${d.samodomykajace}</td><td>szt + śruby</td></tr>`:""}
-      <tr><td>Magnes + blaszka</td><td class="val">${d.magnesy}</td><td>szt + śruby</td></tr>
-      <tr><td>Klamka</td><td class="val">${d.klamki}</td><td>szt + śruby</td></tr>
+      <tr><td>Uchwyt poprzeczki (L+P)</td><td class="val">${d.uchwyty}</td><td>kpl</td></tr>
+      <tr><td>Zawias uniwersalny</td><td class="val">${d.zawiasy}</td><td>szt</td></tr>
+      ${d.samodomykajace>0?`<tr><td>Zawias samodomykający</td><td class="val">${d.samodomykajace}</td><td>szt</td></tr>`:""}
+      <tr><td>Magnes + blaszka</td><td class="val">${d.magnesy}</td><td>szt</td></tr>
+      <tr><td>Klamka</td><td class="val">${d.klamki}</td><td>szt</td></tr>
       <tr><td>Siatka</td><td class="val">na wymiar</td><td></td></tr>
       ${d.siatkaCz100>0?`<tr><td style="padding-left:12px;color:#555">↳ Czarna 100cm</td><td class="val">${d.siatkaCz100}</td><td>mb</td></tr>`:""}
       ${d.siatkaCz140>0?`<tr><td style="padding-left:12px;color:#555">↳ Czarna 140cm</td><td class="val">${d.siatkaCz140}</td><td>mb</td></tr>`:""}
@@ -482,7 +482,7 @@ table.main td.kolor{font-size:11px;font-weight:700}
       ${d.siatkaSz100>0?`<tr><td style="padding-left:12px;color:#555">↳ Szara 100cm</td><td class="val">${d.siatkaSz100}</td><td>mb</td></tr>`:""}
       ${d.siatkaSz140>0?`<tr><td style="padding-left:12px;color:#555">↳ Szara 140cm</td><td class="val">${d.siatkaSz140}</td><td>mb</td></tr>`:""}
       ${d.siatkaSz160>0?`<tr><td style="padding-left:12px;color:#555">↳ Szara 160cm</td><td class="val">${d.siatkaSz160}</td><td>mb</td></tr>`:""}
-      <tr><td>Lizak</td><td class="val">${totalSzt}</td><td>szt</td></tr>
+      <tr><td>Lizak (radełko)</td><td class="val">${totalSzt}</td><td>szt</td></tr>
     </tbody>
   </table>
   <table>
@@ -491,7 +491,6 @@ table.main td.kolor{font-size:11px;font-weight:700}
       <tr><td>Uszczelka/linka</td><td class="val">${d.uszczelkaMb}</td><td>mb</td></tr>
       <tr><td>Szczotka 5.5/6</td><td class="val">${d.szczotkaMb}</td><td>mb</td></tr>
       <tr><td>Karton</td><td class="val">${d.kartony}</td><td>szt</td></tr>
-      <tr><td>Radełko</td><td class="val">${d.radelka}</td><td>szt</td></tr>
       <tr><td>Instrukcja</td><td class="val">${d.instrukcje}</td><td>szt</td></tr>
       <tr><td>Wkręty</td><td class="val">${d.wkrety}</td><td>szt</td></tr>
     </tbody>
@@ -634,7 +633,7 @@ function App() {
         klientImie:   r.klientImie   ||f.klientImie,
         klientMiasto: r.klientMiasto ||f.klientMiasto,
         telefon:      r.telefon      ||f.telefon,
-        uwagi:        r.uwagi        ||f.uwagi,
+        uwagi:        f.uwagi, // uwagi klienta NIE lecą automatycznie
         pozycje: r.pozycje?.length ? r.pozycje.map(p=>p.isDrzwi?({
           isDrzwi:        true,
           szerokosc:      p.szerokosc   ||"",
