@@ -64,7 +64,7 @@ window.storage = {
 <script type="text/babel">
 const { useState, useEffect } = React;
 
-const KOLORY_RAMKI = ["Biały","Czarny","Antracyt","Brąz","Złoty dąb","Mahoń","Winchester","Srebrny","Złoty","Inne"];
+const KOLORY_RAMKI = ["Biały","Czarny","Antracyt","Brąz","Złoty Dąb","Winchester","Orzech","Ciemny Dąb","Mahoń","Turner Oak"];
 const KOLORY_SIATKI = ["Czarna","Szara"];
 const PROFIL_GLEBOKOS = 9;
 const BLASZKI_ROZMIARY = [0,3,5,7,9,12,15,18,20,22,25];
@@ -143,7 +143,7 @@ async function parseAI(msg, adres) {
 }
 Zasady wymiarów: Szer=B cm, Wys=A cm, Głęb=C mm; brak głębokości=null; brak siatki=null;
 WAŻNE: "Grubość ramy/profilu" to NIE jest głębokość C. Głębokość C to głębokość wnęki okiennej. Jeśli klient poda grubość ramy lub profilu, zignoruj to i ustaw głębokość=null.
-Kolor ramki z listy: Biały/Czarny/Antracyt RAL 7016/Brąz/Złoty dąb/Mahoń/Winchester/Srebrny/Złoty/Inne
+Kolor ramki z listy: Biały/Czarny/Antracyt/Brąz/Złoty Dąb/Winchester/Orzech/Ciemny Dąb/Mahoń/Turner Oak. Uwaga: "Woodeck" lub "Turner" = Turner Oak, "Antracyt RAL 7016" lub "RAL 7016" = Antracyt, "Winchester" może być skrócone jako "Winch".
 Kolor siatki: Czarna lub Szara
 WAŻNE: Jeśli klient podał kilka pozycji o identycznych wymiarach i kolorach, scal je w jedną pozycję sumując ilości. Np. trzy pozycje 67x214 Antracyt = jedna pozycja 67x214 ilosc:3.
 
