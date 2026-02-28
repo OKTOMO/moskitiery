@@ -170,13 +170,32 @@ DLA OKIEN (isDrzwi:false):
 - Blaszka, blaszki, clips, blaszek, mm blaszki — to BLASZKA MONTAŻOWA, ignoruj przy parsowaniu wymiarów
 
 DLA DRZWI (isDrzwi:true):
-- szerokosc = MNIEJSZA z podanych szerokości (cm)
-- szer2 = WIĘKSZA z podanych szerokości (cm), jeśli klient podał dwa wymiary szer; null jeśli jeden
-- wysokosc = MNIEJSZA z podanych wysokości (cm)
-- wys2 = WIĘKSZA z podanych wysokości (cm), jeśli klient podał dwa wymiary wys; null jeśli jedna
-- Przykład: klient pisze "98,5 / 102,5 x 216,5 / 220,5" → szerokosc=98.5, szer2=102.5, wysokosc=216.5, wys2=220.5
-- glebokosc = null (drzwi nie mają głębokości)
-- zawias = "L" lub "P" (lewy/prawy) — jeśli nie podano = "L"
+KLUCZOWA ZASADA: klient BARDZO CZĘSTO podaje 4 liczby dla jednych drzwi — to są dwa wymiary szerokości i dwa wymiary wysokości. To ZAWSZE jest JEDNA pozycja drzwi, NIE dwie osobne.
+
+Jak rozpoznać 4 wymiary jednych drzwi:
+- klient pisze np. "98,5 i 102,5 cm szerokość, 216,5 i 220,5 cm wysokość" → JEDNA pozycja
+- klient pisze "A=214, B=81,5, D=92" gdzie dwie wartości dotyczą jednego wymiaru → JEDNA pozycja  
+- klient pisze "98,5/102,5 x 216,5/220,5" → JEDNA pozycja
+- klient oznacza wymiary literami A,B,C,D — zwykle A i C to wysokości, B i D to szerokości (lub odwrotnie), ale zawsze chodzi o JEDNE drzwi
+
+Przypisanie wartości dla JEDNEJ pozycji drzwi:
+- szerokosc = MNIEJSZA wartość spośród szerokości
+- szer2 = WIĘKSZA wartość spośród szerokości (null jeśli podano tylko jedną)
+- wysokosc = MNIEJSZA wartość spośród wysokości
+- wys2 = WIĘKSZA wartość spośród wysokości (null jeśli podano tylko jedną)
+
+Przykłady parsowania:
+"A=214cm, B=81,5cm, D=92cm" (A=wys, B=szer min, D=szer max) → szerokosc=81.5, szer2=92, wysokosc=214, wys2=null
+"98,5/102,5 x 216,5/220,5" → szerokosc=98.5, szer2=102.5, wysokosc=216.5, wys2=220.5
+"szerokość 80cm i 84cm, wysokość 210cm" → szerokosc=80, szer2=84, wysokosc=210, wys2=null
+
+Dwie OSOBNE pozycje drzwi tylko gdy klient wyraźnie opisuje DWA różne otwory/miejsca montażu z RÓŻNYMI wymiarami.
+UWAGA: jeśli klient podaje "2 sztuki" lub "2 szt" przy jednym zestawie wymiarów (nawet 4 liczbach) → to JEDNA pozycja z ilosc=2, NIE dwie osobne pozycje.
+Przykład: "2 szt, 98,5/102,5 x 216/220" → jedna pozycja: szerokosc=98.5, szer2=102.5, wysokosc=216, wys2=220, ilosc=2
+
+Pozostałe pola:
+- glebokosc = null
+- zawias = "L" lub "P" — jeśli nie podano = "L"
 - poprzeczka = true/false — jeśli nie podano = true
 - samodomykajacy = liczba zawiasów samodomykających (0 jeśli nie podano)
 
