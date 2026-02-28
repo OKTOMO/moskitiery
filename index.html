@@ -133,27 +133,65 @@ async function cloudLoad() {
 async function cloudSave(o){ try{await window.storage.set(STORAGE_KEY,JSON.stringify(o),true);}catch{} }
 
 async function parseAI(msg, adres) {
-  const prompt=`Wyodrębnij dane z dwóch źródeł i zwróć TYLKO JSON bez markdown:
+  const prompt=`Wyodrębnij dane z wiadomości i zwróć TYLKO JSON bez markdown.
+
+STRUKTURA JSON:
 {
-  "pozycje":[{"szerokosc":number,"wysokosc":number,"glebokosc":number_or_null,"kolorRamki":string_or_null,"kolorSiatki":string_or_null,"ilosc":number}],
-  "klientImie":string,
-  "klientMiasto":string,
-  "telefon":string,
-  "uwagi":string
+  "pozycje": [
+    {
+      "isDrzwi": false,
+      "szerokosc": number,
+      "wysokosc": number,
+      "glebokosc": number_or_null,
+      "kolorRamki": string,
+      "kolorSiatki": string,
+      "ilosc": number
+    }
+  ],
+  "klientImie": string,
+  "klientMiasto": string,
+  "telefon": string,
+  "uwagi": string
 }
-Zasady wymiarów: Szer=B cm, Wys=A cm, Głęb=C mm; brak głębokości=null; brak siatki=null;
-WAŻNE: "Grubość ramy/profilu" to NIE jest głębokość C. Głębokość C to głębokość wnęki okiennej. Jeśli klient poda grubość ramy lub profilu, zignoruj to i ustaw głębokość=null.
-Kolor ramki z listy: Biały/Czarny/Antracyt/Brąz/Złoty Dąb/Winchester/Orzech/Ciemny Dąb/Mahoń/Turner Oak. Uwaga: "Woodeck" lub "Turner" = Turner Oak, "Antracyt RAL 7016" lub "RAL 7016" = Antracyt, "Winchester" może być skrócone jako "Winch".
-Kolor siatki: Czarna lub Szara
-WAŻNE: Jeśli klient podał kilka pozycji o identycznych wymiarach i kolorach, scal je w jedną pozycję sumując ilości. Np. trzy pozycje 67x214 Antracyt = jedna pozycja 67x214 ilosc:3.
 
-WIADOMOŚĆ OD KLIENTA (wymiary i kolory):
-${msg||"(brak)"}
+ROZPOZNAWANIE TYPU:
+- isDrzwi=true gdy klient pisze: "drzwi", "drzwiowe", "moskitiera drzwiowa", "balkonowe drzwi" itp.
+- isDrzwi=false gdy mowa o oknie, rolecie, moskitierze okiennej (domyślnie)
+- W jednym zamówieniu mogą być i okna (isDrzwi:false) i drzwi (isDrzwi:true)
 
-DANE ADRESOWE Z ALLEGRO (imię, nazwisko, miasto, telefon):
-${adres||"(brak)"}
+DLA OKIEN (isDrzwi:false):
+- szerokosc = szerokość otworu w cm
+- wysokosc = wysokość otworu w cm
+- glebokosc = głębokość wnęki C w mm (NIE grubość ramy/profilu — jeśli klient poda grubość ramy, ustaw null)
+- Blaszka, blaszki, clips, blaszek, mm blaszki — to BLASZKA MONTAŻOWA, ignoruj przy parsowaniu wymiarów
 
-Imię i nazwisko wpisz w formacie: Nazwisko Imię (najpierw nazwisko). Wyciągnij miasto z adresu.`;
+DLA DRZWI (isDrzwi:true):
+- szerokosc = szerokość otworu drzwiowego w cm
+- wysokosc = wysokość otworu drzwiowego w cm
+- glebokosc = null (drzwi nie mają głębokości)
+- zawias = "L" lub "P" (lewy/prawy) — jeśli nie podano = "L"
+- poprzeczka = true/false — jeśli nie podano = true
+- samodomykajacy = liczba zawiasów samodomykających (0 jeśli nie podano)
+
+KOLORY RAMKI (tylko z tej listy):
+Biały, Czarny, Antracyt, Brąz, Złoty Dąb, Winchester, Orzech, Ciemny Dąb, Mahoń, Turner Oak
+- "Woodeck", "Turner", "Turner/Woodeck" → Turner Oak
+- "RAL 7016", "Antracyt RAL 7016", "grafitowy" → Antracyt
+- "Winch" → Winchester
+- Jeśli nie rozpoznajesz → Antracyt (domyślny)
+
+KOLOR SIATKI: Czarna lub Szara (domyślnie Czarna)
+
+WAŻNE:
+- Identyczne pozycje (same wymiary+kolory+typ) → scal sumując ilości
+- Imię/nazwisko w formacie: Nazwisko Imię
+- Miasto wyciągnij z adresu
+
+WIADOMOŚĆ OD KLIENTA:
+\${msg||"(brak)"}
+
+DANE ADRESOWE Z ALLEGRO:
+\${adres||"(brak)"}\`;
 
   const claudeKey=localStorage.getItem("claude_api_key")||"";
   if(!claudeKey){throw new Error("Brak klucza API Claude — wpisz go w ustawieniach");}
@@ -536,7 +574,18 @@ function App() {
         klientMiasto: r.klientMiasto ||f.klientMiasto,
         telefon:      r.telefon      ||f.telefon,
         uwagi:        r.uwagi        ||f.uwagi,
-        pozycje: r.pozycje?.length ? r.pozycje.map(p=>({
+        pozycje: r.pozycje?.length ? r.pozycje.map(p=>p.isDrzwi?({
+          isDrzwi:        true,
+          szerokosc:      p.szerokosc   ||"",
+          wysokosc:       p.wysokosc    ||"",
+          kolorRamki:     p.kolorRamki  ||"Antracyt",
+          kolorSiatki:    p.kolorSiatki ||"Czarna",
+          zawias:         p.zawias      ||"L",
+          poprzeczka:     p.poprzeczka!=null?p.poprzeczka:true,
+          samodomykajacy: p.samodomykajacy||0,
+          ilosc:          p.ilosc       ||1,
+          uwagi:          p.uwagi       ||""
+        }):({
           szerokosc:   p.szerokosc   ||"",
           wysokosc:    p.wysokosc    ||"",
           glebokosc:   p.glebokosc!=null?String(p.glebokosc):String(DOMYSLNA_GLEBOKOS),
@@ -550,7 +599,16 @@ function App() {
   }
 
   function updPoz(i,field,val){
-    setForm(f=>{const p=[...f.pozycje];p[i]={...p[i],[field]:val};return {...f,pozycje:p};});
+    setForm(f=>{
+      const p=[...f.pozycje];
+      if(field==="isDrzwi"){
+        // reset pól przy zmianie typu
+        p[i]=val?pustaPozDrzwi():{...pustaPoz(),szerokosc:p[i].szerokosc,wysokosc:p[i].wysokosc,kolorRamki:p[i].kolorRamki,kolorSiatki:p[i].kolorSiatki,ilosc:p[i].ilosc};
+      } else {
+        p[i]={...p[i],[field]:val};
+      }
+      return {...f,pozycje:p};
+    });
   }
 
   function handleSave(){
@@ -914,6 +972,12 @@ function App() {
                   <button className="btn-sm" onClick={()=>setForm(f=>({...f,pozycje:[...f.pozycje,pustaPoz()]}))}>+ Okno</button>
                   <button className="btn-sm" style={{background:"#1e2a3e",color:"#90b8df",borderColor:"#2a4a6a"}} onClick={()=>setForm(f=>({...f,pozycje:[...f.pozycje,pustaPozDrzwi()]}))}>+ Drzwi</button>
                 </div>
+                <div style={{fontSize:11,color:"#3a5a3a"}}>
+                  {form.pozycje.filter(p=>!p.isDrzwi).length>0&&<span>🪟 {form.pozycje.filter(p=>!p.isDrzwi).length} okno</span>}
+                  {form.pozycje.some(p=>p.isDrzwi)&&form.pozycje.some(p=>!p.isDrzwi)&&<span> + </span>}
+                  {form.pozycje.filter(p=>p.isDrzwi).length>0&&<span style={{color:"#6090cf"}}>🚪 {form.pozycje.filter(p=>p.isDrzwi).length} drzwi</span>}
+                  {form.pozycje.some(p=>p.isDrzwi)&&form.pozycje.some(p=>!p.isDrzwi)&&<span style={{color:"#dfcf5f",marginLeft:6}}>→ 2× PDF + 1× list</span>}
+                </div>
               </div>
 
               <div style={{overflowY:"auto",maxHeight:480,display:"flex",flexDirection:"column",gap:10}}>
@@ -923,8 +987,21 @@ function App() {
                 const blaszRoz=obliczRozmiarBlaszki(g);
                 return (
                   <div key={i} style={{background:"#0c1a0c",border:"1px solid #1e3a1e",borderRadius:6,padding:14,flexShrink:0}}>
-                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:10}}>
-                      <span style={{fontSize:13,color:poz.isDrzwi?"#90b8df":"#5a9a5a",fontWeight:700}}>{poz.isDrzwi?"🚪":"🪟"} Pozycja {i+1} {poz.isDrzwi?"— DRZWI":""}</span>
+                    <div style={{display:"flex",justifyContent:"space-between",marginBottom:10,alignItems:"center"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <span style={{fontSize:13,color:poz.isDrzwi?"#90b8df":"#5a9a5a",fontWeight:700}}>Pozycja {i+1}</span>
+                        <button onClick={()=>updPoz(i,"isDrzwi",!poz.isDrzwi)} style={{
+                          background:poz.isDrzwi?"#1e2a4a":"#1a3a1a",
+                          border:`2px solid ${poz.isDrzwi?"#4a7abf":"#2a7a2a"}`,
+                          borderRadius:20,padding:"3px 12px",cursor:"pointer",
+                          color:poz.isDrzwi?"#90b8df":"#7fcf7f",
+                          fontSize:12,fontWeight:700,display:"flex",alignItems:"center",gap:5
+                        }}>
+                          <span>{poz.isDrzwi?"🚪":"🪟"}</span>
+                          <span>{poz.isDrzwi?"DRZWI":"OKNO"}</span>
+                          <span style={{fontSize:10,opacity:.6}}>↔</span>
+                        </button>
+                      </div>
                       {form.pozycje.length>1&&<button className="btn-del" onClick={()=>setForm(f=>({...f,pozycje:f.pozycje.filter((_,j)=>j!==i)}))}>✕</button>}
                     </div>
                     {poz.isDrzwi?(
