@@ -1085,10 +1085,10 @@ function App() {
       }
       const msgBody={text:msgNewText.trim()};
       if(attIds.length>0) msgBody.attachments=attIds;
-      const r=await fetch("https://allegro-proxy.favour-biuro.workers.dev/api/messaging/threads",{
+      const r=await fetch("https://allegro-proxy.favour-biuro.workers.dev/api/messaging/messages",{
         method:"POST",
         headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json","Content-Type":"application/vnd.allegro.public.v1+json"},
-        body:JSON.stringify({interlocutor:{login:msgNewLogin.trim()},message:msgBody})
+        body:JSON.stringify({recipient:{login:msgNewLogin.trim()},text:msgNewText.trim(),attachments:attIds})
       });
       if(!r.ok){
         let errText="";
