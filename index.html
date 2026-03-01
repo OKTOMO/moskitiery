@@ -545,7 +545,9 @@ function App() {
     const buyer=d.buyer||{};
     const delAddr=(d.delivery&&d.delivery.address)||{};
     // Preferuj dane z invoice, fallback na adres dostawy
-    const nazwa=invAddr.company||invAddr.naturalPerson||(invAddr.firstName+" "+invAddr.lastName)||buyer.login||"";
+    // naturalPerson to obiekt {firstName, lastName}
+    const np=invAddr.naturalPerson||{};
+    const nazwa=invAddr.company||(np.firstName&&np.lastName?(np.firstName+" "+np.lastName):null)||(invAddr.firstName+" "+invAddr.lastName)||buyer.login||"";
     const nip=inv.taxId||"";
     const ulica=invAddr.street||delAddr.street||"";
     const kod=invAddr.zipCode||delAddr.zipCode||"";
