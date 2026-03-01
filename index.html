@@ -1957,11 +1957,10 @@ function App() {
   var attId=attUrl.split("/").pop(); var proxyUrl="https://allegro-proxy.favour-biuro.workers.dev/api/messaging/message-attachments/"+attId;
   fetch(proxyUrl,{
     headers:{"Authorization":"Bearer "+tok}
-  }).then(function(r){
-    var mime=r.headers.get("Content-Type")||att.mimeType||"image/jpeg";
-    return r.blob().then(function(blob){return new Blob([blob],{type:mime});});
-  }).then(function(blob){
-    var blobUrl=URL.createObjectURL(blob);
+  }).then(function(r){return r.blob();}).then(function(blob){
+    var mime=att.mimeType||"image/jpeg";
+    var typedBlob=new Blob([blob],{type:mime});
+    var blobUrl=URL.createObjectURL(typedBlob);
     window.open(blobUrl,"_blank");
   }).catch(function(){alert("Nie udało się otworzyć załącznika.");});
 },style:{display:"block",fontSize:11,color:"#7abf9a",textDecoration:"none",background:"#0e1e0e",padding:"4px 8px",borderRadius:4,cursor:"pointer"}},"📎 "+(att.fileName||"załącznik"));
