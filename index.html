@@ -1955,6 +1955,7 @@ function App() {
   var tokens=JSON.parse(localStorage.getItem("allegro_tokens")||"{}"); var tok=tokens[msgKontoRef.current]||"";
   var attUrl=att.url||"";
   var attId=attUrl.split("/").pop(); var proxyUrl="https://allegro-proxy.favour-biuro.workers.dev/api/messaging/message-attachments/"+attId;
+  console.log("konto:",msgKontoRef.current,"tok:",tok.substring(0,20),"url:",proxyUrl);
   if(att.status==="SAFE"&&att.url){
     window.open(att.url,"_blank");
   } else {
