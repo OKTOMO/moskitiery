@@ -1952,7 +1952,7 @@ function App() {
                                 m.attachments.map(function(att,ai){
                                   return React.createElement("a",{key:ai,href:"#",onClick:function(e){
   e.preventDefault();
-  var tok=allegroTokens[msgKontoRef.current]||"";
+  var tokens=JSON.parse(localStorage.getItem("allegro_tokens")||"{}"); var tok=tokens[msgKontoRef.current]||"";
   var attUrl=att.url||"";
   var attId=attUrl.split("/").pop(); var proxyUrl="https://allegro-proxy.favour-biuro.workers.dev/api/messaging/message-attachments/"+attId;
   if(att.status==="SAFE"&&att.url){
