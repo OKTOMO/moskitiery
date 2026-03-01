@@ -1956,18 +1956,14 @@ function App() {
   var attUrl=att.url||"";
   var attId=attUrl.split("/").pop(); var proxyUrl="https://allegro-proxy.favour-biuro.workers.dev/api/messaging/message-attachments/"+attId;
   console.log("konto:",msgKontoRef.current,"tok:",tok.substring(0,20),"url:",proxyUrl);
-  if(att.status==="SAFE"&&att.url){
-    window.open(att.url,"_blank");
-  } else {
-    fetch(proxyUrl,{
-      headers:{"Authorization":"Bearer "+tok}
-    }).then(function(r){return r.blob();}).then(function(blob){
-      var mime=att.mimeType||"image/jpeg";
-      var typedBlob=new Blob([blob],{type:mime});
-      var blobUrl=URL.createObjectURL(typedBlob);
-      window.open(blobUrl,"_blank");
-    }).catch(function(){alert("Nie udało się otworzyć załącznika.");});
-  }
+  fetch(proxyUrl,{
+    headers:{"Authorization":"Bearer "+tok}
+  }).then(function(r){return r.blob();}).then(function(blob){
+    var mime=att.mimeType||"image/jpeg";
+    var typedBlob=new Blob([blob],{type:mime});
+    var blobUrl=URL.createObjectURL(typedBlob);
+    window.open(blobUrl,"_blank");
+  }).catch(function(){alert("Nie udało się otworzyć załącznika.");});
 },style:{display:"block",fontSize:11,color:"#7abf9a",textDecoration:"none",background:"#0e1e0e",padding:"4px 8px",borderRadius:4,cursor:"pointer"}},"📎 "+(att.fileName||"załącznik"));
                                 })
                               )
