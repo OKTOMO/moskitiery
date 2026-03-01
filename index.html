@@ -1954,7 +1954,7 @@ function App() {
   e.preventDefault();
   var tok=allegroTokens[msgKontoRef.current]||"";
   var attUrl=att.url||"";
-  var proxyUrl=attUrl.replace("https://upload.allegro.pl/message-center/","https://allegro-proxy.favour-biuro.workers.dev/api/");
+  var attId=attUrl.split("/").pop(); var proxyUrl="https://allegro-proxy.favour-biuro.workers.dev/api/messaging/message-attachments/"+attId;
   fetch(proxyUrl,{
     headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json"}
   }).then(function(r){return r.blob();}).then(function(blob){
