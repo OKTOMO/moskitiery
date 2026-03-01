@@ -1065,34 +1065,50 @@ function App() {
   }
 
   // ── WIADOMOŚCI functions ──
-  async function msgLoadThreads(kontoId){
+  async function msgLoadThreads(kontoId, retried){
     const k=kontoId||msgKonto;
     const tok=allegroTokens[k]||"";
-    if(!tok){setMsgError("Brak tokenu dla konta "+k+". Zaloguj się w Admin.");return;}
+    if(!tok){setMsgError("Brak tokenu dla konta "+k+". Zaloguj się w Admin → Allegro.");return;}
     setMsgKonto(k);
     setMsgLoading(true); setMsgError(""); setMsgThreads([]); setMsgActiveThread(null); setMsgConvo([]);
     try{
-      const r=await fetch("https://allegro-proxy.favour-biuro.workers.dev/api/messaging/threads?limit=30",{
-        headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json"}
+      const r=await fetch("https://allegro-proxy.favour-biuro.workers.dev/api/messaging/threads?limit=30&offset=0",{
+        headers:{
+          "Authorization":"Bearer "+tok,
+          "Accept":"application/vnd.allegro.public.v1+json",
+          "Accept-Language":"pl-PL"
+        }
       });
-      if(r.status===401){const ok=await allegroRefresh(k);if(ok){msgLoadThreads(k);return;}setMsgError("Sesja wygasła — zaloguj się ponownie w Admin.");setMsgLoading(false);return;}
+      if(r.status===401){
+        if(retried){setMsgError("Sesja wygasła — zaloguj się ponownie w Admin → Allegro.");setMsgLoading(false);return;}
+        const ok=await allegroRefresh(k);
+        if(ok){msgLoadThreads(k,true);return;}
+        setMsgError("Sesja wygasła — zaloguj się ponownie w Admin → Allegro.");
+        setMsgLoading(false);return;
+      }
+      if(!r.ok){
+        let errText="";
+        try{const ed=await r.json();errText=JSON.stringify(ed);}catch{}
+        setMsgError("Błąd API "+r.status+": "+errText);
+        setMsgLoading(false);return;
+      }
       const d=await r.json();
       setMsgThreads(d.threads||[]);
-    }catch(e){setMsgError("Błąd: "+e.message);}
+    }catch(e){setMsgError("Błąd połączenia: "+e.message);}
     setMsgLoading(false);
   }
 
-  async function msgLoadConvo(thread){
+  async function msgLoadConvo(thread, retried){
     const tok=allegroTokens[msgKonto]||"";
     if(!tok) return;
     setMsgActiveThread(thread);
     setMsgConvoLoading(true); setMsgConvo([]); setMsgReply(""); setMsgAttachments([]); setMsgSendOk(false); setMsgSendError("");
     try{
       const r=await fetch("https://allegro-proxy.favour-biuro.workers.dev/api/messaging/threads/"+thread.id+"/messages",{
-        headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json"}
+        headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json","Accept-Language":"pl-PL"}
       });
-      const d=await r.json();
-      setMsgConvo(d.messages||[]);
+      if(r.status===401&&!retried){const ok=await allegroRefresh(msgKonto);if(ok){msgLoadConvo(thread,true);return;}}
+      if(r.ok){const d=await r.json();setMsgConvo(d.messages||[]);}
     }catch(e){}
     setMsgConvoLoading(false);
   }
