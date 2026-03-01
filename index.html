@@ -1119,14 +1119,21 @@ function App() {
   async function msgUploadAttachment(file){
     const tok=allegroTokens[msgKontoRef.current]||"";
     const fd=new FormData();
-    fd.append("file",file);
+    fd.append("file",file,file.name);
     const r=await fetch("https://allegro-proxy.favour-biuro.workers.dev/api/messaging/message-attachments",{
       method:"POST",
       headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json"},
       body:fd
     });
+    if(!r.ok){
+      let errText="";
+      try{const ed=await r.json();errText=JSON.stringify(ed);}catch{}
+      setMsgSendError("Błąd uploadu zdjęcia "+r.status+": "+errText);
+      return null;
+    }
     const d=await r.json();
-    return d.id||null;
+    if(!d.id){setMsgSendError("Upload zdjęcia nie zwrócił ID: "+JSON.stringify(d));return null;}
+    return d.id;
   }
 
   async function msgSend(){
