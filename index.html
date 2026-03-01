@@ -1088,7 +1088,7 @@ function App() {
       const r=await fetch("https://allegro-proxy.favour-biuro.workers.dev/api/messaging/messages",{
         method:"POST",
         headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json","Content-Type":"application/vnd.allegro.public.v1+json"},
-        body:JSON.stringify({recipient:{login:msgNewLogin.trim()},text:msgNewText.trim(),attachments:attIds})
+        body:JSON.stringify(Object.assign({recipient:{login:msgNewLogin.trim()},text:msgNewText.trim()},attIds.length>0?{attachments:attIds}:{}))
       });
       if(!r.ok){
         let errText="";
