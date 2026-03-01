@@ -842,6 +842,7 @@ function App() {
   const [msgNewError,setMsgNewError]=useState("");
   const [msgNewShow,setMsgNewShow]=useState(false);
   const [msgNewAttachments,setMsgNewAttachments]=useState([]);
+  const [msgNewOrderId,setMsgNewOrderId]=useState("");
 
   useEffect(()=>{
     cloudLoad().then(d=>{setOrders(d);setLoading(false);});
@@ -1088,7 +1089,7 @@ function App() {
       const r=await fetch("https://allegro-proxy.favour-biuro.workers.dev/api/messaging/messages",{
         method:"POST",
         headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json","Content-Type":"application/vnd.allegro.public.v1+json"},
-        body:JSON.stringify(Object.assign({recipient:{login:msgNewLogin.trim()},text:msgNewText.trim()},attIds.length>0?{attachments:attIds}:{}))
+        body:JSON.stringify(Object.assign({recipient:{login:msgNewLogin.trim()},text:msgNewText.trim()},msgNewOrderId.trim()?{order:{id:msgNewOrderId.trim()}}:{},attIds.length>0?{attachments:attIds}:{}))
       });
       if(!r.ok){
         let errText="";
@@ -1097,7 +1098,7 @@ function App() {
         setMsgNewSending(false);return;
       }
       const d=await r.json();
-      setMsgNewLogin(""); setMsgNewText(""); setMsgNewAttachments([]); setMsgNewShow(false);
+      setMsgNewLogin(""); setMsgNewText(""); setMsgNewAttachments([]); setMsgNewOrderId(""); setMsgNewShow(false);
       await msgLoadThreads(msgKontoRef.current,false);
       if(d.id){
         const found=(msgThreads||[]).find(function(t){return t.id===d.id;});
@@ -1861,6 +1862,10 @@ function App() {
                   <div>
                     <span className="lbl">Login kupującego</span>
                     <input value={msgNewLogin} onChange={function(e){setMsgNewLogin(e.target.value);}} placeholder="np. jan_kowalski" style={{fontFamily:"monospace",fontSize:12}}/>
+                  </div>
+                  <div>
+                    <span className="lbl">ID zamówienia (opcjonalne)</span>
+                    <input value={msgNewOrderId} onChange={function(e){setMsgNewOrderId(e.target.value);}} placeholder="UUID zamówienia z Allegro" style={{fontFamily:"monospace",fontSize:12}}/>
                   </div>
                 </div>
                 <div style={{marginBottom:10}}>
