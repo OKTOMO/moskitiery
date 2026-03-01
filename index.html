@@ -1192,6 +1192,7 @@ function App() {
       for(var ai=0;ai<msgAttachments.length;ai++){
         const id=await msgUploadAttachment(msgAttachments[ai].file);
         if(id) attIds.push({id:id});
+        else {setMsgSending(false); return;}
       }
       const body={text:msgReply};
       if(attIds.length>0) body.attachments=attIds;
