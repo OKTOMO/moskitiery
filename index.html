@@ -1880,7 +1880,7 @@ function App() {
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
                 <thead>
                   <tr style={{borderBottom:"2px solid #1e3a1e",background:"#0c1a0c"}}>
-                    {["Nr zlecenia","Data","Klient","Miasto","Mosk.","Linka","Blaszki","Ramka","Siatka","","",""].map((h,i)=>(
+                    {["Nr zlecenia","Data","Klient","Miasto","Mosk.","Linka","Blaszki","Ramka","Siatka","","✉️",""].map((h,i)=>(
                       <th key={i} style={{padding:"10px 10px",textAlign:"left",fontSize:10,color:"#3a7a3a",letterSpacing:".1em",textTransform:"uppercase",fontWeight:700}}>{h}</th>
                     ))}
                   </tr>
@@ -1913,6 +1913,20 @@ function App() {
                           {o.pozycje.some(p=>p.isDrzwi)&&<button className="btn-pdf" style={{background:"#1a2a4a"}} onClick={()=>drukujPDF_drzwi(o)}>🚪 PDF</button>}
                         </td>
                         <td style={{padding:"10px 10px"}}><button className="btn-pdf" style={{background:"#2a4a6a"}} onClick={()=>{setForm({data:o.data,firma:o.firma,klientImie:o.klientImie,klientMiasto:o.klientMiasto,telefon:o.telefon,uwagi:o.uwagi,pozycje:o.pozycje.map(p=>({...p}))});setNumerOverride(o.numerZlecenia);updateOrders(orders.filter(x=>x.id!==o.id));setTab("nowe");setSaved(false);}}>✏️</button></td>
+                        <td style={{padding:"10px 10px"}}>
+                          <button className="btn-pdf" style={{background:"#1a3a4a",color:"#7acfdf",borderColor:"#2a6a7a"}}
+                            title={"Napisz do: "+(o.klientImie||"klient")+(o.allegroOrderId?" | UUID: "+o.allegroOrderId:"")}
+                            onClick={()=>{
+                              const konto=msgKonto||"favo5";
+                              if(!(allegroTokens[konto]||"")) {alert("Brak tokenu dla "+konto+" — zaloguj się w Admin → Allegro."); return;}
+                              setMsgNewLogin("");
+                              setMsgNewOrderId(o.allegroOrderId||"");
+                              setMsgNewText("");
+                              setMsgNewShow(true);
+                              setMsgSubTab("threads");
+                              setTab("wiadomosci");
+                            }}>✉️</button>
+                        </td>
                         <td style={{padding:"10px 10px"}}><button className="btn-del" onClick={()=>{if(confirm("Usunąć "+o.numerZlecenia+"?"))updateOrders(orders.filter(x=>x.id!==o.id))}}>🗑</button></td>
                       </tr>
                     );
