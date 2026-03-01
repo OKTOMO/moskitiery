@@ -836,6 +836,11 @@ function App() {
   const [msgSending,setMsgSending]=useState(false);
   const [msgSendError,setMsgSendError]=useState("");
   const [msgSendOk,setMsgSendOk]=useState(false);
+  const [msgNewLogin,setMsgNewLogin]=useState("");
+  const [msgNewText,setMsgNewText]=useState("");
+  const [msgNewSending,setMsgNewSending]=useState(false);
+  const [msgNewError,setMsgNewError]=useState("");
+  const [msgNewShow,setMsgNewShow]=useState(false);
 
   useEffect(()=>{
     cloudLoad().then(d=>{setOrders(d);setLoading(false);});
@@ -1066,6 +1071,34 @@ function App() {
   }
 
   // ── WIADOMOŚCI functions ──
+  async function msgSendNew(){
+    if(!msgNewLogin.trim()||!msgNewText.trim()){setMsgNewError("Wpisz login kupującego i treść wiadomości.");return;}
+    const tok=allegroTokens[msgKontoRef.current]||"";
+    if(!tok){setMsgNewError("Brak tokenu — zaloguj konto w Admin.");return;}
+    setMsgNewSending(true); setMsgNewError("");
+    try{
+      const r=await fetch("https://allegro-proxy.favour-biuro.workers.dev/api/messaging/threads",{
+        method:"POST",
+        headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json","Content-Type":"application/vnd.allegro.public.v1+json"},
+        body:JSON.stringify({interlocutor:{login:msgNewLogin.trim()},message:{text:msgNewText.trim()}})
+      });
+      if(!r.ok){
+        let errText="";
+        try{const ed=await r.json();errText=ed.errors?ed.errors[0].userMessage||ed.errors[0].message:JSON.stringify(ed);}catch{}
+        setMsgNewError("Błąd "+r.status+": "+errText);
+        setMsgNewSending(false);return;
+      }
+      const d=await r.json();
+      setMsgNewLogin(""); setMsgNewText(""); setMsgNewShow(false);
+      await msgLoadThreads(msgKontoRef.current,false);
+      if(d.id){
+        const found=(msgThreads||[]).find(function(t){return t.id===d.id;});
+        if(found) msgLoadConvo(found);
+      }
+    }catch(e){setMsgNewError("Błąd: "+e.message);}
+    setMsgNewSending(false);
+  }
+
   async function msgLoadThreads(kontoId, retried){
     const k=kontoId||msgKontoRef.current;
     const tok=allegroTokens[k]||"";
@@ -1811,7 +1844,28 @@ function App() {
               {!msgLoading&&msgThreads.length===0&&!msgError&&(
                 <span style={{fontSize:12,color:"#3a6a3a",marginLeft:8}}>Wybierz konto aby załadować wątki</span>
               )}
+              <button onClick={function(){setMsgNewShow(true);setMsgNewError("");}} style={{marginLeft:"auto",padding:"5px 14px",fontSize:12,background:"#1a3a2a",border:"1px solid #3a6a3a",borderRadius:5,color:"#7fcf7f",cursor:"pointer",fontWeight:700}}>✉️ Nowa wiadomość</button>
             </div>
+            {msgNewShow&&(
+              <div style={{background:"#0c1a0c",border:"1px solid #2a5a2a",borderRadius:8,padding:16,marginBottom:12}}>
+                <div style={{fontSize:13,fontWeight:700,color:"#7fcf7f",marginBottom:10}}>✉️ Nowa wiadomość do kupującego</div>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+                  <div>
+                    <span className="lbl">Login kupującego</span>
+                    <input value={msgNewLogin} onChange={function(e){setMsgNewLogin(e.target.value);}} placeholder="np. jan_kowalski" style={{fontFamily:"monospace",fontSize:12}}/>
+                  </div>
+                </div>
+                <div style={{marginBottom:10}}>
+                  <span className="lbl">Treść wiadomości</span>
+                  <textarea value={msgNewText} onChange={function(e){setMsgNewText(e.target.value);}} rows={3} style={{width:"100%",background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:5,color:"#c0e0c0",padding:"8px 10px",fontSize:13,fontFamily:"monospace",resize:"vertical",boxSizing:"border-box"}}/>
+                </div>
+                {msgNewError&&<div style={{color:"#df8080",fontSize:12,marginBottom:8}}>{msgNewError}</div>}
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={msgSendNew} disabled={msgNewSending} style={{padding:"7px 18px",fontSize:12,background:"#2a5a3a",border:"1px solid #3a7a4a",borderRadius:5,color:"#7fcf7f",cursor:"pointer",fontWeight:700}}>{msgNewSending?"⟳ Wysyłam":"✉️ Wyślij"}</button>
+                  <button onClick={function(){setMsgNewShow(false);}} style={{padding:"7px 14px",fontSize:12,background:"transparent",border:"1px solid #2a4a2a",borderRadius:5,color:"#5a8a5a",cursor:"pointer"}}>Anuluj</button>
+                </div>
+              </div>
+            )}
             <div style={{display:"grid",gridTemplateColumns:"340px 1fr",gap:12,minHeight:600}}>
               <div style={{background:"#0c1a0c",border:"1px solid #1e3a1e",borderRadius:8,overflow:"hidden",display:"flex",flexDirection:"column"}}>
                 <div style={{padding:"10px 14px",borderBottom:"1px solid #1a2a1a",fontSize:11,color:"#4a7a4a",letterSpacing:".1em",textTransform:"uppercase"}}>Wątki ({msgThreads.length})</div>
@@ -1883,7 +1937,7 @@ function App() {
                               e.target.value="";
                             }})
                           ),
-                          React.createElement("button",{onClick:msgSend,disabled:msgSending,style:{background:msgSending?"#1a3a2a":"#2a5a3a",border:"1px solid #3a7a4a",borderRadius:6,padding:"8px 12px",fontSize:12,color:"#7fcf7f",cursor:msgSending?"not-allowed":"pointer",fontWeight:700,whiteSpace:"nowrap"}},msgSending?"⟳ Wysyłam":"✉️ Wyślij")
+                          React.createElement("button",{onClick:msgSend,disabled:msgSending||(msgReply.trim()===""&&msgAttachments.length===0),style:{background:(msgSending||(msgReply.trim()===""&&msgAttachments.length===0))?"#1a2a1a":"#2a5a3a",border:"1px solid #3a7a4a",borderRadius:6,padding:"8px 12px",fontSize:12,color:"#7fcf7f",cursor:(msgSending||(msgReply.trim()===""&&msgAttachments.length===0))?"not-allowed":"pointer",fontWeight:700,whiteSpace:"nowrap",opacity:(msgReply.trim()===""&&msgAttachments.length===0)?0.4:1}},msgSending?"⟳ Wysyłam":"✉️ Wyślij")
                         )
                       ),
                       msgSendOk&&React.createElement("div",{style:{marginTop:6,color:"#7fcf7f",fontSize:12}},"✅ Wiadomość wysłana!"),
