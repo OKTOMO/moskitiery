@@ -859,6 +859,16 @@ function App() {
   const [msgSuggestError,setMsgSuggestError]=useState("");
   const [aiInstruction,setAiInstruction]=useState(()=>localStorage.getItem("ai_msg_instruction")||"");
   const [aiInstrSaved,setAiInstrSaved]=useState(false);
+  // ── INSTRUCTIONS tab state ──
+  const [msgSubTab,setMsgSubTab]=useState("threads"); // "threads" | "instructions"
+  const [aiInstructions,setAiInstructions]=useState(()=>{try{return JSON.parse(localStorage.getItem("ai_instructions")||"[]");}catch{return [];}});
+  const [aiInstrLoading,setAiInstrLoading]=useState(false);
+  const [aiInstrSyncing,setAiInstrSyncing]=useState(false);
+  const [aiInstrSyncMsg,setAiInstrSyncMsg]=useState("");
+  const [aiInstrEdit,setAiInstrEdit]=useState(null); // {id,name,content} or null
+  const [aiInstrEditName,setAiInstrEditName]=useState("");
+  const [aiInstrEditContent,setAiInstrEditContent]=useState("");
+  const [aiActiveInstrId,setAiActiveInstrId]=useState(()=>localStorage.getItem("ai_active_instr_id")||"");
 
   // ── AUTORESPONDER functions ──
   async function fetchAutoStatus(){
@@ -900,6 +910,126 @@ function App() {
     }catch(e){alert("❌ "+e.message);}
     setAutoResetting(false);
   }
+  // ── INSTRUCTIONS functions ──
+  async function loadInstructions(){
+    setAiInstrLoading(true);
+    try{
+      const r=await fetch(AUTORESPONDER_URL+"/instructions",{headers:{"x-api-key":AUTORESPONDER_KEY}});
+      const d=await r.json();
+      if(d.ok){
+        setAiInstructions(d.instructions||[]);
+        localStorage.setItem("ai_instructions",JSON.stringify(d.instructions||[]));
+        setAiInstrSyncMsg("✅ Załadowano "+( d.instructions||[]).length+" instrukcji");
+      } else {
+        setAiInstrSyncMsg("❌ "+JSON.stringify(d));
+      }
+    }catch(e){setAiInstrSyncMsg("❌ "+e.message);}
+    setAiInstrLoading(false);
+    setTimeout(()=>setAiInstrSyncMsg(""),3000);
+  }
+  async function saveInstructions(list){
+    setAiInstrSyncing(true);
+    try{
+      const r=await fetch(AUTORESPONDER_URL+"/instructions",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":AUTORESPONDER_KEY},body:JSON.stringify({instructions:list})});
+      const d=await r.json();
+      if(d.ok){
+        setAiInstructions(list);
+        localStorage.setItem("ai_instructions",JSON.stringify(list));
+        setAiInstrSyncMsg("✅ Zapisano "+list.length+" instrukcji w KV");
+      } else {
+        setAiInstrSyncMsg("❌ "+JSON.stringify(d));
+      }
+    }catch(e){setAiInstrSyncMsg("❌ "+e.message);}
+    setAiInstrSyncing(false);
+    setTimeout(()=>setAiInstrSyncMsg(""),3000);
+  }
+  function openNewInstr(){
+    setAiInstrEdit({id:null});
+    setAiInstrEditName("");
+    setAiInstrEditContent("");
+  }
+  function openEditInstr(instr){
+    setAiInstrEdit(instr);
+    setAiInstrEditName(instr.name);
+    setAiInstrEditContent(instr.content);
+  }
+  function cancelEditInstr(){
+    setAiInstrEdit(null);
+    setAiInstrEditName("");
+    setAiInstrEditContent("");
+  }
+  function saveEditInstr(){
+    if(!aiInstrEditName.trim()||!aiInstrEditContent.trim()) return;
+    let list;
+    if(aiInstrEdit&&aiInstrEdit.id){
+      list=aiInstructions.map(i=>i.id===aiInstrEdit.id?{...i,name:aiInstrEditName.trim(),content:aiInstrEditContent.trim()}:i);
+    } else {
+      const newId="instr_"+Date.now();
+      list=[...aiInstructions,{id:newId,name:aiInstrEditName.trim(),content:aiInstrEditContent.trim()}];
+      if(!aiActiveInstrId){setAiActiveInstrId(newId);localStorage.setItem("ai_active_instr_id",newId);}
+    }
+    setAiInstrEdit(null);
+    saveInstructions(list);
+  }
+  function deleteInstr(id){
+    if(!confirm("Usunąć instrukcję?")) return;
+    const list=aiInstructions.filter(i=>i.id!==id);
+    if(aiActiveInstrId===id){
+      const newActive=list.length>0?list[0].id:"";
+      setAiActiveInstrId(newActive);
+      localStorage.setItem("ai_active_instr_id",newActive);
+    }
+    saveInstructions(list);
+  }
+  function setActiveInstr(id){
+    setAiActiveInstrId(id);
+    localStorage.setItem("ai_active_instr_id",id);
+  }
+
+  // ── INSTRUCTIONS functions ──
+  async function loadInstructions(){
+    setAiInstrLoading(true);setAiInstrSyncMsg("");
+    try{
+      const r=await fetch(AUTORESPONDER_URL+"/instructions",{headers:{"x-api-key":AUTORESPONDER_KEY}});
+      const d=await r.json();
+      if(d.ok){setAiInstructions(d.instructions||[]);localStorage.setItem("ai_instructions",JSON.stringify(d.instructions||[]));setAiInstrSyncMsg("✅ Załadowano "+(d.instructions||[]).length+" instrukcji");}
+      else setAiInstrSyncMsg("❌ "+JSON.stringify(d));
+    }catch(e){setAiInstrSyncMsg("❌ "+e.message);}
+    setAiInstrLoading(false);setTimeout(()=>setAiInstrSyncMsg(""),3000);
+  }
+  async function saveInstructions(list){
+    setAiInstrSyncing(true);
+    try{
+      const r=await fetch(AUTORESPONDER_URL+"/instructions",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":AUTORESPONDER_KEY},body:JSON.stringify({instructions:list})});
+      const d=await r.json();
+      if(d.ok){setAiInstructions(list);localStorage.setItem("ai_instructions",JSON.stringify(list));setAiInstrSyncMsg("✅ Zapisano "+list.length+" instrukcji");}
+      else setAiInstrSyncMsg("❌ "+JSON.stringify(d));
+    }catch(e){setAiInstrSyncMsg("❌ "+e.message);}
+    setAiInstrSyncing(false);setTimeout(()=>setAiInstrSyncMsg(""),3000);
+  }
+  function openEditInstr(instr){setAiInstrEdit(instr);setAiInstrEditName(instr.name);setAiInstrEditContent(instr.content);}
+  function openNewInstr(){setAiInstrEdit({id:null});setAiInstrEditName("");setAiInstrEditContent("");}
+  function cancelEditInstr(){setAiInstrEdit(null);setAiInstrEditName("");setAiInstrEditContent("");}
+  function saveEditInstr(){
+    if(!aiInstrEditName.trim()||!aiInstrEditContent.trim()) return;
+    let list;
+    if(aiInstrEdit&&aiInstrEdit.id){
+      list=aiInstructions.map(i=>i.id===aiInstrEdit.id?{...i,name:aiInstrEditName.trim(),content:aiInstrEditContent.trim()}:i);
+    } else {
+      const newId="instr_"+Date.now();
+      list=[...aiInstructions,{id:newId,name:aiInstrEditName.trim(),content:aiInstrEditContent.trim()}];
+      if(!aiActiveInstrId){setAiActiveInstrId(newId);localStorage.setItem("ai_active_instr_id",newId);}
+    }
+    setAiInstrEdit(null);saveInstructions(list);
+  }
+  function deleteInstr(id){
+    if(!confirm("Usunąć instrukcję?")) return;
+    const list=aiInstructions.filter(i=>i.id!==id);
+    if(aiActiveInstrId===id){const na=list.length>0?list[0].id:"";setAiActiveInstrId(na);localStorage.setItem("ai_active_instr_id",na);}
+    saveInstructions(list);
+  }
+  function setActiveInstr(id){setAiActiveInstrId(id);localStorage.setItem("ai_active_instr_id",id);}
+
   // ── AI SUGGEST function ──
   async function handleMsgSuggest(){
     setMsgSuggesting(true);setMsgSuggestError("");
@@ -910,7 +1040,11 @@ function App() {
         const role=(m.author&&m.author.role==="OPERATOR")?"Sprzedawca":"Kupujący";
         return role+": "+(m.text||"");
       }).join("\n");
-      const instr=localStorage.getItem("ai_msg_instruction")||"Jesteś pomocnym asystentem sklepu internetowego sprzedającego moskitiery. Odpowiadaj po polsku, profesjonalnie i przyjaźnie.";
+      // Użyj aktywnej instrukcji z listy, lub fallback
+      const allInstrs=JSON.parse(localStorage.getItem("ai_instructions")||"[]");
+      const activeId=localStorage.getItem("ai_active_instr_id")||"";
+      const activeInstr=allInstrs.find(i=>i.id===activeId)||allInstrs[0]||null;
+      const instr=activeInstr?activeInstr.content:"Jesteś pomocnym asystentem sklepu internetowego sprzedającego moskitiery. Odpowiadaj po polsku, profesjonalnie i przyjaźnie.";
       const prompt=instr+"\n\nHistoria rozmowy:\n"+history+"\n\nZaproponuj odpowiedź na ostatnią wiadomość kupującego. Podaj tylko treść wiadomości, bez wstępów i komentarzy.";
       const r=await fetch("https://allegro-proxy.favour-biuro.workers.dev/ai",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":claudeKey},body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:600,messages:[{role:"user",content:prompt}]})});
       const d=await r.json();
@@ -1947,9 +2081,13 @@ function App() {
               {!msgLoading&&msgThreads.length===0&&!msgError&&(
                 <span style={{fontSize:12,color:"#3a6a3a",marginLeft:8}}>Wybierz konto aby załadować wątki</span>
               )}
-              <button onClick={function(){setMsgNewShow(true);setMsgNewError("");}} style={{marginLeft:"auto",padding:"5px 14px",fontSize:12,background:"#1a3a2a",border:"1px solid #3a6a3a",borderRadius:5,color:"#7fcf7f",cursor:"pointer",fontWeight:700}}>✉️ Nowa wiadomość</button>
+              <div style={{marginLeft:"auto",display:"flex",gap:6}}>
+                <button onClick={function(){setMsgSubTab("threads");}} style={{padding:"5px 14px",fontSize:12,background:msgSubTab==="threads"?"#2a5a3a":"#1a2a1a",border:"1px solid "+(msgSubTab==="threads"?"#3a7a4a":"#2a4a2a"),borderRadius:5,color:msgSubTab==="threads"?"#7fcf7f":"#4a7a4a",cursor:"pointer",fontWeight:700}}>💬 Wątki</button>
+                <button onClick={function(){setMsgSubTab("instructions");if(aiInstructions.length===0)loadInstructions();}} style={{padding:"5px 14px",fontSize:12,background:msgSubTab==="instructions"?"#1a2a4a":"#1a1a2a",border:"1px solid "+(msgSubTab==="instructions"?"#3a4a8a":"#1a2a4a"),borderRadius:5,color:msgSubTab==="instructions"?"#7abfdf":"#3a4a8a",cursor:"pointer",fontWeight:700}}>📋 Instrukcje AI</button>
+                {msgSubTab==="threads"&&<button onClick={function(){setMsgNewShow(true);setMsgNewError("");}} style={{padding:"5px 14px",fontSize:12,background:"#1a3a2a",border:"1px solid #3a6a3a",borderRadius:5,color:"#7fcf7f",cursor:"pointer",fontWeight:700}}>✉️ Nowa</button>}
+              </div>
             </div>
-            {msgNewShow&&(
+            {msgSubTab==="threads"&&msgNewShow&&(
               <div style={{background:"#0c1a0c",border:"1px solid #2a5a2a",borderRadius:8,padding:16,marginBottom:12}}>
                 <div style={{fontSize:13,fontWeight:700,color:"#7fcf7f",marginBottom:10}}>✉️ Nowa wiadomość do kupującego</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
@@ -1987,6 +2125,7 @@ function App() {
                 </div>
               </div>
             )}
+            {msgSubTab==="threads"&&(
             <div style={{display:"grid",gridTemplateColumns:"340px 1fr",gap:12,flex:1,minHeight:0}}>
               <div style={{background:"#0c1a0c",border:"1px solid #1e3a1e",borderRadius:8,overflow:"hidden",display:"flex",flexDirection:"column"}}>
                 <div style={{padding:"10px 14px",borderBottom:"1px solid #1a2a1a",fontSize:11,color:"#4a7a4a",letterSpacing:".1em",textTransform:"uppercase"}}>Wątki ({msgThreads.length})</div>
@@ -2084,6 +2223,67 @@ function App() {
                 )}
               </div>
             </div>
+            )}
+            {msgSubTab==="instructions"&&(
+              <div style={{flex:1,overflowY:"auto"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                  <span style={{fontSize:11,color:"#3a7a9a",letterSpacing:".12em",textTransform:"uppercase"}}>📋 Instrukcje AI dla przycisku Sugeruj</span>
+                  <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                    {aiInstrSyncMsg&&<span style={{fontSize:11,color:aiInstrSyncMsg.startsWith("✅")?"#7fcf7f":"#df8080"}}>{aiInstrSyncMsg}</span>}
+                    <button onClick={loadInstructions} disabled={aiInstrLoading} style={{padding:"4px 12px",fontSize:11,background:"#1a2a3a",border:"1px solid #2a4a6a",borderRadius:5,color:"#7abfdf",cursor:"pointer"}}>{aiInstrLoading?"⟳ ładuję...":"🔄 Załaduj z KV"}</button>
+                    <button onClick={openNewInstr} style={{padding:"4px 12px",fontSize:11,background:"#1a3a2a",border:"1px solid #2a6a3a",borderRadius:5,color:"#7fcf7f",cursor:"pointer",fontWeight:700}}>+ Nowa instrukcja</button>
+                  </div>
+                </div>
+
+                {/* Editor */}
+                {aiInstrEdit&&(
+                  <div style={{background:"#0a1828",border:"1px solid #2a4a7a",borderRadius:8,padding:16,marginBottom:16}}>
+                    <div style={{fontSize:13,fontWeight:700,color:"#7abfdf",marginBottom:12}}>{aiInstrEdit.id?"✏️ Edytuj instrukcję":"➕ Nowa instrukcja"}</div>
+                    <div style={{marginBottom:10}}>
+                      <span className="lbl" style={{marginBottom:4}}>Nazwa (np. "Pytanie o wymiary", "Reklamacja")</span>
+                      <input value={aiInstrEditName} onChange={e=>setAiInstrEditName(e.target.value)} placeholder="Nazwa instrukcji..." style={{fontWeight:700,fontSize:13}}/>
+                    </div>
+                    <div style={{marginBottom:12}}>
+                      <span className="lbl" style={{marginBottom:4}}>Treść instrukcji systemowej</span>
+                      <textarea value={aiInstrEditContent} onChange={e=>setAiInstrEditContent(e.target.value)}
+                        placeholder={"Jesteś asystentem sklepu OKTOMO...\n\nZASADY:\n- ..."}
+                        rows={12} style={{width:"100%",background:"#0a1020",border:"1px solid #2a3a6a",borderRadius:5,color:"#c0d8f0",padding:"10px 12px",fontSize:12,fontFamily:"monospace",resize:"vertical",boxSizing:"border-box",lineHeight:1.6}}/>
+                    </div>
+                    <div style={{display:"flex",gap:8}}>
+                      <button onClick={saveEditInstr} disabled={aiInstrSyncing||!aiInstrEditName.trim()||!aiInstrEditContent.trim()} className="btn" style={{background:"#1a3a5a",borderColor:"#3a6a9a",color:"#7abfdf"}}>{aiInstrSyncing?"⟳ Zapisuję...":"💾 Zapisz"}</button>
+                      <button onClick={cancelEditInstr} style={{padding:"7px 16px",fontSize:12,background:"transparent",border:"1px solid #2a3a4a",borderRadius:5,color:"#5a7a9a",cursor:"pointer"}}>Anuluj</button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Lista instrukcji */}
+                {aiInstructions.length===0?(
+                  <div style={{textAlign:"center",padding:40,color:"#3a6a8a",fontSize:13}}>
+                    Brak instrukcji — kliknij "+ Nowa instrukcja" lub "Załaduj z KV"
+                  </div>
+                ):(
+                  <div style={{display:"flex",flexDirection:"column",gap:10}}>
+                    {aiInstructions.map(instr=>{
+                      const isActive=aiActiveInstrId===instr.id;
+                      return (
+                        <div key={instr.id} style={{background:isActive?"#0a1828":"#0c1a0c",border:"1px solid "+(isActive?"#3a6a9a":"#1e3a1e"),borderRadius:8,padding:"12px 16px"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:isActive?8:0}}>
+                            <span style={{fontWeight:700,fontSize:13,color:isActive?"#7abfdf":"#7fcf7f",flex:1}}>{instr.name}</span>
+                            {isActive&&<span style={{fontSize:10,color:"#3a7abf",background:"#1a2a4a",padding:"2px 8px",borderRadius:10,fontWeight:700}}>AKTYWNA</span>}
+                            {!isActive&&<button onClick={()=>setActiveInstr(instr.id)} style={{padding:"3px 10px",fontSize:11,background:"#1a2a1a",border:"1px solid #2a5a3a",borderRadius:5,color:"#5a9a5a",cursor:"pointer"}}>Ustaw aktywną</button>}
+                            <button onClick={()=>openEditInstr(instr)} style={{padding:"3px 10px",fontSize:11,background:"#1a2a3a",border:"1px solid #2a4a6a",borderRadius:5,color:"#5a8abf",cursor:"pointer"}}>✏️ Edytuj</button>
+                            <button onClick={()=>deleteInstr(instr.id)} style={{padding:"3px 10px",fontSize:11,background:"#2a1a1a",border:"1px solid #5a2a2a",borderRadius:5,color:"#9a5a5a",cursor:"pointer"}}>🗑</button>
+                          </div>
+                          {isActive&&(
+                            <pre style={{margin:0,fontSize:11,color:"#4a8abf",fontFamily:"monospace",whiteSpace:"pre-wrap",lineHeight:1.5,maxHeight:120,overflow:"hidden",opacity:0.8}}>{instr.content.substring(0,300)+(instr.content.length>300?"...":"")}</pre>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
