@@ -1072,7 +1072,7 @@ function App() {
     setMsgKonto(k);
     setMsgLoading(true); setMsgError(""); setMsgThreads([]); setMsgActiveThread(null); setMsgConvo([]);
     try{
-      const r=await fetch("https://allegro-proxy.favour-biuro.workers.dev/api/messaging/threads?limit=30&offset=0",{
+      const r=await fetch("https://allegro-proxy.favour-biuro.workers.dev/api/messaging/threads?limit=20&offset=0",{
         headers:{
           "Authorization":"Bearer "+tok,
           "Accept":"application/vnd.allegro.public.v1+json",
