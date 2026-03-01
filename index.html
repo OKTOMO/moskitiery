@@ -525,7 +525,7 @@ function App() {
   const [activeProfile,setActiveProfile]=useState(()=>localStorage.getItem('active_profile')||"");
   const [tab,setTab]=useState(()=>new URLSearchParams(window.location.search).has("code")?"allegro":"nowe");
   async function fetchInvoiceFromAllegro(orderId, firma){
-    const kontaMap={"F":"favo5","A":"arlis","AP":"albama","E":"everis"};
+    const kontaMap={"F":"favo5","A":"arlis_pl","AP":"albama_eu","E":"everis_pl"};
     const kontoId=kontaMap[firma]||"favo5";
     let token=allegroTokens[kontoId]||"";
     if(!token) return {error:"Brak tokenu dla konta "+kontoId+". Zaloguj się w Admin → Allegro."};
@@ -822,6 +822,19 @@ function App() {
   const [prodDataOd,setProdDataOd]=useState("");
   const [prodDataDo,setProdDataDo]=useState("");
   const allegroToken = allegroTokens[allegroActive]||"";
+  // ── WIADOMOŚCI tab state ──
+  const [msgKonto,setMsgKonto]=useState(()=>localStorage.getItem('allegro_active')||"favo5");
+  const [msgThreads,setMsgThreads]=useState([]);
+  const [msgLoading,setMsgLoading]=useState(false);
+  const [msgError,setMsgError]=useState("");
+  const [msgActiveThread,setMsgActiveThread]=useState(null);
+  const [msgConvo,setMsgConvo]=useState([]);
+  const [msgConvoLoading,setMsgConvoLoading]=useState(false);
+  const [msgReply,setMsgReply]=useState("");
+  const [msgAttachments,setMsgAttachments]=useState([]);
+  const [msgSending,setMsgSending]=useState(false);
+  const [msgSendError,setMsgSendError]=useState("");
+  const [msgSendOk,setMsgSendOk]=useState(false);
 
   useEffect(()=>{
     cloudLoad().then(d=>{setOrders(d);setLoading(false);});
@@ -1051,17 +1064,95 @@ function App() {
     window.location.href=url;
   }
 
+  // ── WIADOMOŚCI functions ──
+  async function msgLoadThreads(kontoId){
+    const k=kontoId||msgKonto;
+    const tok=allegroTokens[k]||"";
+    if(!tok){setMsgError("Brak tokenu dla konta "+k+". Zaloguj się w Admin.");return;}
+    setMsgKonto(k);
+    setMsgLoading(true); setMsgError(""); setMsgThreads([]); setMsgActiveThread(null); setMsgConvo([]);
+    try{
+      const r=await fetch("https://allegro-proxy.favour-biuro.workers.dev/api/messaging/threads?limit=30",{
+        headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json"}
+      });
+      if(r.status===401){const ok=await allegroRefresh(k);if(ok){msgLoadThreads(k);return;}setMsgError("Sesja wygasła — zaloguj się ponownie w Admin.");setMsgLoading(false);return;}
+      const d=await r.json();
+      setMsgThreads(d.threads||[]);
+    }catch(e){setMsgError("Błąd: "+e.message);}
+    setMsgLoading(false);
+  }
+
+  async function msgLoadConvo(thread){
+    const tok=allegroTokens[msgKonto]||"";
+    if(!tok) return;
+    setMsgActiveThread(thread);
+    setMsgConvoLoading(true); setMsgConvo([]); setMsgReply(""); setMsgAttachments([]); setMsgSendOk(false); setMsgSendError("");
+    try{
+      const r=await fetch("https://allegro-proxy.favour-biuro.workers.dev/api/messaging/threads/"+thread.id+"/messages",{
+        headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json"}
+      });
+      const d=await r.json();
+      setMsgConvo(d.messages||[]);
+    }catch(e){}
+    setMsgConvoLoading(false);
+  }
+
+  async function msgUploadAttachment(file){
+    const tok=allegroTokens[msgKonto]||"";
+    const fd=new FormData();
+    fd.append("file",file);
+    const r=await fetch("https://allegro-proxy.favour-biuro.workers.dev/api/messaging/message-attachments",{
+      method:"POST",
+      headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json"},
+      body:fd
+    });
+    const d=await r.json();
+    return d.id||null;
+  }
+
+  async function msgSend(){
+    if(!msgActiveThread) return;
+    if(!msgReply.trim()&&msgAttachments.length===0) return;
+    const tok=allegroTokens[msgKonto]||"";
+    if(!tok){setMsgSendError("Brak tokenu.");return;}
+    setMsgSending(true); setMsgSendError(""); setMsgSendOk(false);
+    try{
+      const attIds=[];
+      for(var ai=0;ai<msgAttachments.length;ai++){
+        const id=await msgUploadAttachment(msgAttachments[ai].file);
+        if(id) attIds.push({id:id});
+      }
+      const body={text:msgReply};
+      if(attIds.length>0) body.attachments=attIds;
+      const r=await fetch("https://allegro-proxy.favour-biuro.workers.dev/api/messaging/threads/"+msgActiveThread.id+"/messages",{
+        method:"POST",
+        headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json","Content-Type":"application/json"},
+        body:JSON.stringify(body)
+      });
+      if(r.ok){
+        setMsgReply(""); setMsgAttachments([]); setMsgSendOk(true);
+        await msgLoadConvo(msgActiveThread);
+        setTimeout(function(){setMsgSendOk(false);},3000);
+      } else {
+        const e=await r.json();
+        setMsgSendError("Błąd "+(e.errors?e.errors[0]&&e.errors[0].message:"Nieznany błąd API"));
+      }
+    }catch(e){setMsgSendError("Błąd: "+e.message);}
+    setMsgSending(false);
+  }
+
   async function allegroLoadMessages(tokenParam, kontaId){
-    const tok=tokenParam||allegroToken;
+    const activeKonto=kontaId||allegroActive;
+    const tok=tokenParam||allegroTokens[activeKonto]||allegroToken;
     if(!tok){setAllegroError("Nie jesteś zalogowany do Allegro");return;}
-    if(kontaId) setAllegroActive(kontaId);
+    setAllegroActive(activeKonto);
     setAllegroMessages([]);
     setAllegroLoading(true); setAllegroError("");
     try{
       const r=await fetch('https://allegro-proxy.favour-biuro.workers.dev/api/messaging/threads?limit=20',{
         headers:{'Authorization':'Bearer '+tok,'Accept':'application/vnd.allegro.public.v1+json'}
       });
-      if(r.status===401){const refreshed=await allegroRefresh(allegroActive);if(refreshed){allegroLoadMessages(allegroTokens[allegroActive]);return;}const t={...allegroTokens};delete t[allegroActive];localStorage.setItem('allegro_tokens',JSON.stringify(t));setAllegroTokens(t);setAllegroError('Sesja wygasła — zaloguj się ponownie');setAllegroLoading(false);return;}
+      if(r.status===401){const refreshed=await allegroRefresh(activeKonto);if(refreshed){allegroLoadMessages(allegroTokens[activeKonto],activeKonto);return;}const t={...allegroTokens};delete t[activeKonto];localStorage.setItem('allegro_tokens',JSON.stringify(t));setAllegroTokens(t);setAllegroError('Sesja wygasła — zaloguj się ponownie');setAllegroLoading(false);return;}
       const d=await r.json();
       // For each thread get messages
       const threads=d.threads||[];
@@ -1178,7 +1269,7 @@ function App() {
       </div>
 
       <div style={{display:"flex",borderBottom:"1px solid #1e2a1e",paddingLeft:16,background:"#0e1420",flexWrap:"wrap"}}>
-        {[["nowe","➕ Dodaj zamówienie"],["baza","📋 Zamówienia"],["stat","📊 Stat"],["produkcja","🏭 Produkcja"],["kalk","🧮 Kalkulator"],["faktury","🧾 Faktury"]].map(([id,l])=>(
+        {[["nowe","➕ Dodaj zamówienie"],["baza","📋 Zamówienia"],["stat","📊 Stat"],["produkcja","🏭 Produkcja"],["kalk","🧮 Kalkulator"],["faktury","🧾 Faktury"],["wiadomosci","💬 Wiadomości"]].map(([id,l])=>(
           <button key={id} className={`tab ${tab===id?"on":""}`} onClick={()=>setTab(id)}>{l}</button>
         ))}
         <button className={`tab ${(tab==="allegro"||tab==="ustawienia"||tab==="historia")?"on":""}`} onClick={()=>{
@@ -1664,6 +1755,107 @@ function App() {
                 </table>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ══ WIADOMOŚCI ══ */}
+        {tab==="wiadomosci" && (
+          <div style={{maxWidth:1100}}>
+            <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"center",flexWrap:"wrap"}}>
+              <span style={{fontSize:11,color:"#3a6a3a",letterSpacing:".12em",textTransform:"uppercase",marginRight:4}}>💬 Wiadomości</span>
+              {ALLEGRO_KONTA.map(function(k){
+                const hasTok=!!(allegroTokens[k.id]||"");
+                return hasTok?(
+                  <button key={k.id} className={"btn-sm "+(msgKonto===k.id?"":"off")} style={{opacity:msgKonto===k.id?1:0.5}} onClick={function(){msgLoadThreads(k.id);}}>{k.label}</button>
+                ):null;
+              })}
+              {msgLoading&&<span style={{fontSize:12,color:"#5a8a5a",marginLeft:8}}>⟳ ładowanie...</span>}
+              {msgError&&<span style={{fontSize:12,color:"#df8080",marginLeft:8}}>{msgError}</span>}
+              {!msgLoading&&msgThreads.length===0&&!msgError&&(
+                <span style={{fontSize:12,color:"#3a6a3a",marginLeft:8}}>Wybierz konto aby załadować wątki</span>
+              )}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"340px 1fr",gap:12,minHeight:600}}>
+              <div style={{background:"#0c1a0c",border:"1px solid #1e3a1e",borderRadius:8,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+                <div style={{padding:"10px 14px",borderBottom:"1px solid #1a2a1a",fontSize:11,color:"#4a7a4a",letterSpacing:".1em",textTransform:"uppercase"}}>Wątki ({msgThreads.length})</div>
+                <div style={{overflowY:"auto",flex:1}}>
+                  {msgThreads.map(function(t){
+                    const active=msgActiveThread&&msgActiveThread.id===t.id;
+                    return (
+                      <div key={t.id} onClick={function(){msgLoadConvo(t);}} style={{padding:"12px 14px",borderBottom:"1px solid #0f1f0f",cursor:"pointer",background:active?"#1a3a1a":(t.hasUnreadMessages?"#0e1e0e":"transparent"),transition:"background .15s"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
+                          {t.hasUnreadMessages&&<span style={{width:7,height:7,borderRadius:"50%",background:"#7fcf7f",display:"inline-block",flexShrink:0}}/>}
+                          <span style={{fontWeight:t.hasUnreadMessages?700:600,color:active?"#afeaaf":"#8abf8a",fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.interlocutor&&t.interlocutor.login||"—"}</span>
+                        </div>
+                        <div style={{fontSize:11,color:"#5a8a5a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.subject||"—"}</div>
+                        <div style={{fontSize:10,color:"#3a5a3a",marginTop:2}}>{t.lastMessageAt?new Date(t.lastMessageAt).toLocaleDateString("pl-PL"):""}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div style={{background:"#0c1a0c",border:"1px solid #1e3a1e",borderRadius:8,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+                {!msgActiveThread?(
+                  <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",color:"#2a5a2a",fontSize:13}}>← Wybierz wątek z listy</div>
+                ):(
+                  React.createElement(React.Fragment,null,
+                    React.createElement("div",{style:{padding:"12px 16px",borderBottom:"1px solid #1a2a1a",display:"flex",alignItems:"center",gap:10}},
+                      React.createElement("span",{style:{fontWeight:700,color:"#9fcf9f",fontSize:14}},msgActiveThread.interlocutor&&msgActiveThread.interlocutor.login||"—"),
+                      React.createElement("span",{style:{fontSize:12,color:"#4a7a4a",marginLeft:4}},msgActiveThread.subject||""),
+                      msgActiveThread.relatedObject&&msgActiveThread.relatedObject.id&&React.createElement("span",{style:{fontSize:10,color:"#3a6a3a",marginLeft:"auto",fontFamily:"monospace"}},"zamówienie: "+msgActiveThread.relatedObject.id)
+                    ),
+                    React.createElement("div",{style:{flex:1,overflowY:"auto",padding:"12px 16px",display:"flex",flexDirection:"column",gap:10}},
+                      msgConvoLoading?(
+                        React.createElement("div",{style:{textAlign:"center",color:"#3a6a3a",fontSize:13}},"⟳ ładowanie wiadomości...")
+                      ):(
+                        msgConvo.map(function(m,i){
+                          const isMe=m.author&&m.author.role==="OPERATOR";
+                          return React.createElement("div",{key:i,style:{display:"flex",flexDirection:"column",alignItems:isMe?"flex-end":"flex-start",gap:3}},
+                            React.createElement("div",{style:{maxWidth:"72%",background:isMe?"#1a3a2a":"#1a2a3a",border:"1px solid "+(isMe?"#2a5a3a":"#2a3a5a"),borderRadius:isMe?"12px 12px 4px 12px":"12px 12px 12px 4px",padding:"8px 12px",fontSize:13,color:"#d0ead0",lineHeight:1.5}},
+                              m.text||"",
+                              m.attachments&&m.attachments.length>0&&React.createElement("div",{style:{marginTop:6,display:"flex",flexWrap:"wrap",gap:4}},
+                                m.attachments.map(function(att,ai){
+                                  return React.createElement("a",{key:ai,href:"https://allegro-proxy.favour-biuro.workers.dev/api/messaging/message-attachments/"+att.id,target:"_blank",rel:"noreferrer",style:{display:"block",fontSize:11,color:"#7abf9a",textDecoration:"none",background:"#0e1e0e",padding:"4px 8px",borderRadius:4}},"📎 "+att.fileName||"załącznik");
+                                })
+                              )
+                            ),
+                            React.createElement("span",{style:{fontSize:10,color:"#3a5a3a"}},m.author&&m.author.login||(isMe?"Ty":"Kupujący")," · ",m.createdAt?new Date(m.createdAt).toLocaleString("pl-PL"):"")
+                          );
+                        })
+                      )
+                    ),
+                    React.createElement("div",{style:{padding:"12px 16px",borderTop:"1px solid #1a2a1a",background:"#0a120a"}},
+                      msgAttachments.length>0&&React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:6,marginBottom:8}},
+                        msgAttachments.map(function(att,i){
+                          return React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:4,background:"#1a2a1a",border:"1px solid #2a4a2a",borderRadius:6,padding:"4px 8px",fontSize:11}},
+                            React.createElement("img",{src:att.preview,style:{width:32,height:32,objectFit:"cover",borderRadius:3}}),
+                            React.createElement("span",{style:{color:"#8abf8a",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}},att.name),
+                            React.createElement("button",{onClick:function(){setMsgAttachments(function(prev){return prev.filter(function(x,j){return j!==i;});});},style:{background:"none",border:"none",color:"#df8080",cursor:"pointer",fontSize:13,padding:"0 2px"}},"✕")
+                          );
+                        })
+                      ),
+                      React.createElement("div",{style:{display:"flex",gap:8,alignItems:"flex-end"}},
+                        React.createElement("textarea",{value:msgReply,onChange:function(e){setMsgReply(e.target.value);},onKeyDown:function(e){if(e.key==="Enter"&&e.ctrlKey){msgSend();}},placeholder:"Treść wiadomości... (Ctrl+Enter = wyślij)",style:{flex:1,minHeight:72,resize:"vertical",background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:6,color:"#c0e0c0",padding:"8px 10px",fontSize:13,fontFamily:"monospace"}}),
+                        React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:6}},
+                          React.createElement("label",{style:{cursor:"pointer"}},
+                            React.createElement("div",{style:{background:"#1a3a2a",border:"1px solid #2a5a3a",borderRadius:6,padding:"8px 12px",fontSize:12,color:"#7abf9a",textAlign:"center",cursor:"pointer",whiteSpace:"nowrap"}},"📎 Dodaj foto"),
+                            React.createElement("input",{type:"file",accept:"image/*",multiple:true,style:{display:"none"},onChange:function(e){
+                              const files=Array.from(e.target.files||[]);
+                              const newAtts=files.map(function(f){return {file:f,name:f.name,preview:URL.createObjectURL(f)};});
+                              setMsgAttachments(function(prev){return prev.concat(newAtts);});
+                              e.target.value="";
+                            }})
+                          ),
+                          React.createElement("button",{onClick:msgSend,disabled:msgSending,style:{background:msgSending?"#1a3a2a":"#2a5a3a",border:"1px solid #3a7a4a",borderRadius:6,padding:"8px 12px",fontSize:12,color:"#7fcf7f",cursor:msgSending?"not-allowed":"pointer",fontWeight:700,whiteSpace:"nowrap"}},msgSending?"⟳ Wysyłam":"✉️ Wyślij")
+                        )
+                      ),
+                      msgSendOk&&React.createElement("div",{style:{marginTop:6,color:"#7fcf7f",fontSize:12}},"✅ Wiadomość wysłana!"),
+                      msgSendError&&React.createElement("div",{style:{marginTop:6,color:"#df8080",fontSize:12}},msgSendError)
+                    )
+                  )
+                )}
+              </div>
+            </div>
           </div>
         )}
 
