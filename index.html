@@ -1076,14 +1076,14 @@ function App() {
       const firma=KONTO_DO_FIRMY[kontoId]||"F";
       try{
         let tok=token;
-        let r=await fetch(PROXY+"/api/order/checkout-forms?limit=20&status=READY_FOR_PROCESSING&status=BOUGHT",{
+        let r=await fetch(PROXY+"/api/order/checkout-forms?limit=20",{
           headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json"}
         });
         if(r.status===401){
           const ok=await allegroRefresh(kontoId);
           if(!ok) continue;
           tok=JSON.parse(localStorage.getItem("allegro_tokens")||"{}")[kontoId]||"";
-          r=await fetch(PROXY+"/api/order/checkout-forms?limit=20&status=READY_FOR_PROCESSING&status=BOUGHT",{
+          r=await fetch(PROXY+"/api/order/checkout-forms?limit=20",{
             headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json"}
           });
         }
