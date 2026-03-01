@@ -1977,13 +1977,31 @@ function App() {
                               </span>
                             </td>
                             <td style={{padding:"8px 12px",whiteSpace:"nowrap"}}>
-                              {imp.alreadyExists
-                                ?<span style={{fontSize:10,color:"#3a5a3a",fontStyle:"italic"}}>✓ w zleceniach</span>
-                                :<button onClick={()=>importAllegroOrder(imp)}
-                                  style={{padding:"5px 14px",fontSize:11,background:"#1a4a2a",border:"1px solid #3a8a4a",borderRadius:5,color:"#7fcf7f",cursor:"pointer",fontWeight:700,whiteSpace:"nowrap"}}>
-                                  ➕ Utwórz zlecenie
-                                </button>
-                              }
+                              {(()=>{
+                                const isMosk=(imp.offerNames||"").toLowerCase().includes("moskitiera");
+                                const allegroLink="https://allegro.pl/orders/"+imp.allegroOrderId;
+                                if(imp.alreadyExists) return (
+                                  <div style={{display:"flex",gap:5,alignItems:"center"}}>
+                                    <span style={{fontSize:10,color:"#3a5a3a",fontStyle:"italic"}}>✓ w zleceniach</span>
+                                    <a href={allegroLink} target="_blank" rel="noreferrer"
+                                      style={{fontSize:10,padding:"2px 8px",background:"#1a2a1a",border:"1px solid #2a5a2a",borderRadius:4,color:"#5a9a5a",textDecoration:"none"}}>🔗 Allegro</a>
+                                  </div>
+                                );
+                                return (
+                                  <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                                    {isMosk&&(
+                                      <button onClick={()=>importAllegroOrder(imp)}
+                                        style={{padding:"5px 12px",fontSize:11,background:"#1a4a2a",border:"1px solid #3a8a4a",borderRadius:5,color:"#7fcf7f",cursor:"pointer",fontWeight:700,whiteSpace:"nowrap"}}>
+                                        ➕ Zlecenie
+                                      </button>
+                                    )}
+                                    <a href={allegroLink} target="_blank" rel="noreferrer"
+                                      style={{padding:"5px 12px",fontSize:11,background:"#1a2a3a",border:"1px solid #2a5a7a",borderRadius:5,color:"#7abfdf",cursor:"pointer",fontWeight:700,whiteSpace:"nowrap",textDecoration:"none",display:"inline-block"}}>
+                                      🔗 Allegro
+                                    </a>
+                                  </div>
+                                );
+                              })()}
                             </td>
                           </tr>
                         );
