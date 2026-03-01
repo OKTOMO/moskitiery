@@ -1118,12 +1118,15 @@ function App() {
 
   async function msgUploadAttachment(file){
     const tok=allegroTokens[msgKontoRef.current]||"";
-    const fd=new FormData();
-    fd.append("file",file,file.name);
     const r=await fetch("https://allegro-proxy.favour-biuro.workers.dev/api/messaging/message-attachments",{
       method:"POST",
-      headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json"},
-      body:fd
+      headers:{
+        "Authorization":"Bearer "+tok,
+        "Accept":"application/vnd.allegro.public.v1+json",
+        "Content-Type":file.type||"application/octet-stream",
+        "Content-Disposition":"attachment; filename=""+file.name+"""
+      },
+      body:file
     });
     if(!r.ok){
       let errText="";
