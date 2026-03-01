@@ -1883,15 +1883,7 @@ function App() {
                 {msgNewError&&<div style={{color:"#df8080",fontSize:12,marginBottom:8}}>{msgNewError}</div>}
                 <div style={{display:"flex",gap:8,alignItems:"center"}}>
                   <button onClick={msgSendNew} disabled={msgNewSending} style={{padding:"7px 18px",fontSize:12,background:"#2a5a3a",border:"1px solid #3a7a4a",borderRadius:5,color:"#7fcf7f",cursor:"pointer",fontWeight:700}}>{msgNewSending?"⟳ Wysyłam":"✉️ Wyślij"}</button>
-                  <label style={{cursor:"pointer"}}>
-                    <div style={{padding:"7px 14px",fontSize:12,background:"#1a3a2a",border:"1px solid #2a5a3a",borderRadius:5,color:"#7abf9a",cursor:"pointer"}}>📎 Dodaj foto</div>
-                    <input type="file" accept="image/*" multiple={true} style={{display:"none"}} onChange={function(e){
-                      const files=Array.from(e.target.files||[]);
-                      const newAtts=files.map(function(f){return {file:f,name:f.name,preview:URL.createObjectURL(f)};});
-                      setMsgNewAttachments(function(prev){return prev.concat(newAtts);});
-                      e.target.value="";
-                    }}/>
-                  </label>
+                  <span style={{fontSize:11,color:"#3a6a3a",fontStyle:"italic"}}>📎 Zdjęcia można dodać w odpowiedzi po wysłaniu</span>
                   <button onClick={function(){setMsgNewShow(false);setMsgNewAttachments([]);}} style={{padding:"7px 14px",fontSize:12,background:"transparent",border:"1px solid #2a4a2a",borderRadius:5,color:"#5a8a5a",cursor:"pointer"}}>Anuluj</button>
                 </div>
               </div>
