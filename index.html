@@ -1124,7 +1124,7 @@ function App() {
         "Authorization":"Bearer "+tok,
         "Accept":"application/vnd.allegro.public.v1+json",
         "Content-Type":file.type||"application/octet-stream",
-        "Content-Disposition":"attachment; filename=""+file.name+"""
+        "Content-Disposition":"attachment; filename="+file.name
       },
       body:file
     });
