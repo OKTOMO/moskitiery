@@ -1950,14 +1950,16 @@ function App() {
                               m.text||"",
                               m.attachments&&m.attachments.length>0&&React.createElement("div",{style:{marginTop:6,display:"flex",flexWrap:"wrap",gap:4}},
                                 m.attachments.map(function(att,ai){
-                                  React.createElement("a",{key:ai,href:"#",onClick:function(e){
+                                  return React.createElement("a",{key:ai,href:"#",onClick:function(e){
   e.preventDefault();
   var tok=allegroTokens[msgKontoRef.current]||"";
-  fetch("https://allegro-proxy.favour-biuro.workers.dev/api/messaging/message-attachments/"+att.id,{
+  var attUrl=att.url||"";
+  var proxyUrl=attUrl.replace("https://upload.allegro.pl/message-center/","https://allegro-proxy.favour-biuro.workers.dev/api/");
+  fetch(proxyUrl,{
     headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json"}
   }).then(function(r){return r.blob();}).then(function(blob){
-    var url=URL.createObjectURL(blob);
-    window.open(url,"_blank");
+    var blobUrl=URL.createObjectURL(blob);
+    window.open(blobUrl,"_blank");
   }).catch(function(){alert("Nie udało się otworzyć załącznika.");});
 },style:{display:"block",fontSize:11,color:"#7abf9a",textDecoration:"none",background:"#0e1e0e",padding:"4px 8px",borderRadius:4,cursor:"pointer"}},"📎 "+(att.fileName||"załącznik"));
                                 })
