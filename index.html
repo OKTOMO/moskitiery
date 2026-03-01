@@ -85,6 +85,14 @@ const PROFILE = [
   {id:"E",  nazwa:"Everis",  konta:["everis_pl"],                            kolor:"#3a2a5a"},
   {id:"AP", nazwa:"Albama",  konta:["albama_eu","pedroshop_pl_365"],         kolor:"#5a3a2a"},
 ];
+const KONTO_DO_FIRMY = {
+  "favo5":"F","staroleska_pl":"F","sinlook_pl":"F",
+  "arlis_pl":"A","everis_pl":"E","albama_eu":"AP","pedroshop_pl_365":"AP"
+};
+const KONTO_DO_FIRMY = {
+  "favo5":"F","staroleska_pl":"F","sinlook_pl":"F",
+  "arlis_pl":"A","everis_pl":"E","albama_eu":"AP","pedroshop_pl_365":"AP"
+};
 const ALLEGRO_KONTA = [
   // Favour (F)
   {id:"favo5",           label:"favo5",            firma:"F"},
@@ -528,7 +536,7 @@ function App() {
   const [tab,setTab]=useState(()=>new URLSearchParams(window.location.search).has("code")?"allegro":"nowe");
   async function fetchInvoiceFromAllegro(orderId, firma){
     const kontaMap={"F":"favo5","A":"arlis_pl","AP":"albama_eu","E":"everis_pl"};
-    const kontoId=kontaMap[firma]||"favo5";
+    const kontoId=kontaMap[firma]||"favo5"; // fallback, używany tylko dla faktur
     let token=allegroTokens[kontoId]||"";
     if(!token) return {error:"Brak tokenu dla konta "+kontoId+". Zaloguj się w Admin → Allegro."};
     const url="https://allegro-proxy.favour-biuro.workers.dev/api/order/checkout-forms/"+orderId.trim();
@@ -578,6 +586,10 @@ function App() {
   const [fvSaved,setFvSaved]=useState(false);
   const [fvAllegroId,setFvAllegroId]=useState("");
   const [allegroOrderIdForForm,setAllegroOrderIdForForm]=useState("");
+  const [allegroImportLoading,setAllegroImportLoading]=useState(false);
+  const [allegroImportResults,setAllegroImportResults]=useState([]); // lista zamówień z Allegro
+  const [allegroImportShow,setAllegroImportShow]=useState(false);
+  const [allegroImportError,setAllegroImportError]=useState("");
   const [fvAllegroStatus,setFvAllegroStatus]=useState(""); // "loading"|"ok"|"error"|""
   function saveFaktury(f){setFaktury(f);localStorage.setItem("faktury",JSON.stringify(f));}
   function nextFvNumer(firma,typ){
@@ -1053,6 +1065,95 @@ function App() {
       setMsgReply(text.trim());
     }catch(e){setMsgSuggestError("❌ "+e.message);}
     setMsgSuggesting(false);
+  }
+
+  // ── POBIERZ ZAMÓWIENIA Z ALLEGRO ──
+  async function fetchAllegroOrders(){
+    setAllegroImportLoading(true);
+    setAllegroImportError("");
+    setAllegroImportResults([]);
+    const PROXY="https://allegro-proxy.favour-biuro.workers.dev";
+    const allResults=[];
+    const tokens=JSON.parse(localStorage.getItem("allegro_tokens")||"{}");
+    for(const [kontoId, token] of Object.entries(tokens)){
+      if(!token) continue;
+      const firma=KONTO_DO_FIRMY[kontoId]||"F";
+      try{
+        let tok=token;
+        let r=await fetch(PROXY+"/api/order/checkout-forms?limit=20&sort=-boughtAt",{
+          headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json"}
+        });
+        if(r.status===401){
+          const ok=await allegroRefresh(kontoId);
+          if(!ok) continue;
+          tok=JSON.parse(localStorage.getItem("allegro_tokens")||"{}")[kontoId]||"";
+          r=await fetch(PROXY+"/api/order/checkout-forms?limit=20&sort=-boughtAt",{
+            headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json"}
+          });
+        }
+        if(!r.ok) continue;
+        const data=await r.json();
+        const checkoutForms=data.checkoutForms||[];
+        for(const cf of checkoutForms){
+          // Sprawdź czy już istnieje w bazie
+          const alreadyExists=orders.some(o=>o.allegroOrderId===cf.id);
+          const buyer=cf.buyer||{};
+          const del=(cf.delivery&&cf.delivery.address)||{};
+          const firstName=buyer.firstName||"";
+          const lastName=buyer.lastName||"";
+          const klientImie=(lastName&&firstName)?lastName+" "+firstName:(buyer.login||"");
+          const items=cf.lineItems||[];
+          const offerNames=items.map(i=>i.offer&&i.offer.name?i.offer.name:"").filter(Boolean).join(", ");
+          const status=cf.status||"";
+          allResults.push({
+            allegroOrderId:cf.id,
+            kontoId,
+            firma,
+            data:cf.boughtAt?cf.boughtAt.slice(0,10):new Date().toISOString().slice(0,10),
+            klientImie,
+            klientLogin:buyer.login||"",
+            klientUlica:del.street||"",
+            klientKod:del.zipCode||"",
+            klientMiasto:del.city||"",
+            telefon:del.phoneNumber||buyer.phoneNumber||"",
+            offerNames,
+            status,
+            alreadyExists
+          });
+        }
+      }catch(e){
+        console.error("fetchAllegroOrders error",kontoId,e);
+      }
+    }
+    // Sortuj: najpierw nowe (nie istniejące), potem po dacie
+    allResults.sort((a,b)=>{
+      if(a.alreadyExists!==b.alreadyExists) return a.alreadyExists?1:-1;
+      return new Date(b.data)-new Date(a.data);
+    });
+    setAllegroImportResults(allResults);
+    setAllegroImportShow(true);
+    if(allResults.length===0) setAllegroImportError("Brak zamówień lub brak zalogowanych kont");
+    setAllegroImportLoading(false);
+  }
+
+  function importAllegroOrder(imp){
+    // Otwórz formularz z wypełnionymi danymi
+    setForm({
+      data:imp.data,
+      firma:imp.firma,
+      klientImie:imp.klientImie,
+      klientUlica:imp.klientUlica,
+      klientKod:imp.klientKod,
+      klientMiasto:imp.klientMiasto,
+      telefon:imp.telefon,
+      uwagi:imp.offerNames||"",
+      pozycje:[pustaPoz()]
+    });
+    setAllegroOrderIdForForm(imp.allegroOrderId);
+    setNumerOverride("");
+    setAllegroImportShow(false);
+    setTab("nowe");
+    setSaved(false);
   }
 
   useEffect(()=>{
@@ -1568,7 +1669,7 @@ function App() {
       </div>
 
       <div style={{display:"flex",borderBottom:"1px solid #1e2a1e",paddingLeft:16,background:"#0e1420",flexWrap:"wrap"}}>
-        {[["nowe","➕ Dodaj zamówienie"],["baza","📋 Zamówienia"],["stat","📊 Stat"],["produkcja","🏭 Produkcja"],["kalk","🧮 Kalkulator"],["faktury","🧾 Faktury"],["wiadomosci","💬 Wiadomości"]].map(([id,l])=>(
+        {[["nowe","➕ Dodaj zamówienie"],["al_zam","🛒 Allegro"],["baza","📋 Zlecenia"],["stat","📊 Stat"],["produkcja","🏭 Produkcja"],["kalk","🧮 Kalkulator"],["faktury","🧾 Faktury"],["wiadomosci","💬 Wiadomości"]].map(([id,l])=>(
           <button key={id} className={`tab ${tab===id?"on":""}`} onClick={()=>setTab(id)}>{l}</button>
         ))}
         <button className={`tab ${(tab==="allegro"||tab==="ustawienia"||tab==="historia")?"on":""}`} onClick={()=>{
@@ -1841,6 +1942,108 @@ function App() {
         )}
 
         {/* ══ ZAMÓWIENIA ══ */}
+        {tab==="al_zam" && (
+          <div>
+            {/* Nagłówek + przycisk pobierz */}
+            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}>
+              <span style={{fontSize:11,color:"#3a7a9a",letterSpacing:".12em",textTransform:"uppercase",fontWeight:700}}>🛒 Zamówienia Allegro</span>
+              <button
+                onClick={fetchAllegroOrders}
+                disabled={allegroImportLoading}
+                style={{padding:"6px 18px",fontSize:12,fontWeight:700,cursor:allegroImportLoading?"not-allowed":"pointer",
+                  background:allegroImportLoading?"#1a2a2a":"#1a3a4a",border:"1px solid #2a6a8a",borderRadius:6,color:"#7acfdf"}}>
+                {allegroImportLoading?"⟳ Pobieranie...":"📥 Pobierz zamówienia"}
+              </button>
+              {/* Legenda kont */}
+              <div style={{display:"flex",gap:6,flexWrap:"wrap",marginLeft:"auto"}}>
+                {[["favo5","#2a5a3a","#7fcf7f"],["staroleska_pl","#2a4a2a","#5abf7a"],["sinlook_pl","#1a4a3a","#4abf9a"],
+                  ["arlis_pl","#2a3a5a","#7abfdf"],["everis_pl","#3a2a5a","#af8fdf"],
+                  ["albama_eu","#4a3a1a","#dfaf5a"],["pedroshop_pl_365","#3a2a1a","#cf8a4a"]
+                ].map(([k,bg,col])=>{
+                  const hasTok=!!(allegroTokens[k]||"");
+                  return hasTok?(
+                    <span key={k} style={{fontSize:10,padding:"2px 8px",borderRadius:10,background:bg,color:col,fontFamily:"monospace",fontWeight:700}}>{k}</span>
+                  ):null;
+                })}
+              </div>
+            </div>
+
+            {allegroImportError&&<div style={{marginBottom:12,padding:"8px 14px",background:"#2a1a1a",border:"1px solid #5a2a2a",borderRadius:6,color:"#df8080",fontSize:12}}>{allegroImportError}</div>}
+
+            {!allegroImportShow&&!allegroImportLoading&&(
+              <div style={{textAlign:"center",padding:"60px 0",color:"#2a5a6a",fontSize:13}}>
+                Kliknij "📥 Pobierz zamówienia" aby załadować najnowsze zamówienia ze wszystkich kont
+              </div>
+            )}
+
+            {allegroImportShow&&allegroImportResults.length>0&&(
+              <div style={{background:"#0a1828",border:"1px solid #2a4a7a",borderRadius:8,overflow:"hidden"}}>
+                <div style={{padding:"10px 16px",borderBottom:"1px solid #1a3a5a",display:"flex",alignItems:"center",gap:10}}>
+                  <span style={{fontWeight:700,color:"#7abfdf",fontSize:13}}>
+                    {allegroImportResults.filter(r=>!r.alreadyExists).length} nowych
+                    <span style={{fontWeight:400,color:"#4a7a9a"}}> / {allegroImportResults.length} łącznie</span>
+                  </span>
+                  <button onClick={()=>setAllegroImportShow(false)} style={{marginLeft:"auto",background:"none",border:"none",color:"#5a7a9a",cursor:"pointer",fontSize:18,lineHeight:1}}>✕</button>
+                </div>
+                <div style={{overflowX:"auto"}}>
+                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                    <thead>
+                      <tr style={{background:"#0c1a2a",borderBottom:"1px solid #1a3a5a"}}>
+                        {["Konto / Firma","Data","Klient","Miasto","Produkt","Status",""].map((h,i)=>(
+                          <th key={i} style={{padding:"8px 12px",textAlign:"left",fontSize:10,color:"#3a6a9a",letterSpacing:".08em",textTransform:"uppercase",fontWeight:700,whiteSpace:"nowrap"}}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allegroImportResults.map((imp,idx)=>{
+                        const KONTO_COLORS={
+                          "favo5":["#2a5a3a","#7fcf7f"],"staroleska_pl":["#2a4a2a","#5abf7a"],"sinlook_pl":["#1a4a3a","#4abf9a"],
+                          "arlis_pl":["#2a3a5a","#7abfdf"],"everis_pl":["#3a2a5a","#af8fdf"],
+                          "albama_eu":["#4a3a1a","#dfaf5a"],"pedroshop_pl_365":["#3a2a1a","#cf8a4a"]
+                        };
+                        const [kBg,kCol]=KONTO_COLORS[imp.kontoId]||["#2a2a2a","#9a9a9a"];
+                        return (
+                          <tr key={idx} style={{borderBottom:"1px solid #0f1f2f",background:imp.alreadyExists?"transparent":"#0a1420",opacity:imp.alreadyExists?0.4:1,transition:"opacity .15s"}}>
+                            <td style={{padding:"8px 12px"}}>
+                              <div style={{display:"flex",flexDirection:"column",gap:3}}>
+                                <span style={{fontSize:10,padding:"2px 7px",borderRadius:8,background:kBg,color:kCol,fontFamily:"monospace",fontWeight:700,display:"inline-block",width:"fit-content"}}>{imp.kontoId}</span>
+                                <span style={{fontSize:10,color:"#4a6a4a"}}>{imp.firma==="F"?"Favour":imp.firma==="A"?"Arlis":imp.firma==="E"?"Everis":"Albama"}</span>
+                              </div>
+                            </td>
+                            <td style={{padding:"8px 12px",color:"#7a9abf",whiteSpace:"nowrap"}}>{imp.data}</td>
+                            <td style={{padding:"8px 12px"}}>
+                              <div style={{fontWeight:imp.alreadyExists?400:600,color:"#a0cfdf"}}>{imp.klientImie||"—"}</div>
+                              {imp.klientLogin&&<div style={{fontSize:10,color:"#3a6a8a",fontFamily:"monospace"}}>{imp.klientLogin}</div>}
+                            </td>
+                            <td style={{padding:"8px 12px",color:"#7a9abf"}}>{imp.klientMiasto||"—"}</td>
+                            <td style={{padding:"8px 12px",color:"#5a8a9a",maxWidth:220,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={imp.offerNames}>{imp.offerNames||"—"}</td>
+                            <td style={{padding:"8px 12px",whiteSpace:"nowrap"}}>
+                              <span style={{fontSize:10,padding:"2px 8px",borderRadius:10,fontWeight:700,
+                                background:imp.status==="READY_FOR_PROCESSING"?"#1a3a1a":imp.status==="BOUGHT"?"#1a2a3a":"#1a1a2a",
+                                color:imp.status==="READY_FOR_PROCESSING"?"#7fcf7f":imp.status==="BOUGHT"?"#9abfdf":"#6a7a9a"}}>
+                                {imp.status==="READY_FOR_PROCESSING"?"✅ Gotowe do realizacji":imp.status==="BOUGHT"?"💳 Opłacone":imp.status||"—"}
+                              </span>
+                            </td>
+                            <td style={{padding:"8px 12px",whiteSpace:"nowrap"}}>
+                              {imp.alreadyExists
+                                ?<span style={{fontSize:10,color:"#3a5a3a",fontStyle:"italic"}}>✓ w zleceniach</span>
+                                :<button onClick={()=>importAllegroOrder(imp)}
+                                  style={{padding:"5px 14px",fontSize:11,background:"#1a4a2a",border:"1px solid #3a8a4a",borderRadius:5,color:"#7fcf7f",cursor:"pointer",fontWeight:700,whiteSpace:"nowrap"}}>
+                                  ➕ Utwórz zlecenie
+                                </button>
+                              }
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {tab==="baza" && (
           <div>
             <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
