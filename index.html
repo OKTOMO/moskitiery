@@ -540,10 +540,15 @@ function App() {
     if(!r.ok) return {error:"Błąd API: "+r.status+" — sprawdź nr zamówienia i konto."};
     const d=await r.json();
     // Dane do faktury
+    console.log("Allegro checkout-forms response:", JSON.stringify(d, null, 2));
     const inv=d.invoice||{};
     const invAddr=inv.address||{};
     const buyer=d.buyer||{};
     const delAddr=(d.delivery&&d.delivery.address)||{};
+    console.log("inv:", JSON.stringify(inv));
+    console.log("invAddr:", JSON.stringify(invAddr));
+    console.log("buyer:", JSON.stringify(buyer));
+    console.log("delAddr:", JSON.stringify(delAddr));
     // Preferuj dane z invoice, fallback na adres dostawy
     // naturalPerson to obiekt {firstName, lastName}
     const np=invAddr.naturalPerson||{};
