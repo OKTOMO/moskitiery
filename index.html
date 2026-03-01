@@ -1925,8 +1925,8 @@ function App() {
 
         {/* ══ WIADOMOŚCI ══ */}
         {tab==="wiadomosci" && (
-          <div style={{maxWidth:1100}}>
-            <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"center",flexWrap:"wrap"}}>
+          <div style={{height:"calc(100vh - 160px)",display:"flex",flexDirection:"column"}}>
+            <div style={{display:"flex",gap:8,marginBottom:10,alignItems:"center",flexWrap:"wrap"}}>
               <span style={{fontSize:11,color:"#3a6a3a",letterSpacing:".12em",textTransform:"uppercase",marginRight:4}}>💬 Wiadomości</span>
               {ALLEGRO_KONTA.map(function(k){
                 const hasTok=!!(allegroTokens[k.id]||"");
@@ -1987,7 +1987,7 @@ function App() {
                 </div>
               </div>
             )}
-            <div style={{display:"grid",gridTemplateColumns:"340px 1fr",gap:12,minHeight:600}}>
+            <div style={{display:"grid",gridTemplateColumns:"340px 1fr",gap:12,flex:1,minHeight:0}}>
               <div style={{background:"#0c1a0c",border:"1px solid #1e3a1e",borderRadius:8,overflow:"hidden",display:"flex",flexDirection:"column"}}>
                 <div style={{padding:"10px 14px",borderBottom:"1px solid #1a2a1a",fontSize:11,color:"#4a7a4a",letterSpacing:".1em",textTransform:"uppercase"}}>Wątki ({msgThreads.length})</div>
                 <div style={{overflowY:"auto",flex:1}}>
@@ -2061,7 +2061,7 @@ function App() {
                         })
                       ),
                       React.createElement("div",{style:{display:"flex",gap:8,alignItems:"flex-end"}},
-                        React.createElement("textarea",{value:msgReply,onChange:function(e){setMsgReply(e.target.value);},onKeyDown:function(e){if(e.key==="Enter"&&e.ctrlKey){msgSend();}},placeholder:"Treść wiadomości... (Ctrl+Enter = wyślij)",style:{flex:1,minHeight:72,resize:"vertical",background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:6,color:"#c0e0c0",padding:"8px 10px",fontSize:13,fontFamily:"monospace"}}),
+                        React.createElement("textarea",{value:msgReply,onChange:function(e){setMsgReply(e.target.value);},onKeyDown:function(e){if(e.key==="Enter"&&e.ctrlKey){msgSend();}},placeholder:"Treść wiadomości... (Ctrl+Enter = wyślij)",style:{flex:1,minHeight:120,resize:"vertical",background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:6,color:"#c0e0c0",padding:"8px 10px",fontSize:13,fontFamily:"monospace"}}),
                         React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:6}},
                           React.createElement("label",{style:{cursor:"pointer"}},
                             React.createElement("div",{style:{background:"#1a3a2a",border:"1px solid #2a5a3a",borderRadius:6,padding:"8px 12px",fontSize:12,color:"#7abf9a",textAlign:"center",cursor:"pointer",whiteSpace:"nowrap"}},"📎 Dodaj foto"),
