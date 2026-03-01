@@ -1076,18 +1076,22 @@ function App() {
       const firma=KONTO_DO_FIRMY[kontoId]||"F";
       try{
         let tok=token;
-        let r=await fetch(PROXY+"/api/order/checkout-forms?limit=20&sort=-boughtAt",{
+        let r=await fetch(PROXY+"/api/order/checkout-forms?limit=20&status=READY_FOR_PROCESSING&status=BOUGHT",{
           headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json"}
         });
         if(r.status===401){
           const ok=await allegroRefresh(kontoId);
           if(!ok) continue;
           tok=JSON.parse(localStorage.getItem("allegro_tokens")||"{}")[kontoId]||"";
-          r=await fetch(PROXY+"/api/order/checkout-forms?limit=20&sort=-boughtAt",{
+          r=await fetch(PROXY+"/api/order/checkout-forms?limit=20&status=READY_FOR_PROCESSING&status=BOUGHT",{
             headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json"}
           });
         }
-        if(!r.ok) continue;
+        if(!r.ok){
+          const errTxt=await r.text().catch(()=>"");
+          console.error("checkout-forms error",kontoId,r.status,errTxt);
+          continue;
+        }
         const data=await r.json();
         const checkoutForms=data.checkoutForms||[];
         for(const cf of checkoutForms){
@@ -1128,7 +1132,11 @@ function App() {
     });
     setAllegroImportResults(allResults);
     setAllegroImportShow(true);
-    if(allResults.length===0) setAllegroImportError("Brak zamówień lub brak zalogowanych kont");
+    if(allResults.length===0){
+      const tokenCount=Object.values(JSON.parse(localStorage.getItem("allegro_tokens")||"{}")).filter(Boolean).length;
+      if(tokenCount===0) setAllegroImportError("❌ Brak zalogowanych kont — zaloguj się w Admin → Allegro");
+      else setAllegroImportError("Brak nowych zamówień ze statusem 'Gotowe do realizacji' lub 'Opłacone' na "+tokenCount+" kontach. Sprawdź konsolę (F12) po szczegóły błędów API.");
+    }
     setAllegroImportLoading(false);
   }
 
