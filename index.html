@@ -550,10 +550,17 @@ function App() {
     const ulica=invAddr.street||delAddr.street||"";
     const kod=invAddr.zipCode||delAddr.zipCode||"";
     const miasto=invAddr.city||delAddr.city||"";
-    // Kwota
+    // Produkty i kwota
+    const items=d.lineItems||[];
     const summary=d.summary||{};
     const kwotaBrutto=summary.totalToPay?parseFloat(summary.totalToPay.amount):0;
-    return {nazwa,nip,ulica,kod,miasto,kwotaBrutto,orderId};
+    // Buduj pozycje z rzeczywistych produktów
+    const pozycje=items.length>0?items.map(function(item){
+      const cena=item.price?parseFloat(item.price.amount):0;
+      const ilosc=item.quantity||1;
+      return {nazwa:item.offer&&item.offer.name?item.offer.name:"Towar",ilosc:ilosc,jm:"szt",cena:cena*ilosc,vat:23};
+    }):[{nazwa:"Towar",ilosc:1,jm:"szt",cena:kwotaBrutto,vat:23}];
+    return {nazwa,nip,ulica,kod,miasto,kwotaBrutto,pozycje,orderId};
   }
   const [faktury,setFaktury]=useState(()=>{try{return JSON.parse(localStorage.getItem("faktury")||"[]");}catch{return [];}});
   const [fvForm,setFvForm]=useState(null); // null=lista, {..}=edycja
@@ -1820,7 +1827,7 @@ function App() {
                           nabywcaAdres:res.ulica||f.nabywcaAdres,
                           nabywcaKod:res.kod||f.nabywcaKod,
                           nabywcaMiasto:res.miasto||f.nabywcaMiasto,
-                          pozycje:res.kwotaBrutto>0?[{nazwa:"Moskitiera PCV na wymiar",ilosc:1,jm:"szt",cena:res.kwotaBrutto,vat:23}]:f.pozycje,
+                          pozycje:res.pozycje&&res.pozycje.length>0?res.pozycje:f.pozycje,
                         }));
                         setFvAllegroStatus("ok:"+res.nazwa+(res.nip?" · NIP: "+res.nip:"")+(res.kwotaBrutto?" · "+res.kwotaBrutto.toFixed(2)+" zł":""));
                       };
@@ -1868,7 +1875,7 @@ function App() {
                           nabywcaAdres:res.ulica||f.nabywcaAdres,
                           nabywcaKod:res.kod||f.nabywcaKod,
                           nabywcaMiasto:res.miasto||f.nabywcaMiasto,
-                          pozycje:res.kwotaBrutto>0?[{nazwa:"Moskitiera PCV na wymiar",ilosc:1,jm:"szt",cena:res.kwotaBrutto,vat:23}]:f.pozycje,
+                          pozycje:res.pozycje&&res.pozycje.length>0?res.pozycje:f.pozycje,
                         }));
                         setFvAllegroStatus("ok:"+res.nazwa+(res.nip?" · NIP: "+res.nip:"")+(res.kwotaBrutto?" · "+res.kwotaBrutto.toFixed(2)+" zł":""));
                       }
