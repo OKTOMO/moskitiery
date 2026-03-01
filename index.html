@@ -524,9 +524,42 @@ table.main td.kolor{font-size:14px;font-weight:700}
 function App() {
   const [activeProfile,setActiveProfile]=useState(()=>localStorage.getItem('active_profile')||"");
   const [tab,setTab]=useState(()=>new URLSearchParams(window.location.search).has("code")?"allegro":"nowe");
+  async function fetchInvoiceFromAllegro(orderId, firma){
+    const kontaMap={"F":"favo5","A":"arlis","AP":"albama","E":"everis"};
+    const kontoId=kontaMap[firma]||"favo5";
+    let token=allegroTokens[kontoId]||"";
+    if(!token) return {error:"Brak tokenu dla konta "+kontoId+". Zaloguj się w Admin → Allegro."};
+    const url="https://allegro-proxy.favour-biuro.workers.dev/api/order/checkout-forms/"+orderId.trim();
+    let r=await fetch(url,{headers:{"Authorization":"Bearer "+token,"Accept":"application/vnd.allegro.public.v1+json"}});
+    if(r.status===401){
+      const ok=await allegroRefresh(kontoId);
+      if(!ok) return {error:"Sesja wygasła — zaloguj się ponownie w Admin → Allegro."};
+      token=allegroTokens[kontoId]||"";
+      r=await fetch(url,{headers:{"Authorization":"Bearer "+token,"Accept":"application/vnd.allegro.public.v1+json"}});
+    }
+    if(!r.ok) return {error:"Błąd API: "+r.status+" — sprawdź nr zamówienia i konto."};
+    const d=await r.json();
+    // Dane do faktury
+    const inv=d.invoice||{};
+    const invAddr=inv.address||{};
+    const buyer=d.buyer||{};
+    const delAddr=(d.delivery&&d.delivery.address)||{};
+    // Preferuj dane z invoice, fallback na adres dostawy
+    const nazwa=invAddr.company||invAddr.naturalPerson||(invAddr.firstName+" "+invAddr.lastName)||buyer.login||"";
+    const nip=inv.taxId||"";
+    const ulica=invAddr.street||delAddr.street||"";
+    const kod=invAddr.zipCode||delAddr.zipCode||"";
+    const miasto=invAddr.city||delAddr.city||"";
+    // Kwota
+    const summary=d.summary||{};
+    const kwotaBrutto=summary.totalToPay?parseFloat(summary.totalToPay.amount):0;
+    return {nazwa,nip,ulica,kod,miasto,kwotaBrutto,orderId};
+  }
   const [faktury,setFaktury]=useState(()=>{try{return JSON.parse(localStorage.getItem("faktury")||"[]");}catch{return [];}});
   const [fvForm,setFvForm]=useState(null); // null=lista, {..}=edycja
   const [fvSaved,setFvSaved]=useState(false);
+  const [fvAllegroId,setFvAllegroId]=useState("");
+  const [fvAllegroStatus,setFvAllegroStatus]=useState(""); // "loading"|"ok"|"error"|""
   function saveFaktury(f){setFaktury(f);localStorage.setItem("faktury",JSON.stringify(f));}
   function nextFvNumer(firma,typ){
     const now=new Date();
@@ -1771,6 +1804,35 @@ function App() {
                 </div>
                 <div style={{background:"#0d1a0d",border:"1px solid #1e3a1e",borderRadius:8,padding:14}}>
                   <div style={{fontSize:10,color:"#5a8a5a",fontWeight:700,marginBottom:8,letterSpacing:".1em"}}>MODUŁ 2B — NABYWCA</div>
+                  {/* Allegro fetch */}
+                  <div style={{display:"flex",gap:6,marginBottom:8,alignItems:"flex-end"}}>
+                    <div style={{flex:1}}>
+                      <span className="lbl">Nr zamówienia Allegro</span>
+                      <input value={fvAllegroId} onChange={e=>setFvAllegroId(e.target.value)}
+                        placeholder="np. 25f8c3a2-1234-..." style={{fontFamily:"monospace",fontSize:11}}/>
+                    </div>
+                    <button onClick={async()=>{
+                      if(!fvAllegroId.trim()){alert("Podaj nr zamówienia Allegro");return;}
+                      setFvAllegroStatus("loading");
+                      const res=await fetchInvoiceFromAllegro(fvAllegroId,fvForm.firma);
+                      if(res.error){setFvAllegroStatus("error:"+res.error);return;}
+                      setFvForm(f=>({...f,
+                        nabywcaNazwa:res.nazwa||f.nabywcaNazwa,
+                        nabywcaNip:res.nip||f.nabywcaNip,
+                        nabywcaAdres:res.ulica||f.nabywcaAdres,
+                        nabywcaKod:res.kod||f.nabywcaKod,
+                        nabywcaMiasto:res.miasto||f.nabywcaMiasto,
+                        pozycje:res.kwotaBrutto>0?[{nazwa:"Moskitiera PCV na wymiar",ilosc:1,jm:"szt",cena:res.kwotaBrutto,vat:23}]:f.pozycje,
+                      }));
+                      setFvAllegroStatus("ok:"+res.nazwa+(res.nip?" · NIP: "+res.nip:"")+(res.kwotaBrutto?" · "+res.kwotaBrutto.toFixed(2)+" zł":""));
+                    }} style={{background:"#1a3a4a",color:"#7fcfdf",border:"1px solid #2a5a7a",
+                      borderRadius:4,padding:"5px 12px",cursor:"pointer",fontSize:12,fontWeight:700,whiteSpace:"nowrap"}}>
+                      🔍 Zaciągnij z Allegro
+                    </button>
+                  </div>
+                  {fvAllegroStatus==="loading"&&<div style={{fontSize:11,color:"#dfcf5f",marginBottom:6}}>⏳ Pobieranie danych...</div>}
+                  {fvAllegroStatus.startsWith("ok:")&&<div style={{fontSize:11,color:"#7fcf9f",marginBottom:6}}>✅ {fvAllegroStatus.slice(3)}</div>}
+                  {fvAllegroStatus.startsWith("error:")&&<div style={{fontSize:11,color:"#cf7f7f",marginBottom:6}}>❌ {fvAllegroStatus.slice(6)}</div>}
                   <div style={{display:"grid",gap:6}}>
                     <div><span className="lbl">Nazwa / Imię Nazwisko</span>
                       <input value={fvForm.nabywcaNazwa} onChange={e=>setFvForm(f=>({...f,nabywcaNazwa:e.target.value}))} placeholder="Jan Kowalski"/></div>
@@ -1898,7 +1960,7 @@ function App() {
             <div style={{maxWidth:1000,margin:"0 auto"}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
                 <h2 style={{color:"#9fcf9f",margin:0}}>🧾 Faktury — {currentProfile?.nazwa||"wszystkie"}</h2>
-                <button className="btn" style={{fontSize:14}} onClick={()=>setFvForm(pustyFvForm(firma))}>+ Nowa faktura</button>
+                <button className="btn" style={{fontSize:14}} onClick={()=>{setFvForm(pustyFvForm(firma));setFvAllegroId("");setFvAllegroStatus("");}}>+ Nowa faktura</button>
               </div>
 
               {listaFirmy.length===0?<div style={{color:"#5a8a5a",textAlign:"center",padding:40}}>Brak faktur — kliknij "+ Nowa faktura"</div>:(
