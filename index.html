@@ -553,7 +553,8 @@ function App() {
     const buyerName=buyer.firstName&&buyer.lastName?(buyer.firstName+" "+buyer.lastName):null;
     const nazwa=companyName||npName||buyerName||buyer.login||"";
     // taxId może być w invAddr lub inv
-    const nip=invAddr.taxId||inv.taxId||(invAddr.ids&&invAddr.ids[0]?invAddr.ids[0].value:"")||"";
+    const nipFromIds=invAddr.ids&&invAddr.ids.length>0?invAddr.ids.find(function(x){return x.type==="PL_NIP";})||invAddr.ids[0]:null;
+    const nip=invAddr.taxId||inv.taxId||(nipFromIds?nipFromIds.value:"")||(invAddr.company&&invAddr.company.ids?((invAddr.company.ids.find(function(x){return x.type==="PL_NIP";})||invAddr.company.ids[0]||{}).value||""):"");
     const ulica=invAddr.street||delAddr.street||"";
     const kod=invAddr.zipCode||delAddr.zipCode||"";
     const miasto=invAddr.city||delAddr.city||"";
