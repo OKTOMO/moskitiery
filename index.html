@@ -1063,79 +1063,39 @@ function App() {
     setMsgSuggesting(false);
   }
 
-  // ── POBIERZ ZAMÓWIENIA Z ALLEGRO ──
+  // ── POBIERZ ZAMÓWIENIA Z ALLEGRO (przez autoresponder worker) ──
   async function fetchAllegroOrders(){
     setAllegroImportLoading(true);
     setAllegroImportError("");
     setAllegroImportResults([]);
-    const PROXY="https://allegro-proxy.favour-biuro.workers.dev";
-    const allResults=[];
-    const tokens=JSON.parse(localStorage.getItem("allegro_tokens")||"{}");
-    for(const [kontoId, token] of Object.entries(tokens)){
-      if(!token) continue;
-      const firma=KONTO_DO_FIRMY[kontoId]||"F";
-      try{
-        let tok=token;
-        let r=await fetch(PROXY+"/api/order/checkout-forms?limit=20",{
-          headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json"}
-        });
-        if(r.status===401){
-          const ok=await allegroRefresh(kontoId);
-          if(!ok) continue;
-          tok=JSON.parse(localStorage.getItem("allegro_tokens")||"{}")[kontoId]||"";
-          r=await fetch(PROXY+"/api/order/checkout-forms?limit=20",{
-            headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json"}
-          });
-        }
-        if(!r.ok){
-          const errTxt=await r.text().catch(()=>"");
-          console.error("checkout-forms error",kontoId,r.status,errTxt);
-          continue;
-        }
-        const data=await r.json();
-        const checkoutForms=data.checkoutForms||[];
-        for(const cf of checkoutForms){
-          // Sprawdź czy już istnieje w bazie
-          const alreadyExists=orders.some(o=>o.allegroOrderId===cf.id);
-          const buyer=cf.buyer||{};
-          const del=(cf.delivery&&cf.delivery.address)||{};
-          const firstName=buyer.firstName||"";
-          const lastName=buyer.lastName||"";
-          const klientImie=(lastName&&firstName)?lastName+" "+firstName:(buyer.login||"");
-          const items=cf.lineItems||[];
-          const offerNames=items.map(i=>i.offer&&i.offer.name?i.offer.name:"").filter(Boolean).join(", ");
-          const status=cf.status||"";
-          allResults.push({
-            allegroOrderId:cf.id,
-            kontoId,
-            firma,
-            data:cf.boughtAt?cf.boughtAt.slice(0,10):new Date().toISOString().slice(0,10),
-            klientImie,
-            klientLogin:buyer.login||"",
-            klientUlica:del.street||"",
-            klientKod:del.zipCode||"",
-            klientMiasto:del.city||"",
-            telefon:del.phoneNumber||buyer.phoneNumber||"",
-            offerNames,
-            status,
-            alreadyExists
-          });
-        }
-      }catch(e){
-        console.error("fetchAllegroOrders error",kontoId,e);
+    try{
+      const r=await fetch(AUTORESPONDER_URL+"/orders",{
+        headers:{"x-api-key":AUTORESPONDER_KEY}
+      });
+      if(!r.ok){
+        const txt=await r.text().catch(()=>"");
+        throw new Error("HTTP "+r.status+": "+txt.slice(0,200));
       }
-    }
-    // Sortuj: najpierw nowe (nie istniejące), potem po dacie
-    allResults.sort((a,b)=>{
-      if(a.alreadyExists!==b.alreadyExists) return a.alreadyExists?1:-1;
-      return new Date(b.data)-new Date(a.data);
-    });
-    setAllegroImportResults(allResults);
-    setAllegroImportShow(true);
-    if(allResults.length===0){
-      const tokenCount=Object.values(JSON.parse(localStorage.getItem("allegro_tokens")||"{}")).filter(Boolean).length;
-      if(tokenCount===0) setAllegroImportError("❌ Brak zalogowanych kont — zaloguj się w Admin → Allegro");
-      else setAllegroImportError("Brak nowych zamówień ze statusem 'Gotowe do realizacji' lub 'Opłacone' na "+tokenCount+" kontach. Sprawdź konsolę (F12) po szczegóły błędów API.");
+      const d=await r.json();
+      if(!d.ok) throw new Error(JSON.stringify(d));
+      const rawOrders=d.orders||[];
+      // Zaznacz które już są w bazie
+      const allResults=rawOrders.map(imp=>({
+        ...imp,
+        alreadyExists:orders.some(o=>o.allegroOrderId===imp.allegroOrderId)
+      }));
+      // Sortuj: nowe pierwsze
+      allResults.sort((a,b)=>{
+        if(a.alreadyExists!==b.alreadyExists) return a.alreadyExists?1:-1;
+        return new Date(b.data)-new Date(a.data);
+      });
+      setAllegroImportResults(allResults);
+      setAllegroImportShow(true);
+      if(allResults.length===0) setAllegroImportError("Brak zamówień — sprawdź czy tokeny są zsynchronizowane w Admin → Autoresponder → Synchronizuj tokeny");
+      if(d.errors&&d.errors.length>0) console.warn("Błędy pobierania:",d.errors);
+    }catch(e){
+      setAllegroImportError("❌ "+e.message);
+      console.error("fetchAllegroOrders:",e);
     }
     setAllegroImportLoading(false);
   }
@@ -1402,9 +1362,9 @@ function App() {
       }
       const msgBody={text:msgNewText.trim()};
       if(attIds.length>0) msgBody.attachments=attIds;
-      const r=await fetch("https://allegro-proxy.favour-biuro.workers.dev/api/messaging/messages",{
+      const r=await fetch(AUTORESPONDER_URL+"/messaging/new?kontoId="+msgKonto,{
         method:"POST",
-        headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json","Content-Type":"application/vnd.allegro.public.v1+json"},
+        headers:{"x-api-key":AUTORESPONDER_KEY,"Content-Type":"application/json"},
         body:JSON.stringify(Object.assign({recipient:{login:msgNewLogin.trim()},text:msgNewText.trim()},msgNewOrderId.trim()?{order:{id:msgNewOrderId.trim()}}:{},attIds.length>0?{attachments:attIds}:{}))
       });
       if(!r.ok){
@@ -1432,12 +1392,8 @@ function App() {
     setMsgKonto(k);
     setMsgLoading(true); setMsgError(""); setMsgThreads([]); setMsgActiveThread(null); setMsgConvo([]);
     try{
-      const r=await fetch("https://allegro-proxy.favour-biuro.workers.dev/api/messaging/threads?limit=20&offset=0",{
-        headers:{
-          "Authorization":"Bearer "+tok,
-          "Accept":"application/vnd.allegro.public.v1+json",
-          "Accept-Language":"pl-PL"
-        }
+      const r=await fetch(AUTORESPONDER_URL+"/messaging/threads?kontoId="+k+"&limit=20&offset=0",{
+        headers:{"x-api-key":AUTORESPONDER_KEY}
       });
       if(r.status===401){
         if(retried){setMsgError("Sesja wygasła — zaloguj się ponownie w Admin → Allegro.");setMsgLoading(false);return;}
@@ -1465,8 +1421,8 @@ function App() {
     setMsgActiveThread(thread);
     setMsgConvoLoading(true); setMsgConvo([]); setMsgReply(""); setMsgAttachments([]); setMsgSendOk(false); setMsgSendError("");
     try{
-      const r=await fetch("https://allegro-proxy.favour-biuro.workers.dev/api/messaging/threads/"+thread.id+"/messages",{
-        headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json","Accept-Language":"pl-PL"}
+      const r=await fetch(AUTORESPONDER_URL+"/messaging/threads/"+thread.id+"/messages?kontoId="+k,{
+        headers:{"x-api-key":AUTORESPONDER_KEY}
       });
       if(r.status===401&&!retried){const ok=await allegroRefresh(k);if(ok){msgLoadConvo(thread,true);return;}}
       if(r.ok){const d=await r.json();setMsgConvo(d.messages||[]);}
@@ -1477,13 +1433,9 @@ function App() {
   async function msgUploadAttachment(file){
     const tok=allegroTokens[msgKontoRef.current]||"";
     // Step 1: declare attachment
-    const r1=await fetch("https://allegro-proxy.favour-biuro.workers.dev/api/messaging/message-attachments",{
+    const r1=await fetch(AUTORESPONDER_URL+"/messaging/attachments?kontoId="+msgKontoRef.current,{
       method:"POST",
-      headers:{
-        "Authorization":"Bearer "+tok,
-        "Accept":"application/vnd.allegro.public.v1+json",
-        "Content-Type":"application/vnd.allegro.public.v1+json"
-      },
+      headers:{"x-api-key":AUTORESPONDER_KEY,"Content-Type":"application/vnd.allegro.public.v1+json"},
       body:JSON.stringify({filename:file.name,size:file.size})
     });
     if(!r1.ok){
@@ -1495,13 +1447,9 @@ function App() {
     const d1=await r1.json();
     if(!d1.id){setMsgSendError("Deklaracja nie zwróciła ID: "+JSON.stringify(d1));return null;}
     // Step 2: upload binary
-    const r2=await fetch("https://allegro-proxy.favour-biuro.workers.dev/api/messaging/message-attachments/"+d1.id,{
+    const r2=await fetch(AUTORESPONDER_URL+"/messaging/attachments/"+d1.id+"?kontoId="+msgKontoRef.current,{
       method:"PUT",
-      headers:{
-        "Authorization":"Bearer "+tok,
-        "Accept":"application/vnd.allegro.public.v1+json",
-        "Content-Type":file.type||"application/octet-stream"
-      },
+      headers:{"x-api-key":AUTORESPONDER_KEY,"Content-Type":file.type||"application/octet-stream"},
       body:file
     });
     if(!r2.ok){
@@ -1528,9 +1476,9 @@ function App() {
       }
       const body={text:msgReply};
       if(attIds.length>0) body.attachments=attIds;
-      const r=await fetch("https://allegro-proxy.favour-biuro.workers.dev/api/messaging/threads/"+msgActiveThread.id+"/messages",{
+      const r=await fetch(AUTORESPONDER_URL+"/messaging/threads/"+msgActiveThread.id+"/messages?kontoId="+msgKontoRef.current,{
         method:"POST",
-        headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json","Content-Type":"application/vnd.allegro.public.v1+json"},
+        headers:{"x-api-key":AUTORESPONDER_KEY,"Content-Type":"application/json"},
         body:JSON.stringify(body)
       });
       if(r.ok){
@@ -1553,8 +1501,8 @@ function App() {
     setAllegroMessages([]);
     setAllegroLoading(true); setAllegroError("");
     try{
-      const r=await fetch('https://allegro-proxy.favour-biuro.workers.dev/api/messaging/threads?limit=20',{
-        headers:{'Authorization':'Bearer '+tok,'Accept':'application/vnd.allegro.public.v1+json'}
+      const r=await fetch(AUTORESPONDER_URL+'/messaging/threads?kontoId='+activeKonto+'&limit=20',{
+        headers:{'x-api-key':AUTORESPONDER_KEY}
       });
       if(r.status===401){const refreshed=await allegroRefresh(activeKonto);if(refreshed){allegroLoadMessages(allegroTokens[activeKonto],activeKonto);return;}const t={...allegroTokens};delete t[activeKonto];localStorage.setItem('allegro_tokens',JSON.stringify(t));setAllegroTokens(t);setAllegroError('Sesja wygasła — zaloguj się ponownie');setAllegroLoading(false);return;}
       const d=await r.json();
@@ -1562,8 +1510,8 @@ function App() {
       const threads=d.threads||[];
       const messagesArr=[];
       for(const t of threads.slice(0,10)){
-        const mr=await fetch('https://allegro-proxy.favour-biuro.workers.dev/api/messaging/threads/'+t.id+'/messages',{
-          headers:{'Authorization':'Bearer '+tok,'Accept':'application/vnd.allegro.public.v1+json'}
+        const mr=await fetch(AUTORESPONDER_URL+'/messaging/threads/'+t.id+'/messages?kontoId='+activeKonto,{
+          headers:{'x-api-key':AUTORESPONDER_KEY}
         });
         const md=await mr.json();
         const msgs=md.messages||[];
@@ -2391,7 +2339,7 @@ function App() {
   e.preventDefault();
   var tokens=JSON.parse(localStorage.getItem("allegro_tokens")||"{}"); var tok=tokens[msgKontoRef.current]||"";
   var attUrl=att.url||"";
-  var attId=attUrl.split("/").pop(); var proxyUrl="https://allegro-proxy.favour-biuro.workers.dev/api/messaging/message-attachments/"+attId;
+  var attId=attUrl.split("/").pop(); var proxyUrl=AUTORESPONDER_URL+"/messaging/attachments?id="+attId+"&kontoId="+(msgKontoRef.current||"");
   console.log("konto:",msgKontoRef.current,"tok:",tok.substring(0,20),"url:",proxyUrl);
   fetch(proxyUrl,{
     headers:{"Authorization":"Bearer "+tok}
