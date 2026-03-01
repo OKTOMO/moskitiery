@@ -1145,7 +1145,7 @@ function App() {
       if(attIds.length>0) body.attachments=attIds;
       const r=await fetch("https://allegro-proxy.favour-biuro.workers.dev/api/messaging/threads/"+msgActiveThread.id+"/messages",{
         method:"POST",
-        headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json","Content-Type":"application/json"},
+        headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json","Content-Type":"application/vnd.allegro.public.v1+json"},
         body:JSON.stringify(body)
       });
       if(r.ok){
