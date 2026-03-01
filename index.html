@@ -1160,25 +1160,41 @@ function App() {
 
   async function msgUploadAttachment(file){
     const tok=allegroTokens[msgKontoRef.current]||"";
-    const fd=new FormData();
-    fd.append("file",file,file.name);
-    const r=await fetch("https://allegro-proxy.favour-biuro.workers.dev/api/messaging/message-attachments",{
+    // Step 1: declare attachment
+    const r1=await fetch("https://allegro-proxy.favour-biuro.workers.dev/api/messaging/message-attachments",{
       method:"POST",
       headers:{
         "Authorization":"Bearer "+tok,
-        "Accept":"application/vnd.allegro.public.v1+json"
+        "Accept":"application/vnd.allegro.public.v1+json",
+        "Content-Type":"application/vnd.allegro.public.v1+json"
       },
-      body:fd
+      body:JSON.stringify({name:file.name,size:file.size})
     });
-    if(!r.ok){
+    if(!r1.ok){
       let errText="";
-      try{const ed=await r.json();errText=JSON.stringify(ed);}catch{}
-      setMsgSendError("Błąd uploadu zdjęcia "+r.status+": "+errText);
+      try{const ed=await r1.json();errText=JSON.stringify(ed);}catch{}
+      setMsgSendError("Błąd deklaracji załącznika "+r1.status+": "+errText);
       return null;
     }
-    const d=await r.json();
-    if(!d.id){setMsgSendError("Upload zdjęcia nie zwrócił ID: "+JSON.stringify(d));return null;}
-    return d.id;
+    const d1=await r1.json();
+    if(!d1.id){setMsgSendError("Deklaracja nie zwróciła ID: "+JSON.stringify(d1));return null;}
+    // Step 2: upload binary
+    const r2=await fetch("https://allegro-proxy.favour-biuro.workers.dev/api/messaging/message-attachments/"+d1.id,{
+      method:"PUT",
+      headers:{
+        "Authorization":"Bearer "+tok,
+        "Accept":"application/vnd.allegro.public.v1+json",
+        "Content-Type":file.type||"application/octet-stream"
+      },
+      body:file
+    });
+    if(!r2.ok){
+      let errText="";
+      try{const ed=await r2.json();errText=JSON.stringify(ed);}catch{}
+      setMsgSendError("Błąd uploadu pliku "+r2.status+": "+errText);
+      return null;
+    }
+    return d1.id;
   }
 
   async function msgSend(){
