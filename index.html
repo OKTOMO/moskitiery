@@ -1782,15 +1782,18 @@ function App() {
           <div style={{maxWidth:1100}}>
             <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"center",flexWrap:"wrap"}}>
               <span style={{fontSize:11,color:"#3a6a3a",letterSpacing:".12em",textTransform:"uppercase",marginRight:4}}>💬 Wiadomości</span>
-              {PROFILE.map(function(p){
-                const kontyFirmy=ALLEGRO_KONTA.filter(function(k){return p.konta.includes(k.id)&&!!(allegroTokens[k.id]||"");});
-                if(kontyFirmy.length===0) return null;
-                return React.createElement("div",{key:p.id,style:{display:"flex",alignItems:"center",gap:4,background:"#0e1a0e",border:"1px solid #1a2a1a",borderRadius:6,padding:"2px 4px"}},
-                  React.createElement("span",{style:{fontSize:10,color:"#3a5a3a",padding:"0 4px",fontWeight:700}},p.nazwa),
-                  kontyFirmy.map(function(k){
-                    const active=msgKonto===k.id;
-                    return React.createElement("button",{key:k.id,className:"btn-sm",style:{opacity:active?1:0.45,background:active?"#2a5a3a":"transparent",border:active?"1px solid #3a7a4a":"1px solid transparent",padding:"4px 10px",fontSize:11},onClick:function(){msgLoadThreads(k.id);}},k.label);
-                  })
+              {ALLEGRO_KONTA.map(function(k){
+                const hasTok=!!(allegroTokens[k.id]||"");
+                const active=msgKonto===k.id;
+                return (
+                  <button key={k.id} onClick={function(){if(hasTok){msgLoadThreads(k.id);}else{alert("Brak tokenu dla "+k.id+" — zaloguj się w Admin → Allegro.");}}}
+                    style={{padding:"4px 12px",fontSize:11,cursor:"pointer",borderRadius:5,fontWeight:active?700:400,
+                      background:active?"#2a5a3a":(hasTok?"#1a2a1a":"#0e0e0e"),
+                      border:"1px solid "+(active?"#4a9a5a":(hasTok?"#2a4a2a":"#1a1a1a")),
+                      color:active?"#9fef9f":(hasTok?"#6a9a6a":"#2a4a2a"),
+                      opacity:hasTok?1:0.4}}>
+                    {k.label}
+                  </button>
                 );
               })}
               {msgLoading&&<span style={{fontSize:12,color:"#5a8a5a",marginLeft:8}}>⟳ ładowanie...</span>}
