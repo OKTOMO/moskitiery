@@ -1956,7 +1956,7 @@ function App() {
   var attUrl=att.url||"";
   var attId=attUrl.split("/").pop(); var proxyUrl="https://allegro-proxy.favour-biuro.workers.dev/api/messaging/message-attachments/"+attId;
   fetch(proxyUrl,{
-    headers:{"Authorization":"Bearer "+tok,"Accept":"application/vnd.allegro.public.v1+json"}
+    headers:{"Authorization":"Bearer "+tok}
   }).then(function(r){return r.blob();}).then(function(blob){
     var blobUrl=URL.createObjectURL(blob);
     window.open(blobUrl,"_blank");
