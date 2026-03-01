@@ -528,14 +528,18 @@ function App() {
   const [fvForm,setFvForm]=useState(null); // null=lista, {..}=edycja
   const [fvSaved,setFvSaved]=useState(false);
   function saveFaktury(f){setFaktury(f);localStorage.setItem("faktury",JSON.stringify(f));}
-  function nextFvNumer(firma){
-    const rok=new Date().getFullYear().toString().slice(-2);
-    const pat=new RegExp("^FV/(\\d+)/"+rok+"/"+firma+"$");
+  function nextFvNumer(firma,typ){
+    const now=new Date();
+    const rok=now.getFullYear();
+    const mies=now.getMonth()+1;
+    const prefix=typ==="proforma"?"PRO":typ==="korekta"?(firma+"K"):firma;
+    const pat=new RegExp("^"+prefix+"/(\\d+)/"+mies+"/"+rok+"$");
     const nums=faktury.map(f=>f.numer).filter(n=>n&&pat.test(n)).map(n=>parseInt(n.match(pat)[1]));
-    return "FV/"+((nums.length?Math.max(...nums):0)+1)+"/"+rok+"/"+firma;
+    return prefix+"/"+((nums.length?Math.max(...nums):0)+1)+"/"+mies+"/"+rok;
   }
   function pustyFvForm(firma="F"){
-    return {firma,numer:"",data:new Date().toISOString().slice(0,10),terminPlatnosci:"",
+    const dzis=new Date().toISOString().slice(0,10);
+    return {firma,typ:"faktura",numer:"",data:dzis,dataSprzedazy:dzis,terminPlatnosci:"",
       nabywcaNazwa:"",nabywcaNip:"",nabywcaAdres:"",nabywcaKod:"",nabywcaMiasto:"",
       pozycje:[{nazwa:"Moskitiera PCV na wymiar",ilosc:1,jm:"szt",cenaNetto:0,vat:23}],
       uwagi:"",platnosc:"przelew"};
@@ -543,85 +547,113 @@ function App() {
   function drukujFakture(fv){
     const sp=FIRMY_DANE[fv.firma]||{};
     const dataWyst=fv.data?new Date(fv.data).toLocaleDateString("pl-PL"):"";
+    const dataSprz=fv.dataSprzedazy?new Date(fv.dataSprzedazy).toLocaleDateString("pl-PL"):dataWyst;
     const dataTerm=fv.terminPlatnosci?new Date(fv.terminPlatnosci).toLocaleDateString("pl-PL"):"";
+    const isProforma=fv.typ==="proforma";
+    const tytulDoc=isProforma?"FAKTURA PROFORMA":fv.typ==="korekta"?"FAKTURA KORYGUJĄCA":"FAKTURA VAT";
     const rows=fv.pozycje.map(function(p,i){
       const netto=Math.round((parseFloat(p.cenaNetto)||0)*(parseFloat(p.ilosc)||1)*100)/100;
       const vatKwota=Math.round(netto*(parseFloat(p.vat)||23)/100*100)/100;
       const brutto=Math.round((netto+vatKwota)*100)/100;
-      return "<tr><td>"+(i+1)+"</td><td style='text-align:left'>"+p.nazwa+"</td><td>"+p.ilosc+"</td><td>"+(p.jm||"szt")+"</td><td class='num'>"+(parseFloat(p.cenaNetto)||0).toFixed(2)+"</td><td class='num'>"+netto.toFixed(2)+"</td><td class='num'>"+(p.vat||23)+"%</td><td class='num'>"+vatKwota.toFixed(2)+"</td><td class='num'>"+brutto.toFixed(2)+"</td></tr>";
+      return "<tr><td>"+(i+1)+"</td>"
+        +"<td style='text-align:left;padding-left:8px'>"+p.nazwa+"</td>"
+        +"<td>"+p.ilosc+"</td>"
+        +"<td>"+(p.jm||"szt")+"</td>"
+        +"<td class='num'>"+(parseFloat(p.cenaNetto)||0).toFixed(2)+"</td>"
+        +"<td class='num'>"+netto.toFixed(2)+"</td>"
+        +"<td class='num'>"+(p.vat||23)+"%</td>"
+        +"<td class='num'>"+vatKwota.toFixed(2)+"</td>"
+        +"<td class='num'>"+brutto.toFixed(2)+"</td></tr>";
     }).join("");
     const totalNetto=fv.pozycje.reduce(function(a,p){return a+Math.round((parseFloat(p.cenaNetto)||0)*(parseFloat(p.ilosc)||1)*100)/100;},0);
     const totalVat=fv.pozycje.reduce(function(a,p){const n=Math.round((parseFloat(p.cenaNetto)||0)*(parseFloat(p.ilosc)||1)*100)/100;return a+Math.round(n*(parseFloat(p.vat)||23)/100*100)/100;},0);
     const totalBrutto=Math.round((totalNetto+totalVat)*100)/100;
-    const platnosci = fv.platnosc!=="gotowka"
-      ? "<div class='lbl'>Bank:</div><div>"+sp.bank+"</div><div class='lbl'>Nr konta:</div><div style='font-weight:700;font-family:monospace'>"+sp.konto+"</div>"
-        +(fv.numer?"<div class='lbl'>Tytuł:</div><div>"+fv.numer+"</div>":"")
-      : "";
-    const uwagi=fv.uwagi?"<div style='font-size:11px;margin-bottom:12px'><strong>Uwagi:</strong> "+fv.uwagi+"</div>":"";
+    const platnosci=fv.platnosc!=="gotowka"
+      ?"<tr><td class='pl'>Bank:</td><td>"+sp.bank+"</td></tr>"
+       +"<tr><td class='pl'>Nr konta:</td><td><strong style='font-family:monospace'>"+sp.konto+"</strong></td></tr>"
+       +(fv.numer?"<tr><td class='pl'>Tytuł:</td><td>"+fv.numer+"</td></tr>":"")
+       +(dataTerm?"<tr><td class='pl'>Termin:</td><td><strong>"+dataTerm+"</strong></td></tr>":"")
+      :"";
     const nipNabywcy=fv.nabywcaNip?"<div class='nip'>NIP: "+fv.nabywcaNip+"</div>":"";
-    const termPl=dataTerm?" &nbsp;|&nbsp; Termin płatności: <strong>"+dataTerm+"</strong>":"";
+    const uwagi=fv.uwagi?"<div class='uwagi'><strong>Uwagi:</strong> "+fv.uwagi+"</div>":"";
     const html="<!DOCTYPE html><html lang='pl'><head><meta charset='utf-8'>"
       +"<title>"+fv.numer+"</title><style>"
       +"*{box-sizing:border-box;margin:0;padding:0}"
-      +"body{font-family:Arial,sans-serif;font-size:11px;padding:20px 24px;color:#000;max-width:210mm;margin:0 auto}"
-      +"h1{font-size:22px;font-weight:900;margin-bottom:4px}"
-      +".sub{font-size:11px;color:#555;margin-bottom:20px}"
-      +".strony{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:20px}"
-      +".strona-label{font-size:9px;font-weight:700;color:#888;letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid #ccc;margin-bottom:6px;padding-bottom:2px}"
-      +".strona-nazwa{font-size:14px;font-weight:700;margin-bottom:4px}"
-      +".strona-dane{font-size:11px;color:#333;line-height:1.7}"
-      +".nip{font-size:12px;font-weight:700;margin-top:4px}"
-      +"table{width:100%;border-collapse:collapse;margin-bottom:16px}"
-      +"th{background:#1a2a1a;color:#fff;padding:6px 4px;font-size:9px;text-align:center}"
-      +"td{padding:5px 4px;border-bottom:1px solid #e0e0e0;font-size:11px;text-align:center}"
-      +"td.num{text-align:right;font-family:monospace}"
-      +".total-row td{font-weight:700;font-size:13px;border-top:2px solid #333;background:#f8f8f8}"
-      +".platnosc{background:#f0f4ff;border:1px solid #c0d0e0;border-radius:4px;padding:12px 16px;margin-bottom:16px}"
-      +".platnosc-title{font-weight:700;font-size:12px;margin-bottom:8px}"
-      +".platnosc-grid{display:grid;grid-template-columns:80px 1fr;gap:4px 12px;font-size:11px}"
-      +".platnosc-grid .lbl{color:#666;font-weight:700}"
-      +".kwota{font-size:20px;font-weight:900;color:#1a5a1a;margin-top:8px}"
-      +".footer{font-size:9px;color:#888;margin-top:20px;border-top:1px solid #ddd;padding-top:8px;text-align:center}"
-      +"@media print{body{padding:10px 14px}}"
+      +"html,body{width:210mm;margin:0 auto;background:#fff}"
+      +"body{font-family:Arial,sans-serif;font-size:11px;color:#000;"
+      +"padding:14mm 14mm 14mm 14mm;min-height:297mm}"
+      +".top{margin-bottom:10mm}"
+      +".tytul{font-size:26px;font-weight:900;text-transform:uppercase;margin-bottom:2mm}"
+      +".tytul.proforma{color:#c06000}"
+      +".nr-fv{font-size:13px;color:#333;margin-bottom:1mm}"
+      +".data-sprz{font-size:11px;color:#555;margin-bottom:6mm}"
+      +".strony{display:grid;grid-template-columns:1fr 1fr;gap:10mm;margin-bottom:8mm}"
+      +".strona-label{font-size:8px;font-weight:700;color:#888;letter-spacing:.15em;"
+      +"text-transform:uppercase;border-bottom:1px solid #ccc;margin-bottom:3mm;padding-bottom:1mm}"
+      +".strona-nazwa{font-size:14px;font-weight:700;margin-bottom:2mm}"
+      +".strona-dane{font-size:11px;color:#333;line-height:1.8}"
+      +".nip{font-size:12px;font-weight:700;margin-top:2mm}"
+      +"table.poz{width:100%;border-collapse:collapse;margin-bottom:6mm;font-size:10px}"
+      +"table.poz th{background:#1a2a1a;color:#fff;padding:5px 4px;text-align:center;font-size:9px}"
+      +"table.poz td{padding:5px 4px;border-bottom:1px solid #e8e8e8;text-align:center}"
+      +"table.poz td.num{text-align:right;font-family:monospace}"
+      +".razem-row td{font-weight:700;font-size:12px;background:#f0f0f0;border-top:2px solid #333}"
+      +".platnosc{border:1px solid #c8d8c8;border-radius:4px;padding:5mm;margin-bottom:6mm;background:#f8fdf8}"
+      +".platnosc-title{font-weight:700;font-size:12px;margin-bottom:3mm;color:#1a3a1a}"
+      +"table.pl{font-size:11px;border-collapse:collapse;width:auto}"
+      +"table.pl td{padding:2px 6px 2px 0}"
+      +"table.pl td.pl{color:#555;font-weight:700;width:80px}"
+      +".kwota{font-size:22px;font-weight:900;color:#1a5a1a;margin-top:4mm}"
+      +".uwagi{font-size:11px;margin-bottom:6mm;padding:3mm;background:#fffff0;border:1px solid #e0e0a0;border-radius:4px}"
+      +".podpisy{display:grid;grid-template-columns:1fr 1fr;gap:20mm;margin-top:12mm}"
+      +".podpis{border-top:1px solid #aaa;padding-top:3mm;font-size:9px;color:#555;text-align:center}"
+      +".footer{font-size:8px;color:#aaa;margin-top:8mm;text-align:center}"
+      +"@media print{html,body{width:210mm}button{display:none}}"
       +"</style></head><body>"
-      +"<div style='display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px'>"
-      +"<div><h1>FAKTURA VAT</h1>"
-      +"<div class='sub'>Nr: <strong>"+fv.numer+"</strong> &nbsp;|&nbsp; Data wystawienia: <strong>"+dataWyst+"</strong>"+termPl+"</div></div>"
-      +"<div style='text-align:right;font-size:11px;color:#555'><div>"+sp.nazwa+"</div>"
-      +"<div style='font-size:18px;font-weight:900;color:#000'>"+fv.firma+"</div></div></div>"
+      +"<div class='top'>"
+      +"<div class='tytul"+(isProforma?" proforma":"")+"'>"+tytulDoc+"</div>"
+      +"<div class='nr-fv'>Nr: <strong>"+fv.numer+"</strong></div>"
+      +"<div class='data-sprz'>Data sprzedaży: "+dataSprz+" &nbsp;|&nbsp; Data wystawienia: "+dataWyst+"</div>"
+      +"</div>"
       +"<div class='strony'>"
       +"<div><div class='strona-label'>Sprzedawca</div>"
       +"<div class='strona-nazwa'>"+sp.nazwa+"</div>"
       +"<div class='strona-dane'>"+sp.adres+"<br>"+sp.kod+" "+sp.miasto+"</div>"
       +"<div class='nip'>NIP: "+sp.nip+"</div>"
-      +"<div style='font-size:10px;color:#555;margin-top:4px'>Konto: "+sp.konto+"</div></div>"
+      +"<div style='font-size:10px;color:#555;margin-top:2mm'>"+sp.bank+": "+sp.konto+"</div></div>"
       +"<div><div class='strona-label'>Nabywca</div>"
       +"<div class='strona-nazwa'>"+(fv.nabywcaNazwa||"—")+"</div>"
       +"<div class='strona-dane'>"+(fv.nabywcaAdres||"")+(fv.nabywcaAdres?"<br>":"")+(fv.nabywcaKod||"")+" "+(fv.nabywcaMiasto||"")+"</div>"
       +nipNabywcy+"</div></div>"
-      +"<table><thead><tr>"
-      +"<th style='width:28px'>Lp</th><th style='text-align:left'>Nazwa towaru/usługi</th>"
-      +"<th style='width:36px'>Ilość</th><th style='width:30px'>J.m.</th>"
-      +"<th style='width:70px'>Cena netto</th><th style='width:70px'>Wartość netto</th>"
-      +"<th style='width:40px'>VAT</th><th style='width:70px'>Kwota VAT</th>"
-      +"<th style='width:70px'>Wartość brutto</th>"
+      +"<table class='poz'><thead><tr>"
+      +"<th style='width:28px'>Lp</th>"
+      +"<th style='text-align:left;padding-left:8px'>Nazwa towaru/usługi</th>"
+      +"<th style='width:40px'>Ilość</th>"
+      +"<th style='width:30px'>J.m.</th>"
+      +"<th style='width:70px'>Cena netto</th>"
+      +"<th style='width:72px'>Wart. netto</th>"
+      +"<th style='width:38px'>VAT</th>"
+      +"<th style='width:68px'>Kwota VAT</th>"
+      +"<th style='width:72px'>Wart. brutto</th>"
       +"</tr></thead><tbody>"+rows+"</tbody>"
-      +"<tfoot><tr class='total-row'>"
-      +"<td colspan='5' style='text-align:right'>RAZEM:</td>"
-      +"<td class='num'>"+totalNetto.toFixed(2)+" zł</td><td></td>"
+      +"<tfoot><tr class='razem-row'>"
+      +"<td colspan='5' style='text-align:right;padding-right:8px'>RAZEM:</td>"
+      +"<td class='num'>"+totalNetto.toFixed(2)+" zł</td>"
+      +"<td></td>"
       +"<td class='num'>"+totalVat.toFixed(2)+" zł</td>"
-      +"<td class='num'>"+totalBrutto.toFixed(2)+" zł</td>"
+      +"<td class='num'><strong>"+totalBrutto.toFixed(2)+" zł</strong></td>"
       +"</tr></tfoot></table>"
       +"<div class='platnosc'>"
       +"<div class='platnosc-title'>Forma i dane do płatności</div>"
-      +"<div class='platnosc-grid'>"
-      +"<div class='lbl'>Forma:</div><div>"+(fv.platnosc==="gotowka"?"Gotówka":"Przelew bankowy")+"</div>"
-      +platnosci+"</div>"
+      +"<table class='pl'><tbody>"
+      +"<tr><td class='pl'>Forma:</td><td>"+(fv.platnosc==="gotowka"?"Gotówka":"Przelew bankowy")+"</td></tr>"
+      +platnosci
+      +"</tbody></table>"
       +"<div class='kwota'>Do zapłaty: "+totalBrutto.toFixed(2)+" zł</div></div>"
       +uwagi
-      +"<div style='display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:40px;text-align:center'>"
-      +"<div style='border-top:1px solid #aaa;padding-top:8px;font-size:10px;color:#555'>Podpis osoby upoważnionej do wystawienia faktury</div>"
-      +"<div style='border-top:1px solid #aaa;padding-top:8px;font-size:10px;color:#555'>Podpis osoby upoważnionej do odbioru faktury</div>"
+      +"<div class='podpisy'>"
+      +"<div class='podpis'>Podpis osoby upoważnionej do wystawienia faktury</div>"
+      +"<div class='podpis'>Podpis osoby upoważnionej do odbioru faktury</div>"
       +"</div>"
       +"<div class='footer'>Faktura wystawiona elektronicznie — nie wymaga podpisu</div>"
       +"<script>window.onload=function(){window.print();}<\/script>"
@@ -1652,7 +1684,10 @@ function App() {
             <div style={{maxWidth:900,margin:"0 auto"}}>
               <div style={{display:"flex",gap:12,alignItems:"center",marginBottom:16}}>
                 <button className="btn" onClick={()=>setFvForm(null)} style={{background:"#1a2a1a",padding:"6px 14px"}}>← Lista</button>
-                <h2 style={{color:"#9fcf9f",margin:0}}>{fvForm.numer?"Edycja faktury":"Nowa faktura"}</h2>
+                <h2 style={{color:fvForm.typ==="proforma"?"#df9f3f":fvForm.typ==="korekta"?"#cf5f5f":"#9fcf9f",margin:0}}>
+                  {fvForm.typ==="proforma"?"🟡 Proforma":fvForm.typ==="korekta"?"🔴 Korekta":"🧾 Faktura VAT"}
+                  {" "}{fvForm.numer||"— nowa"}
+                </h2>
               </div>
 
               {/* Nagłówek - firma + nabywca */}
@@ -1686,20 +1721,31 @@ function App() {
               </div>
 
               {/* Meta faktury */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,marginBottom:12}}>
-                <div><span className="lbl">Nr faktury</span>
-                  <input value={fvForm.numer||nextFvNumer(fvForm.firma)}
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:8}}>
+                <div><span className="lbl">Typ dokumentu</span>
+                  <select value={fvForm.typ||"faktura"} onChange={e=>setFvForm(f=>({...f,typ:e.target.value,numer:""}))}
+                    style={{fontWeight:700,color:fvForm.typ==="proforma"?"#df9f3f":fvForm.typ==="korekta"?"#cf5f5f":"inherit"}}>
+                    <option value="faktura">Faktura VAT</option>
+                    <option value="proforma">Faktura Proforma</option>
+                    <option value="korekta">Faktura Korygująca</option>
+                  </select></div>
+                <div><span className="lbl">Nr dokumentu</span>
+                  <input value={fvForm.numer||nextFvNumer(fvForm.firma,fvForm.typ||"faktura")}
                     onChange={e=>setFvForm(f=>({...f,numer:e.target.value}))}
                     style={{fontWeight:700,color:"#dfcf5f",background:"#0d1a0d"}}/></div>
-                <div><span className="lbl">Data wystawienia</span>
-                  <input type="date" value={fvForm.data} onChange={e=>setFvForm(f=>({...f,data:e.target.value}))}/></div>
-                <div><span className="lbl">Termin płatności</span>
-                  <input type="date" value={fvForm.terminPlatnosci} onChange={e=>setFvForm(f=>({...f,terminPlatnosci:e.target.value}))}/></div>
                 <div><span className="lbl">Forma płatności</span>
                   <select value={fvForm.platnosc} onChange={e=>setFvForm(f=>({...f,platnosc:e.target.value}))}>
                     <option value="przelew">Przelew bankowy</option>
                     <option value="gotowka">Gotówka</option>
                   </select></div>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginBottom:12}}>
+                <div><span className="lbl">Data sprzedaży</span>
+                  <input type="date" value={fvForm.dataSprzedazy||fvForm.data} onChange={e=>setFvForm(f=>({...f,dataSprzedazy:e.target.value}))}/></div>
+                <div><span className="lbl">Data wystawienia</span>
+                  <input type="date" value={fvForm.data} onChange={e=>setFvForm(f=>({...f,data:e.target.value}))}/></div>
+                <div><span className="lbl">Termin płatności</span>
+                  <input type="date" value={fvForm.terminPlatnosci} onChange={e=>setFvForm(f=>({...f,terminPlatnosci:e.target.value}))}/></div>
               </div>
 
               {/* Pozycje */}
@@ -1767,7 +1813,7 @@ function App() {
                 }}>💾 Zapisz fakturę</button>
                 <button className="btn" style={{flex:1,fontSize:14,background:"#1a2a4a"}} onClick={()=>{
                   const numer=fvForm.numer||nextFvNumer(fvForm.firma);
-                  drukujFakture({...fvForm,numer});
+                  drukujFakture({...fvForm,numer,typ:fvForm.typ||"faktura"});
                 }}>🖨️ Drukuj / PDF</button>
               </div>
             </div>
@@ -1799,7 +1845,11 @@ function App() {
                         return a+Math.round((n+Math.round(n*(parseFloat(p.vat)||23)/100*100)/100)*100)/100;
                       },0);
                       return <tr key={fv.id} style={{borderBottom:"1px solid #1e3a1e"}}>
-                        <td style={{padding:8,fontWeight:700,color:"#dfcf5f"}}>{fv.numer}</td>
+                        <td style={{padding:8,fontWeight:700,color:fv.typ==="proforma"?"#df9f3f":fv.typ==="korekta"?"#cf5f5f":"#dfcf5f"}}>
+                          {fv.typ==="proforma"&&<span style={{fontSize:9,background:"#3a2a0a",color:"#df9f3f",borderRadius:3,padding:"1px 4px",marginRight:4}}>PRO</span>}
+                          {fv.typ==="korekta"&&<span style={{fontSize:9,background:"#3a0a0a",color:"#cf5f5f",borderRadius:3,padding:"1px 4px",marginRight:4}}>KOR</span>}
+                          {fv.numer}
+                        </td>
                         <td style={{padding:8,textAlign:"center",color:"#aaa"}}>{fv.data?new Date(fv.data).toLocaleDateString("pl-PL"):""}</td>
                         <td style={{padding:8}}>{fv.nabywcaNazwa}</td>
                         <td style={{padding:8,textAlign:"center",fontWeight:700,color:"#9fcf9f"}}>{brutto.toFixed(2)} zł</td>
