@@ -1092,7 +1092,7 @@ function App() {
       });
       if(!r.ok){
         let errText="";
-        try{const ed=await r.json();errText=ed.errors?ed.errors[0].userMessage||ed.errors[0].message:JSON.stringify(ed);}catch{}
+        try{const ed=await r.json();errText=JSON.stringify(ed);}catch{}
         setMsgNewError("Błąd "+r.status+": "+errText);
         setMsgNewSending(false);return;
       }
