@@ -1168,7 +1168,7 @@ function App() {
         "Accept":"application/vnd.allegro.public.v1+json",
         "Content-Type":"application/vnd.allegro.public.v1+json"
       },
-      body:JSON.stringify({name:file.name,size:file.size})
+      body:JSON.stringify({filename:file.name,size:file.size})
     });
     if(!r1.ok){
       let errText="";
