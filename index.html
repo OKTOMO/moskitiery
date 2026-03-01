@@ -559,6 +559,7 @@ function App() {
   const [fvForm,setFvForm]=useState(null); // null=lista, {..}=edycja
   const [fvSaved,setFvSaved]=useState(false);
   const [fvAllegroId,setFvAllegroId]=useState("");
+  const [allegroOrderIdForForm,setAllegroOrderIdForForm]=useState("");
   const [fvAllegroStatus,setFvAllegroStatus]=useState(""); // "loading"|"ok"|"error"|""
   function saveFaktury(f){setFaktury(f);localStorage.setItem("faktury",JSON.stringify(f));}
   function nextFvNumer(firma,typ){
@@ -902,6 +903,7 @@ function App() {
     const numer=numerOverride||nextNumer(orders,form.firma);
     const order={
       id:Date.now(), numerZlecenia:numer, firma:form.firma, data:form.data,
+      allegroOrderId:allegroOrderIdForForm||"",
       klientImie:form.klientImie, klientUlica:form.klientUlica||"", klientKod:form.klientKod||"", klientMiasto:form.klientMiasto,
       telefon:form.telefon, uwagi:form.uwagi,
       pozycje:form.pozycje.map(p=>p.isDrzwi?({
@@ -917,7 +919,7 @@ function App() {
     };
     updateOrders([order,...orders]);
     setSaved(true);
-    setWiadomosc(""); setAdres(""); setForm(pustyForm(form.firma)); setNumerOverride("");
+    setWiadomosc(""); setAdres(""); setForm(pustyForm(form.firma)); setNumerOverride(""); setAllegroOrderIdForForm("");
     const hasDrzwiPos=order.pozycje.some(p=>p.isDrzwi);
     const hasOknaPos=order.pozycje.some(p=>!p.isDrzwi);
     if(hasOknaPos) drukujPDF(order);
@@ -1057,6 +1059,7 @@ function App() {
         const lastMsg=msgs[msgs.length-1];
         messagesArr.push({
           threadId:t.id,
+          allegroOrderId:t.relatedObject?.id||"",
           interlocutor:t.interlocutor?.login||"—",
           subject:t.subject||"—",
           lastMessage:lastMsg?.text||"",
@@ -1071,6 +1074,7 @@ function App() {
 
   function allegroUseMessage(msg){
     setWiadomosc(msg.lastMessage);
+    if(msg.allegroOrderId) setAllegroOrderIdForForm(msg.allegroOrderId);
     setTab("nowe");
   }
 
@@ -1830,6 +1834,26 @@ function App() {
                       🔍 Zaciągnij z Allegro
                     </button>
                   </div>
+                  {/* Auto-fetch gdy otwieramy z zamówienia */}
+                  {fvAllegroId&&!fvAllegroStatus&&(()=>{
+                    setTimeout(async()=>{
+                      if(!fvAllegroStatus&&fvAllegroId){
+                        setFvAllegroStatus("loading");
+                        const res=await fetchInvoiceFromAllegro(fvAllegroId,fvForm.firma);
+                        if(res.error){setFvAllegroStatus("error:"+res.error);return;}
+                        setFvForm(f=>({...f,
+                          nabywcaNazwa:res.nazwa||f.nabywcaNazwa,
+                          nabywcaNip:res.nip||f.nabywcaNip,
+                          nabywcaAdres:res.ulica||f.nabywcaAdres,
+                          nabywcaKod:res.kod||f.nabywcaKod,
+                          nabywcaMiasto:res.miasto||f.nabywcaMiasto,
+                          pozycje:res.kwotaBrutto>0?[{nazwa:"Moskitiera PCV na wymiar",ilosc:1,jm:"szt",cena:res.kwotaBrutto,vat:23}]:f.pozycje,
+                        }));
+                        setFvAllegroStatus("ok:"+res.nazwa+(res.nip?" · NIP: "+res.nip:"")+(res.kwotaBrutto?" · "+res.kwotaBrutto.toFixed(2)+" zł":""));
+                      }
+                    },100);
+                    return null;
+                  })()}
                   {fvAllegroStatus==="loading"&&<div style={{fontSize:11,color:"#dfcf5f",marginBottom:6}}>⏳ Pobieranie danych...</div>}
                   {fvAllegroStatus.startsWith("ok:")&&<div style={{fontSize:11,color:"#7fcf9f",marginBottom:6}}>✅ {fvAllegroStatus.slice(3)}</div>}
                   {fvAllegroStatus.startsWith("error:")&&<div style={{fontSize:11,color:"#cf7f7f",marginBottom:6}}>❌ {fvAllegroStatus.slice(6)}</div>}
