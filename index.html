@@ -1175,14 +1175,20 @@ function App() {
       setShipmentModal({imp, services:svcs});
       // Auto-wybór: pierwsza pasująca usługa (InPost lub pierwsza)
       if(svcs.length>0){
-        // DEBUG - usuń po sprawdzeniu
-        console.log("deliveryMethodId z zamówienia:", imp.deliveryMethodId);
-        console.log("Dostępne usługi:", svcs.map(s=>({id:s.id,name:s.name})));
-        // Dopasuj usługę wybraną przez klienta po ID metody dostawy
-        const matched=imp.deliveryMethodId
-          ? svcs.find(s=>s.id===imp.deliveryMethodId)||svcs[0]
-          : svcs[0];
-        console.log("Wybrana usługa:", matched?.name, matched?.id);
+        // Dopasuj po nazwie metody dostawy z zamówienia
+        const dmName=(imp.deliveryMethodName||"").toLowerCase();
+        let matched=svcs[0];
+        if(dmName){
+          // Szukaj po słowach kluczowych z nazwy metody
+          const keywords=dmName.split(/\s+/).filter(w=>w.length>3);
+          let bestScore=0;
+          for(const s of svcs){
+            const sName=(s.name||"").toLowerCase();
+            const score=keywords.filter(k=>sName.includes(k)).length;
+            if(score>bestScore){bestScore=score;matched=s;}
+          }
+        }
+        console.log("deliveryMethodName:",imp.deliveryMethodName,"→ Wybrana:",matched.name);
         setShipmentServiceId(matched.id||"");
       }
     }catch(e){
