@@ -1225,6 +1225,8 @@ function App() {
             localStorage.setItem('allegro_tokens',JSON.stringify(tokens));
             localStorage.setItem('allegro_refreshes',JSON.stringify(refreshes));
             setAllegroTokens({...tokens});
+            // Auto-sync do workera
+            fetch(AUTORESPONDER_URL+'/sync',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},body:JSON.stringify({tokens})}).catch(()=>{});
             setTab('allegro');
           }
         }).catch(e=>console.log('token error',e));
@@ -1415,6 +1417,8 @@ function App() {
         localStorage.setItem('allegro_tokens',JSON.stringify(tokens));
         localStorage.setItem('allegro_refreshes',JSON.stringify(refreshes));
         setAllegroTokens({...tokens});
+        // Auto-sync do workera po refresh
+        fetch(AUTORESPONDER_URL+'/sync',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},body:JSON.stringify({tokens})}).catch(()=>{});
         return true;
       }
     }catch(e){}
