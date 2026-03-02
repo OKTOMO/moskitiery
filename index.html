@@ -1213,7 +1213,7 @@ function App() {
       const kontaId=localStorage.getItem('allegro_active')||"favo5";
       if(clientId&&secret){
         window.history.replaceState({},'','/moskitiery');
-        fetch('https://allegro-proxy.favour-biuro.workers.dev/token?code='+encodeURIComponent(code),{
+        fetch(AUTORESPONDER_URL+'/token?code='+encodeURIComponent(code),{
           method:'POST',
           headers:{'Authorization':'Basic '+btoa(clientId+':'+secret)}
         }).then(r=>r.json()).then(d=>{
@@ -1403,7 +1403,7 @@ function App() {
     const rt=refreshes[kontaId];
     if(!rt||!clientId||!secret) return false;
     try{
-      const r=await fetch('https://allegro-proxy.favour-biuro.workers.dev/refresh?refresh_token='+encodeURIComponent(rt),{
+      const r=await fetch(AUTORESPONDER_URL+'/refresh?refresh_token='+encodeURIComponent(rt),{
         method:'POST',
         headers:{'Authorization':'Basic '+btoa(clientId+':'+secret)}
       });
