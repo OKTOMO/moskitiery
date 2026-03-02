@@ -584,6 +584,8 @@ function App() {
   const [allegroOrderIdForForm,setAllegroOrderIdForForm]=useState("");
   const [allegroImportLoading,setAllegroImportLoading]=useState(false);
   const [allegroImportResults,setAllegroImportResults]=useState([]); // lista zamówień z Allegro
+  const [appStatuses,setAppStatuses]=useState(()=>{try{return JSON.parse(localStorage.getItem('app_statuses')||'{}');}catch{return {};}});
+  const [appStatuses,setAppStatuses]=useState(()=>{try{return JSON.parse(localStorage.getItem('app_statuses')||'{}');}catch{return {};}});
   const [allegroImportShow,setAllegroImportShow]=useState(false);
   const [allegroImportError,setAllegroImportError]=useState("");
   const [shipmentModal,setShipmentModal]=useState(null);
@@ -1134,6 +1136,26 @@ function App() {
   }
 
   // ── SHIPMENT functions ──
+  function setOrderAppStatus(allegroOrderId, status){
+    setAppStatuses(function(prev){
+      const next={...prev};
+      if(status) next[allegroOrderId]=status;
+      else delete next[allegroOrderId];
+      localStorage.setItem('app_statuses',JSON.stringify(next));
+      return next;
+    });
+  }
+
+  function setOrderAppStatus(allegroOrderId, status){
+    setAppStatuses(function(prev){
+      const next={...prev};
+      if(status) next[allegroOrderId]=status;
+      else delete next[allegroOrderId];
+      localStorage.setItem('app_statuses',JSON.stringify(next));
+      return next;
+    });
+  }
+
   async function openShipmentModal(imp){
     // Auto-opis: tytuły ofert bez moskitier okiennych/drzwiowych
     const MOSK_REGEX=/moskitiera\s*(okienna|drzwiowa|okna|drzwi|ramkowa|na okno|na drzwi)/i;
@@ -1206,6 +1228,8 @@ function App() {
       const pdfBlob=new Blob([Uint8Array.from(atob(d2.pdf),c=>c.charCodeAt(0))],{type:"application/pdf"});
       const pdfUrl=URL.createObjectURL(pdfBlob);
       window.open(pdfUrl,"_blank");
+      // Auto-ustaw status aplikacji na "Wysłano"
+      if(shipmentModal.imp.allegroOrderId) setOrderAppStatus(shipmentModal.imp.allegroOrderId,"W realizacji");
       setShipmentModal(null);
     }catch(e){
       setShipmentError("❌ "+e.message);
@@ -2088,6 +2112,21 @@ function App() {
                                 color:imp.status==="READY_FOR_PROCESSING"?"#7fcf7f":imp.status==="BOUGHT"?"#9abfdf":"#6a7a9a"}}>
                                 {imp.status==="READY_FOR_PROCESSING"?"✅ Gotowe do realizacji":imp.status==="BOUGHT"?"💳 Opłacone":imp.status||"—"}
                               </span>
+                              {(()=>{
+                                const as=appStatuses[imp.allegroOrderId]||"";
+                                const AS_OPTS=["","Wysłano","W realizacji","Wstrzymano","Problem"];
+                                const AS_COLORS={"Wysłano":["#1a3a1a","#7fcf7f"],"W realizacji":["#1a2a3a","#7abfdf"],"Wstrzymano":["#3a2a1a","#dfaf5a"],"Problem":["#3a1a1a","#df7a7a"]};
+                                const [bg,col]=AS_COLORS[as]||["#1a1a1a","#5a5a5a"];
+                                return (
+                                  <div style={{marginTop:5}}>
+                                    <select value={as} onChange={e=>setOrderAppStatus(imp.allegroOrderId,e.target.value)}
+                                      style={{fontSize:10,padding:"2px 4px",background:as?bg:"#0e0e0e",border:"1px solid "+(as?col:"#2a2a2a"),borderRadius:4,color:as?col:"#3a3a3a",cursor:"pointer"}}>
+                                      <option value="">— app status —</option>
+                                      {AS_OPTS.filter(Boolean).map(o=><option key={o} value={o}>{o}</option>)}
+                                    </select>
+                                  </div>
+                                );
+                              })()}
                             </td>
                             <td style={{padding:"8px 12px",whiteSpace:"nowrap"}}>
                               {(()=>{
