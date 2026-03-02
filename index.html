@@ -591,11 +591,6 @@ function App() {
   const [shipmentError,setShipmentError]=useState("");
   const [shipmentSize,setShipmentSize]=useState("A");
   const [shipmentCreating,setShipmentCreating]=useState(false);
-  const [shipmentModal,setShipmentModal]=useState(null); // null or {imp, services}
-  const [shipmentLoading,setShipmentLoading]=useState(false);
-  const [shipmentError,setShipmentError]=useState("");
-  const [shipmentSize,setShipmentSize]=useState("A");
-  const [shipmentCreating,setShipmentCreating]=useState(false);
   const [fvAllegroStatus,setFvAllegroStatus]=useState(""); // "loading"|"ok"|"error"|""
   function saveFaktury(f){setFaktury(f);localStorage.setItem("faktury",JSON.stringify(f));}
   function nextFvNumer(firma,typ){
@@ -2556,15 +2551,17 @@ function App() {
   var tokens=JSON.parse(localStorage.getItem("allegro_tokens")||"{}"); var tok=tokens[msgKontoRef.current]||"";
   var attUrl=att.url||"";
   var attId=attUrl.split("/").pop(); var proxyUrl=AUTORESPONDER_URL+"/messaging/attachments?id="+attId+"&kontoId="+(msgKontoRef.current||"");
-  console.log("konto:",msgKontoRef.current,"tok:",tok.substring(0,20),"url:",proxyUrl);
   fetch(proxyUrl,{
-    headers:{"Authorization":"Bearer "+tok}
-  }).then(function(r){return r.blob();}).then(function(blob){
-    var mime=att.mimeType||"image/jpeg";
+    headers:{"x-api-key":AUTORESPONDER_KEY}
+  }).then(function(r){
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    return r.blob();
+  }).then(function(blob){
+    var mime=att.mimeType||blob.type||"image/jpeg";
     var typedBlob=new Blob([blob],{type:mime});
     var blobUrl=URL.createObjectURL(typedBlob);
     window.open(blobUrl,"_blank");
-  }).catch(function(){alert("Nie udało się otworzyć załącznika.");});
+  }).catch(function(e){alert("Nie udało się otworzyć załącznika: "+e.message);});
 },style:{display:"block",fontSize:11,color:"#7abf9a",textDecoration:"none",background:"#0e1e0e",padding:"4px 8px",borderRadius:4,cursor:"pointer"}},"📎 "+(att.fileName||"załącznik"));
                                 })
                               )
