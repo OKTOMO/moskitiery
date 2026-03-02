@@ -1477,6 +1477,11 @@ function App() {
     msgKontoRef.current=k;
     setMsgKonto(k);
     setMsgLoading(true); setMsgError(""); setMsgThreads([]); setMsgActiveThread(null); setMsgConvo([]);
+    // Sync token do workera przed załadowaniem
+    if(!retried){
+      const allToks=JSON.parse(localStorage.getItem("allegro_tokens")||"{}");
+      fetch(AUTORESPONDER_URL+"/sync",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":AUTORESPONDER_KEY},body:JSON.stringify({tokens:allToks})}).catch(()=>{});
+    }
     try{
       const r=await fetch(AUTORESPONDER_URL+"/messaging/threads?kontoId="+k+"&limit=20&offset=0",{
         headers:{"x-api-key":AUTORESPONDER_KEY}
