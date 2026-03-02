@@ -591,6 +591,7 @@ function App() {
   const [shipmentError,setShipmentError]=useState("");
   const [shipmentSize,setShipmentSize]=useState("A");
   const [shipmentCreating,setShipmentCreating]=useState(false);
+  const [shipmentDescription,setShipmentDescription]=useState("");
   const [fvAllegroStatus,setFvAllegroStatus]=useState(""); // "loading"|"ok"|"error"|""
   function saveFaktury(f){setFaktury(f);localStorage.setItem("faktury",JSON.stringify(f));}
   function nextFvNumer(firma,typ){
@@ -1134,6 +1135,10 @@ function App() {
 
   // ── SHIPMENT functions ──
   async function openShipmentModal(imp){
+    // Auto-opis: tytuły ofert bez moskitier okiennych/drzwiowych
+    const MOSK_REGEX=/moskitiera\s*(okienna|drzwiowa|okna|drzwi|ramkowa|na okno|na drzwi)/i;
+    const names=(imp.offerNames||"").split(", ").filter(function(n){return !MOSK_REGEX.test(n);});
+    setShipmentDescription(names.join(", "));
     setShipmentModal({imp, services:[]});
     setShipmentLoading(true);
     setShipmentError("");
@@ -2144,6 +2149,12 @@ function App() {
                     </div>
                   </div>
                 )}
+                <div style={{marginBottom:14}}>
+                  <div style={{fontSize:11,color:"#4a7a4a",marginBottom:6}}>Zawartość paczki:</div>
+                  <input value={shipmentDescription} onChange={e=>setShipmentDescription(e.target.value)}
+                    placeholder="np. akcesoria do moskitiery"
+                    style={{width:"100%",boxSizing:"border-box",background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:5,color:"#c0e0c0",padding:"6px 10px",fontSize:12,fontFamily:"monospace"}}/>
+                </div>
                 <div style={{marginBottom:16}}>
                   <div style={{fontSize:11,color:"#4a7a4a",marginBottom:6}}>Rozmiar paczki:</div>
                   <div style={{display:"flex",gap:8}}>
@@ -2200,6 +2211,12 @@ function App() {
                 {!shipmentLoading&&shipmentModal.services.length===0&&!shipmentError&&(
                   <div style={{marginBottom:14,fontSize:12,color:"#7a6a3a"}}>⚠️ Brak dostępnych usług dostawy dla tego zamówienia</div>
                 )}
+                <div style={{marginBottom:14}}>
+                  <div style={{fontSize:11,color:"#4a7a4a",marginBottom:6}}>Zawartość paczki:</div>
+                  <input value={shipmentDescription} onChange={e=>setShipmentDescription(e.target.value)}
+                    placeholder="np. akcesoria do moskitiery"
+                    style={{width:"100%",boxSizing:"border-box",background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:5,color:"#c0e0c0",padding:"6px 10px",fontSize:12,fontFamily:"monospace"}}/>
+                </div>
                 <div style={{marginBottom:16}}>
                   <div style={{fontSize:11,color:"#4a7a4a",marginBottom:6}}>Rozmiar paczki:</div>
                   <div style={{display:"flex",gap:8}}>
