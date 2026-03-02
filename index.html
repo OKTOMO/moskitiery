@@ -585,7 +585,6 @@ function App() {
   const [allegroImportLoading,setAllegroImportLoading]=useState(false);
   const [allegroImportResults,setAllegroImportResults]=useState([]); // lista zamówień z Allegro
   const [appStatuses,setAppStatuses]=useState(()=>{try{return JSON.parse(localStorage.getItem('app_statuses')||'{}');}catch{return {};}});
-  const [appStatuses,setAppStatuses]=useState(()=>{try{return JSON.parse(localStorage.getItem('app_statuses')||'{}');}catch{return {};}});
   const [allegroImportShow,setAllegroImportShow]=useState(false);
   const [allegroImportError,setAllegroImportError]=useState("");
   const [shipmentModal,setShipmentModal]=useState(null);
@@ -594,6 +593,7 @@ function App() {
   const [shipmentSize,setShipmentSize]=useState("A");
   const [shipmentCreating,setShipmentCreating]=useState(false);
   const [shipmentDescription,setShipmentDescription]=useState("");
+  const [shipmentServiceId,setShipmentServiceId]=useState("");
   const [fvAllegroStatus,setFvAllegroStatus]=useState(""); // "loading"|"ok"|"error"|""
   function saveFaktury(f){setFaktury(f);localStorage.setItem("faktury",JSON.stringify(f));}
   function nextFvNumer(firma,typ){
@@ -1171,7 +1171,12 @@ function App() {
       });
       const d=await r.json();
       if(!r.ok) throw new Error(d.error||JSON.stringify(d));
-      setShipmentModal({imp, services:d.services||[]});
+      const svcs=d.services||[];
+      setShipmentModal({imp, services:svcs});
+      // Auto-wybór: pierwsza pasująca usługa (InPost lub pierwsza)
+      if(svcs.length>0){
+        setShipmentServiceId(svcs[0].id||"");
+      }
     }catch(e){
       setShipmentError("❌ "+e.message);
     }
@@ -1190,9 +1195,8 @@ function App() {
       "C":{length:64,width:38,height:41,weight:25}
     };
     const size=SIZES[shipmentSize]||SIZES["A"];
-    // Znajdź pierwszą dostępną usługę InPost paczkomat
-    const service=services.find(s=>s.name&&(s.name.toLowerCase().includes("inpost")||s.name.toLowerCase().includes("paczkomat")))
-      ||services[0];
+    // Użyj wybranej usługi
+    const service=services.find(s=>s.id===shipmentServiceId)||services[0];
     if(!service){setShipmentError("❌ Brak dostępnych usług dostawy dla tego zamówienia");setShipmentCreating(false);return;}
     try{
       // Krok 1: utwórz przesyłkę
@@ -2182,10 +2186,11 @@ function App() {
                 {shipmentLoading&&<div style={{color:"#7abfdf",fontSize:12,marginBottom:12}}>⟳ Pobieranie usług dostawy...</div>}
                 {!shipmentLoading&&shipmentModal.services.length>0&&(
                   <div style={{marginBottom:14}}>
-                    <div style={{fontSize:11,color:"#4a7a4a",marginBottom:6}}>Usługa:</div>
-                    <div style={{fontSize:12,color:"#7fcf7f",background:"#1a2a1a",padding:"6px 10px",borderRadius:5,border:"1px solid #2a4a2a"}}>
-                      {shipmentModal.services.find(s=>s.name&&(s.name.toLowerCase().includes("inpost")||s.name.toLowerCase().includes("paczkomat")))?.name||shipmentModal.services[0]?.name||"—"}
-                    </div>
+                    <div style={{fontSize:11,color:"#4a7a4a",marginBottom:6}}>Usługa dostawy:</div>
+                    <select value={shipmentServiceId} onChange={e=>setShipmentServiceId(e.target.value)}
+                      style={{width:"100%",background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:5,color:"#7fcf7f",padding:"6px 10px",fontSize:12}}>
+                      {shipmentModal.services.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
                   </div>
                 )}
                 <div style={{marginBottom:14}}>
@@ -2241,10 +2246,11 @@ function App() {
                 {shipmentLoading&&<div style={{color:"#7abfdf",fontSize:12,marginBottom:12}}>⟳ Pobieranie usług dostawy...</div>}
                 {!shipmentLoading&&shipmentModal.services.length>0&&(
                   <div style={{marginBottom:14}}>
-                    <div style={{fontSize:11,color:"#4a7a4a",marginBottom:6}}>Usługa:</div>
-                    <div style={{fontSize:12,color:"#7fcf7f",background:"#1a2a1a",padding:"6px 10px",borderRadius:5,border:"1px solid #2a4a2a"}}>
-                      {(shipmentModal.services.find(s=>s.name&&(s.name.toLowerCase().includes("inpost")||s.name.toLowerCase().includes("paczkomat")))||shipmentModal.services[0])?.name||"—"}
-                    </div>
+                    <div style={{fontSize:11,color:"#4a7a4a",marginBottom:6}}>Usługa dostawy:</div>
+                    <select value={shipmentServiceId} onChange={e=>setShipmentServiceId(e.target.value)}
+                      style={{width:"100%",background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:5,color:"#7fcf7f",padding:"6px 10px",fontSize:12}}>
+                      {shipmentModal.services.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
                   </div>
                 )}
                 {!shipmentLoading&&shipmentModal.services.length===0&&!shipmentError&&(
