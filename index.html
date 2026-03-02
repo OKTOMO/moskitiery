@@ -893,13 +893,20 @@ function App() {
     }catch(e){setAutoStatus({error:e.message});}
     setAutoStatusLoading(false);
   }
+  function buildWorkerTokens(){
+    const access=JSON.parse(localStorage.getItem("allegro_tokens")||"{}");
+    const refresh=JSON.parse(localStorage.getItem("allegro_refreshes")||"{}");
+    const tokens={};
+    Object.keys(access).forEach(k=>{if(access[k]) tokens[k]={access:access[k],refresh:refresh[k]||""};});
+    return tokens;
+  }
   async function syncAutoresponderTokens(){
     setAutoSyncing(true);setAutoSyncResult("");
     try{
-      const tokens=JSON.parse(localStorage.getItem("allegro_tokens")||"{}");
+      const tokens=buildWorkerTokens();
       const r=await fetch(AUTORESPONDER_URL+"/sync",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":AUTORESPONDER_KEY},body:JSON.stringify({tokens})});
       const d=await r.json();
-      setAutoSyncResult(d.ok?"✅ Zsynchronizowano: "+Object.keys(tokens).filter(k=>tokens[k]).join(", "):"❌ "+JSON.stringify(d));
+      setAutoSyncResult(d.ok?"✅ Zsynchronizowano: "+Object.keys(tokens).join(", "):"❌ "+JSON.stringify(d));
     }catch(e){setAutoSyncResult("❌ "+e.message);}
     setAutoSyncing(false);
   }
@@ -1225,8 +1232,12 @@ function App() {
             localStorage.setItem('allegro_tokens',JSON.stringify(tokens));
             localStorage.setItem('allegro_refreshes',JSON.stringify(refreshes));
             setAllegroTokens({...tokens});
-            // Auto-sync do workera
-            fetch(AUTORESPONDER_URL+'/sync',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},body:JSON.stringify({tokens})}).catch(()=>{});
+            // Auto-sync do workera (z refresh tokenami)
+            const accessToks=JSON.parse(localStorage.getItem('allegro_tokens')||'{}');
+            const refreshToks=JSON.parse(localStorage.getItem('allegro_refreshes')||'{}');
+            const workerToks={};
+            Object.keys(accessToks).forEach(function(k){if(accessToks[k]) workerToks[k]={access:accessToks[k],refresh:refreshToks[k]||''};});
+            fetch(AUTORESPONDER_URL+'/sync',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},body:JSON.stringify({tokens:workerToks})}).catch(()=>{});
             setTab('allegro');
           }
         }).catch(e=>console.log('token error',e));
@@ -1417,8 +1428,11 @@ function App() {
         localStorage.setItem('allegro_tokens',JSON.stringify(tokens));
         localStorage.setItem('allegro_refreshes',JSON.stringify(refreshes));
         setAllegroTokens({...tokens});
-        // Auto-sync do workera po refresh
-        fetch(AUTORESPONDER_URL+'/sync',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},body:JSON.stringify({tokens})}).catch(()=>{});
+        // Auto-sync do workera po refresh (z refresh tokenami)
+        const allRefreshes2=JSON.parse(localStorage.getItem('allegro_refreshes')||'{}');
+        const workerToks2={};
+        Object.keys(tokens).forEach(function(k){if(tokens[k]) workerToks2[k]={access:tokens[k],refresh:allRefreshes2[k]||''};});
+        fetch(AUTORESPONDER_URL+'/sync',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},body:JSON.stringify({tokens:workerToks2})}).catch(()=>{});
         return true;
       }
     }catch(e){}
@@ -1477,10 +1491,13 @@ function App() {
     msgKontoRef.current=k;
     setMsgKonto(k);
     setMsgLoading(true); setMsgError(""); setMsgThreads([]); setMsgActiveThread(null); setMsgConvo([]);
-    // Sync token do workera przed załadowaniem (await!)
+    // Sync tokenów (access+refresh) do workera przed załadowaniem
     if(!retried){
-      const allToks=JSON.parse(localStorage.getItem("allegro_tokens")||"{}");
-      await fetch(AUTORESPONDER_URL+"/sync",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":AUTORESPONDER_KEY},body:JSON.stringify({tokens:allToks})}).catch(()=>{});
+      const _acc=JSON.parse(localStorage.getItem("allegro_tokens")||"{}");
+      const _ref=JSON.parse(localStorage.getItem("allegro_refreshes")||"{}");
+      const _wt={};
+      Object.keys(_acc).forEach(function(x){if(_acc[x]) _wt[x]={access:_acc[x],refresh:_ref[x]||""};});
+      await fetch(AUTORESPONDER_URL+"/sync",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":AUTORESPONDER_KEY},body:JSON.stringify({tokens:_wt})}).catch(()=>{});
     }
     try{
       const r=await fetch(AUTORESPONDER_URL+"/messaging/threads?kontoId="+k+"&limit=20&offset=0",{
