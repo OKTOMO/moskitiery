@@ -1246,6 +1246,7 @@ function App() {
           }]
         }]
       };
+      console.log("createBody:", JSON.stringify(createBody, null, 2));
       const r1=await fetch(AUTORESPONDER_URL+"/shipment/create?kontoId="+imp.kontoId,{
         method:"POST",
         headers:{"x-api-key":AUTORESPONDER_KEY,"Content-Type":"application/json"},
