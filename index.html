@@ -1175,20 +1175,29 @@ function App() {
       setShipmentModal({imp, services:svcs});
       // Auto-wybór: pierwsza pasująca usługa (InPost lub pierwsza)
       if(svcs.length>0){
-        // Dopasuj po nazwie metody dostawy z zamówienia
+        // Dopasuj po nazwie metody dostawy - szukaj nazwy przewoźnika
         const dmName=(imp.deliveryMethodName||"").toLowerCase();
         let matched=svcs[0];
         if(dmName){
-          // Szukaj po słowach kluczowych z nazwy metody
-          const keywords=dmName.split(/\s+/).filter(w=>w.length>3);
-          let bestScore=0;
+          // Wyciągnij kluczowe słowo przewoźnika: dpd, inpost, dhl, ups, gls, fedex, poczta itd
+          const carriers=["dpd","inpost","paczkomat","dhl","ups","gls","fedex","poczta","pocztex","orlen","allegro kurier"];
+          const dmCarrier=carriers.find(c=>dmName.includes(c))||"";
+          // Czy to pobranie?
+          const isPobranie=dmName.includes("pobranie")||dmName.includes("za pobraniem");
+          
+          let bestScore=-1;
           for(const s of svcs){
             const sName=(s.name||"").toLowerCase();
-            const score=keywords.filter(k=>sName.includes(k)).length;
+            let score=0;
+            // Przewoźnik musi się zgadzać
+            if(dmCarrier&&sName.includes(dmCarrier)) score+=10;
+            // Pobranie musi się zgadzać
+            if(isPobranie&&sName.includes("pobranie")) score+=5;
+            if(!isPobranie&&!sName.includes("pobranie")) score+=2;
             if(score>bestScore){bestScore=score;matched=s;}
           }
         }
-        console.log("deliveryMethodName:",imp.deliveryMethodName,"→ Wybrana:",matched.name);
+        console.log("deliveryMethodName:",imp.deliveryMethodName,"→",matched.name);
         setShipmentServiceId(matched.id||"");
       }
     }catch(e){
@@ -1218,6 +1227,16 @@ function App() {
         shipments:[{
           orderId:imp.allegroOrderId,
           deliveryServiceId:service.id,
+          receiver:{
+            address:{
+              street:imp.klientUlica||"",
+              zipCode:imp.klientKod||"",
+              city:imp.klientMiasto||"",
+              countryCode:"PL"
+            },
+            name:imp.klientImie||"",
+            phoneNumber:imp.telefon||""
+          },
           packages:[{
             type:"PACKAGE",
             weight:{value:size.weight,unit:"KILOGRAM"},
