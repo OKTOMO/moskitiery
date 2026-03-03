@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Kalkulator moskitier â FAVOUR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f0f2f5;--surface:#fff;--surface2:#f7f8fa;--border:#e2e6ec;
+  --accent:#f5a623;--accent2:#e8950f;
+  --text:#1a2233;--text2:#5a6580;--text3:#9aa3b5;
+  --green:#22c55e;--red:#ef4444;
+  --radius:14px;--shadow:0 2px 12px rgba(0,0,0,.07);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:calc(env(safe-area-inset-bottom)+24px);}
+
+/* HEADER */
+.hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 18px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow);}
+.hdr img{height:38px;object-fit:contain;}
+.hdr-title{font-size:17px;font-weight:700;}
+.hdr-sub{font-size:11px;color:var(--text3);}
+.btn-dark{margin-left:auto;background:none;border:1.5px solid var(--border);border-radius:8px;padding:7px 10px;cursor:pointer;color:var(--text2);transition:all .15s;}
+.btn-dark:hover{border-color:var(--accent);color:var(--accent);}
+
+/* MAIN */
+.main{max-width:740px;margin:0 auto;padding:18px 14px 32px;}
+
+/* CARD */
+.card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden;}
+.card-hdr{padding:13px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:default;}
+.card-title{font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;}
+.card-body{padding:14px 16px;}
+
+/* INFO BAR */
+.info-bar{background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.35);border-radius:10px;padding:9px 13px;margin-bottom:14px;font-size:13px;color:#9a6500;display:flex;align-items:center;gap:7px;}
+
+/* ROW CARD */
+.rows-wrap{display:flex;flex-direction:column;gap:10px;}
+.row-card{background:var(--surface2);border:1.5px solid var(--border);border-radius:11px;padding:13px 14px;position:relative;transition:border-color .15s;}
+.row-card:focus-within{border-color:var(--accent);}
+.row-num{position:absolute;top:11px;right:13px;font-size:11px;font-weight:700;color:var(--text3);font-family:'DM Mono',monospace;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin-bottom:9px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:9px;}
+.grid-bottom{display:grid;grid-template-columns:80px 1fr;gap:9px;align-items:flex-end;}
+.field label{display:block;font-size:11px;font-weight:600;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.04em;}
+.field input,.field select{width:100%;padding:10px 11px;border:1.5px solid var(--border);border-radius:9px;font-size:15px;font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--text);outline:none;transition:border-color .15s;-webkit-appearance:none;appearance:none;}
+.field input:focus,.field select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(245,166,35,.13);}
+.field input::placeholder{color:var(--text3);}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239aa3b5' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:30px;}
+.btn-del{background:none;border:1.5px solid #fecaca;color:var(--red);border-radius:8px;padding:9px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;width:100%;transition:background .15s;}
+.btn-del:hover{background:#fef2f2;}
+.btn-del:active{transform:scale(.97);}
+.btn-add{width:100%;background:none;border:2px dashed var(--border);color:var(--text3);border-radius:11px;padding:13px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;margin-top:6px;}
+.btn-add:hover{border-color:var(--accent);color:var(--accent);background:rgba(245,166,35,.03);}
+.plus-dot{width:22px;height:22px;background:var(--accent);border-radius:50%;color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;line-height:1;transition:background .15s;}
+.btn-add:hover .plus-dot{background:var(--accent2);}
+.summary{background:linear-gradient(135deg,#1a2233,#2d3a52);border-radius:var(--radius);padding:18px 20px;color:#fff;display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.sum-label{font-size:11px;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.07em;font-weight:600;}
+.sum-val{font-size:30px;font-weight:700;font-family:'DM Mono',monospace;margin-top:3px;}
+.sum-unit{font-size:12px;color:rgba(255,255,255,.5);}
+.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
+@media(max-width:420px){.contact-grid{grid-template-columns:1fr;}}
+.full{grid-column:1/-1;}
+.btn-submit{width:100%;background:var(--accent);border:none;color:#fff;border-radius:11px;padding:15px;font-size:16px;font-weight:700;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:9px;font-family:'DM Sans',sans-serif;margin-top:14px;}
+.btn-submit:hover{background:var(--accent2);transform:translateY(-1px);box-shadow:0 6px 20px rgba(245,166,35,.38);}
+.btn-submit:active{transform:none;}
+.btn-submit:disabled{background:#ccc;cursor:not-allowed;transform:none;box-shadow:none;}
+.btn-sec{background:var(--surface);border:1.5px solid var(--border);color:var(--text);border-radius:10px;padding:12px 16px;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;}
+.btn-sec:hover{border-color:var(--accent);color:var(--accent);}
+.success-box{background:#f0fdf4;border:2px solid #86efac;border-radius:var(--radius);padding:26px 22px;text-align:center;}
+.order-num{font-family:'DM Mono', monospace;font-size:32px;font-weight:700;color:#16a34a;letter-spacing:.1em;margin:10px 0;}
+.success-desc{font-size:13px;color:var(--text2);margin-top:8px;line-height:1.65;}
+.steps{display:flex;flex-direction:column;gap:9px;margin-top:2px;}
+.step{display:flex;align-items:flex-start;gap:11px;padding:11px 13px;background:var(--surface2);border-radius:9px;border:1px solid var(--border);}
+.step-n{min-width:22px;height:22px;background:var(--accent);border-radius:50%;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;}
+.step-t{font-size:13px;color:var(--text2);line-height:1.5;}
+.step-t strong{color:var(--text);display:block;margin-bottom:1px;}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+.btn-tool{background:var(--surface);border:1.5px solid var(--border);color:var(--text2);border-radius:9px;padding:9px 13px;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px;font-family:'DM Sans',sans-serif;text-decoration:none;}
+.btn-tool:hover{border-color:var(--accent);color:var(--accent);}
+.spin{width:18px;height:18px;border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;}
+@keyframes sp{to{transform:rotate(360deg);}}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(16px);background:#1a2233;color:#fff;padding:11px 20px;border-radius:9px;font-size:14px;font-weight:500;z-index:999;opacity:0;transition:all .28s;pointer-events:none;max-width:88vw;text-align:center;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.toast.ok{background:#22c55e;}
+.toast.err{background:#ef4444;}
+body.dark{--bg:#0e1218;--surface:#161c26;--surface2:#1a2233;--border:#2a3347;--text:#e8edf5;--text2:#8a9ab5;--text3:#4a5a75;}
+body.dark .field input,body.dark .field select{background:#1a2233;color:#e8edf5;}
+body.dark .btn-sec{background:#1a2233;color:#e8edf5;}
+body.dark .btn-tool{background:#1a2233;color:#8a9ab5;}
+body.dark .info-bar{background:rgba(245,166,35,.07);color:#b87d20;}
+.arrow{transition:transform .2s;}
+.arrow.open{transform:rotate(180deg);}
+</s0>
+</head>
+<body>
+<div class="hdr">
+  <img src="Logo_O_beztÅa.png" alt="FAVOUR" onerror="this.style.display='none'">
+  <div>
+    <div class="hdr-title">Kalkulator moskitier</div>
+    <div class="hdr-sub">FAVOUR â wycena na wymiar</div>
+  </div>
+  <button class="btn-dark" onclick="toggleDark()" title="Tryb ciemny">ð</button>
+</div>
+<div class="main">
+<div class="info-bar">
+â¹ï¸ Cena: <strong style="margin:0 2px;">3,00 zÅ</strong> za kaÅ¼de 10 cm obwodu (B+A)Ã2
+</div>
+<div class="card">
+  <div class="card-hdr" onclick="toggleSteps()" style="cursor:pointer;">
+    <span class="card-title">ð Jak mierzyq?</span>
+    <svg class="arrow" id="steps-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+  </div>
+  <div id="steps-body" style="display:none;" class="card-body">
+    <div class="steps">
+      <div class="step"><div class="step-n">B</div><div class="step-t"><strong>SzerokoÅÄ A</strong>WewnÄtrzna szerokoÅÄ falcu (oÅcieÅ¼nicy). Odejmij ok. 1â2 mm luzu.</div></div>
+      <div class="step"><div class="step-n">A</div><div class="step-t"><strong>WysokoÅÄ A</strong>WewnÄtrzna wysokoÅÄ falcu (oÅcieÅ¼nicy)/ Odejmij ok. 1â2 mm luzu.</div></div>
+      <div class="step"><div class="step-n">C</div><div class="step-t"><strong>Felc C</strong>GÅÄbokoÅÄ wpustu w ktÃ³ry wchodzi rama â zwykle 10â15 mm. Pole opcjonalne.</div></div>
+    </div>
+  </div>
+</div>
+<div class="card">
+  <div class="card-hdr">
+    <span class="card-title">Pozycje</span>
+    <span id="row-count" style="font-size:12px;color:var(--text3);font-family:'DM Mono', monospace;"></span>
+  </div>
+  <div class="card-body">
+    <div class="rows-wrap" id="rows"></div>
+    <button class="btn-add" onclick="addRow()" id="btn-add"><span class="plus-dot">+</span> Dodaj kolejne okno / drzwi</button>
+  </div>
+</div>
+<div class="summary">
+  <div><div class="sum-label">Jednostki</div><div class="sum-val" id="s-units">0</div><div class="sum-unit">Ã 3,00 zÅ / j.</div></div>
+  <div><div class="sum-label">ÅÄczny koszt</div><div class="sum-val" id="s-cost">0,00</div><div class="sum-unit">zÅ brutto</div></div>
+</div>
+  <div class="card" id="contact-card">
+    <div class="card-hdr"><span class="card-title">ð Teoje dane</span></div>
+    <div class="card-body">
+      <div class="contact-grid">
+        <div class="field full"><label>ImiÄ i nazwisko *</label><input id="c-name" type="text" placeholder="Jan Kowalski" autocomplete="name"></div>
+        <div class="field"><label>Telefon *</label><input id="c-phone" type="tel" placeholder="+48 600 000 000" autocomplete="tel"></div>
+        <div class="field"><label>E-mail</label><input id="c-email" type="email" placeholder="jan@example.com" autocomplete="email"></div>
+        <div class="field full"><label>Uwagi (opcjonalne)</label><input id="c-notes" type="text" placeholder="np. pilna realizacjaâ¦"></div>
+      </div>
+      <button class="btn-submit" id="btn-sub" onclick="submitOrder()"><span id="sub-lbl">âï¸ WyÅlij zapytanie</span><span id="sub-spin" style="display:none;"><span class="spin"></span></span></button>
+    </div>
+  </div>
+  <div id="success-card" style="display:none;">
+    <div class="success-box">
+      <div style="font-size:36px;">ð</div>
+      <div style="font-size:13px;color:#15803d;font-weight:600;margin-top:8px;">TwÃ³j numer jamÃ³wienia</div>
+      <div class="order-num" id="order-num-txt">â</div>
+      <div class="success-desc">Zapisz ten numer â przyda Ci siÄ do Åledzenia realizacj.<br>Skontaktujemy siÄ z TobÄ wkrÃ³tce, aby potwierdziÄ szczegÃ³Åy i pÅatnoÅÄ.</div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">
+      <button class="btn-sec" onclick="newOrder()" style="flex:1;">â Nowe zamÃ³wienie</button>
+      <a class="btn-sec" href="https://allegro.pl/uzytkownik/Favo5" target="_blank" style="flex:1;">ð Allegro</a>
+    </div>
+  </div>
+  <div class="toolbar">
+    <a class="btn-tool" href="Instrukcja_25bez.pdf" target="_blank">ð Instrukcja montaÅ¼u</a>
+    <a class="btn-tool" href="https://allegro.pl/oferta/moskitiera-ramkowa-na-wymiar-siatka-w-okno-na-ramce-aluminiowej-anty-owady-10508769780" target="_blank">ð WrÃ³Ä do aukcji</a>
+  </div>
+  <div style="text-align:center;font-size:12px;color:var(--text3);margin-top:22px;">Â© 2025 FAVOUR Â· Wszelkie prawa zastrzeÅ¼one</div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const WORKER_URL = "https://allegro-autoresponder.oktomo.workers.dev";
+const WORKER_KEY = "kalkulator2025";
+const PROFILE_COLORS = ["BrÄz RAL 8019","BiaÅy RAL 9016","Antracyt RAL 7016","Czarny RAL 9005","ZÅoty dÄb","Ciemny dÄb","Winchester","Orzech","MahoÅ","Turner Oak/Woodec"];
+const MESH_COLORS = ["Czarna","Szara"];
+let rows = [], rowId = 0;
+document.addEventListener("DOMContentLoaded", () => addRow());
+function addRow() {
+  if (rows.length >= 20) { toast("Maksymalnie 20 pozycji", "err"); return; }
+  rows.push({ id: ++rowId });
+  renderRows();
+  setTimeout(() => { const el = document.querySelector(`[data-row="${rowId}"] .wi`); if (el) el.focus(); }, 40);
+}
+function deleteRow(id) {
+  if (rows.length <= 1) { toast("Musi byÄ co najmniej 1 pozycja", "err"); return; }
+  const vals = getVals();
+  rows = rows.filter(r => r.id !== id);
+  renderRows(vals); calc();
+}
+function getVals() {
+  const v = {};
+  document.querySelectorAll("[data-row]").forEach(c => {
+    const id = +c.dataset.row;
+    v[id] = { w: c.querySelector(".wi")?.value || "", h: c.querySelector(".hi")?.value || "", f: c.querySelector(".fi")?.value || "", pc: c.querySelector(".pc")?.value || "", mc: c.querySelector(".mc")?.value || "", am: c.querySelector(".ai")?.value || "1" };
+  }); return v;
+}
+function renderRows(savedVals) {
+  const vals = savedVals || getVals();
+  const container = document.getElementById("rows");
+  container.innerHTML = "";
+  rows.forEach((row, idx) => {
+    const v = vals[row.id] || {};
+    const card = document.createElement("div");
+    card.className = "row-card"; card.dataset.row = row.id;
+    const pOpts = PROFILE_COLORS.map(c => `<option value="${c}"${v.pc===c?" selected":""}>${c}</option>`).join("");
+    const mOpts = MESH_COLORS.map(c => `<option value="${c}"${v.mc===c?" selected":""}>${c}</option>`).join("");
+    card.innerHTML = `<div class="row-num">#${idx+1}</div><div class="grid3"><div class="field"><label>Szer. B [cm]</label><input class="wi" type="number" inputmode="decimal" step="0.1" min="1" max="400" placeholder="np. 90" value="${v.w}"></div><div class="field"><label>Wys. A [cm]</label><input class="hi" type="number" inputmode="decimal" step="0.1" min="1" max="400" placeholder="np. 120" value="${v.h}"></div><div class="field"><label>Zelc C [cm]</label><input class="fi" type="number" inputmode="decimal" step="0.1" min="0" max="15" placeholder="opt." value="${v.f}"></div></div><div class="grid2"><div class="field"><label>Kolor profilu</label><select class="pc"><option value="">Wybierzâ¦</option>${pOpts}</select></div><div class="field"><label>Kolor siatki</label><select class="mc"><option value="">Wybierzâ¦ </option>${mOpts}</select></div></div><div class="grid-bottom"><div class="field"><label>IloÅÄ szt.</label><input class="ai" type="number" inputmode="numeric" min="1" max="20" value="${v.am||"1"}"></div><div class="field" style="display:flex;align-items:flex-end;">${rows.length > 1 ? `<button class="btn-del" onclick="deleteRow(${row.id})">ð UsuÅ</button>` : `<div></div>`}</div></div>`;
+    card.querySelectorAll("input,select").forEach(el => el.addEventListener("input", calc));
+    container.appendChild(card);
+  });
+  const cnt = rows.length;
+  document.getElementById("row-count").textContent = cnt + (cnt===1?" okno":" okna/drzwi");
+  document.getElementById("btn-add").style.display = cnt >= 20 ? "none" : "flex";
+  calc();
+}
+function calc() {
+  let perim = 0;
+  document.querySelectorAll("[data-row]").forEach(c => {
+    const w = parseFloat(c.querySelector(".wi")?.value) || 0;
+    const h = parseFloat(c.querySelector(".hi")?.value) || 0;
+    const am = parseInt(c.querySelector(".ai")?.value) || 1;
+    if (w > 0 && h > 0) perim += (w + h) * 2 * am;
+  });
+  const units = Math.ceil(perim / 10);
+  const cost = units * 3;
+  document.getElementById("s-units").textContent = units;
+  document.getElementById("s-cost").textContent = cost.toFixed(2).replace(".", ",");
+  return { units, cost };
+}
+function collectRows() {
+  return Array.from(document.querySelectorAll("[data-row]")).map((c, i) => ({ lp: i + 1, szerokosc: parseFloat(c.querySelector(".wi")?.value) || 0, wysokosc: parseFloat(c.querySelector(".hi")?.value) || 0, felc: parseFloat(c.querySelector(".fi")?.value) || 0, kolorProfilu: c.querySelector(".pc")?.value || "", kolorSiatki: c.querySelector(".mc")?.value || "", ilosc: parseInt(c.querySelector(".ai")?.value) || 1 }));
+}
+async function submitOrder() {
+  const name = document.getElementById("c-name").value.trim();
+  const phone = document.getElementById("c-phone").value.trim();
+  const email = document.getElementById("c-email").value.trim();
+  const notes = document.getElementById("c-notes").value.trim();
+  if (!name) { toast("Podaj imiÄ i nazwisko", "err"); document.getElementById("c-name").focus(); return; }
+  if (!phone) { toast("Podaj numer telefonu", "err"); document.getElementById("c-phone").focus(); return; }
+  const pozycje = collectRows();
+  if (pozycje.some(r => r.szerokosc === 0 || r.wysokosc === 0)) { toast("UzupeÅnij wymiary wszystkich okien", "err"); return; }
+  const { units, cost } = calc();
+  if (units === 0) { toast("WprowadÅº wymiary co najmniej jednego okna", "err"); return; }
+  const now = new Date();
+  const yy = String(now.getFullYear()).slice(2);
+  const mm = String(now.getMonth()+1).padStart(2,"0");
+  const dd = String(now.getDate()).padStart(2,"0");
+  const rand = String(Math.floor(Math.random()*9000)+1000);
+  const orderNumber = `KAL-${yy}${mm}${dd}-${rand}`;
+  const payload = { orderNumber, createdAt: now.toISOString(), klient: { name, phone, email, notes }, pozycje, podsumowanie: { units, cost } };
+  document.getElementById("sub-lbl").style.display = "none";
+  document.getElementById("sub-spin").style.display = "inline-flex";
+  document.getElementById("btn-sub").disabled = true;
+  let saved = false;
+  try { const r = await fetch(WORKER_URL + "/kalkulator/order", { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": WORKER_KEY }, body: JSON.stringify(payload) }); if (r.ok) saved = true; } catch(e) {}
+  if (!saved) {
+    const body = pozycje.map((r,i) => `${i+1}. ${r.szerokosc}Ã${r.wysokosc} cm, felc: ${r.felc||"â"}, profil: ${r.kolorProfilu||"â"}, siatka: ${r.kolorSiatki||"â"}, szt: ${r.ilosc}`).join("\n");
+    window.location.href = `mailto:favour.biuro@gmail.com?subject=ZamÃ³wienie ${orderNumber}&body=${encodeURIComponent(`ProszÄ o realizacjä zamÃ³wienia (${orderNumber}):\n\n${body}\nJEDNOSTKI: ${units}\nKOSZT: ${cost.toFixed(2)} zÅ\nKLIENT: ${name}\nTEL: ${phone}${email?"\nEMAIL: "+email:""}${notes?"\nUWAGI: "+notes:""}`)}`;
+  }
+  document.getElementById("sub-lbl").style.display = "inline";
+  document.getElementById("sub-spin").style.display = "none";
+  document.getElementById("btn-sub").disabled = false;
+  document.getElementById("contact-card").style.display = "none";
+  document.getElementById("success-card").style.display = "block";
+  document.getElementById("order-num-txt").textContent = orderNumber;
+  toast("ZamÃ³wienie wysÅane! â", "ok");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+function newOrder() {
+  document.getElementById("success-card").style.display = "none";
+  document.getElementById("contact-card").style.display = "block";
+  ["c-name","c-phone","c-email","c-notes"].forEach(id => document.getElementById(id).value = "");
+  rows = []; rowId = 0; addRow();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+function toggleSteps() {
+  const body = document.getElementById("steps-body");
+  const arrow = document.getElementById("steps-arrow");
+  const open = body.style.display === "block";
+  body.style.display = open ? "none" : "block";
+  arrow.classList.toggle("open", !open);
+}
+function toggleDark() { document.body.classList.toggle("dark"); }
+let toastTimer;
+function toast(msg, type) {
+  const el = document.getElementById("toast");
+  el.textContent = msg; el.className = "toast " + (type||"");
+  el.classList.add("show"); clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 2800);
+}
+</script></body></html>
