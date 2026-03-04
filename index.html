@@ -2885,14 +2885,14 @@ function App() {
         )}
 
              {tab==="kalk" && (
-          <div style={{padding:'16px',display:'flex',flexDirection:'column',gap:'16px',height:'calc(100vh - 140px)'}}>
-            <div style={{background:'var(--surface)',borderRadius:8,padding:'16px',border:'1px solid var(--border)'}}>
-              <div style={{color:'var(--accent)',fontWeight:'bold',marginBottom:'10px',fontSize:'13px',letterSpacing:'0.05em'}}>WYSZUKAJ WYCENE KAL-</div>
+          <div style={{padding:'16px'}}>
+            <div style={{background:'var(--surface)',borderRadius:8,padding:'16px',border:'1px solid var(--border)',marginBottom:'16px'}}>
+              <div style={{color:'var(--accent)',fontWeight:'bold',marginBottom:'10px',fontSize:'13px'}}>WYSZUKAJ WYCENE KAL-</div>
               <div style={{display:'flex',gap:'8px'}}>
                 <input type="text" placeholder="KAL-260304-0001" value={kalSearch} onChange={e=>setKalSearch(e.target.value)}
-                  onKeyDown={e=>{if(e.key==='Enter'){const n=kalSearch.trim();if(!n)return;setKalResult(null);setKalError('');fetch('https://allegro-autoresponder.favour-biuro.workers.dev/kalkulator/order/'+encodeURIComponent(n)).then(r=>r.json()).then(d=>{if(d.error)setKalError('Nie znaleziono: '+n);else setKalResult(d);}).catch(()=>setKalError('Blad polaczenia'));}}}
+                  onKeyDown={e=>{if(e.key==='Enter'){const n=kalSearch.trim();if(!n)return;setKalResult(null);setKalError('');fetch('https://allegro-autoresponder.favour-biuro.workers.dev/kalkulator/order/'+encodeURIComponent(n)).then(r=>r.json()).then(d=>{if(d.error)setKalError('Nie znaleziono: '+n);else setKalResult(d);}).catch(()=>setKalError('Blad'));} }}
                   style={{flex:1,padding:'8px 12px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg)',color:'var(--text)',fontSize:14}}/>
-                <button onClick={()=>{const n=kalSearch.trim();if(!n)return;setKalResult(null);setKalError('');fetch('https://allegro-autoresponder.favour-biuro.workers.dev/kalkulator/order/'+encodeURIComponent(n)).then(r=>r.json()).then(d=>{if(d.error)setKalError('Nie znaleziono: '+n);else setKalResult(d);}).catch(()=>setKalError('Blad polaczenia'));}}
+                <button onClick={()=>{const n=kalSearch.trim();if(!n)return;setKalResult(null);setKalError('');fetch('https://allegro-autoresponder.favour-biuro.workers.dev/kalkulator/order/'+encodeURIComponent(n)).then(r=>r.json()).then(d=>{if(d.error)setKalError('Nie znaleziono: '+n);else setKalResult(d);}).catch(()=>setKalError('Blad'));}}
                   style={{padding:'8px 16px',background:'var(--accent)',color:'#000',borderRadius:6,border:'none',cursor:'pointer',fontWeight:'bold'}}>Szukaj</button>
               </div>
               {kalError&&<div style={{color:'#ef4444',marginTop:'8px',fontSize:'13px'}}>{kalError}</div>}
@@ -2911,9 +2911,7 @@ function App() {
                 {kalResult.totalPrice&&<div style={{color:'#22c55e',fontWeight:'bold',textAlign:'right',marginTop:'8px',fontSize:'15px'}}>SUMA: {kalResult.totalPrice} zl</div>}
               </div>}
             </div>
-            <div style={{minHeight:'550px'}}>
-              <iframe src="https://oktomo.github.io/moskitiery/kalkulator.html" style={{width:'100%',height:'550px',border:'none',borderRadius:8}} title="Kalkulator OKTOMO"/>
-            </div>
+            <iframe src="https://oktomo.github.io/moskitiery/kalkulator.html" style={{width:'100%',height:'680px',border:'none',borderRadius:8,display:'block'}} title="Kalkulator OKTOMO"/>
           </div>
         )}
         {/* ══ FAKTURY ══ */}
