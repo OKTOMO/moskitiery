@@ -1803,7 +1803,7 @@ function App() {
           <button key={id} className={`tab ${tab===id?"on":""}`} onClick={()=>setTab(id)}>{l}</button>
         ))}
         <button className={`tab ${(tab==="allegro"||tab==="ustawienia"||tab==="historia")?"on":""}`} onClick={()=>{
-          const pin=localStorage.getItem("admin_pin");
+          setTab("admin")
           if(!pin){
             const np=prompt("Brak PIN-u. Ustaw PIN (4 cyfry):");
             if(!np||!/[0-9]{4}/.test(np)){alert("PIN musi mieć dokładnie 4 cyfry.");return;}
