@@ -2884,7 +2884,7 @@ function App() {
           </div>
         )}
 
-             {tab==="kalk" && (
+            {tab==="kalk_DISABLED" && (
           <div style={{padding:'16px'}}>
             <div style={{background:'var(--surface)',borderRadius:8,padding:'16px',border:'1px solid var(--border)',marginBottom:'16px'}}>
               <div style={{color:'var(--accent)',fontWeight:'bold',marginBottom:'10px',fontSize:'13px'}}>WYSZUKAJ WYCENE KAL-</div>
@@ -2916,6 +2916,7 @@ function App() {
             <iframe src="https://oktomo.github.io/moskitiery/kalkulator.html" style={{width:'100%',height:'680px',border:'none',borderRadius:8,display:'block'}} title="Kalkulator OKTOMO"/>
           </div>
         )}
+        {tab==="kalk" && (<div style={{padding:'16px'}}><iframe src="https://oktomo.github.io/moskitiery/kalkulator.html" style={{width:'100%',height:'700px',border:'none',borderRadius:8}} title="Kalkulator OKTOMO"/></div>)}
         {/* ══ FAKTURY ══ */}
         {tab==="faktury" && (()=>{
           const firma = currentProfile?.id||"F";
