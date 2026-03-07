@@ -1209,7 +1209,7 @@ function App() {
           orderId:imp.allegroOrderId,
           deliveryServiceId:{
             deliveryMethodId:service.id,
-            credentialsId:service.credentialsId||null
+            ...(service.credentialsId?{credentialsId:service.credentialsId}:{})
           },
           receiver:{
             address:{
