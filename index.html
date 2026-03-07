@@ -1185,26 +1185,6 @@ function App() {
         const matched = svcs.find(s => s.id === imp.deliveryMethodId) || svcs[0];
         console.log("deliveryMethodId:",imp.deliveryMethodId,"→",matched?.name);
         setShipmentServiceId(matched.id || "");
-          // Wyciągnij kluczowe słowo przewoźnika: dpd, inpost, dhl, ups, gls, fedex, poczta itd
-          const carriers=["dpd","inpost","paczkomat","dhl","ups","gls","fedex","poczta","pocztex","orlen","allegro kurier"];
-          const dmCarrier=carriers.find(c=>dmName.includes(c))||"";
-          // Czy to pobranie?
-          const isPobranie=dmName.includes("pobranie")||dmName.includes("za pobraniem");
-          
-          let bestScore=-1;
-          for(const s of svcs){
-            const sName=(s.name||"").toLowerCase();
-            let score=0;
-            // Przewoźnik musi się zgadzać
-            if(dmCarrier&&sName.includes(dmCarrier)) score+=10;
-            // Pobranie musi się zgadzać
-            if(isPobranie&&sName.includes("pobranie")) score+=5;
-            if(!isPobranie&&!sName.includes("pobranie")) score+=2;
-            if(score>bestScore){bestScore=score;matched=s;}
-          }
-        }
-        console.log("deliveryMethodName:",imp.deliveryMethodName,"→",matched.name);
-        setShipmentServiceId(matched.id||"");
       }
     }catch(e){
       setShipmentError("❌ "+e.message);
