@@ -1179,9 +1179,10 @@ function App() {
       // Auto-wybór: pierwsza pasująca usługa (InPost lub pierwsza)
       if(svcs.length>0){
         // Dopasuj po nazwie metody dostawy - szukaj nazwy przewoźnika
-        const dmName=(imp.deliveryMethodName||"").toLowerCase();
-        let matched=svcs[0];
-        if(dmName){
+        // Dopasuj dokładnie po deliveryMethodId z zamówienia
+        const matched = svcs.find(s => s.id === imp.deliveryMethodId) || svcs[0];
+        console.log("deliveryMethodId:",imp.deliveryMethodId,"→",matched?.name);
+        setShipmentServiceId(matched.id || "");
           // Wyciągnij kluczowe słowo przewoźnika: dpd, inpost, dhl, ups, gls, fedex, poczta itd
           const carriers=["dpd","inpost","paczkomat","dhl","ups","gls","fedex","poczta","pocztex","orlen","allegro kurier"];
           const dmCarrier=carriers.find(c=>dmName.includes(c))||"";
