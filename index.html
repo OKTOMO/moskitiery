@@ -591,6 +591,7 @@ function App() {
   const [shipmentLoading,setShipmentLoading]=useState(false);
   const [shipmentError,setShipmentError]=useState("");
   const [shipmentSize,setShipmentSize]=useState("A");
+  const [shipmentCustomSize,setShipmentCustomSize]=useState({length:64,width:38,height:15,weight:5});
   const [shipmentCreating,setShipmentCreating]=useState(false);
   const [shipmentDescription,setShipmentDescription]=useState("");
   const [shipmentServiceId,setShipmentServiceId]=useState("");
@@ -1168,6 +1169,7 @@ function App() {
     setShipmentLoading(true);
     setShipmentError("");
     setShipmentSize("A");
+      setShipmentCustomSize({length:64,width:38,height:15,weight:5});
     try{
       const r=await fetch(AUTORESPONDER_URL+"/shipment/services?kontoId="+imp.kontoId+"&orderId="+imp.allegroOrderId,{
         headers:{"x-api-key":AUTORESPONDER_KEY}
@@ -1215,15 +1217,10 @@ function App() {
     const {imp, services}=shipmentModal;
     setShipmentCreating(true);
     setShipmentError("");
-    // Rozmiary A/B/C w cm i wagach dla paczkomatu InPost
-    const SIZES={
-      "A":{length:64,width:38,height:8,weight:25},
-      "B":{length:64,width:38,height:19,weight:25},
-      "C":{length:64,width:38,height:41,weight:25}
-    };
-    const size=SIZES[shipmentSize]||SIZES["A"];
-    // Użyj wybranej usługi
     const service=services.find(s=>s.id===shipmentServiceId)||services[0];
+    const isInPost=(service?.name||'').toLowerCase().includes('inpost')||(service?.name||'').toLowerCase().includes('paczkomat')||(service?.carrierId||'').toLowerCase().includes('inpost');
+    const SIZES={"A":{length:64,width:38,height:8,weight:25},"B":{length:64,width:38,height:19,weight:25},"C":{length:64,width:38,height:41,weight:25}};
+    const size=isInPost?(SIZES[shipmentSize]||SIZES["A"]):{length:shipmentCustomSize?.length||64,width:shipmentCustomSize?.width||38,height:shipmentCustomSize?.height||15,weight:shipmentCustomSize?.weight||5};
     if(!service){setShipmentError("❌ Brak dostępnych usług dostawy dla tego zamówienia");setShipmentCreating(false);return;}
     try{
       // Krok 1: utwórz przesyłkę
@@ -2240,84 +2237,41 @@ function App() {
                     placeholder="np. akcesoria do moskitiery"
                     style={{width:"100%",boxSizing:"border-box",background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:5,color:"#c0e0c0",padding:"6px 10px",fontSize:12,fontFamily:"monospace"}}/>
                 </div>
-                <div style={{marginBottom:16}}>
-                  <div style={{fontSize:11,color:"#4a7a4a",marginBottom:6}}>Rozmiar paczki:</div>
-                  <div style={{display:"flex",gap:8}}>
-                    {["A","B","C"].map(s=>(
-                      <button key={s} onClick={()=>setShipmentSize(s)}
-                        style={{flex:1,padding:"8px 0",fontSize:13,fontWeight:700,cursor:"pointer",borderRadius:6,
-                          background:shipmentSize===s?"#2a5a2a":"#1a2a1a",
-                          border:"1px solid "+(shipmentSize===s?"#4a9a4a":"#2a4a2a"),
-                          color:shipmentSize===s?"#7fcf7f":"#3a6a3a"}}>
-                        {s}
-                        <div style={{fontSize:9,fontWeight:400,color:shipmentSize===s?"#5a9a5a":"#2a4a2a",marginTop:2}}>
-                          {s==="A"?"8cm":s==="B"?"19cm":"41cm"}
+                {(()=>{
+                const _svcName=(shipmentModal?.services?.find(s=>s.id===shipmentServiceId)?.name||'').toLowerCase();
+                const _isInPost=_svcName.includes('inpost')||_svcName.includes('paczkomat');
+                if(_isInPost) return (
+                  <div style={{marginBottom:16}}>
+                    <div style={{fontSize:11,color:"#4a7a4a",marginBottom:6}}>Rozmiar paczki (InPost):</div>
+                    <div style={{display:"flex",gap:8}}>
+                      {[["A","8cm"],["B","19cm"],["C","41cm"]].map(([s,h])=>(
+                        <button key={s} onClick={()=>setShipmentSize(s)}
+                          style={{flex:1,padding:"8px 0",fontSize:13,fontWeight:700,cursor:"pointer",borderRadius:6,
+                            background:shipmentSize===s?"#2a5a2a":"#1a2a1a",
+                            border:"1px solid "+(shipmentSize===s?"#4a9a4a":"#2a4a2a"),
+                            color:shipmentSize===s?"#7fcf7f":"#3a6a3a"}}>
+                          {s}<div style={{fontSize:9,fontWeight:400,marginTop:2,color:shipmentSize===s?"#5a9a5a":"#2a4a2a"}}>{h}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+                return (
+                  <div style={{marginBottom:16}}>
+                    <div style={{fontSize:11,color:"#4a7a4a",marginBottom:8}}>Wymiary i waga:</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8}}>
+                      {[["Dług.",shipmentCustomSize?.length||64,"length"],["Szer.",shipmentCustomSize?.width||38,"width"],["Wys.",shipmentCustomSize?.height||15,"height"],["Waga kg",shipmentCustomSize?.weight||5,"weight"]].map(([lbl,val,key])=>(
+                        <div key={key}>
+                          <div style={{fontSize:10,color:"#4a7a4a",marginBottom:3}}>{lbl}</div>
+                          <input type="number" min="1" value={val}
+                            onChange={e=>setShipmentCustomSize(prev=>({...prev,[key]:parseFloat(e.target.value)||1}))}
+                            style={{width:"100%",background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:5,color:"#c0e0c0",padding:"6px 4px",fontSize:13,textAlign:"center",boxSizing:"border-box"}}/>
                         </div>
-                      </button>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
-                {shipmentError&&<div style={{marginBottom:10,color:"#df8080",fontSize:12}}>{shipmentError}</div>}
-                <div style={{display:"flex",gap:8}}>
-                  <button onClick={createShipment} disabled={shipmentCreating||shipmentLoading||shipmentModal.services.length===0}
-                    style={{flex:1,padding:"10px 0",fontSize:13,fontWeight:700,cursor:"pointer",borderRadius:6,
-                      background:shipmentCreating?"#1a2a1a":"#2a5a1a",border:"1px solid #4a9a2a",color:"#9fdf7f"}}>
-                    {shipmentCreating?"⟳ Tworzę...":"📦 Generuj etykietę"}
-                  </button>
-                  <button onClick={()=>{setShipmentModal(null);setShipmentError("");}}
-                    style={{padding:"10px 16px",fontSize:12,cursor:"pointer",borderRadius:6,background:"#1a1a1a",border:"1px solid #2a2a2a",color:"#5a5a5a"}}>
-                    Anuluj
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-          {/* ── MODAL ETYKIETA ── */}
-          {shipmentModal&&(
-            <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.75)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center"}}
-              onClick={e=>{if(e.target===e.currentTarget){setShipmentModal(null);setShipmentError("");}}}>
-              <div style={{background:"#0c1a0c",border:"1px solid #3a7a3a",borderRadius:12,padding:24,width:420,maxWidth:"95vw"}}>
-                <div style={{fontWeight:700,fontSize:15,color:"#afdf7f",marginBottom:16}}>📦 Generuj etykietę</div>
-                <div style={{marginBottom:12,fontSize:12,color:"#7a9a7a"}}>
-                  <div style={{fontWeight:700,color:"#a0cfdf"}}>{shipmentModal.imp.klientImie}</div>
-                  <div>{shipmentModal.imp.klientUlica}</div>
-                  <div>{shipmentModal.imp.klientKod} {shipmentModal.imp.klientMiasto}</div>
-                  <div style={{marginTop:4,fontSize:11,color:"#4a7a9a",fontFamily:"monospace"}}>{shipmentModal.imp.allegroOrderId}</div>
-                </div>
-                {shipmentLoading&&<div style={{color:"#7abfdf",fontSize:12,marginBottom:12}}>⟳ Pobieranie usług dostawy...</div>}
-                {!shipmentLoading&&shipmentModal.services.length>0&&(
-                  <div style={{marginBottom:14}}>
-                    <div style={{fontSize:11,color:"#4a7a4a",marginBottom:6}}>Usługa dostawy:</div>
-                    <select value={shipmentServiceId} onChange={e=>setShipmentServiceId(e.target.value)}
-                      style={{width:"100%",background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:5,color:"#7fcf7f",padding:"6px 10px",fontSize:12}}>
-                      {shipmentModal.services.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
-                  </div>
-                )}
-                {!shipmentLoading&&shipmentModal.services.length===0&&!shipmentError&&(
-                  <div style={{marginBottom:14,fontSize:12,color:"#7a6a3a"}}>⚠️ Brak dostępnych usług dostawy dla tego zamówienia</div>
-                )}
-                <div style={{marginBottom:14}}>
-                  <div style={{fontSize:11,color:"#4a7a4a",marginBottom:6}}>Zawartość paczki:</div>
-                  <input value={shipmentDescription} onChange={e=>setShipmentDescription(e.target.value)}
-                    placeholder="np. akcesoria do moskitiery"
-                    style={{width:"100%",boxSizing:"border-box",background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:5,color:"#c0e0c0",padding:"6px 10px",fontSize:12,fontFamily:"monospace"}}/>
-                </div>
-                <div style={{marginBottom:16}}>
-                  <div style={{fontSize:11,color:"#4a7a4a",marginBottom:6}}>Rozmiar paczki:</div>
-                  <div style={{display:"flex",gap:8}}>
-                    {[["A","8cm"],["B","19cm"],["C","41cm"]].map(([s,h])=>(
-                      <button key={s} onClick={()=>setShipmentSize(s)}
-                        style={{flex:1,padding:"8px 0",fontSize:13,fontWeight:700,cursor:"pointer",borderRadius:6,
-                          background:shipmentSize===s?"#2a5a2a":"#1a2a1a",
-                          border:"1px solid "+(shipmentSize===s?"#4a9a4a":"#2a4a2a"),
-                          color:shipmentSize===s?"#7fcf7f":"#3a6a3a"}}>
-                        {s}
-                        <div style={{fontSize:9,fontWeight:400,color:shipmentSize===s?"#5a9a5a":"#2a4a2a",marginTop:2}}>{h}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                );
+              })()}                </div>
                 {shipmentError&&<div style={{marginBottom:10,color:"#df8080",fontSize:12}}>{shipmentError}</div>}
                 <div style={{display:"flex",gap:8}}>
                   <button onClick={createShipment} disabled={shipmentCreating||shipmentLoading||shipmentModal.services.length===0}
