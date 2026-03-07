@@ -2251,7 +2251,7 @@ function App() {
                     </div>
                   </div>
                 );
-              })()}                </div>
+              })()}
                 {shipmentError&&<div style={{marginBottom:10,color:"#df8080",fontSize:12}}>{shipmentError}</div>}
                 <div style={{display:"flex",gap:8}}>
                   <button onClick={createShipment} disabled={shipmentCreating||shipmentLoading||shipmentModal.services.length===0}
