@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<title>Kalkulator moskitier â FAVOUR</title>
+<title>Kalkulator moskitier — FAVOUR</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -18,28 +18,18 @@
 }
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:calc(env(safe-area-inset-bottom)+24px);}
-
-/* HEADER */
 .hdr{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 18px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow);}
 .hdr img{height:38px;object-fit:contain;}
 .hdr-title{font-size:17px;font-weight:700;}
 .hdr-sub{font-size:11px;color:var(--text3);}
 .btn-dark{margin-left:auto;background:none;border:1.5px solid var(--border);border-radius:8px;padding:7px 10px;cursor:pointer;color:var(--text2);transition:all .15s;}
 .btn-dark:hover{border-color:var(--accent);color:var(--accent);}
-
-/* MAIN */
 .main{max-width:740px;margin:0 auto;padding:18px 14px 32px;}
-
-/* CARD */
 .card{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);margin-bottom:14px;overflow:hidden;}
 .card-hdr{padding:13px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;cursor:default;}
 .card-title{font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;}
 .card-body{padding:14px 16px;}
-
-/* INFO BAR */
 .info-bar{background:rgba(245,166,35,.1);border:1px solid rgba(245,166,35,.35);border-radius:10px;padding:9px 13px;margin-bottom:14px;font-size:13px;color:#9a6500;display:flex;align-items:center;gap:7px;}
-
-/* ROW CARD */
 .rows-wrap{display:flex;flex-direction:column;gap:10px;}
 .row-card{background:var(--surface2);border:1.5px solid var(--border);border-radius:11px;padding:13px 14px;position:relative;transition:border-color .15s;}
 .row-card:focus-within{border-color:var(--accent);}
@@ -73,7 +63,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .btn-sec{background:var(--surface);border:1.5px solid var(--border);color:var(--text);border-radius:10px;padding:12px 16px;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;}
 .btn-sec:hover{border-color:var(--accent);color:var(--accent);}
 .success-box{background:#f0fdf4;border:2px solid #86efac;border-radius:var(--radius);padding:26px 22px;text-align:center;}
-.order-num{font-family:'DM Mono', monospace;font-size:32px;font-weight:700;color:#16a34a;letter-spacing:.1em;margin:10px 0;}
+.order-num{font-family:'DM Mono',monospace;font-size:32px;font-weight:700;color:#16a34a;letter-spacing:.1em;margin:10px 0;}
 .success-desc{font-size:13px;color:var(--text2);margin-top:8px;line-height:1.65;}
 .steps{display:flex;flex-direction:column;gap:9px;margin-top:2px;}
 .step{display:flex;align-items:flex-start;gap:11px;padding:11px 13px;background:var(--surface2);border-radius:9px;border:1px solid var(--border);}
@@ -100,79 +90,79 @@ body.dark .info-bar{background:rgba(245,166,35,.07);color:#b87d20;}
 </head>
 <body>
 <div class="hdr">
-  <img src="Logo_O_beztÅa.png" alt="FAVOUR" onerror="this.style.display='none'">
+  <img src="Logo_O_beztla.png" alt="FAVOUR" onerror="this.style.display='none'">
   <div>
     <div class="hdr-title">Kalkulator moskitier</div>
-    <div class="hdr-sub">FAVOUR â wycena na wymiar</div>
+    <div class="hdr-sub">FAVOUR — wycena na wymiar</div>
   </div>
-  <button class="btn-dark" onclick="toggleDark()" title="Tryb ciemny">ð</button>
+  <button class="btn-dark" onclick="toggleDark()" title="Tryb ciemny">🌙</button>
 </div>
 <div class="main">
-<div class="info-bar">
-â¹ï¸ Cena: <strong style="margin:0 2px;">3,00 zÅ</strong> za kaÅ¼de 10 cm obwodu (B+A)Ã2
-</div>
-<div class="card">
-  <div class="card-hdr" onclick="toggleSteps()" style="cursor:pointer;">
-    <span class="card-title">ð Jak mierzyq?</span>
-    <svg class="arrow" id="steps-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+  <div class="info-bar">
+    ℹ️ Cena: <strong style="margin:0 2px;">3,00 zł</strong> za każde 10 cm obwodu (B+A)×2
   </div>
-  <div id="steps-body" style="display:none;" class="card-body">
-    <div class="steps">
-      <div class="step"><div class="step-n">B</div><div class="step-t"><strong>SzerokoÅÄ A</strong>WewnÄtrzna szerokoÅÄ falcu (oÅcieÅ¼nicy). Odejmij ok. 1â2 mm luzu.</div></div>
-      <div class="step"><div class="step-n">A</div><div class="step-t"><strong>WysokoÅÄ A</strong>WewnÄtrzna wysokoÅÄ falcu (oÅcieÅ¼nicy)/ Odejmij ok. 1â2 mm luzu.</div></div>
-      <div class="step"><div class="step-n">C</div><div class="step-t"><strong>Felc C</strong>GÅÄbokoÅÄ wpustu w ktÃ³ry wchodzi rama â zwykle 10â15 mm. Pole opcjonalne.</div></div>
+  <div class="card">
+    <div class="card-hdr" onclick="toggleSteps()" style="cursor:pointer;">
+      <span class="card-title">📐 Jak mierzyć?</span>
+      <svg class="arrow" id="steps-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div id="steps-body" style="display:none;" class="card-body">
+      <div class="steps">
+        <div class="step"><div class="step-n">B</div><div class="step-t"><strong>Szerokość B</strong>Wewnętrzna szerokość falcu (ościeżnicy). Odejmij ok. 1–2 mm luzu.</div></div>
+        <div class="step"><div class="step-n">A</div><div class="step-t"><strong>Wysokość A</strong>Wewnętrzna wysokość falcu (ościeżnicy). Odejmij ok. 1–2 mm luzu.</div></div>
+        <div class="step"><div class="step-n">C</div><div class="step-t"><strong>Felc C</strong>Głębokość wpustu w który wchodzi rama — zwykle 10–15 mm. Pole opcjonalne.</div></div>
+      </div>
     </div>
   </div>
-</div>
-<div class="card">
-  <div class="card-hdr">
-    <span class="card-title">Pozycje</span>
-    <span id="row-count" style="font-size:12px;color:var(--text3);font-family:'DM Mono', monospace;"></span>
+  <div class="card">
+    <div class="card-hdr">
+      <span class="card-title">Pozycje</span>
+      <span id="row-count" style="font-size:12px;color:var(--text3);font-family:'DM Mono',monospace;"></span>
+    </div>
+    <div class="card-body">
+      <div class="rows-wrap" id="rows"></div>
+      <button class="btn-add" onclick="addRow()" id="btn-add"><span class="plus-dot">+</span> Dodaj kolejne okno / drzwi</button>
+    </div>
   </div>
-  <div class="card-body">
-    <div class="rows-wrap" id="rows"></div>
-    <button class="btn-add" onclick="addRow()" id="btn-add"><span class="plus-dot">+</span> Dodaj kolejne okno / drzwi</button>
+  <div class="summary">
+    <div><div class="sum-label">Jednostki</div><div class="sum-val" id="s-units">0</div><div class="sum-unit">× 3,00 zł / j.</div></div>
+    <div><div class="sum-label">Łączny koszt</div><div class="sum-val" id="s-cost">0,00</div><div class="sum-unit">zł brutto</div></div>
   </div>
-</div>
-<div class="summary">
-  <div><div class="sum-label">Jednostki</div><div class="sum-val" id="s-units">0</div><div class="sum-unit">Ã 3,00 zÅ / j.</div></div>
-  <div><div class="sum-label">ÅÄczny koszt</div><div class="sum-val" id="s-cost">0,00</div><div class="sum-unit">zÅ brutto</div></div>
-</div>
   <div class="card" id="contact-card">
-    <div class="card-hdr"><span class="card-title">ð Teoje dane</span></div>
+    <div class="card-hdr"><span class="card-title">👤 Twoje dane</span></div>
     <div class="card-body">
       <div class="contact-grid">
-        <div class="field full"><label>ImiÄ i nazwisko *</label><input id="c-name" type="text" placeholder="Jan Kowalski" autocomplete="name"></div>
+        <div class="field full"><label>Imię i nazwisko *</label><input id="c-name" type="text" placeholder="Jan Kowalski" autocomplete="name"></div>
         <div class="field"><label>Telefon *</label><input id="c-phone" type="tel" placeholder="+48 600 000 000" autocomplete="tel"></div>
         <div class="field"><label>E-mail</label><input id="c-email" type="email" placeholder="jan@example.com" autocomplete="email"></div>
-        <div class="field full"><label>Uwagi (opcjonalne)</label><input id="c-notes" type="text" placeholder="np. pilna realizacjaâ¦"></div>
+        <div class="field full"><label>Uwagi (opcjonalne)</label><input id="c-notes" type="text" placeholder="np. pilna realizacja…"></div>
       </div>
-      <button class="btn-submit" id="btn-sub" onclick="submitOrder()"><span id="sub-lbl">âï¸ WyÅlij zapytanie</span><span id="sub-spin" style="display:none;"><span class="spin"></span></span></button>
+      <button class="btn-submit" id="btn-sub" onclick="submitOrder()"><span id="sub-lbl">✉️ Wyślij zapytanie</span><span id="sub-spin" style="display:none;"><span class="spin"></span></span></button>
     </div>
   </div>
   <div id="success-card" style="display:none;">
     <div class="success-box">
-      <div style="font-size:36px;">ð</div>
-      <div style="font-size:13px;color:#15803d;font-weight:600;margin-top:8px;">TwÃ³j numer jamÃ³wienia</div>
-      <div class="order-num" id="order-num-txt">â</div>
-      <div class="success-desc">Zapisz ten numer â przyda Ci siÄ do Åledzenia realizacj.<br>Skontaktujemy siÄ z TobÄ wkrÃ³tce, aby potwierdziÄ szczegÃ³Åy i pÅatnoÅÄ.</div>
+      <div style="font-size:36px;">🎉</div>
+      <div style="font-size:13px;color:#15803d;font-weight:600;margin-top:8px;">Twój numer zamówienia</div>
+      <div class="order-num" id="order-num-txt">—</div>
+      <div class="success-desc">Zapisz ten numer — przyda Ci się do śledzenia realizacji.<br>Skontaktujemy się z Tobą wkrótce, aby potwierdzić szczegóły i płatność.</div>
     </div>
     <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap;">
-      <button class="btn-sec" onclick="newOrder()" style="flex:1;">â Nowe zamÃ³wienie</button>
-      <a class="btn-sec" href="https://allegro.pl/uzytkownik/Favo5" target="_blank" style="flex:1;">ð Allegro</a>
+      <button class="btn-sec" onclick="newOrder()" style="flex:1;">← Nowe zamówienie</button>
+      <a class="btn-sec" href="https://allegro.pl/uzytkownik/Favo5" target="_blank" style="flex:1;">🛒 Allegro</a>
     </div>
   </div>
   <div class="toolbar">
-    <a class="btn-tool" href="Instrukcja_25bez.pdf" target="_blank">ð Instrukcja montaÅ¼u</a>
-    <a class="btn-tool" href="https://allegro.pl/oferta/moskitiera-ramkowa-na-wymiar-siatka-w-okno-na-ramce-aluminiowej-anty-owady-10508769780" target="_blank">ð WrÃ³Ä do aukcji</a>
+    <a class="btn-tool" href="Instrukcja_25bez.pdf" target="_blank">📄 Instrukcja montaŸu</a>
+    <a class="btn-tool" href="https://allegro.pl/oferta/moskitiera-ramkowa-na-wymiar-siatka-w-okno-na-ramce-aluminiowej-anty-owady-10508769780" target="_blank">🔗 Wróć do aukcji</a>
   </div>
-  <div style="text-align:center;font-size:12px;color:var(--text3);margin-top:22px;">Â© 2025 FAVOUR Â· Wszelkie prawa zastrzeÅ¼one</div>
+  <div style="text-align:center;font-size:12px;color:var(--text3);margin-top:22px;">© 2025 FAVOUR · Wszelkie prawa zastrzeŸone</div>
 </div>
 <div class="toast" id="toast"></div>
 <script>
 const WORKER_URL = "https://allegro-autoresponder.favour-biuro.workers.dev";
 const WORKER_KEY = "kalkulator2025";
-const PROFILE_COLORS = ["BrÄz RAL 8019","BiaÅy RAL 9016","Antracyt RAL 7016","Czarny RAL 9005","ZÅoty dÄb","Ciemny dÄb","Winchester","Orzech","MahoÅ","Turner Oak/Woodec"];
+const PROFILE_COLORS = ["Brąz RAL 8019","Biały RAL 9016","Antracyt RAL 7016","Czarny RAL 9005","Złoty dąb","Ciemny dąb","Winchester","Orzech","Mahoń","Turner Oak/Woodec"];
 const MESH_COLORS = ["Czarna","Szara"];
 let rows = [], rowId = 0;
 document.addEventListener("DOMContentLoaded", () => addRow());
@@ -183,17 +173,19 @@ function addRow() {
   setTimeout(() => { const el = document.querySelector(`[data-row="${rowId}"] .wi`); if (el) el.focus(); }, 40);
 }
 function deleteRow(id) {
-  if (rows.length <= 1) { toast("Musi byÄ co najmniej 1 pozycja", "err"); return; }
+  if (rows.length <= 1) { toast("Musi być co najmniej 1 pozycja", "err"); return; }
   const vals = getVals();
   rows = rows.filter(r => r.id !== id);
-  renderRows(vals); calc();
+  renderRows(vals);
+  calc();
 }
 function getVals() {
   const v = {};
   document.querySelectorAll("[data-row]").forEach(c => {
     const id = +c.dataset.row;
-    v[id] = { w: c.querySelector(".wi")?.value || "", h: c.querySelector(".hi")?.value || "", f: c.querySelector(".fi")?.value || "", pc: c.querySelector(".pc")?.value || "", mc: c.querySelector(".mc")?.value || "", am: c.querySelector(".ai")?.value || "1" };
-  }); return v;
+    v[id] = { w: c.querySelector(".wi")?.value||"", h: c.querySelector(".hi")?.value||"", f: c.querySelector(".fi")?.value||"", pc: c.querySelector(".pc")?.value||"", mc: c.querySelector(".mc")?.value||"", am: c.querySelector(".ai")?.value||"1" };
+  });
+  return v;
 }
 function renderRows(savedVals) {
   const vals = savedVals || getVals();
@@ -202,91 +194,40 @@ function renderRows(savedVals) {
   rows.forEach((row, idx) => {
     const v = vals[row.id] || {};
     const card = document.createElement("div");
-    card.className = "row-card"; card.dataset.row = row.id;
+    card.className = "row-card";
+    card.dataset.row = row.id;
     const pOpts = PROFILE_COLORS.map(c => `<option value="${c}"${v.pc===c?" selected":""}>${c}</option>`).join("");
     const mOpts = MESH_COLORS.map(c => `<option value="${c}"${v.mc===c?" selected":""}>${c}</option>`).join("");
-    card.innerHTML = `<div class="row-num">#${idx+1}</div><div class="grid3"><div class="field"><label>Szer. B [cm]</label><input class="wi" type="number" inputmode="decimal" step="0.1" min="1" max="400" placeholder="np. 90" value="${v.w}"></div><div class="field"><label>Wys. A [cm]</label><input class="hi" type="number" inputmode="decimal" step="0.1" min="1" max="400" placeholder="np. 120" value="${v.h}"></div><div class="field"><label>Zelc C [cm]</label><input class="fi" type="number" inputmode="decimal" step="0.1" min="0" max="15" placeholder="opt." value="${v.f}"></div></div><div class="grid2"><div class="field"><label>Kolor profilu</label><select class="pc"><option value="">Wybierzâ¦</option>${pOpts}</select></div><div class="field"><label>Kolor siatki</label><select class="mc"><option value="">Wybierzâ¦ </option>${mOpts}</select></div></div><div class="grid-bottom"><div class="field"><label>IloÅÄ szt.</label><input class="ai" type="number" inputmode="numeric" min="1" max="20" value="${v.am||"1"}"></div><div class="field" style="display:flex;align-items:flex-end;">${rows.length > 1 ? `<button class="btn-del" onclick="deleteRow(${row.id})">ð UsuÅ</button>` : `<div></div>`}</div></div>`;
-    card.querySelectorAll("input,select").forEach(el => el.addEventListener("input", calc));
+    card.innerHTML = `<div class="row-num">#${idx+1}</div><div class="grid3"><div class="field"><label>Szer. B [cm]</label><input class="wi" type="number" inputmode="decimal" step="0.1" min="1" max="400" placeholder="np. 90" value="${v.w}"></div><div class="field"><label>Wys. A [cm]</label><input class="hi" type="number" inputmode="decimal" step="0.1" min="1" max="400" placeholder="np. 120" value="${v.h}"></div><div class="field"><label>Felc C [cm]</label><input class="fi" type="number" inputmode="decimal" step="0.1" min="0" max="15" placeholder="opt." value="${v.f}"></div></div><div class="grid2"><div class="field"><label>[olor profilu</label><select class="pc"><option value="">Wybierzₗ</option>${pOpts}</select></div><div class="field"><label>Kolor siatki</label><select class="mc"><option value="">Wybierz…</option>${mOpts}</select></div></div><div class="grid-bottom"><div class="field"><label>Ilość szt.</label><input class="ai" type="number" inputmode="numeric" min="1" max="20" value="${v.am||'1'}"></div><div class="field" style="display:flex;align-items:flex-end;">${rows.length>1?`<button class="btn-del" onclick="deleteRow(${row.id})">🗑 Usuń</button>`:'<div></div>'}</div></div>`;
+    card.querySelectorAll("input,select").forEach(el => el.addEventListener("input",calc));
     container.appendChild(card);
   });
-  const cnt = rows.length;
-  document.getElementById("row-count").textContent = cnt + (cnt===1?" okno":" okna/drzwi");
-  document.getElementById("btn-add").style.display = cnt >= 20 ? "none" : "flex";
+  const cnt=rows.length;
+  document.getElementById("row-count").textContent=cnt+(cnt===1?" okno":" okna/drzwi");
+  document.getElementById("btn-add").style.display=cnt>=20?"none":"flex";
   calc();
 }
-function calc() {
-  let perim = 0;
-  document.querySelectorAll("[data-row]").forEach(c => {
-    const w = parseFloat(c.querySelector(".wi")?.value) || 0;
-    const h = parseFloat(c.querySelector(".hi")?.value) || 0;
-    const am = parseInt(c.querySelector(".ai")?.value) || 1;
-    if (w > 0 && h > 0) perim += (w + h) * 2 * am;
+function calc(){
+  let perim=0;
+  document.querySelectorAll("[data-row]").forEach(c=>{
+    const w=parseFloat(c.querySelector(".wi")?.value)||0;
+    const h=parseFloat(c.querySelector(".hi")?.value)||0;
+    const am=parseInt(c.querySelector(".ai")?.value)||1;
+    if(w>0&&h>0) perim+=(w+h)*2*am;
   });
-  const units = Math.ceil(perim / 10);
-  const cost = units * 3;
-  document.getElementById("s-units").textContent = units;
-  document.getElementById("s-cost").textContent = cost.toFixed(2).replace(".", ",");
-  return { units, cost };
+  const units=Math.ceil(perim/10);
+  const cost=units*3;
+  document.getElementById("s-units").textContent=units;
+  document.getElementById("s-cost").textContent=cost.toFixed(2).replace(".",",");
+  return {units,cost};
 }
-function collectRows() {
-  return Array.from(document.querySelectorAll("[data-row]")).map((c, i) => ({ lp: i + 1, szerokosc: parseFloat(c.querySelector(".wi")?.value) || 0, wysokosc: parseFloat(c.querySelector(".hi")?.value) || 0, felc: parseFloat(c.querySelector(".fi")?.value) || 0, kolorProfilu: c.querySelector(".pc")?.value || "", kolorSiatki: c.querySelector(".mc")?.value || "", ilosc: parseInt(c.querySelector(".ai")?.value) || 1 }));
-}
-async function submitOrder() {
-  const name = document.getElementById("c-name").value.trim();
-  const phone = document.getElementById("c-phone").value.trim();
-  const email = document.getElementById("c-email").value.trim();
-  const notes = document.getElementById("c-notes").value.trim();
-  if (!name) { toast("Podaj imiÄ i nazwisko", "err"); document.getElementById("c-name").focus(); return; }
-  if (!phone) { toast("Podaj numer telefonu", "err"); document.getElementById("c-phone").focus(); return; }
-  const pozycje = collectRows();
-  if (pozycje.some(r => r.szerokosc === 0 || r.wysokosc === 0)) { toast("UzupeÅnij wymiary wszystkich okien", "err"); return; }
-  const { units, cost } = calc();
-  if (units === 0) { toast("WprowadÅº wymiary co najmniej jednego okna", "err"); return; }
-  const now = new Date();
-  const yy = String(now.getFullYear()).slice(2);
-  const mm = String(now.getMonth()+1).padStart(2,"0");
-  const dd = String(now.getDate()).padStart(2,"0");
-  const rand = String(Math.floor(Math.random()*9000)+1000);
-  const orderNumber = `KAL-${yy}${mm}${dd}-${rand}`;
-  const payload = { orderNumber, createdAt: now.toISOString(), klient: { name, phone, email, notes }, pozycje, podsumowanie: { units, cost } };
-  document.getElementById("sub-lbl").style.display = "none";
-  document.getElementById("sub-spin").style.display = "inline-flex";
-  document.getElementById("btn-sub").disabled = true;
-  let saved = false;
-  try { const r = await fetch(WORKER_URL + "/kalkulator/order", { method: "POST", headers: { "Content-Type": "application/json", "x-api-key": WORKER_KEY }, body: JSON.stringify(payload) }); if (r.ok) saved = true; } catch(e) {}
-  if (!saved) {
-    const body = pozycje.map((r,i) => `${i+1}. ${r.szerokosc}Ã${r.wysokosc} cm, felc: ${r.felc||"â"}, profil: ${r.kolorProfilu||"â"}, siatka: ${r.kolorSiatki||"â"}, szt: ${r.ilosc}`).join("\n");
-    window.location.href = `mailto:favour.biuro@gmail.com?subject=ZamÃ³wienie ${orderNumber}&body=${encodeURIComponent(`ProszÄ o realizacjä zamÃ³wienia (${orderNumber}):\n\n${body}\nJEDNOSTKI: ${units}\nKOSZT: ${cost.toFixed(2)} zÅ\nKLIENT: ${name}\nTEL: ${phone}${email?"\nEMAIL: "+email:""}${notes?"\nUWAGI: "+notes:""}`)}`;
-  }
-  document.getElementById("sub-lbl").style.display = "inline";
-  document.getElementById("sub-spin").style.display = "none";
-  document.getElementById("btn-sub").disabled = false;
-  document.getElementById("contact-card").style.display = "none";
-  document.getElementById("success-card").style.display = "block";
-  document.getElementById("order-num-txt").textContent = orderNumber;
-  toast("ZamÃ³wienie wysÅane! â", "ok");
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-function newOrder() {
-  document.getElementById("success-card").style.display = "none";
-  document.getElementById("contact-card").style.display = "block";
-  ["c-name","c-phone","c-email","c-notes"].forEach(id => document.getElementById(id).value = "");
-  rows = []; rowId = 0; addRow();
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-function toggleSteps() {
-  const body = document.getElementById("steps-body");
-  const arrow = document.getElementById("steps-arrow");
-  const open = body.style.display === "block";
-  body.style.display = open ? "none" : "block";
-  arrow.classList.toggle("open", !open);
-}
-function toggleDark() { document.body.classList.toggle("dark"); }
+function collectRows(){return Array.from(document.querySelectorAll("[data-row]")).map((c,i)=>({lp:i+1,szerokosc:parseFloat(c.querySelector(".wi")?.value)||0,wysokosc:parseFloat(c.querySelector(".hi")?.value)||0,felc:parseFloat(c.querySelector(".fi")?.value)||0,kolorProfilu:c.querySelector(".pc")?.value||"",kolorSiatki:c.querySelector(".mc")?.value||"",ilosc:parseInt(c.querySelector(".ai")?.value)||1}));}
+async function submitOrder(){const name=document.getElementById("c-name").value.trim();const phone=document.getElementById("c-phone").value.trim();const email=document.getElementById("c-email").value.trim();const notes=document.getElementById("c-notes").value.trim();if(!name){toast("Podaj imi� i nazwisko","err");document.getElementById("c-name").focus();return;}if(!phone){toast("Podaj numer telefonu","err");document.getElementById("c-phone").focus();return;}const pozycje=collectRows();if(pozycje.some(r=>r.szerokosc===0||r.wysokosc===0)){toast("Uzupełnik wymiary wszyrstkich okien","err");return;}const {units,cost}=calc();if(units===0){toast("Wprowadz wymiary co najmniej jednego okna","err");return;}const now=new Date();const yy=String(now.getFullYear()).slice(2);const mm=String(now.getMonth()+1).padStart(2,"0");const dd=String(now.getDate()).padStart(2,"0");const rand=String(Math.floor(Math.random()*9000)+1000);const orderNumber=`D�L-${yy}${mm}${dd}-${rand}`;const payload={orderNumber,createdAt:now.toISOString(),klient:{name,phone,email,notes},pozycje,podsumowanie:{units,cost}};document.getElementById("sub-lbl").style.display="none";document.getElementById("sub-spin").style.display="inline-flex";document.getElementById("btn-sub").disabled=true;let saved=false;try{const r=await fetch(WORKER_URL+"/kalkulator/order",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":WORKER_KEY},body:JSON.stringify(payload)});if(r.ok)saved=true;}catch(e){}if(!saved){const body=pozycje.map((r,i)=>`${i+1}. ${r.szerokosc}×${r.wysokosc} cm, felc: ${r.felc||"—"}, profil: ${r.kolorProfilu||"—"}, siatka: ${r.kolorSiatki||"—"}, szt: ${r.ilosc}`).join("\n");window.location.href=`mailto:favour.biuro@gmail.com?subject=Zamówienie ${orderNumber}&body=${encodeURIComponent(`Proszę o realizację zamówienia (${orderNumber}):\n\n${body}\nJEDNOSTKI: ${units}\nKOSZT: ${cost.toFixed(2)} zł\nKLIENT: ${name}\nTEL: ${phone}${email?"\nEMAIL? "+email:""}${notes?"\nUWAGI: "+notes:""}`)}`;}document.getElementById("sub-lbl").style.display="inline";document.getElementById("sub-spin").style.display="none";document.getElementById("btn-sub").disabled=false;document.getElementById("contact-card").style.display="none";document.getElementById("success-card").style.display="block";document.getElementById("order-num-txt").textContent=orderNumber;toast("Zamówienie wysłane! "✓","ok");window.scrollTo({top:0,behavior:"smooth"});}
+function newOrder(){document.getElementById("success-card").style.display="none";document.getElementById("contact-card").style.display="block";["c-name","c-phone","c-email","c-notes"].forEach(id=>document.getElementById(id).value="");rows=[];rowId=0;addRow();window.scrollTo({top:0,behavior:"smooth"});}
+function toggleSteps(){const body=document.getElementById("steps-body");const arrow=document.getElementById("steps-arrow");const open=body.style.display==="block";body.style.display=open?"none":"block";arrow.classList.toggle("open",!open);}
+function toggleDark(){document.body.classList.toggle("dark");}
 let toastTimer;
-function toast(msg, type) {
-  const el = document.getElementById("toast");
-  el.textContent = msg; el.className = "toast " + (type||"");
-  el.classList.add("show"); clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove("show"), 2800);
-}
-</script></body></html>
+function toast(msg,type){const el=document.getElementById("toast");el.textContent=msg;el.className="toast "+(type||"");el.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove("show"),2800);}
+</script>
+</body>
+</html>
