@@ -595,6 +595,9 @@ function App() {
   const [shipmentCreating,setShipmentCreating]=useState(false);
   const [shipmentDescription,setShipmentDescription]=useState("");
   const [shipmentServiceId,setShipmentServiceId]=useState("");
+  // ── Import modal state ──
+  const [importModal,setImportModal]=useState(null); // {imp, mode, kalNum, kalLoading, kalError, kalData, pozycje}
+
   const [fvAllegroStatus,setFvAllegroStatus]=useState(""); // "loading"|"ok"|"error"|""
   function saveFaktury(f){setFaktury(f);localStorage.setItem("faktury",JSON.stringify(f));}
   function nextFvNumer(firma,typ){
@@ -889,6 +892,11 @@ function App() {
   const [kalSearch, setKalSearch] = React.useState('');
   const [kalResult, setKalResult] = React.useState(null);
   const [kalError, setKalError] = React.useState('');
+  const [kalOrders, setKalOrders] = React.useState([]);
+  const [kalOrdersLoading, setKalOrdersLoading] = React.useState(false);
+  const [kalOrdersError, setKalOrdersError] = React.useState('');
+  const [kalOrdersSearch, setKalOrdersSearch] = React.useState('');
+  const [kalOrdersFetched, setKalOrdersFetched] = React.useState(false);
 
   // ── AUTORESPONDER functions ──
   async function fetchAutoStatus(){
@@ -1119,8 +1127,77 @@ function App() {
     setAllegroImportLoading(false);
   }
 
+  // ── Parsowanie wymiarów z nazwy oferty Allegro ──
+  function parseDimsFromOfferName(offerName){
+    const name=offerName||"";
+    const dimMatch=name.match(/(\d{2,3}[,.]?\d*)\s*[xX\u00d7\u0445]\s*(\d{2,3}[,.]?\d*)/);
+    if(!dimMatch) return null;
+    let s=parseFloat(dimMatch[1].replace(",",".")),
+        w=parseFloat(dimMatch[2].replace(",","."));
+    if(s>w&&w>0){const tmp=s;s=w;w=tmp;}
+    const KOLORY_RAMKI=[["bia\u0142","Bia\u0142a"],["antracyt","Antracyt"],["br\u0105z","Br\u0105z"],["czar","Czarna"],["szar","Szara"],["srebrn","Srebrna"],["z\u0142ot","Z\u0142ota"],["d\u0105b","D\u0105b"]];
+    const KOLORY_SIATKI=[["czar","Czarna"],["szar","Szara"],["bia\u0142","Bia\u0142a"],["antracyt","Antracyt"]];
+    let kolorRamki="Antracyt", kolorSiatki="Czarna";
+    const lower=name.toLowerCase();
+    for(const [pat,val] of KOLORY_RAMKI){ if(lower.includes(pat)){kolorRamki=val;break;} }
+    // kolor siatki = drugie wystąpienie koloru
+    const parts=lower.split(/\d+\s*[xX\u00d7]\s*\d+/);
+    const afterDims=parts[1]||"";
+    for(const [pat,val] of KOLORY_SIATKI){ if(afterDims.includes(pat)){kolorSiatki=val;break;} }
+    return {szerokosc:String(s),wysokosc:String(w),glebokosc:String(DOMYSLNA_GLEBOKOS),kolorRamki,kolorSiatki,ilosc:1};
+  }
+
   function importAllegroOrder(imp){
-    // Otwórz formularz z wypełnionymi danymi
+    const allText=(imp.offerNames||"")+" "+(imp.uwagi||"");
+    const kalMatch=allText.match(/KAL-\d{6}-\d{4}/i);
+    const kalNum=kalMatch?kalMatch[0].toUpperCase():"";
+    const firstOffer=(imp.offerNames||"").split(", ")[0];
+    const parsedPoz=parseDimsFromOfferName(firstOffer);
+    setImportModal({
+      imp,
+      mode:kalNum?"kal":(parsedPoz?"parse":"manual"),
+      kalNum,
+      kalLoading:false,
+      kalError:"",
+      kalData:null,
+      pozycje:parsedPoz?[parsedPoz]:[pustaPoz()]
+    });
+  }
+
+  // Mapowanie nazw RAL z kalkulatora do krótkich nazw w MosquitoApp
+  function mapKolorProfilu(raw){
+    if(!raw) return "Antracyt";
+    const r=raw.toLowerCase();
+    if(r.includes("bia")) return "Biała";
+    if(r.includes("antracyt")) return "Antracyt";
+    if(r.includes("br") && r.includes("z")) return "Brąz";
+    if(r.includes("czar")) return "Czarna";
+    if(r.includes("d") && (r.includes("b")||r.includes("dąb")||r.includes("dab"))) return "Dąb";
+    if(r.includes("srebrn")) return "Srebrna";
+    if(r.includes("zlot")||r.includes("złot")) return "Złota";
+    if(r.includes("szar")) return "Szara";
+    // fallback: pierwsze słowo
+    return raw.split(" ")[0]||"Antracyt";
+  }
+  function mapKolorSiatki(raw){
+    if(!raw) return "Czarna";
+    const r=raw.toLowerCase();
+    if(r.includes("szar")) return "Szara";
+    return "Czarna";
+  }
+
+  function doImportOrder(modal){
+    const {imp,pozycje,kalData}=modal;
+    const poz=(kalData&&kalData.pozycje&&kalData.pozycje.length>0)
+      ?kalData.pozycje.map(p=>({
+          szerokosc:String(p.szerokosc||""),
+          wysokosc:String(p.wysokosc||""),
+          glebokosc:String(p.felc||DOMYSLNA_GLEBOKOS),
+          kolorRamki:mapKolorProfilu(p.kolorProfilu),
+          kolorSiatki:mapKolorSiatki(p.kolorSiatki),
+          ilosc:parseInt(p.ilosc)||1
+        }))
+      :(pozycje&&pozycje.length>0?pozycje:[pustaPoz()]);
     setForm({
       data:imp.data,
       firma:imp.firma,
@@ -1130,10 +1207,11 @@ function App() {
       klientMiasto:imp.klientMiasto,
       telefon:imp.telefon,
       uwagi:imp.offerNames||"",
-      pozycje:[pustaPoz()]
+      pozycje:poz
     });
     setAllegroOrderIdForForm(imp.allegroOrderId);
-    setNumerOverride("");
+    setNumerOverride(kalData&&kalData.orderNumber?kalData.orderNumber:"");
+    setImportModal(null);
     setAllegroImportShow(false);
     setTab("nowe");
     setSaved(false);
@@ -1150,14 +1228,40 @@ function App() {
     });
   }
 
-  function setOrderAppStatus(allegroOrderId, status){
-    setAppStatuses(function(prev){
-      const next={...prev};
-      if(status) next[allegroOrderId]=status;
-      else delete next[allegroOrderId];
-      localStorage.setItem('app_statuses',JSON.stringify(next));
-      return next;
-    });
+  async function fetchKalOrders(){
+    setKalOrdersLoading(true);
+    setKalOrdersError('');
+    try{
+      const r=await fetch(AUTORESPONDER_URL+"/kalkulator/orders",{headers:{"x-api-key":AUTORESPONDER_KEY}});
+      if(!r.ok) throw new Error("Błąd "+r.status);
+      const d=await r.json();
+      setKalOrders(Array.isArray(d)?d:(Array.isArray(d.orders)?d.orders:[]));
+      setKalOrdersFetched(true);
+    }catch(e){
+      setKalOrdersError(e.message||"Błąd pobierania");
+    }finally{
+      setKalOrdersLoading(false);
+    }
+  }
+
+  async function markKalOrderDone(orderNumber){
+    try{
+      await fetch(AUTORESPONDER_URL+"/kalkulator/order/"+encodeURIComponent(orderNumber)+"/status",{
+        method:"POST",
+        headers:{"Content-Type":"application/json","x-api-key":AUTORESPONDER_KEY},
+        body:JSON.stringify({status:"zrealizowane"})
+      });
+      setKalOrders(prev=>prev.map(o=>o.orderNumber===orderNumber?{...o,status:"zrealizowane"}:o));
+    }catch(e){}
+  }
+
+  function findKalForAllegro(klientImie){
+    if(!klientImie||kalOrders.length===0) return null;
+    const name=klientImie.toLowerCase().trim();
+    return kalOrders.find(o=>{
+      const n=(o.klient?.name||"").toLowerCase().trim();
+      return n && name && (n===name || n.includes(name) || name.includes(n));
+    })||null;
   }
 
   async function openShipmentModal(imp){
@@ -1780,7 +1884,7 @@ function App() {
       </div>
 
       <div style={{display:"flex",borderBottom:"1px solid #1e2a1e",paddingLeft:16,background:"#0e1420",flexWrap:"wrap"}}>
-        {[["nowe","➕ Dodaj zamówienie"],["al_zam","🛒 Allegro"],["baza","📋 Zlecenia"],["stat","📊 Stat"],["produkcja","🏭 Produkcja"],["kalk","🧮 Kalkulator"],["faktury","🧾 Faktury"],["wiadomosci","💬 Wiadomości"]].map(([id,l])=>(
+        {[["nowe","➕ Dodaj zamówienie"],["al_zam","🛒 Allegro"],["baza","📋 Zlecenia"],["zapytania","📨 Zapytania KAL"],["stat","📊 Stat"],["produkcja","🏭 Produkcja"],["kalk","🧮 Kalkulator"],["faktury","🧾 Faktury"],["wiadomosci","💬 Wiadomości"]].map(([id,l])=>(
           <button key={id} className={`tab ${tab===id?"on":""}`} onClick={()=>setTab(id)}>{l}</button>
         ))}
         <button className={`tab ${(tab==="allegro"||tab==="ustawienia"||tab==="historia")?"on":""}`} onClick={()=>{
@@ -2125,6 +2229,12 @@ function App() {
                             <td style={{padding:"8px 12px"}}>
                               <div style={{fontWeight:imp.alreadyExists?400:600,color:"#a0cfdf"}}>{imp.klientImie||"—"}</div>
                               {imp.klientLogin&&<div style={{fontSize:10,color:"#3a6a8a",fontFamily:"monospace"}}>{imp.klientLogin}</div>}
+                              {(()=>{const kal=findKalForAllegro(imp.klientImie);return kal?(
+                                <div style={{marginTop:4,display:"flex",alignItems:"center",gap:5,background:"#1a3a1a",border:"1px solid #3a7a3a",borderRadius:5,padding:"2px 7px",width:"fit-content"}}>
+                                  <span style={{fontSize:9,color:"#5fcf7f",fontWeight:700,fontFamily:"monospace"}}>{kal.orderNumber}</span>
+                                  {kal.status==="zrealizowane"?<span style={{fontSize:9,color:"#7a9a7a"}}>✓ zreal.</span>:<span style={{fontSize:9,color:"#ffcf6f"}}>⏳ otwarte</span>}
+                                </div>
+                              ):null;})()}
                             </td>
                             <td style={{padding:"8px 12px",color:"#7a9abf"}}>{imp.klientMiasto||"—"}</td>
                             <td style={{padding:"8px 12px",color:"#5a8a9a",maxWidth:220,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={imp.offerNames}>{imp.offerNames||"—"}</td>
@@ -2189,6 +2299,177 @@ function App() {
                 </div>
               </div>
             )}
+          {/* ── MODAL IMPORT ZLECENIA ── */}
+          {importModal&&(()=>{
+            const {imp,mode,kalNum,kalLoading,kalError,kalData,pozycje}=importModal;
+            const setIM=fn=>setImportModal(prev=>({...prev,...(typeof fn==="function"?fn(prev):fn)}));
+
+            const loadKal=async()=>{
+              const n=(importModal.kalNum||"").trim();
+              if(!n)return;
+              setIM({kalLoading:true,kalError:"",kalData:null});
+              try{
+                const r=await fetch(AUTORESPONDER_URL+"/kalkulator/order/"+encodeURIComponent(n));
+                const d=await r.json();
+                if(d.error||!d.orderNumber) throw new Error("Nie znaleziono: "+n);
+                setIM({kalLoading:false,kalData:d,kalError:""});
+              }catch(e){
+                setIM({kalLoading:false,kalError:e.message,kalData:null});
+              }
+            };
+
+            const updatePoz=(i,field,val)=>{
+              setIM(prev=>{
+                const p=[...prev.pozycje];
+                p[i]={...p[i],[field]:val};
+                return {pozycje:p};
+              });
+            };
+            const addPoz=()=>setIM(prev=>({pozycje:[...prev.pozycje,pustaPoz()]}));
+            const delPoz=(i)=>setIM(prev=>({pozycje:prev.pozycje.filter((_,j)=>j!==i)}));
+
+            const KOLOR_RAMKI_OPTS=["Antracyt","Biała","Brąz","Czarna","Szara","Srebrna","Złota","Dąb"];
+            const KOLOR_SIATKI_OPTS=["Czarna","Szara","Biała","Antracyt"];
+
+            return (
+              <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.82)",zIndex:1100,display:"flex",alignItems:"center",justifyContent:"center",padding:12}}
+                onClick={e=>{if(e.target===e.currentTarget)setImportModal(null);}}>
+                <div style={{background:"#0b1a0b",border:"1px solid #2a6a3a",borderRadius:12,padding:24,width:600,maxWidth:"98vw",maxHeight:"90vh",overflowY:"auto"}}>
+
+                  {/* Nagłówek */}
+                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+                    <span style={{fontSize:15,fontWeight:700,color:"#7fcf7f"}}>➕ Import zlecenia</span>
+                    <span style={{marginLeft:"auto",cursor:"pointer",color:"#5a7a5a",fontSize:18}} onClick={()=>setImportModal(null)}>✕</span>
+                  </div>
+
+                  {/* Dane klienta */}
+                  <div style={{background:"#0e1e0e",border:"1px solid #1a4a2a",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:12}}>
+                    <div style={{fontWeight:700,color:"#a0cfdf",marginBottom:4}}>{imp.klientImie}</div>
+                    <div style={{color:"#5a8a7a"}}>{imp.klientUlica}, {imp.klientKod} {imp.klientMiasto}</div>
+                    {imp.telefon&&<div style={{color:"#5a8a7a"}}>{imp.telefon}</div>}
+                    <div style={{marginTop:6,fontSize:11,color:"#3a6a5a",fontStyle:"italic"}} title={imp.offerNames}>{imp.offerNames||"—"}</div>
+                  </div>
+
+                  {/* Zakładki trybu */}
+                  <div style={{display:"flex",gap:6,marginBottom:16}}>
+                    {[["kal","🧮 Z kalkulatora"],["parse","📐 Z nazwy oferty"],["manual","✏️ Ręcznie"]].map(([m,l])=>(
+                      <button key={m} onClick={()=>setIM({mode:m})}
+                        style={{padding:"5px 12px",fontSize:11,borderRadius:6,cursor:"pointer",fontWeight:700,
+                          background:mode===m?"#1a4a2a":"#0e1e0e",
+                          border:"1px solid "+(mode===m?"#3a8a4a":"#1a3a2a"),
+                          color:mode===m?"#7fcf7f":"#3a6a4a"}}>{l}</button>
+                    ))}
+                  </div>
+
+                  {/* ── KAL tryb ── */}
+                  {mode==="kal"&&(
+                    <div>
+                      <div style={{display:"flex",gap:8,marginBottom:8}}>
+                        <input value={kalNum} onChange={e=>setIM({kalNum:e.target.value.toUpperCase()})}
+                          onKeyDown={e=>{if(e.key==="Enter")loadKal();}}
+                          placeholder="KAL-260304-0001"
+                          style={{flex:1,padding:"7px 10px",borderRadius:6,border:"1px solid #2a5a3a",background:"#0a140a",color:"#a0dfaf",fontFamily:"monospace",fontSize:13}}/>
+                        <button onClick={loadKal} disabled={kalLoading}
+                          style={{padding:"7px 16px",borderRadius:6,border:"1px solid #3a8a4a",background:kalLoading?"#1a2a1a":"#1a4a2a",color:"#7fcf7f",cursor:kalLoading?"not-allowed":"pointer",fontWeight:700}}>
+                          {kalLoading?"⟳":"🔍"} Załaduj
+                        </button>
+                      </div>
+                      {kalError&&<div style={{color:"#df7a7a",fontSize:12,marginBottom:8}}>❌ {kalError}</div>}
+                      {kalData&&(
+                        <div style={{background:"#0a1a0a",border:"1px solid #2a5a2a",borderRadius:8,padding:"10px 14px",fontSize:12}}>
+                          <div style={{color:"#7fcf7f",fontWeight:700,marginBottom:6}}>{kalData.orderNumber} — {kalData.clientName}</div>
+                          {(kalData.positions||[]).map((p,i)=>(
+                            <div key={i} style={{display:"flex",gap:8,alignItems:"center",padding:"4px 0",borderBottom:"1px solid #1a3a1a"}}>
+                              <span style={{color:"#5a9a7a",fontFamily:"monospace",minWidth:20}}>{i+1}.</span>
+                              <span style={{color:"#a0dfaf",fontWeight:700}}>{p.width||p.szerokosc}×{p.height||p.wysokosc}</span>
+                              <span style={{color:"#4a8a6a"}}>{p.profile||p.kolorRamki} / {p.mesh||p.kolorSiatki}</span>
+                              <span style={{color:"#7fcf7f",marginLeft:"auto"}}>×{p.qty||p.ilosc||1}</span>
+                            </div>
+                          ))}
+                          {kalData.totalPrice&&<div style={{color:"#7fcf7f",textAlign:"right",marginTop:6,fontWeight:700}}>Suma: {kalData.totalPrice} zł</div>}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ── PARSE tryb ── */}
+                  {mode==="parse"&&(
+                    <div style={{fontSize:12,color:"#5a8a6a",marginBottom:8}}>
+                      Wymiary sparsowane z nazwy produktu. Sprawdź i popraw jeśli potrzeba:
+                    </div>
+                  )}
+
+                  {/* ── Edytor pozycji (parse + manual) ── */}
+                  {(mode==="parse"||mode==="manual")&&(
+                    <div>
+                      {pozycje.map((p,i)=>(
+                        <div key={i} style={{background:"#0e1e0e",border:"1px solid #1a3a2a",borderRadius:8,padding:"10px 12px",marginBottom:8}}>
+                          <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
+                            <span style={{color:"#4a7a5a",fontWeight:700,fontSize:11}}>#{i+1}</span>
+                            {pozycje.length>1&&<button onClick={()=>delPoz(i)} style={{marginLeft:"auto",background:"none",border:"none",color:"#7a3a3a",cursor:"pointer",fontSize:14}}>✕</button>}
+                          </div>
+                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 80px",gap:8,marginBottom:8}}>
+                            <div>
+                              <div style={{fontSize:10,color:"#4a7a5a",marginBottom:3}}>Szerokość (cm)</div>
+                              <input value={p.szerokosc} onChange={e=>updatePoz(i,"szerokosc",e.target.value)}
+                                style={{width:"100%",padding:"5px 8px",borderRadius:5,border:"1px solid #2a4a3a",background:"#0a140a",color:"#a0dfaf",fontSize:13,fontWeight:700}}/>
+                            </div>
+                            <div>
+                              <div style={{fontSize:10,color:"#4a7a5a",marginBottom:3}}>Wysokość (cm)</div>
+                              <input value={p.wysokosc} onChange={e=>updatePoz(i,"wysokosc",e.target.value)}
+                                style={{width:"100%",padding:"5px 8px",borderRadius:5,border:"1px solid #2a4a3a",background:"#0a140a",color:"#a0dfaf",fontSize:13,fontWeight:700}}/>
+                            </div>
+                            <div>
+                              <div style={{fontSize:10,color:"#4a7a5a",marginBottom:3}}>Ilość</div>
+                              <input type="number" min="1" value={p.ilosc} onChange={e=>updatePoz(i,"ilosc",parseInt(e.target.value)||1)}
+                                style={{width:"100%",padding:"5px 8px",borderRadius:5,border:"1px solid #2a4a3a",background:"#0a140a",color:"#a0dfaf",fontSize:13}}/>
+                            </div>
+                          </div>
+                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                            <div>
+                              <div style={{fontSize:10,color:"#4a7a5a",marginBottom:3}}>Kolor ramki</div>
+                              <select value={p.kolorRamki} onChange={e=>updatePoz(i,"kolorRamki",e.target.value)}
+                                style={{width:"100%",padding:"5px 8px",borderRadius:5,border:"1px solid #2a4a3a",background:"#0a140a",color:"#a0dfaf",fontSize:12}}>
+                                {["Antracyt","Biała","Brąz","Czarna","Szara","Srebrna","Złota","Dąb"].map(k=><option key={k} value={k}>{k}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <div style={{fontSize:10,color:"#4a7a5a",marginBottom:3}}>Kolor siatki</div>
+                              <select value={p.kolorSiatki} onChange={e=>updatePoz(i,"kolorSiatki",e.target.value)}
+                                style={{width:"100%",padding:"5px 8px",borderRadius:5,border:"1px solid #2a4a3a",background:"#0a140a",color:"#a0dfaf",fontSize:12}}>
+                                {["Czarna","Szara"].map(k=><option key={k} value={k}>{k}</option>)}
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      <button onClick={addPoz}
+                        style={{width:"100%",padding:"7px",borderRadius:6,border:"1px dashed #2a5a3a",background:"none",color:"#3a7a4a",cursor:"pointer",fontSize:12}}>
+                        ＋ Dodaj pozycję
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Przycisk importu */}
+                  <div style={{marginTop:16,display:"flex",gap:8,justifyContent:"flex-end"}}>
+                    <button onClick={()=>setImportModal(null)}
+                      style={{padding:"8px 18px",borderRadius:6,border:"1px solid #2a3a2a",background:"none",color:"#5a7a5a",cursor:"pointer"}}>
+                      Anuluj
+                    </button>
+                    <button onClick={()=>doImportOrder(importModal)}
+                      disabled={mode==="kal"&&!kalData}
+                      style={{padding:"8px 22px",borderRadius:6,border:"1px solid #4a9a5a",
+                        background:(mode==="kal"&&!kalData)?"#1a2a1a":"#1a5a2a",
+                        color:(mode==="kal"&&!kalData)?"#3a5a3a":"#7fcf7f",
+                        cursor:(mode==="kal"&&!kalData)?"not-allowed":"pointer",fontWeight:700,fontSize:13}}>
+                      ➕ Importuj zlecenie
+                    </button>
+                  </div>
+
+                </div>
+              </div>
+            );
+          })()}
           {/* ── MODAL ETYKIETA ── */}
           {shipmentModal&&(
             <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.75)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center"}}
@@ -2267,6 +2548,123 @@ function App() {
               </div>
             </div>
           )}
+          </div>
+        )}
+
+        {tab==="zapytania" && (
+          <div>
+            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}>
+              <span style={{fontSize:11,color:"#7fcf9f",letterSpacing:".12em",textTransform:"uppercase",fontWeight:700}}>📨 Zapytania z kalkulatora</span>
+              <button onClick={fetchKalOrders} disabled={kalOrdersLoading}
+                style={{padding:"6px 18px",fontSize:12,fontWeight:700,cursor:kalOrdersLoading?"not-allowed":"pointer",
+                  background:kalOrdersLoading?"#1a2a1a":"#1a3a2a",border:"1px solid #3a7a4a",borderRadius:6,color:"#7fcf7f"}}>
+                {kalOrdersLoading?"⟳ Pobieranie...":"🔄 Odśwież"}
+              </button>
+              <input value={kalOrdersSearch} onChange={e=>setKalOrdersSearch(e.target.value)}
+                placeholder="Szukaj po imieniu, numerze KAL..."
+                style={{padding:"5px 10px",fontSize:12,background:"#0e1e0e",border:"1px solid #2a5a3a",borderRadius:6,color:"#a0dfaf",width:240}}/>
+              <span style={{marginLeft:"auto",fontSize:11,color:"#3a7a4a"}}>
+                {kalOrders.filter(o=>o.status!=="zrealizowane").length} otwartych / {kalOrders.length} łącznie
+              </span>
+            </div>
+
+            {kalOrdersError&&<div style={{marginBottom:12,padding:"8px 14px",background:"#2a1a1a",border:"1px solid #5a2a2a",borderRadius:6,color:"#df8080",fontSize:12}}>{kalOrdersError}</div>}
+
+            {!kalOrdersFetched&&!kalOrdersLoading&&(
+              <div style={{textAlign:"center",padding:"60px 0",color:"#2a5a3a",fontSize:13}}>
+                Kliknij "🔄 Odśwież" aby pobrać zapytania z kalkulatora
+              </div>
+            )}
+
+            {kalOrdersFetched&&(()=>{
+              const filtered=kalOrders.filter(o=>{
+                if(!kalOrdersSearch) return true;
+                const q=kalOrdersSearch.toLowerCase();
+                return (o.orderNumber||"").toLowerCase().includes(q)||
+                       (o.klient?.name||"").toLowerCase().includes(q);
+              });
+              if(filtered.length===0) return (
+                <div style={{textAlign:"center",padding:"40px 0",color:"#3a6a4a",fontSize:13}}>
+                  {kalOrders.length===0?"Brak zapytań w bazie":"Brak wyników dla: "+kalOrdersSearch}
+                </div>
+              );
+              return (
+                <div style={{background:"#0a1a0a",border:"1px solid #1a4a2a",borderRadius:8,overflow:"hidden"}}>
+                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:12}}>
+                    <thead>
+                      <tr style={{background:"#0c1c0c",borderBottom:"1px solid #1a4a2a"}}>
+                        {["Nr KAL","Data","Klient","Pozycje","Koszt","Status",""].map((h,i)=>(
+                          <th key={i} style={{padding:"8px 12px",textAlign:"left",fontSize:10,color:"#3a7a4a",letterSpacing:".08em",textTransform:"uppercase",fontWeight:700,whiteSpace:"nowrap"}}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||"")).map((o,idx)=>{
+                        const done=o.status==="zrealizowane";
+                        const pozycje=o.pozycje||[];
+                        const allegroMatch=allegroImportResults.find(imp=>{
+                          const n=(imp.klientImie||"").toLowerCase().trim();
+                          const k=(o.klient?.name||"").toLowerCase().trim();
+                          return k&&n&&(k===n||k.includes(n)||n.includes(k));
+                        });
+                        return (
+                          <tr key={idx} style={{borderBottom:"1px solid #0f1f0f",background:done?"#0a120a":"#0c1a0c",opacity:done?0.5:1}}>
+                            <td style={{padding:"8px 12px"}}>
+                              <span style={{fontFamily:"monospace",fontWeight:700,color:done?"#3a7a4a":"#7fcf7f",fontSize:11}}>{o.orderNumber}</span>
+                              {allegroMatch&&<div style={{marginTop:3,fontSize:9,color:"#ffcf6f",fontWeight:700}}>🛒 zamówił na Allegro</div>}
+                            </td>
+                            <td style={{padding:"8px 12px",color:"#5a8a6a",whiteSpace:"nowrap",fontSize:11}}>
+                              {o.createdAt?new Date(o.createdAt).toLocaleDateString("pl-PL"):"—"}
+                            </td>
+                            <td style={{padding:"8px 12px"}}>
+                              <div style={{fontWeight:600,color:"#a0dfaf"}}>{o.klient?.name||"—"}</div>
+                              {o.klient?.phone&&<div style={{fontSize:10,color:"#3a7a5a"}}>{o.klient.phone}</div>}
+                            </td>
+                            <td style={{padding:"8px 12px"}}>
+                              {pozycje.map((p,i)=>(
+                                <div key={i} style={{fontSize:10,color:"#5a9a6a",whiteSpace:"nowrap"}}>
+                                  {p.szerokosc}×{p.wysokosc} cm{p.felc?` felc:${p.felc}`:""}
+                                  <span style={{color:"#3a7a5a",marginLeft:4}}>{(p.kolorProfilu||"").replace(/ RAL \d+/,"")}/{p.kolorSiatki}</span>
+                                  {p.ilosc>1&&<span style={{color:"#7fcf7f",marginLeft:4}}>×{p.ilosc}</span>}
+                                </div>
+                              ))}
+                            </td>
+                            <td style={{padding:"8px 12px",color:"#7fcf7f",fontWeight:700,fontFamily:"monospace",whiteSpace:"nowrap"}}>
+                              {o.podsumowanie?.cost!=null?o.podsumowanie.cost.toFixed(2)+" zł":"—"}
+                            </td>
+                            <td style={{padding:"8px 12px"}}>
+                              {done?(
+                                <span style={{fontSize:10,padding:"2px 8px",background:"#1a3a1a",border:"1px solid #2a6a2a",borderRadius:10,color:"#5a9a5a"}}>✅ zrealizowane</span>
+                              ):(
+                                <span style={{fontSize:10,padding:"2px 8px",background:"#2a2a1a",border:"1px solid #5a5a2a",borderRadius:10,color:"#cfcf5a"}}>⏳ otwarte</span>
+                              )}
+                            </td>
+                            <td style={{padding:"8px 12px",whiteSpace:"nowrap"}}>
+                              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                                {!done&&(
+                                  <button onClick={()=>markKalOrderDone(o.orderNumber)}
+                                    style={{padding:"4px 10px",fontSize:10,background:"#1a3a1a",border:"1px solid #3a7a3a",borderRadius:4,color:"#7fcf7f",cursor:"pointer",fontWeight:700}}>
+                                    ✅ Zrealizowane
+                                  </button>
+                                )}
+                                <button onClick={()=>{
+                                  setImportModal({imp:{klientImie:o.klient?.name||"",klientUlica:"",klientKod:"",klientMiasto:"",telefon:o.klient?.phone||"",allegroOrderId:"",kontoId:"",firma:"F",offerNames:""},
+                                    mode:"kal",kalNum:o.orderNumber,kalLoading:false,kalError:"",kalData:o,
+                                    pozycje:(o.pozycje||[]).map(p=>({szerokosc:p.szerokosc,wysokosc:p.wysokosc,glebokosc:p.felc||"",kolorRamki:(p.kolorProfilu||"").replace(/ RAL \d+/,""),kolorSiatki:p.kolorSiatki||"Czarna",blaszRozmiar:"",ilosc:p.ilosc||1}))
+                                  });setTab("nowe");}}
+                                  style={{padding:"4px 10px",fontSize:10,background:"#1a2a3a",border:"1px solid #2a5a7a",borderRadius:4,color:"#7abfdf",cursor:"pointer",fontWeight:700}}>
+                                  ➕ Zlecenie
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
           </div>
         )}
 
@@ -2851,8 +3249,7 @@ function App() {
             <iframe src="https://oktomo.github.io/moskitiery/kalkulator.html" style={{width:'100%',height:'680px',border:'none',borderRadius:8,display:'block'}} title="Kalkulator OKTOMO"/>
           </div>
         )}
-        {tab==="kalk" && (<div style={{padding:'16px'}}><iframe src="https://oktomo.github.io/moskitiery/kalkulator.html" style={{width:'100%',height:'700px',border:'none',borderRadius:8}} title="Kalkulator OKTOMO"/></div>)}
-        {/* ══ FAKTURY ══ */}
+        {/* ── FAKTURY ── */}
         {tab==="faktury" && (()=>{
           const firma = currentProfile?.id||"F";
 
