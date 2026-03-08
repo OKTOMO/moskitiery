@@ -450,6 +450,7 @@ const BRANDS = {
   fav: {
     name:    'Favour Magdalena Rudnicka',
     display: 'Favour / Oktomo',
+    shortName: 'OKTOMO',
     nip:     '522-23-17-450',
     adres:   'ul. Obrońców Westerplatte 27a, 08-110 Siedlce',
     prefix:  'FAV',
@@ -459,6 +460,7 @@ const BRANDS = {
   str: {
     name:    'Favour Magdalena Rudnicka',
     display: 'Staroleska',
+    shortName: 'STAROLESKA',
     nip:     '522-23-17-450',
     adres:   'ul. Obrońców Westerplatte 27a, 08-110 Siedlce',
     prefix:  'STR',
@@ -468,6 +470,7 @@ const BRANDS = {
   arl: {
     name:    'Arlis Piotr Rudnicki',
     display: 'Arlis',
+    shortName: 'ARLIS',
     nip:     '821-127-83-28',
     adres:   'ul. Obrońców Westerplatte 27a, 08-110 Siedlce',
     prefix:  'ARL',
@@ -477,6 +480,7 @@ const BRANDS = {
   alb: {
     name:    'Albama Sp. z o.o.',
     display: 'Albama',
+    shortName: 'ALBAMA',
     nip:     '525-30-30-838',
     adres:   'ul. Obrońców Westerplatte 27a, 08-110 Siedlce',
     prefix:  'ALB',
@@ -486,6 +490,7 @@ const BRANDS = {
   evr: {
     name:    'Everis Sp. z o.o.',
     display: 'Everis',
+    shortName: 'EVERIS',
     nip:     '822-24-04-506',
     adres:   'ul. Sosnowa 6, 05-300 Mińsk Mazowiecki',
     prefix:  'EVR',
@@ -506,8 +511,8 @@ const brand     = BRANDS[brandKey] || BRANDS.fav;
 // ── Apply brand ──
 document.title = 'Kalkulator Wyceny Moskitiery Okiennej — ' + brand.display;
 document.documentElement.style.setProperty('--accent', brand.color);
-document.getElementById('brandBadge').textContent = brand.badge;
-document.getElementById('brandName').textContent  = brand.display.toUpperCase() + ' — Kalkulator Wyceny Moskitiery Okiennej';
+document.getElementById('brandBadge').style.display='none';
+document.getElementById('brandName').textContent  = brand.shortName + ' — Kalkulator Wyceny Moskitiery Okiennej';
 document.getElementById('brandSub').innerHTML =
   brand.name + '<br>NIP: ' + brand.nip + ' &bull; ' + brand.adres;
 
