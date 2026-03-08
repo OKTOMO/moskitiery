@@ -475,6 +475,11 @@
   </div><!-- /formWrap -->
 </div><!-- /container -->
 
+<div id="kontoBadge">
+  <span id="kontoBadgeLabel">??</span>
+  <span id="kontoBadgeText">konto</span>
+</div>
+
 <script>
 // ═══════════════════════════════════════════════════
 // BRAND CONFIG
@@ -568,16 +573,7 @@ document.getElementById('brandBadge').style.display='none';
 document.getElementById('brandName').textContent  = 'Kalkulator Wyceny Moskitiery Okiennej';
 document.getElementById('brandSub').style.display = 'none';
 
-// ── Konto badge (róg ekranu) ──
-document.addEventListener('DOMContentLoaded', function() {
-  const kBadgeLabel = document.getElementById('kontoBadgeLabel');
-  const kBadgeText  = document.getElementById('kontoBadgeText');
-  if(!kBadgeLabel || !kBadgeText) return;
-  kBadgeLabel.textContent        = brand.kontoId  || brand.display;
-  kBadgeLabel.style.background   = brand.kontoBg  || '#333';
-  kBadgeLabel.style.color        = brand.kontoCol || '#fff';
-  kBadgeText.textContent         = brand.kontoLabel || brandKey.slice(0,2).toUpperCase();
-});
+
 
 // ═══════════════════════════════════════════════════
 // OPCJE KOLORÓW
@@ -936,10 +932,17 @@ function toggleTheme() {
 
 // ── Init ──
 addRow();
+
+// ── Konto badge ──
+(function(){
+  var el = document.getElementById('kontoBadgeLabel');
+  var et = document.getElementById('kontoBadgeText');
+  if(!el || !et) return;
+  el.textContent      = brand.kontoId  || brand.display;
+  el.style.background = brand.kontoBg  || '#333';
+  el.style.color      = brand.kontoCol || '#fff';
+  et.textContent      = brand.kontoLabel || brandKey.slice(0,2).toUpperCase();
+})();
 </script>
-<div id="kontoBadge">
-  <span id="kontoBadgeLabel">??</span>
-  <span id="kontoBadgeText">konto</span>
-</div>
 </body>
 </html>
