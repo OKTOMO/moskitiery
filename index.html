@@ -2647,11 +2647,11 @@ function App() {
                                     ✅ Zrealizowane
                                   </button>
                                 )}
-                                <button onClick={()=>{
-                                  setImportModal({imp:{klientImie:o.klient?.name||"",klientUlica:"",klientKod:"",klientMiasto:"",telefon:o.klient?.phone||"",allegroOrderId:"",kontoId:"",firma:"F",offerNames:""},
-                                    mode:"kal",kalNum:o.orderNumber,kalLoading:false,kalError:"",kalData:o,
-                                    pozycje:(o.pozycje||[]).map(p=>({szerokosc:p.szerokosc,wysokosc:p.wysokosc,glebokosc:p.felc||"",kolorRamki:(p.kolorProfilu||"").replace(/ RAL \d+/,""),kolorSiatki:p.kolorSiatki||"Czarna",blaszRozmiar:"",ilosc:p.ilosc||1}))
-                                  });setTab("nowe");}}
+                                <button onClick={()=>doImportOrder({
+                                  imp:{klientImie:o.klient?.name||"",klientUlica:"",klientKod:"",klientMiasto:"",telefon:o.klient?.phone||"",allegroOrderId:"",kontoId:"",firma:"F",offerNames:"",data:o.createdAt?o.createdAt.slice(0,10):""},
+                                  kalData:o,
+                                  pozycje:[]
+                                })}
                                   style={{padding:"4px 10px",fontSize:10,background:"#1a2a3a",border:"1px solid #2a5a7a",borderRadius:4,color:"#7abfdf",cursor:"pointer",fontWeight:700}}>
                                   ➕ Zlecenie
                                 </button>
