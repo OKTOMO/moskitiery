@@ -569,12 +569,15 @@ document.getElementById('brandName').textContent  = 'Kalkulator Wyceny Moskitier
 document.getElementById('brandSub').style.display = 'none';
 
 // ── Konto badge (róg ekranu) ──
-const kBadgeLabel = document.getElementById('kontoBadgeLabel');
-const kBadgeText  = document.getElementById('kontoBadgeText');
-kBadgeLabel.textContent        = brand.kontoLabel || brandKey.slice(0,2).toUpperCase();
-kBadgeLabel.style.background   = brand.kontoBg  || '#333';
-kBadgeLabel.style.color        = brand.kontoCol || '#fff';
-kBadgeText.textContent         = brand.kontoId  || brand.display;
+document.addEventListener('DOMContentLoaded', function() {
+  const kBadgeLabel = document.getElementById('kontoBadgeLabel');
+  const kBadgeText  = document.getElementById('kontoBadgeText');
+  if(!kBadgeLabel || !kBadgeText) return;
+  kBadgeLabel.textContent        = brand.kontoId  || brand.display;
+  kBadgeLabel.style.background   = brand.kontoBg  || '#333';
+  kBadgeLabel.style.color        = brand.kontoCol || '#fff';
+  kBadgeText.textContent         = brand.kontoLabel || brandKey.slice(0,2).toUpperCase();
+});
 
 // ═══════════════════════════════════════════════════
 // OPCJE KOLORÓW
