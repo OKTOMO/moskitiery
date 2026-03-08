@@ -228,8 +228,7 @@ KOLOR SIATKI: Czarna lub Szara (domyślnie Czarna)
 
 WAŻNE:
 - Identyczne pozycje (same wymiary+kolory+typ) → scal sumując ilości
-- Imię/nazwisko w formacie: Nazwisko Imię
-- Imię/nazwisko w formacie: Nazwisko Imię
+- klientImie = PEŁNE imię i nazwisko klienta w formacie: Nazwisko Imię (np. "Kowalski Jan"). Jeśli w wiadomości jest tylko jedno słowo — wpisz je. Nigdy nie pomijaj nazwiska jeśli jest podane.
 - Z adresu wyciągnij: klientUlica (ulica + nr domu), klientKod (XX-XXX), klientMiasto (miejscowość)
 - WYMIARY: szerokosc zawsze mniejsza wartość, wysokosc zawsze większa. Np. klient podał "214 x 81,5" → szerokosc=81.5, wysokosc=214. Dotyczy zarówno okien jak i drzwi.
 
@@ -388,12 +387,12 @@ table.main tr:nth-child(even) td{background:#f5f5f5}
 
 </body></html>`;
 
-  const blob=new Blob([html],{type:"text/html;charset=utf-8"});
+  // Dodaj auto-print po załadowaniu
+  const htmlWithPrint = html.replace('</body>', '<script>window.onload=function(){window.print();}<\/script></body>');
+  const blob=new Blob([htmlWithPrint],{type:"text/html;charset=utf-8"});
   const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  const pdfName=`${order.numerZlecenia||"zlecenie"}_${(order.klientImie||"").replace(/\s+/g,"_")}_${(order.klientMiasto||"").replace(/\s+/g,"_")}.html`;
-  a.href=url; a.download=pdfName; a.click();
-  setTimeout(()=>URL.revokeObjectURL(url),3000);
+  const win=window.open(url,"_blank");
+  setTimeout(()=>URL.revokeObjectURL(url),10000);
 }
 
 // ─── PDF DRZWI ───────────────────────────────────────────────────────────────
@@ -524,12 +523,12 @@ table.main td.kolor{font-size:14px;font-weight:700}
 
 </body></html>`;
 
-  const blob=new Blob([html],{type:"text/html;charset=utf-8"});
+  // Dodaj auto-print po załadowaniu
+  const htmlWithPrint = html.replace('</body>', '<script>window.onload=function(){window.print();}<\/script></body>');
+  const blob=new Blob([htmlWithPrint],{type:"text/html;charset=utf-8"});
   const url=URL.createObjectURL(blob);
-  const a=document.createElement("a");
-  const nm=`${order.numerZlecenia||"zlecenie"}_${(order.klientImie||"").replace(/\s+/g,"_")}_DRZWI.html`;
-  a.href=url; a.download=nm; a.click();
-  setTimeout(()=>URL.revokeObjectURL(url),3000);
+  const win=window.open(url,"_blank");
+  setTimeout(()=>URL.revokeObjectURL(url),10000);
 }
 
 // ─── APP ─────────────────────────────────────────────────────────────────────
@@ -541,7 +540,7 @@ function App() {
     const kontoId=kontaMap[firma]||"favo5"; // fallback, używany tylko dla faktur
     let token=allegroTokens[kontoId]||"";
     if(!token) return {error:"Brak tokenu dla konta "+kontoId+". Zaloguj się w Admin → Allegro."};
-    const url="https://allegro-proxy.favour-biuro.workers.dev/api/order/checkout-forms/"+orderId.trim();
+    const url=AUTORESPONDER_URL+"/api/order/checkout-forms/"+orderId.trim();
     let r=await fetch(url,{headers:{"Authorization":"Bearer "+token,"Accept":"application/vnd.allegro.public.v1+json"}});
     if(r.status===401){
       const ok=await allegroRefresh(kontoId);
@@ -1457,7 +1456,7 @@ function App() {
       console.error("Błąd parsowania AI:", e);
       let msg = e.message || String(e);
       if(msg === "Failed to fetch") {
-        msg = "Failed to fetch — sprawdź:\n1. Czy klucz API Claude jest wpisany w Ustawieniach?\n2. Czy Worker allegro-proxy.favour-biuro.workers.dev działa?\n3. Czy masz połączenie z internetem?";
+        msg = "Failed to fetch — sprawdź:\n1. Czy klucz API Claude jest wpisany w Ustawieniach?\n2. Czy Worker allegro-autoresponder.favour-biuro.workers.dev działa?\n3. Czy masz połączenie z internetem?";
       } else if(msg.includes("401") || msg.includes("403")) {
         msg = "Błąd autoryzacji ("+msg+") — sprawdź klucz API Claude w Ustawieniach.";
       } else if(msg.includes("Brak klucza")) {
