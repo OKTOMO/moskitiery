@@ -107,11 +107,29 @@ body.dark .info-bar{background:rgba(245,166,35,.07);color:#b87d20;}
       <svg class="arrow" id="steps-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
     <div id="steps-body" style="display:none;" class="card-body">
+      <svg viewBox="0 0 280 220" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:320px;display:block;margin:0 auto 14px;border-radius:10px;background:var(--surface2);">
+        <defs>
+          <marker id="arr" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#f5a623"/></marker>
+          <marker id="arrG" markerWidth="6" markerHeight="6" refX="3" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#22c55e"/></marker>
+        </defs>
+        <rect x="20" y="20" width="240" height="180" rx="4" fill="none" stroke="#9aa3b5" stroke-width="14"/>
+        <rect x="34" y="34" width="212" height="152" rx="2" fill="none" stroke="#f5a623" stroke-width="2" stroke-dasharray="5,3"/>
+        <rect x="42" y="42" width="196" height="136" rx="1" fill="rgba(245,166,35,.07)" stroke="#9aa3b5" stroke-width="0.5"/>
+        <line x1="34" y1="197" x2="246" y2="197" stroke="#f5a623" stroke-width="1.5" marker-start="url(#arr)" marker-end="url(#arr)"/>
+        <text x="140" y="213" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="700" fill="#f5a623">B — szerokość falcu</text>
+        <line x1="258" y1="34" x2="258" y2="186" stroke="#22c55e" stroke-width="1.5" marker-start="url(#arrG)" marker-end="url(#arrG)"/>
+        <text x="274" y="114" text-anchor="middle" font-family="sans-serif" font-size="10" font-weight="700" fill="#22c55e" transform="rotate(90,274,114)">A — wysokość</text>
+        <line x1="20" y1="60" x2="34" y2="60" stroke="#60a5fa" stroke-width="2"/>
+        <line x1="27" y1="34" x2="27" y2="60" stroke="#60a5fa" stroke-width="1.5" marker-start="url(#arr)" marker-end="url(#arr)"/>
+        <text x="10" y="50" text-anchor="middle" font-family="sans-serif" font-size="9" fill="#60a5fa" transform="rotate(-90,10,50)">C</text>
+        <text x="140" y="114" text-anchor="middle" font-family="sans-serif" font-size="10" fill="#9aa3b5">siatka</text>
+      </svg>
       <div class="steps">
         <div class="step"><div class="step-n">B</div><div class="step-t"><strong>Szerokość B</strong>Wewnętrzna szerokość falcu (ościeżnicy). Odejmij ok. 1–2 mm luzu.</div></div>
         <div class="step"><div class="step-n">A</div><div class="step-t"><strong>Wysokość A</strong>Wewnętrzna wysokość falcu (ościeżnicy). Odejmij ok. 1–2 mm luzu.</div></div>
         <div class="step"><div class="step-n">C</div><div class="step-t"><strong>Felc C</strong>Głębokość wpustu w który wchodzi rama — zwykle 10–15 mm. Pole opcjonalne.</div></div>
       </div>
+      <a class="btn-tool" href="Instrukcja_25bez.pdf" target="_blank" style="display:inline-flex;margin-top:10px;">📄 Pobierz instrukcję montażu PDF</a>
     </div>
   </div>
   <div class="card">
@@ -153,10 +171,10 @@ body.dark .info-bar{background:rgba(245,166,35,.07);color:#b87d20;}
     </div>
   </div>
   <div class="toolbar">
-    <a class="btn-tool" href="Instrukcja_25bez.pdf" target="_blank">📄 Instrukcja montaŸu</a>
+    <a class="btn-tool" href="Instrukcja_25bez.pdf" target="_blank">📄 Instrukcja montażu</a>
     <a class="btn-tool" href="https://allegro.pl/oferta/moskitiera-ramkowa-na-wymiar-siatka-w-okno-na-ramce-aluminiowej-anty-owady-10508769780" target="_blank">🔗 Wróć do aukcji</a>
   </div>
-  <div style="text-align:center;font-size:12px;color:var(--text3);margin-top:22px;">© 2025 FAVOUR · Wszelkie prawa zastrzeŸone</div>
+  <div style="text-align:center;font-size:12px;color:var(--text3);margin-top:22px;">© 2025 FAVOUR · Wszelkie prawa zastrzeżone</div>
 </div>
 <div class="toast" id="toast"></div>
 <script>
@@ -198,36 +216,116 @@ function renderRows(savedVals) {
     card.dataset.row = row.id;
     const pOpts = PROFILE_COLORS.map(c => `<option value="${c}"${v.pc===c?" selected":""}>${c}</option>`).join("");
     const mOpts = MESH_COLORS.map(c => `<option value="${c}"${v.mc===c?" selected":""}>${c}</option>`).join("");
-    card.innerHTML = `<div class="row-num">#${idx+1}</div><div class="grid3"><div class="field"><label>Szer. B [cm]</label><input class="wi" type="number" inputmode="decimal" step="0.1" min="1" max="400" placeholder="np. 90" value="${v.w}"></div><div class="field"><label>Wys. A [cm]</label><input class="hi" type="number" inputmode="decimal" step="0.1" min="1" max="400" placeholder="np. 120" value="${v.h}"></div><div class="field"><label>Felc C [cm]</label><input class="fi" type="number" inputmode="decimal" step="0.1" min="0" max="15" placeholder="opt." value="${v.f}"></div></div><div class="grid2"><div class="field"><label>[olor profilu</label><select class="pc"><option value="">Wybierzₗ</option>${pOpts}</select></div><div class="field"><label>Kolor siatki</label><select class="mc"><option value="">Wybierz…</option>${mOpts}</select></div></div><div class="grid-bottom"><div class="field"><label>Ilość szt.</label><input class="ai" type="number" inputmode="numeric" min="1" max="20" value="${v.am||'1'}"></div><div class="field" style="display:flex;align-items:flex-end;">${rows.length>1?`<button class="btn-del" onclick="deleteRow(${row.id})">🗑 Usuń</button>`:'<div></div>'}</div></div>`;
-    card.querySelectorAll("input,select").forEach(el => el.addEventListener("input",calc));
+    card.innerHTML = `
+      <div class="row-num">#${idx+1}</div>
+      <div class="grid3">
+        <div class="field"><label>Szer. B [cm]</label><input class="wi" type="number" inputmode="decimal" step="0.1" min="1" max="400" placeholder="np. 90" value="${v.w}"></div>
+        <div class="field"><label>Wys. A [cm]</label><input class="hi" type="number" inputmode="decimal" step="0.1" min="1" max="400" placeholder="np. 120" value="${v.h}"></div>
+        <div class="field"><label>Felc C [cm]</label><input class="fi" type="number" inputmode="decimal" step="0.1" min="0" max="15" placeholder="opt." value="${v.f}"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label>Kolor profilu</label><select class="pc"><option value="">Wybierz…</option>${pOpts}</select></div>
+        <div class="field"><label>Kolor siatki</label><select class="mc"><option value="">Wybierz…</option>${mOpts}</select></div>
+      </div>
+      <div class="grid-bottom">
+        <div class="field"><label>Ilość szt.</label><input class="ai" type="number" inputmode="numeric" min="1" max="20" value="${v.am||"1"}"></div>
+        <div class="field" style="display:flex;align-items:flex-end;">${rows.length > 1 ? `<button class="btn-del" onclick="deleteRow(${row.id})">🗑 Usuń</button>` : `<div></div>`}</div>
+      </div>`;
+    card.querySelectorAll("input,select").forEach(el => el.addEventListener("input", calc));
     container.appendChild(card);
   });
-  const cnt=rows.length;
-  document.getElementById("row-count").textContent=cnt+(cnt===1?" okno":" okna/drzwi");
-  document.getElementById("btn-add").style.display=cnt>=20?"none":"flex";
+  const cnt = rows.length;
+  document.getElementById("row-count").textContent = cnt + (cnt===1?" okno":" okna/drzwi");
+  document.getElementById("btn-add").style.display = cnt >= 20 ? "none" : "flex";
   calc();
 }
-function calc(){
-  let perim=0;
-  document.querySelectorAll("[data-row]").forEach(c=>{
-    const w=parseFloat(c.querySelector(".wi")?.value)||0;
-    const h=parseFloat(c.querySelector(".hi")?.value)||0;
-    const am=parseInt(c.querySelector(".ai")?.value)||1;
-    if(w>0&&h>0) perim+=(w+h)*2*am;
+function calc() {
+  let perim = 0;
+  document.querySelectorAll("[data-row]").forEach(c => {
+    const w = parseFloat(c.querySelector(".wi")?.value)||0;
+    const h = parseFloat(c.querySelector(".hi")?.value)||0;
+    const am = parseInt(c.querySelector(".ai")?.value)||1;
+    if (w>0 && h>0) perim += (w+h)*2*am;
   });
-  const units=Math.ceil(perim/10);
-  const cost=units*3;
-  document.getElementById("s-units").textContent=units;
-  document.getElementById("s-cost").textContent=cost.toFixed(2).replace(".",",");
-  return {units,cost};
+  const units = Math.ceil(perim/10);
+  const cost = units*3;
+  document.getElementById("s-units").textContent = units;
+  document.getElementById("s-cost").textContent = cost.toFixed(2).replace(".",",");
+  return { units, cost };
 }
-function collectRows(){return Array.from(document.querySelectorAll("[data-row]")).map((c,i)=>({lp:i+1,szerokosc:parseFloat(c.querySelector(".wi")?.value)||0,wysokosc:parseFloat(c.querySelector(".hi")?.value)||0,felc:parseFloat(c.querySelector(".fi")?.value)||0,kolorProfilu:c.querySelector(".pc")?.value||"",kolorSiatki:c.querySelector(".mc")?.value||"",ilosc:parseInt(c.querySelector(".ai")?.value)||1}));}
-async function submitOrder(){const name=document.getElementById("c-name").value.trim();const phone=document.getElementById("c-phone").value.trim();const email=document.getElementById("c-email").value.trim();const notes=document.getElementById("c-notes").value.trim();if(!name){toast("Podaj imi� i nazwisko","err");document.getElementById("c-name").focus();return;}if(!phone){toast("Podaj numer telefonu","err");document.getElementById("c-phone").focus();return;}const pozycje=collectRows();if(pozycje.some(r=>r.szerokosc===0||r.wysokosc===0)){toast("Uzupełnik wymiary wszyrstkich okien","err");return;}const {units,cost}=calc();if(units===0){toast("Wprowadz wymiary co najmniej jednego okna","err");return;}const now=new Date();const yy=String(now.getFullYear()).slice(2);const mm=String(now.getMonth()+1).padStart(2,"0");const dd=String(now.getDate()).padStart(2,"0");const rand=String(Math.floor(Math.random()*9000)+1000);const orderNumber=`D�L-${yy}${mm}${dd}-${rand}`;const payload={orderNumber,createdAt:now.toISOString(),klient:{name,phone,email,notes},pozycje,podsumowanie:{units,cost}};document.getElementById("sub-lbl").style.display="none";document.getElementById("sub-spin").style.display="inline-flex";document.getElementById("btn-sub").disabled=true;let saved=false;try{const r=await fetch(WORKER_URL+"/kalkulator/order",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":WORKER_KEY},body:JSON.stringify(payload)});if(r.ok)saved=true;}catch(e){}if(!saved){const body=pozycje.map((r,i)=>`${i+1}. ${r.szerokosc}×${r.wysokosc} cm, felc: ${r.felc||"—"}, profil: ${r.kolorProfilu||"—"}, siatka: ${r.kolorSiatki||"—"}, szt: ${r.ilosc}`).join("\n");window.location.href=`mailto:favour.biuro@gmail.com?subject=Zamówienie ${orderNumber}&body=${encodeURIComponent(`Proszę o realizację zamówienia (${orderNumber}):\n\n${body}\nJEDNOSTKI: ${units}\nKOSZT: ${cost.toFixed(2)} zł\nKLIENT: ${name}\nTEL: ${phone}${email?"\nEMAIL? "+email:""}${notes?"\nUWAGI: "+notes:""}`)}`;}document.getElementById("sub-lbl").style.display="inline";document.getElementById("sub-spin").style.display="none";document.getElementById("btn-sub").disabled=false;document.getElementById("contact-card").style.display="none";document.getElementById("success-card").style.display="block";document.getElementById("order-num-txt").textContent=orderNumber;toast("Zamówienie wysłane! "✓","ok");window.scrollTo({top:0,behavior:"smooth"});}
-function newOrder(){document.getElementById("success-card").style.display="none";document.getElementById("contact-card").style.display="block";["c-name","c-phone","c-email","c-notes"].forEach(id=>document.getElementById(id).value="");rows=[];rowId=0;addRow();window.scrollTo({top:0,behavior:"smooth"});}
-function toggleSteps(){const body=document.getElementById("steps-body");const arrow=document.getElementById("steps-arrow");const open=body.style.display==="block";body.style.display=open?"none":"block";arrow.classList.toggle("open",!open);}
-function toggleDark(){document.body.classList.toggle("dark");}
+function collectRows() {
+  return Array.from(document.querySelectorAll("[data-row]")).map((c,i) => ({
+    lp: i+1,
+    szerokosc: parseFloat(c.querySelector(".wi")?.value)||0,
+    wysokosc: parseFloat(c.querySelector(".hi")?.value)||0,
+    felc: parseFloat(c.querySelector(".fi")?.value)||0,
+    kolorProfilu: c.querySelector(".pc")?.value||"",
+    kolorSiatki: c.querySelector(".mc")?.value||"",
+    ilosc: parseInt(c.querySelector(".ai")?.value)||1
+  }));
+}
+async function submitOrder() {
+  const name = document.getElementById("c-name").value.trim();
+  const phone = document.getElementById("c-phone").value.trim();
+  const email = document.getElementById("c-email").value.trim();
+  const notes = document.getElementById("c-notes").value.trim();
+  if (!name) { toast("Podaj imię i nazwisko","err"); document.getElementById("c-name").focus(); return; }
+  if (!phone) { toast("Podaj numer telefonu","err"); document.getElementById("c-phone").focus(); return; }
+  const pozycje = collectRows();
+  if (pozycje.some(r => r.szerokosc===0||r.wysokosc===0)) { toast("Uzupełnij wymiary wszystkich okien","err"); return; }
+  const { units, cost } = calc();
+  if (units===0) { toast("Wprowadź wymiary co najmniej jednego okna","err"); return; }
+  const now = new Date();
+  const yy = String(now.getFullYear()).slice(2);
+  const mm = String(now.getMonth()+1).padStart(2,"0");
+  const dd = String(now.getDate()).padStart(2,"0");
+  const rand = String(Math.floor(Math.random()*9000)+1000);
+  const orderNumber = `KAL-${yy}${mm}${dd}-${rand}`;
+  const payload = { orderNumber, createdAt: now.toISOString(), klient:{name,phone,email,notes}, pozycje, podsumowanie:{units,cost} };
+  document.getElementById("sub-lbl").style.display = "none";
+  document.getElementById("sub-spin").style.display = "inline-flex";
+  document.getElementById("btn-sub").disabled = true;
+  let saved = false;
+  try {
+    const r = await fetch(WORKER_URL+"/kalkulator/order", { method:"POST", headers:{"Content-Type":"application/json","x-api-key":WORKER_KEY}, body:JSON.stringify(payload) });
+    if (r.ok) saved = true;
+  } catch(e) {}
+  if (!saved) {
+    const body = pozycje.map((r,i)=>`${i+1}. ${r.szerokosc}×${r.wysokosc} cm, felc: ${r.felc||"—"}, profil: ${r.kolorProfilu||"—"}, siatka: ${r.kolorSiatki||"—"}, szt: ${r.ilosc}`).join("\n");
+    const mailBody = "Proszę o realizację zamówienia (" + orderNumber + "):\n\n" + body + "\nJEDNOSTKI: " + units + "\nKOSZT: " + cost.toFixed(2) + " zł\nKLIENT: " + name + "\nTEL: " + phone + (email ? "\nEMAIL: " + email : "") + (notes ? "\nUWAGI: " + notes : "");
+    window.location.href = "mailto:favour.biuro@gmail.com?subject=Zamówienie " + orderNumber + "&body=" + encodeURIComponent(mailBody);
+  }
+  document.getElementById("sub-lbl").style.display = "inline";
+  document.getElementById("sub-spin").style.display = "none";
+  document.getElementById("btn-sub").disabled = false;
+  document.getElementById("contact-card").style.display = "none";
+  document.getElementById("success-card").style.display = "block";
+  document.getElementById("order-num-txt").textContent = orderNumber;
+  toast("Zamówienie wysłane! ✓","ok");
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+function newOrder() {
+  document.getElementById("success-card").style.display = "none";
+  document.getElementById("contact-card").style.display = "block";
+  ["c-name","c-phone","c-email","c-notes"].forEach(id => document.getElementById(id).value = "");
+  rows = []; rowId = 0; addRow();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+function toggleSteps() {
+  const body = document.getElementById("steps-body");
+  const arrow = document.getElementById("steps-arrow");
+  const open = body.style.display==="block";
+  body.style.display = open?"none":"block";
+  arrow.classList.toggle("open",!open);
+}
+function toggleDark() { document.body.classList.toggle("dark"); }
 let toastTimer;
-function toast(msg,type){const el=document.getElementById("toast");el.textContent=msg;el.className="toast "+(type||"");el.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove("show"),2800);}
+function toast(msg, type) {
+  const el = document.getElementById("toast");
+  el.textContent = msg; el.className = "toast "+(type||""); el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.remove("show"), 2800);
+}
 </script>
 </body>
 </html>
