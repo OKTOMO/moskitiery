@@ -103,8 +103,21 @@ const ALLEGRO_KONTA = [
   {id:"pedroshop_pl_365",label:"pedroshop_pl_365", firma:"AP"},
 ];
 
+// Normalizuje głębokość do mm — jeśli AI zwróciło wartość w cm (1-3.5), przelicza ×10
+function normalizujGlebokosc(g) {
+  const v = parseFloat(g);
+  if (!v || isNaN(v)) return DOMYSLNA_GLEBOKOS;
+  // Jeśli wartość wygląda jak cm (1.0–3.5), przelicz na mm
+  if (v > 0 && v <= 3.5) return Math.round(v * 10);
+  // Wartość w mm (sensowny zakres 4–50)
+  if (v >= 4 && v <= 50) return v;
+  // Podejrzanie duże (np. 120 zamiast 12) — podziel przez 10
+  if (v > 50) return Math.round(v / 10);
+  return DOMYSLNA_GLEBOKOS;
+}
+
 function obliczRozmiarBlaszki(g) {
-  const v=parseFloat(g)||DOMYSLNA_GLEBOKOS;
+  const v=normalizujGlebokosc(g);
   if(v<=10) return 0;
   if(v<=12) return 3;
   if(v<=14) return 5;
@@ -184,8 +197,15 @@ ROZPOZNAWANIE TYPU:
 DLA OKIEN (isDrzwi:false):
 - szerokosc = szerokość otworu w cm
 - wysokosc = wysokość otworu w cm
-- glebokosc = głębokość wnęki C w mm (NIE grubość ramy/profilu — jeśli klient poda grubość ramy, ustaw null)
-- Blaszka, blaszki, clips, blaszek, mm blaszki — to BLASZKA MONTAŻOWA, ignoruj przy parsowaniu wymiarów
+- glebokosc = głębokość wnęki/felca w mm — BARDZO WAŻNE ZASADY:
+  * Wartość ZAWSZE podaj w mm. Typowy zakres: 10–35 mm.
+  * Jeśli klient pisze "12mm", "15 mm", "głębokość 20" → glebokosc = ta liczba (już w mm)
+  * Jeśli klient pisze "1,2cm", "1.5cm", "2cm" → przelicz na mm: 1,2cm = 12, 1,5cm = 15, 2cm = 20
+  * Jeśli klient pisze "felc 12", "wnęka 15", "C=20" → glebokosc = ta liczba (mm)
+  * Jeśli klient podaje TYLKO grubość ramy okiennej/profilu PCV (np. "rama 70mm", "profil 5cm") → glebokosc = null
+  * Jeśli klient nie podaje głębokości wcale → glebokosc = null
+  * UWAGA: liczby 10–35 to mm, liczby 1–3,5 to cm (przelicz ×10). Liczba >35 to prawie na pewno cm — przelicz ÷10 i zaokrąglij do mm.
+- Blaszka, blaszki, clips, blaszek — to BLASZKA MONTAŻOWA (osobny element), NIE wpisuj do glebokosc. Ignoruj przy parsowaniu wymiarów.
 
 DLA DRZWI (isDrzwi:true):
 KLUCZOWA ZASADA: klient BARDZO CZĘSTO podaje 4 liczby dla jednych drzwi — to są dwa wymiary szerokości i dwa wymiary wysokości. To ZAWSZE jest JEDNA pozycja drzwi, NIE dwie osobne.
@@ -297,7 +317,7 @@ function drukujPDF(order) {
   const MIN_ROWS = 8;
   const pozycjeRows = order.pozycje.map((p,i)=>{
     const s=parseFloat(p.szerokosc)||0, w=parseFloat(p.wysokosc)||0;
-    const gl=parseFloat(p.glebokosc)||DOMYSLNA_GLEBOKOS;
+    const gl=normalizujGlebokosc(p.glebokosc);
     const il=parseFloat(p.ilosc)||1;
     const jedn=obliczJedn(s,w,il);
     const blaszRoz=obliczRozmiarBlaszki(gl);
@@ -1446,7 +1466,7 @@ function App() {
         }):({
           szerokosc:   p.szerokosc   ||"",
           wysokosc:    p.wysokosc    ||"",
-          glebokosc:   p.glebokosc!=null?String(p.glebokosc):String(DOMYSLNA_GLEBOKOS),
+          glebokosc:   String(normalizujGlebokosc(p.glebokosc!=null?p.glebokosc:DOMYSLNA_GLEBOKOS)),
           kolorRamki:  p.kolorRamki  ||"Antracyt",
           kolorSiatki: p.kolorSiatki ||"Czarna",
           ilosc:       p.ilosc       ||1
@@ -1496,7 +1516,7 @@ function App() {
         glebokosc:    p.glebokosc||String(DOMYSLNA_GLEBOKOS),
         kolorSiatki:  p.kolorSiatki||"Czarna",
         linka:        obliczLinke(p.szerokosc,p.wysokosc),
-        blaszRozmiar: obliczRozmiarBlaszki(p.glebokosc||DOMYSLNA_GLEBOKOS),
+        blaszRozmiar: obliczRozmiarBlaszki(p.glebokosc),
       }))
     };
     updateOrders([order,...orders]);
@@ -2039,7 +2059,7 @@ function App() {
 
               <div style={{overflowY:"auto",maxHeight:480,display:"flex",flexDirection:"column",gap:10}}>
               {form.pozycje.map((poz,i)=>{
-                const s=parseFloat(poz.szerokosc), w=parseFloat(poz.wysokosc), g=parseFloat(poz.glebokosc)||DOMYSLNA_GLEBOKOS;
+                const s=parseFloat(poz.szerokosc), w=parseFloat(poz.wysokosc), g=normalizujGlebokosc(poz.glebokosc);
                 const linka=s&&w?obliczJedn(s,w,poz.ilosc):null;
                 const blaszRoz=obliczRozmiarBlaszki(g);
                 return (
