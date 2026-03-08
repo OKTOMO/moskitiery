@@ -29,6 +29,39 @@
   body.light .color-btn { color: var(--text); }
   body.light .okno-row { background: rgba(0,0,0,.03); border-color: rgba(0,0,0,.08); }
   * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* KONTO BADGE */
+  #kontoBadge {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0,0,0,.45);
+    border-radius: 20px;
+    padding: 4px 10px 4px 6px;
+    backdrop-filter: blur(6px);
+    box-shadow: 0 2px 8px rgba(0,0,0,.3);
+    pointer-events: none;
+    user-select: none;
+  }
+  #kontoBadgeLabel {
+    font-size: 13px;
+    font-weight: 800;
+    font-family: monospace;
+    letter-spacing: .06em;
+    padding: 2px 8px;
+    border-radius: 10px;
+    line-height: 1.4;
+  }
+  #kontoBadgeText {
+    font-size: 11px;
+    color: rgba(255,255,255,.55);
+    font-family: monospace;
+    letter-spacing: .03em;
+  }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     background: var(--bg);
@@ -455,7 +488,11 @@ const BRANDS = {
     adres:   'ul. Obrońców Westerplatte 27a, 08-110 Siedlce',
     prefix:  'FAV',
     badge:   'FAVOUR',
-    color:   '#4CAF50'
+    color:   '#4CAF50',
+    kontoId: 'favo5',
+    kontoLabel: 'FA',
+    kontoBg:  '#2a5a3a',
+    kontoCol: '#7fcf7f'
   },
   str: {
     name:    'Favour Magdalena Rudnicka',
@@ -465,7 +502,11 @@ const BRANDS = {
     adres:   'ul. Obrońców Westerplatte 27a, 08-110 Siedlce',
     prefix:  'STR',
     badge:   'STAROLESKA',
-    color:   '#26a69a'
+    color:   '#26a69a',
+    kontoId: 'staroleska_pl',
+    kontoLabel: 'ST',
+    kontoBg:  '#2a4a2a',
+    kontoCol: '#5abf7a'
   },
   arl: {
     name:    'Arlis Piotr Rudnicki',
@@ -475,7 +516,11 @@ const BRANDS = {
     adres:   'ul. Obrońców Westerplatte 27a, 08-110 Siedlce',
     prefix:  'ARL',
     badge:   'ARLIS',
-    color:   '#42a5f5'
+    color:   '#42a5f5',
+    kontoId: 'arlis_pl',
+    kontoLabel: 'AR',
+    kontoBg:  '#2a3a5a',
+    kontoCol: '#7abfdf'
   },
   alb: {
     name:    'Albama Sp. z o.o.',
@@ -485,7 +530,11 @@ const BRANDS = {
     adres:   'ul. Obrońców Westerplatte 27a, 08-110 Siedlce',
     prefix:  'ALB',
     badge:   'ALBAMA',
-    color:   '#ab47bc'
+    color:   '#ab47bc',
+    kontoId: 'albama_eu',
+    kontoLabel: 'AL',
+    kontoBg:  '#4a3a1a',
+    kontoCol: '#dfaf5a'
   },
   evr: {
     name:    'Everis Sp. z o.o.',
@@ -495,7 +544,11 @@ const BRANDS = {
     adres:   'ul. Sosnowa 6, 05-300 Mińsk Mazowiecki',
     prefix:  'EVR',
     badge:   'EVERIS',
-    color:   '#ff7043'
+    color:   '#ff7043',
+    kontoId: 'everis_pl',
+    kontoLabel: 'EV',
+    kontoBg:  '#3a2a5a',
+    kontoCol: '#af8fdf'
   }
 };
 
@@ -514,6 +567,14 @@ document.documentElement.style.setProperty('--accent', brand.color);
 document.getElementById('brandBadge').style.display='none';
 document.getElementById('brandName').textContent  = 'Kalkulator Wyceny Moskitiery Okiennej';
 document.getElementById('brandSub').style.display = 'none';
+
+// ── Konto badge (róg ekranu) ──
+const kBadgeLabel = document.getElementById('kontoBadgeLabel');
+const kBadgeText  = document.getElementById('kontoBadgeText');
+kBadgeLabel.textContent        = brand.kontoLabel || brandKey.slice(0,2).toUpperCase();
+kBadgeLabel.style.background   = brand.kontoBg  || '#333';
+kBadgeLabel.style.color        = brand.kontoCol || '#fff';
+kBadgeText.textContent         = brand.kontoId  || brand.display;
 
 // ═══════════════════════════════════════════════════
 // OPCJE KOLORÓW
@@ -873,5 +934,9 @@ function toggleTheme() {
 // ── Init ──
 addRow();
 </script>
+<div id="kontoBadge">
+  <span id="kontoBadgeLabel">??</span>
+  <span id="kontoBadgeText">konto</span>
+</div>
 </body>
 </html>
