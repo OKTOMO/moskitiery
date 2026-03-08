@@ -161,7 +161,11 @@ STRUKTURA JSON:
       "glebokosc": number_or_null,
       "kolorRamki": string,
       "kolorSiatki": string,
-      "ilosc": number
+      "ilosc": number,
+      "zawias": "L" or "P",
+      "poprzeczka": boolean,
+      "samodomykajacyL": number,
+      "samodomykajacyP": number
     }
   ],
   "klientImie": string,
@@ -787,7 +791,7 @@ function App() {
       if(cols.length<5||!cols[iSzer]) continue;
       const nr=cols[iNr]||("IMP-"+i);
       if(!grouped[nr]) grouped[nr]={id:Date.now()+i,numerZlecenia:nr,firma:cols[iFirma]||"F",data:cols[iData]||"",klientImie:cols[iKlient]||"",klientMiasto:cols[iMiasto]||"",telefon:cols[iTel]||"",uwagi:"",pozycje:[]};
-      grouped[nr].pozycje.push({szerokosc:cols[iSzer]||"",wysokosc:cols[iWys]||"",glebokosc:cols[iGl]||"",kolorRamki:cols[iKR]||"",kolorSiatki:cols[iKS]||"",blaszRozmiar:cols[iBl]||"",ilosc:cols[iIl]||1});
+      grouped[nr].pozycje.push({szerokosc:cols[iSzer]||"",wysokosc:cols[iWys]||"",glebokosc:cols[iGl]||"",kolorRamki:cols[iKR]||"",kolorSiatki:cols[iKS]||"",blaszRozmiar:cols[iBl]||"",ilosc:parseInt(cols[iIl])||1});
     }
     const arr=Object.values(grouped);
     const updated={...histOrders,[year]:arr};
@@ -1136,7 +1140,7 @@ function App() {
     let s=parseFloat(dimMatch[1].replace(",",".")),
         w=parseFloat(dimMatch[2].replace(",","."));
     if(s>w&&w>0){const tmp=s;s=w;w=tmp;}
-    const KOLORY_RAMKI=[["bia\u0142","Bia\u0142a"],["antracyt","Antracyt"],["br\u0105z","Br\u0105z"],["czar","Czarna"],["szar","Szara"],["srebrn","Srebrna"],["z\u0142ot","Z\u0142ota"],["d\u0105b","D\u0105b"]];
+    const KOLORY_RAMKI=[["bia\u0142","Bia\u0142y"],["antracyt","Antracyt"],["br\u0105z","Br\u0105z"],["czar","Czarny"],["winchester","Winchester"],["orzech","Orzech"],["turner","Turner Oak"],["z\u0142ot d\u0105b","Z\u0142oty D\u0105b"],["ciemny","Ciemny D\u0105b"],["d\u0105b","Z\u0142oty D\u0105b"]];
     const KOLORY_SIATKI=[["czar","Czarna"],["szar","Szara"],["bia\u0142","Bia\u0142a"],["antracyt","Antracyt"]];
     let kolorRamki="Antracyt", kolorSiatki="Czarna";
     const lower=name.toLowerCase();
@@ -1169,10 +1173,10 @@ function App() {
   function mapKolorProfilu(raw){
     if(!raw) return "Antracyt";
     const r=raw.toLowerCase();
-    if(r.includes("bia")) return "Biała";
+    if(r.includes("bia")) return "Biały";
     if(r.includes("antracyt")) return "Antracyt";
     if(r.includes("br") && r.includes("z")) return "Brąz";
-    if(r.includes("czar")) return "Czarna";
+    if(r.includes("czar")) return "Czarny";
     if(r.includes("d") && (r.includes("b")||r.includes("dąb")||r.includes("dab"))) return "Dąb";
     if(r.includes("srebrn")) return "Srebrna";
     if(r.includes("zlot")||r.includes("złot")) return "Złota";
