@@ -241,8 +241,10 @@ ${adres||"(brak)"}`;
 
   const claudeKey=localStorage.getItem("claude_api_key")||"";
   if(!claudeKey){throw new Error("Brak klucza API Claude — wpisz go w ustawieniach");}
-  const r=await fetch("https://allegro-proxy.favour-biuro.workers.dev/ai",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":claudeKey},body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:1000,messages:[{role:"user",content:prompt}]})});
+  const r=await fetch("https://allegro-autoresponder.favour-biuro.workers.dev/ai",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":claudeKey},body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:1000,messages:[{role:"user",content:prompt}]})});
+  if(!r.ok){ const txt=await r.text().catch(()=>""); console.error("AI proxy error",r.status,txt); throw new Error("HTTP "+r.status+(txt?" — "+txt.slice(0,120):"")); }
   const d=await r.json();
+  if(d.error){ console.error("AI error:",d.error); throw new Error(JSON.stringify(d.error)); }
   return JSON.parse((d.content?.[0]?.text||"{}").replace(/```json|```/g,"").trim());
 }
 
@@ -1086,7 +1088,7 @@ function App() {
       const activeInstr=allInstrs.find(i=>i.id===activeId)||allInstrs[0]||null;
       const instr=activeInstr?activeInstr.content:"Jesteś pomocnym asystentem sklepu internetowego sprzedającego moskitiery. Odpowiadaj po polsku, profesjonalnie i przyjaźnie.";
       const prompt=instr+"\n\nHistoria rozmowy:\n"+history+"\n\nZaproponuj odpowiedź na ostatnią wiadomość kupującego. Podaj tylko treść wiadomości, bez wstępów i komentarzy.";
-      const r=await fetch("https://allegro-proxy.favour-biuro.workers.dev/ai",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":claudeKey},body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:600,messages:[{role:"user",content:prompt}]})});
+      const r=await fetch("https://allegro-autoresponder.favour-biuro.workers.dev/ai",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":claudeKey},body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:600,messages:[{role:"user",content:prompt}]})});
       const d=await r.json();
       const text=d.content?.[0]?.text||"";
       if(!text) throw new Error("Brak odpowiedzi AI");
@@ -1451,7 +1453,18 @@ function App() {
           ilosc:       p.ilosc       ||1
         })):f.pozycje
       }));
-    } catch(e){ alert("Błąd parsowania AI: "+e.message); }
+    } catch(e){
+      console.error("Błąd parsowania AI:", e);
+      let msg = e.message || String(e);
+      if(msg === "Failed to fetch") {
+        msg = "Failed to fetch — sprawdź:\n1. Czy klucz API Claude jest wpisany w Ustawieniach?\n2. Czy Worker allegro-proxy.favour-biuro.workers.dev działa?\n3. Czy masz połączenie z internetem?";
+      } else if(msg.includes("401") || msg.includes("403")) {
+        msg = "Błąd autoryzacji ("+msg+") — sprawdź klucz API Claude w Ustawieniach.";
+      } else if(msg.includes("Brak klucza")) {
+        msg = "Brak klucza API Claude — wpisz go w Ustawieniach (ikona ⚙️).";
+      }
+      alert("Błąd parsowania AI:\n"+msg);
+    }
     setParsing(false);
   }
 
