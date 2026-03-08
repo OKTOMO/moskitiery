@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Kalkulator Wyceny Moskitier</title>
+<title>Kalkulator Wyceny Moskitiery Okiennej</title>
 <style>
   :root {
     --accent: #4CAF50;
@@ -15,6 +15,19 @@
     --border: #2a4080;
     --danger: #e74c3c;
   }
+  body.light {
+    --bg: #f4f6f9;
+    --card: #ffffff;
+    --input-bg: #eef1f5;
+    --text: #1a1a2e;
+    --muted: #666;
+    --border: #d0d8e8;
+    --danger: #e74c3c;
+  }
+  body.light .brand-logo { color: var(--accent); }
+  body.light input, body.light select, body.light textarea { color: var(--text); }
+  body.light .color-btn { color: var(--text); }
+  body.light .okno-row { background: rgba(0,0,0,.03); border-color: rgba(0,0,0,.08); }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -295,9 +308,12 @@
   <div id="formWrap">
 
   <!-- HEADER -->
+  <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+    <button id="themeBtn" onclick="toggleTheme()" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:20px;padding:5px 14px;font-size:13px;cursor:pointer">☀️ Jasny</button>
+  </div>
   <div class="header">
     <div class="brand-badge" id="brandBadge">MOSKITIERY</div>
-    <div class="brand-logo" id="brandName">Kalkulator Wyceny Moskitier</div>
+    <div class="brand-logo" id="brandName">Kalkulator Wyceny Moskitiery Okiennej</div>
     <div class="brand-sub" id="brandSub"></div>
   </div>
 
@@ -337,7 +353,7 @@
     </div>
     <div>
       <label>Uwagi / dodatkowe informacje</label>
-      <textarea id="klientNotes" placeholder="np. okno w łazience, montaż samodzielny..."></textarea>
+      <textarea id="klientNotes" placeholder=""></textarea>
     </div>
   </div>
 
@@ -488,10 +504,10 @@ const brandKey  = (urlParams.get('brand') || 'fav').toLowerCase();
 const brand     = BRANDS[brandKey] || BRANDS.fav;
 
 // ── Apply brand ──
-document.title = 'Kalkulator Wyceny Moskitier — ' + brand.display;
+document.title = 'Kalkulator Wyceny Moskitiery Okiennej — ' + brand.display;
 document.documentElement.style.setProperty('--accent', brand.color);
 document.getElementById('brandBadge').textContent = brand.badge;
-document.getElementById('brandName').textContent  = 'Kalkulator Wyceny Moskitier';
+document.getElementById('brandName').textContent  = brand.display.toUpperCase() + ' — Kalkulator Wyceny Moskitiery Okiennej';
 document.getElementById('brandSub').innerHTML =
   brand.name + '<br>NIP: ' + brand.nip + ' &bull; ' + brand.adres;
 
@@ -499,16 +515,16 @@ document.getElementById('brandSub').innerHTML =
 // OPCJE KOLORÓW
 // ═══════════════════════════════════════════════════
 const KOLORY_PROFILU = [
-  'Biały RAL 9016',
-  'Antracyt RAL 7016',
-  'Brązowy RAL 8019',
+  'Biały',
+  'Antracyt',
+  'Brąz',
+  'Czarny',
   'Złoty dąb',
   'Orzech',
-  'Ciemny orzech',
-  'Mahoń',
+  'Ciemny dąb',
   'Winchester',
-  'Złoty',
-  'Srebrny'
+  'Turner oak',
+  'Mahoń'
 ];
 
 const KOLORY_SIATKI = ['Czarna', 'Szara'];
@@ -600,7 +616,7 @@ function renderRows() {
         <div class="color-grid">
           ${KOLORY_PROFILU.map(k => `
             <button class="color-btn ${r.kolorProfilu===k && r.kolorProfilu!==''?'active':''}"
-              onclick="setKolorProfilu(${r.id},'${k.replace(/'/g,'\\\'')}')">${k.replace(/ RAL \d+/,'')}</button>
+              onclick="setKolorProfilu(${r.id},'${k.replace(/'/g,'\\\'')}')">${k}</button>
           `).join('')}
         </div>
       </div>
@@ -824,6 +840,30 @@ const AUCTION_LINKS = {
     return;
   }
   al.innerHTML = '<a href="' + info.url + '" target="_blank" style="display:inline-block;background:var(--accent);color:#000;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:800;font-size:15px">🛒 Przejdź do aukcji Allegro</a>';
+})();
+
+
+// ── Tryb jasny/ciemny ──
+function toggleTheme() {
+  const body = document.body;
+  const btn = document.getElementById('themeBtn');
+  if (body.classList.contains('light')) {
+    body.classList.remove('light');
+    btn.textContent = '☀️ Jasny';
+    localStorage.setItem('theme','dark');
+  } else {
+    body.classList.add('light');
+    btn.textContent = '🌙 Ciemny';
+    localStorage.setItem('theme','light');
+  }
+}
+// Przywróć zapisany tryb
+(function() {
+  if (localStorage.getItem('theme') === 'light') {
+    document.body.classList.add('light');
+    const btn = document.getElementById('themeBtn');
+    if (btn) btn.textContent = '🌙 Ciemny';
+  }
 })();
 
 // ── Init ──
