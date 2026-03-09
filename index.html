@@ -70,24 +70,24 @@ const PROFIL_GLEBOKOS = 9;
 const BLASZKI_ROZMIARY = [0,3,5,7,9,12,15,18,20,22,25];
 const DOMYSLNA_GLEBOKOS = 12;
 const STORAGE_KEY = "mosk_orders";
-const FIRMY = [{kod:"F",nazwa:"Favour"},{kod:"A",nazwa:"Arlis"},{kod:"E",nazwa:"Everis"},{kod:"AP",nazwa:"Albama"}];
+const FIRMY = [{kod:"F",nazwa:"Favour"},{kod:"AR",nazwa:"Arlis"},{kod:"E",nazwa:"Everis"},{kod:"AP",nazwa:"Albama"}];
 const AUTORESPONDER_URL = "https://allegro-autoresponder.favour-biuro.workers.dev";
 const AUTORESPONDER_KEY = "Kuke&300219";
 const FIRMY_DANE = {
   "F":  {nazwa:"Favour Magdalena Rudnicka",adres:"ul. Obrońców Westerplatte 27a",kod:"08-110",miasto:"Siedlce",nip:"522-23-17-450",konto:"12 1020 1055 0000 9602 0022 0616",bank:"PKO BP"},
-  "A":  {nazwa:"Arlis Piotr Rudnicki",adres:"ul. Obrońców Westerplatte 27a",kod:"08-110",miasto:"Siedlce",nip:"821-127-83-28",konto:"38 1050 1894 1000 0090 8457 6751",bank:"ING"},
+  "AR": {nazwa:"Arlis Piotr Rudnicki",adres:"ul. Obrońców Westerplatte 27a",kod:"08-110",miasto:"Siedlce",nip:"821-127-83-28",konto:"38 1050 1894 1000 0090 8457 6751",bank:"ING"},
   "AP": {nazwa:"Albama Sp. z o.o.",adres:"ul. Obrońców Westerplatte 27a",kod:"08-110",miasto:"Siedlce",nip:"525-30-30-838",konto:"41 1050 1025 1000 0090 8461 2630",bank:"ING"},
   "E":  {nazwa:"Everis Sp. z o.o.",adres:"ul. Sosnowa 6",kod:"05-300",miasto:"Mińsk Mazowiecki",nip:"822-24-04-506",konto:"43 1140 2004 0000 3902 8434 0486",bank:"mBank"},
 };
 const PROFILE = [
   {id:"F",  nazwa:"Favour",  konta:["favo5","staroleska_pl","sinlook_pl"],  kolor:"#2a5a2a"},
-  {id:"A",  nazwa:"Arlis",   konta:["arlis_pl"],                             kolor:"#2a3a5a"},
+  {id:"AR", nazwa:"Arlis",   konta:["arlis_pl"],                             kolor:"#2a3a5a"},
   {id:"E",  nazwa:"Everis",  konta:["everis_pl"],                            kolor:"#3a2a5a"},
   {id:"AP", nazwa:"Albama",  konta:["albama_eu","pedroshop_pl_365"],         kolor:"#5a3a2a"},
 ];
 const KONTO_DO_FIRMY = {
   "favo5":"F","staroleska_pl":"F","sinlook_pl":"F",
-  "arlis_pl":"A","everis_pl":"E","albama_eu":"AP","pedroshop_pl_365":"AP"
+  "arlis_pl":"AR","everis_pl":"E","albama_eu":"AP","pedroshop_pl_365":"AP"
 };
 const ALLEGRO_KONTA = [
   // Favour (F)
@@ -95,7 +95,7 @@ const ALLEGRO_KONTA = [
   {id:"staroleska_pl",   label:"staroleska_pl",    firma:"F"},
   {id:"sinlook_pl",      label:"sinlook_pl",       firma:"F"},
   // Arlis (A)
-  {id:"arlis_pl",        label:"arlis_pl",         firma:"A"},
+  {id:"arlis_pl",        label:"arlis_pl",         firma:"AR"},
   // Everis (E)
   {id:"everis_pl",       label:"everis_pl",        firma:"E"},
   // Albama (AP)
@@ -147,9 +147,15 @@ function getMonth(iso){ return iso?iso.slice(0,7):""; }
 function formatDate(iso){ if(!iso) return ""; return new Date(iso).toLocaleDateString("pl-PL"); }
 function nextNumer(orders,firma) {
   const rok=new Date().getFullYear().toString().slice(-2);
-  const pat=new RegExp(`^(\\d+)\\.${rok} ${firma}$`);
-  const nums=orders.map(o=>o.numerZlecenia).filter(n=>n&&pat.test(n)).map(n=>parseInt(n.match(pat)[1]));
-  return `${(nums.length?Math.max(...nums):0)+1}.${rok} ${firma}`;
+  // backward compat: stare zamówienia mogły mieć firma="A" zamiast "AR"
+  const aliases = firma==="AR" ? ["AR","A"] : [firma];
+  let maxNum=0;
+  for(const f of aliases){
+    const pat=new RegExp(`^(\\d+)\\.${rok} ${f}$`);
+    const nums=orders.map(o=>o.numerZlecenia).filter(n=>n&&pat.test(n)).map(n=>parseInt(n.match(pat)[1]));
+    if(nums.length) maxNum=Math.max(maxNum,...nums);
+  }
+  return `${maxNum+1}.${rok} ${firma}`;
 }
 
 async function cloudLoad() {
@@ -260,7 +266,7 @@ ${adres||"(brak)"}`;
 
   const claudeKey=localStorage.getItem("claude_api_key")||"";
   if(!claudeKey){throw new Error("Brak klucza API Claude — wpisz go w ustawieniach");}
-  const r=await fetch("https://allegro-autoresponder.favour-biuro.workers.dev/ai",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":claudeKey},body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:1000,messages:[{role:"user",content:prompt}]})});
+  const r=await fetch("https://allegro-autoresponder.favour-biuro.workers.dev/ai",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":claudeKey},body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:4000,messages:[{role:"user",content:prompt}]})});
   if(!r.ok){ const txt=await r.text().catch(()=>""); console.error("AI proxy error",r.status,txt); throw new Error("HTTP "+r.status+(txt?" — "+txt.slice(0,120):"")); }
   const d=await r.json();
   if(d.error){ console.error("AI error:",d.error); throw new Error(JSON.stringify(d.error)); }
@@ -556,7 +562,7 @@ function App() {
   const [activeProfile,setActiveProfile]=useState(()=>localStorage.getItem('active_profile')||"");
   const [tab,setTab]=useState(()=>new URLSearchParams(window.location.search).has("code")?"allegro":"nowe");
   async function fetchInvoiceFromAllegro(orderId, firma){
-    const kontaMap={"F":"favo5","A":"arlis_pl","AP":"albama_eu","E":"everis_pl"};
+    const kontaMap={"F":"favo5","AR":"arlis_pl","AP":"albama_eu","E":"everis_pl"};
     const kontoId=kontaMap[firma]||"favo5"; // fallback, używany tylko dla faktur
     let token=allegroTokens[kontoId]||"";
     if(!token) return {error:"Brak tokenu dla konta "+kontoId+". Zaloguj się w Admin → Allegro."};
@@ -1107,7 +1113,7 @@ function App() {
       const activeInstr=allInstrs.find(i=>i.id===activeId)||allInstrs[0]||null;
       const instr=activeInstr?activeInstr.content:"Jesteś pomocnym asystentem sklepu internetowego sprzedającego moskitiery. Odpowiadaj po polsku, profesjonalnie i przyjaźnie.";
       const prompt=instr+"\n\nHistoria rozmowy:\n"+history+"\n\nZaproponuj odpowiedź na ostatnią wiadomość kupującego. Podaj tylko treść wiadomości, bez wstępów i komentarzy.";
-      const r=await fetch("https://allegro-autoresponder.favour-biuro.workers.dev/ai",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":claudeKey},body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:600,messages:[{role:"user",content:prompt}]})});
+      const r=await fetch("https://allegro-autoresponder.favour-biuro.workers.dev/ai",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":claudeKey},body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:2000,messages:[{role:"user",content:prompt}]})});
       const d=await r.json();
       const text=d.content?.[0]?.text||"";
       if(!text) throw new Error("Brak odpowiedzi AI");
@@ -2265,7 +2271,7 @@ function App() {
                             <td style={{padding:"8px 12px"}}>
                               <div style={{display:"flex",flexDirection:"column",gap:3}}>
                                 <span style={{fontSize:10,padding:"2px 7px",borderRadius:8,background:kBg,color:kCol,fontFamily:"monospace",fontWeight:700,display:"inline-block",width:"fit-content"}}>{imp.kontoId}</span>
-                                <span style={{fontSize:10,color:"#4a6a4a"}}>{imp.firma==="F"?"Favour":imp.firma==="A"?"Arlis":imp.firma==="E"?"Everis":"Albama"}</span>
+                                <span style={{fontSize:10,color:"#4a6a4a"}}>{imp.firma==="F"?"Favour":imp.firma==="AR"?"Arlis":imp.firma==="A"?"Arlis":imp.firma==="E"?"Everis":"Albama"}</span>
                               </div>
                             </td>
                             <td style={{padding:"8px 12px",color:"#7a9abf",whiteSpace:"nowrap"}}>{imp.data}</td>
