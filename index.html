@@ -74,10 +74,10 @@ const FIRMY = [{kod:"F",nazwa:"Favour"},{kod:"AR",nazwa:"Arlis"},{kod:"E",nazwa:
 const AUTORESPONDER_URL = "https://allegro-autoresponder.favour-biuro.workers.dev";
 const AUTORESPONDER_KEY = "Kuke&300219";
 const FIRMY_DANE = {
-  "F":  {nazwa:"Favour Magdalena Rudnicka",adres:"ul. Obrońców Westerplatte 27a",kod:"08-110",miasto:"Siedlce",nip:"522-23-17-450",konto:"12 1020 1055 0000 9602 0022 0616",bank:"PKO BP"},
-  "AR": {nazwa:"Arlis Piotr Rudnicki",adres:"ul. Obrońców Westerplatte 27a",kod:"08-110",miasto:"Siedlce",nip:"821-127-83-28",konto:"38 1050 1894 1000 0090 8457 6751",bank:"ING"},
-  "AP": {nazwa:"Albama Sp. z o.o.",adres:"ul. Obrońców Westerplatte 27a",kod:"08-110",miasto:"Siedlce",nip:"525-30-30-838",konto:"41 1050 1025 1000 0090 8461 2630",bank:"ING"},
-  "E":  {nazwa:"Everis Sp. z o.o.",adres:"ul. Sosnowa 6",kod:"05-300",miasto:"Mińsk Mazowiecki",nip:"822-24-04-506",konto:"43 1140 2004 0000 3902 8434 0486",bank:"mBank"},
+  "F":  {nazwa:"Favour Magdalena Rudnicka",adres:"ul. Obrońców Westerplatte 27a",kod:"08-110",miasto:"Siedlce",nip:"522-23-17-450",konto:"12 1020 1055 0000 9602 0022 0616",bank:"PKO BP",email:"favour.biuro@gmail.com",kontakt:"Magdalena Rudnicka"},
+  "AR": {nazwa:"Arlis Piotr Rudnicki",adres:"ul. Obrońców Westerplatte 27a",kod:"08-110",miasto:"Siedlce",nip:"821-127-83-28",konto:"38 1050 1894 1000 0090 8457 6751",bank:"ING",email:"arlis.biuro@gmail.com",kontakt:"Piotr Rudnicki"},
+  "AP": {nazwa:"Albama Sp. z o.o.",adres:"ul. Obrońców Westerplatte 27a",kod:"08-110",miasto:"Siedlce",nip:"525-30-30-838",konto:"41 1050 1025 1000 0090 8461 2630",bank:"ING",email:"albama.biuro@gmail.com",kontakt:"Piotr Rudnicki"},
+  "E":  {nazwa:"Everis Sp. z o.o.",adres:"ul. Sosnowa 6",kod:"05-300",miasto:"Mińsk Mazowiecki",nip:"822-24-04-506",konto:"43 1140 2004 0000 3902 8434 0486",bank:"mBank",email:"everis.biuro@gmail.com",kontakt:"Piotr Rudnicki"},
 };
 const PROFILE = [
   {id:"F",  nazwa:"Favour",  konta:["favo5","staroleska_pl","sinlook_pl"],  kolor:"#2a5a2a"},
@@ -716,27 +716,27 @@ function App() {
       +"border-radius:5px;padding:5mm 16mm}"
       +".doc-nr span{font-size:30px;font-weight:900;letter-spacing:.08em;"
       +"color:"+(isProforma?"#b05000":isKorekta?"#aa0000":"#cc0000")+"}"
-      +".doc-meta{font-size:11px;color:#444;margin-top:4mm}"
-      +".doc-meta span{margin-right:8mm}"
-      +".strony{display:grid;grid-template-columns:1fr 1fr;gap:8mm;margin:6mm 0}"
-      +".strona-label{font-size:8px;font-weight:700;color:#888;letter-spacing:.15em;text-transform:uppercase;"
+      +".doc-meta{font-size:11px;color:#444;margin-top:2mm;display:flex;gap:10mm;flex-wrap:wrap}"
+      +".doc-meta span{white-space:nowrap}"
+      +".strony{display:grid;grid-template-columns:1fr 1fr;gap:8mm;margin:5mm 0 6mm}"
+      +".strona-label{font-size:9px;font-weight:700;color:#888;letter-spacing:.1em;text-transform:uppercase;"
       +"border-bottom:1px solid #ccc;margin-bottom:3mm;padding-bottom:1mm}"
-      +".strona-nazwa{font-size:14px;font-weight:700;margin-bottom:2mm}"
+      +".strona-nazwa{font-size:12px;font-weight:700;margin-bottom:1mm}"
       +"p.dane{font-size:11px;color:#333;line-height:1.8;margin:0}"
-      +".nip{font-size:12px;font-weight:700;margin:2mm 0 1mm}"
-      +".konto{font-size:10px;color:#555}"
+      +".nip{font-size:11px;font-weight:700;margin:1mm 0}"
+      +".konto{font-size:10px;color:#666}"
       +"table.poz{width:100%;border-collapse:collapse;margin:0 0 5mm;font-size:10px}"
-      +"table.poz th{background:#222;color:#fff;padding:4px 6px;font-size:9px;border:1px solid #444}"
-      +"table.poz td{padding:5px 6px;border:1px solid #ddd;vertical-align:middle}"
-      +"table.poz tr:nth-child(even){background:#fafafa}"
-      +".razem{background:#eee!important;font-weight:700;font-size:12px}"
-      +".platnosc{border:1px solid #b8d4b8;border-radius:4px;padding:5mm;margin:4mm 0;background:#f6fdf6}"
-      +".platnosc-title{font-weight:700;font-size:13px;margin-bottom:3mm;color:#1a4a1a}"
+      +"table.poz th{background:#f5f5f5;color:#333;padding:4px 6px;font-size:9px;border:1px solid #ddd;font-weight:700}"
+      +"table.poz td{padding:5px 6px;border:1px solid #e8e8e8;vertical-align:middle}"
+      +"table.poz tr:nth-child(even) td{background:#fafafa}"
+      +".razem td{background:#f0f0f0!important;font-weight:700;border-top:2px solid #ccc}"
+      +".platnosc{border-top:1px solid #ddd;padding-top:4mm;margin-top:2mm}"
+      +".platnosc-title{font-weight:700;font-size:11px;margin-bottom:2mm;color:#333}"
       +"table.pl{font-size:11px;border-collapse:collapse}"
       +"table.pl td{padding:2px 8px 2px 0;vertical-align:top}"
-      +"table.pl td.lbl{color:#555;font-weight:700;white-space:nowrap;width:120px}"
-      +".kwota{font-size:24px;font-weight:900;color:#1a5a1a;margin-top:4mm}"
-      +".modul{margin:4mm 0;padding:4mm;border:1px solid #ddd;border-radius:4px;background:#fffff8}"
+      +"table.pl td.lbl{color:#555;white-space:nowrap;width:130px}"
+      +".kwota{font-size:13px;font-weight:700;color:#111;margin-top:3mm}"
+      +".modul{margin:4mm 0;padding:3mm;border:1px solid #eee;background:#fafafa}"
       +".modul-title{font-size:9px;font-weight:700;color:#888;letter-spacing:.1em;text-transform:uppercase;margin-bottom:2mm}"
       +".podpisy{display:grid;grid-template-columns:1fr 1fr;gap:20mm;margin-top:10mm}"
       +".podpis{border-top:1px solid #999;padding-top:3mm;font-size:9px;color:#666;text-align:center}"
@@ -745,13 +745,13 @@ function App() {
       +"</style></head><body>"
       // ── Nagłówek
       +"<div class='header'>"
-      +"<div style='display:flex;flex-direction:column;align-items:center;text-align:center;margin-bottom:2mm'>"
-      +"<div class='doc-type'>"+tytulDoc+"</div>"
-      +"<div class='doc-nr'><div class='doc-nr-inner'><span>"+fv.numer+"</span></div></div>"
-      +"</div>"
-      +"<div class='doc-meta' style='margin-top:3mm'>"
+      +"<div class='top-email'>"+sp.email+"</div>"
+      +"<div class='doc-title'>"+tytulDoc+" "+fv.numer+"</div>"
+      +"<div class='doc-meta'>"
       +"<span>Data sprzedaży: <strong>"+dataSprz+"</strong></span>"
       +"<span>Data wystawienia: <strong>"+dataWyst+"</strong></span>"
+      +"<span>Miejsce wystawienia: <strong>Siedlce</strong></span>"
+      +(fv.platnosc?"<span>Sposób płatności: <strong>"+(fv.platnosc==="gotowka"?"Gotówka":"Przelew bankowy")+"</strong></span>":"")
       +(dataTerm?"<span>Termin płatności: <strong>"+dataTerm+"</strong></span>":"")
       +"</div></div>"
       // ── Strony
@@ -786,20 +786,17 @@ function App() {
       +"</tr></tfoot></table>"
       // ── Płatność
       +"<div class='platnosc'>"
-      +"<div class='platnosc-title'>Forma i dane do płatności</div>"
+      +"<div class='platnosc-title'>Dane do płatności</div>"
       +"<table class='pl'><tbody>"
-      +"<tr><td class='lbl'>Forma:</td><td>"+(fv.platnosc==="gotowka"?"Gotówka":"Przelew bankowy")+"</td></tr>"
       +platnosci
       +"</tbody></table>"
-      +"<div class='kwota'>Do zapłaty: "+totalBrutto.toFixed(2)+" zł</div></div>"
+      +"<div class='kwota'>Razem do zapłaty: "+totalBrutto.toFixed(2)+" PLN</div></div>"
       +uwagi
       +"<div class='spacer'></div>"
-      // ── Podpisy
-      +"<div class='podpisy'>"
-      +"<div class='podpis'>Podpis osoby upoważnionej do wystawienia faktury</div>"
-      +"<div class='podpis'>Podpis osoby upoważnionej do odbioru faktury</div>"
+      +"<div class='footer'>"
+      +"<div>Osoba upoważniona do wystawienia dokumentu: "+sp.kontakt+"</div>"
+      +"<div style='margin-top:2mm'>Faktura wystawiona elektronicznie — nie wymaga podpisu</div>"
       +"</div>"
-      +"<div class='footer'>Faktura wystawiona elektronicznie — nie wymaga podpisu</div>"
       +"<script>window.onload=function(){window.print();}<\/script>"
       +"</body></html>";
     const blob=new Blob([html],{type:"text/html;charset=utf-8"});
