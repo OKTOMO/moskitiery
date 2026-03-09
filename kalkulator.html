@@ -569,9 +569,19 @@ const brand     = BRANDS[brandKey] || BRANDS.fav;
 // ── Apply brand ──
 document.title = 'Kalkulator Wyceny Moskitiery Okiennej — ' + brand.display;
 document.documentElement.style.setProperty('--accent', brand.color);
-document.getElementById('brandBadge').style.display='none';
-document.getElementById('brandName').textContent  = 'Kalkulator Wyceny Moskitiery Okiennej';
-document.getElementById('brandSub').style.display = 'none';
+// brand elements and badge — applied after DOM ready
+document.addEventListener('DOMContentLoaded', function() {
+  var bb = document.getElementById('brandBadge');
+  var bn = document.getElementById('brandName');
+  var bs = document.getElementById('brandSub');
+  if(bb) bb.style.display = 'none';
+  if(bn) bn.textContent  = 'Kalkulator Wyceny Moskitiery Okiennej';
+  if(bs) bs.style.display = 'none';
+  var el = document.getElementById('kontoBadgeLabel');
+  var et = document.getElementById('kontoBadgeText');
+  if(el){ el.textContent = brand.kontoId || brand.display; el.style.background = brand.kontoBg || '#333'; el.style.color = brand.kontoCol || '#fff'; }
+  if(et){ et.textContent = brand.kontoLabel || brandKey.slice(0,2).toUpperCase(); }
+});
 
 
 
@@ -933,16 +943,7 @@ function toggleTheme() {
 // ── Init ──
 addRow();
 
-// ── Konto badge ──
-(function(){
-  var el = document.getElementById('kontoBadgeLabel');
-  var et = document.getElementById('kontoBadgeText');
-  if(!el || !et) return;
-  el.textContent      = brand.kontoId  || brand.display;
-  el.style.background = brand.kontoBg  || '#333';
-  el.style.color      = brand.kontoCol || '#fff';
-  et.textContent      = brand.kontoLabel || brandKey.slice(0,2).toUpperCase();
-})();
+// ── Konto badge — init w DOMContentLoaded powyżej ──
 </script>
 </body>
 </html>
