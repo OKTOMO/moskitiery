@@ -107,10 +107,11 @@ const ALLEGRO_KONTA = [
 function normalizujGlebokosc(g) {
   const v = parseFloat(g);
   if (!v || isNaN(v)) return DOMYSLNA_GLEBOKOS;
-  // Jeśli wartość wygląda jak cm (1.0–3.5), przelicz na mm
-  if (v > 0 && v <= 3.5) return Math.round(v * 10);
-  // Wartość w mm (sensowny zakres 4–50)
-  if (v >= 4 && v <= 50) return v;
+  // Wartości < 5 traktuj jako cm (1.0–4.9 cm → 10–49 mm)
+  // np. 1.8 → 18mm, 2 → 20mm, 2.5 → 25mm
+  if (v > 0 && v < 5) return Math.round(v * 10);
+  // Wartość w mm (sensowny zakres 5–50)
+  if (v >= 5 && v <= 50) return v;
   // Podejrzanie duże (np. 120 zamiast 12) — podziel przez 10
   if (v > 50) return Math.round(v / 10);
   return DOMYSLNA_GLEBOKOS;
@@ -123,7 +124,7 @@ function obliczRozmiarBlaszki(g) {
   if(v<=14) return 5;
   if(v<=16) return 7;
   if(v<=18) return 9;
-  if(v<=21) return 12;
+  if(v<=22) return 12;
   if(v<=25) return 15;
   if(v<=28) return 18;
   if(v<=30) return 20;
@@ -145,17 +146,21 @@ function obliczLinkeLaczna(pozycje) {
 function obliczLinke(s,w){ return obliczJedn(s,w,1); }
 function getMonth(iso){ return iso?iso.slice(0,7):""; }
 function formatDate(iso){ if(!iso) return ""; return new Date(iso).toLocaleDateString("pl-PL"); }
-function nextNumer(orders,firma) {
-  const rok=new Date().getFullYear().toString().slice(-2);
+function nextNumer(orders, firma, isDrzwi=false) {
+  const rok = new Date().getFullYear().toString().slice(-2);
   // backward compat: stare zamówienia mogły mieć firma="A" zamiast "AR"
   const aliases = firma==="AR" ? ["AR","A"] : [firma];
-  let maxNum=0;
+  let maxNum = 0;
   for(const f of aliases){
-    const pat=new RegExp(`^(\\d+)\\.${rok} ${f}$`);
-    const nums=orders.map(o=>o.numerZlecenia).filter(n=>n&&pat.test(n)).map(n=>parseInt(n.match(pat)[1]));
-    if(nums.length) maxNum=Math.max(maxNum,...nums);
+    // Osobny licznik dla okien i drzwi
+    const pat = isDrzwi
+      ? new RegExp(`^D(\\d+)\\.${rok} ${f}$`)   // tylko D-numery
+      : new RegExp(`^(\\d+)\\.${rok} ${f}$`);    // tylko okna (bez D)
+    const nums = orders.map(o=>o.numerZlecenia).filter(n=>n&&pat.test(n)).map(n=>parseInt(n.match(pat)[1]));
+    if(nums.length) maxNum = Math.max(maxNum, ...nums);
   }
-  return `${maxNum+1}.${rok} ${firma}`;
+  const num = maxNum + 1;
+  return isDrzwi ? `D${num}.${rok} ${firma}` : `${num}.${rok} ${firma}`;
 }
 
 async function cloudLoad() {
@@ -1507,7 +1512,11 @@ function App() {
   }
 
   function handleSave(){
-    const numer=numerOverride||nextNumer(orders,form.firma);
+    const _hasDrzwi=form.pozycje.some(p=>p.isDrzwi);
+    const _hasOkna=form.pozycje.some(p=>!p.isDrzwi);
+    // Jeśli TYLKO drzwi → prefix D. Mieszane lub tylko okna → bez prefiksu
+    const _isDrzwiOnly=_hasDrzwi&&!_hasOkna;
+    const numer=numerOverride||nextNumer(orders,form.firma,_isDrzwiOnly);
     const order={
       id:Date.now(), numerZlecenia:numer, firma:form.firma, data:form.data,
       allegroOrderId:allegroOrderIdForForm||"",
@@ -2027,9 +2036,9 @@ function App() {
                   <div>
                     <span className="lbl">Nr zlecenia</span>
                     <input 
-                      value={numerOverride||(loading?"ładowanie...":nextNumer(orders,form.firma))} 
+                      value={numerOverride||(loading?"ładowanie...":nextNumer(orders,form.firma,form.pozycje.some(p=>p.isDrzwi)&&!form.pozycje.some(p=>!p.isDrzwi)))} 
                       onChange={e=>setNumerOverride(e.target.value)}
-                      placeholder={loading?"...":nextNumer(orders,form.firma)}
+                      placeholder={loading?"...":nextNumer(orders,form.firma,form.pozycje.some(p=>p.isDrzwi)&&!form.pozycje.some(p=>!p.isDrzwi))}
                       style={{background:"#0d1a0d",color:loading?"#4a6a4a":"#dfcf5f",fontWeight:800,fontSize:15}}
                       readOnly={loading}
                     />
