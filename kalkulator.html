@@ -591,14 +591,17 @@ function toMM(val, jednostka) {
 /* cena jednej pozycji */
 function calcRowPrice(r) {
   const szerMM = toMM(r.szer, r.jednostka);
-  const wysMM  = toMM(r.wys,  r.jednostka);
+  const wysMM = toMM(r.wys, r.jednostka);
   if (!szerMM || !wysMM) return 0;
 
+  // obwód w cm
   const obwodCM = (szerMM + wysMM) * 2 / 10;
-  const unitsPerPc = Math.ceil(obwodCM);     // jednostki na sztukę
-  const ilosc = parseInt(r.ilosc || 1, 10);  // ilość sztuk
 
-  return unitsPerPc * 3 * ilosc;             // 3 zł / jednostkę
+  // 1 jednostka = 10 cm obwodu
+  const units = Math.round(obwodCM / 10);
+
+  const ilosc = parseInt(r.ilosc || 1, 10);
+  return units * 3 * ilosc;
 }
 
 /* ==========================
@@ -631,15 +634,12 @@ function renderPrice() {
     const unitsTotal = unitsPerPc * ilosc;
     totalUnits += unitsTotal;
 
-    return `
-      <div class="price-row">
-        <span>
-          Okno ${idx + 1}: ${szerCM}×${wysCM} cm${ilosc > 1 ? `, ${ilosc} szt.` : ''}
-          – ${unitsTotal} jednostek
-        </span>
-        <span>${p.toFixed(2)} zł</span>
-      </div>
-    `;
+return `
+  <div class="price-row">
+    <span>Okno ${idx+1}: ${szerCM}×${wysCM} cm – ${units} jednostek</span>
+    <span>${p.toFixed(2)} zł</span>
+  </div>
+`;
   }).join('');
 
   document.getElementById('priceTotal').textContent =
