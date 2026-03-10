@@ -481,271 +481,140 @@
 </div>
 
 <script>
-// ═══════════════════════════════════════════════════
-// BRAND CONFIG
-// ═══════════════════════════════════════════════════
+/* ==========================
+   KONFIGURACJA BRANDÓW
+========================== */
+
 const BRANDS = {
   fav: {
-    name:    'Favour Magdalena Rudnicka',
-    display: 'Favour / Oktomo',
-    shortName: 'OKTOMO',
-    nip:     '522-23-17-450',
-    adres:   'ul. Obrońców Westerplatte 27a, 08-110 Siedlce',
-    prefix:  'FAV',
-    badge:   'FAVOUR',
-    color:   '#4CAF50',
-    kontoId: 'favo5',
-    kontoLabel: 'FA',
-    kontoBg:  '#2a5a3a',
-    kontoCol: '#7fcf7f'
-  },
-  str: {
-    name:    'Favour Magdalena Rudnicka',
-    display: 'Staroleska',
-    shortName: 'STAROLESKA',
-    nip:     '522-23-17-450',
-    adres:   'ul. Obrońców Westerplatte 27a, 08-110 Siedlce',
-    prefix:  'STR',
-    badge:   'STAROLESKA',
-    color:   '#26a69a',
-    kontoId: 'staroleska_pl',
-    kontoLabel: 'ST',
-    kontoBg:  '#2a4a2a',
-    kontoCol: '#5abf7a'
+    name: 'Favour',
+    display: 'FAVOUR',
+    nip: 'PL...',
+    color: '#4CAF50',
+    kontoId: 'FAVOUR',
+    kontoBg: '#333',
+    kontoCol: '#fff',
+    kontoLabel: 'ALLEGRO',
   },
   arl: {
-    name:    'Arlis Piotr Rudnicki',
-    display: 'Arlis',
-    shortName: 'ARLIS',
-    nip:     '821-127-83-28',
-    adres:   'ul. Obrońców Westerplatte 27a, 08-110 Siedlce',
-    prefix:  'ARL',
-    badge:   'ARLIS',
-    color:   '#42a5f5',
-    kontoId: 'arlis_pl',
-    kontoLabel: 'AR',
-    kontoBg:  '#2a3a5a',
-    kontoCol: '#7abfdf'
+    name: 'Arlis',
+    display: 'ARLIS',
+    nip: 'PL...',
+    color: '#e67e22',
+    kontoId: 'ARLIS',
+    kontoBg: '#333',
+    kontoCol: '#fff',
+    kontoLabel: 'ALLEGRO',
   },
   alb: {
-    name:    'Albama Sp. z o.o.',
-    display: 'Albama',
-    shortName: 'ALBAMA',
-    nip:     '525-30-30-838',
-    adres:   'ul. Obrońców Westerplatte 27a, 08-110 Siedlce',
-    prefix:  'ALB',
-    badge:   'ALBAMA',
-    color:   '#ab47bc',
-    kontoId: 'albama_eu',
-    kontoLabel: 'AL',
-    kontoBg:  '#4a3a1a',
-    kontoCol: '#dfaf5a'
+    name: 'Albama',
+    display: 'ALBAMA',
+    nip: 'PL...',
+    color: '#3498db',
+    kontoId: 'ALBAMA',
+    kontoBg: '#333',
+    kontoCol: '#fff',
+    kontoLabel: 'ALLEGRO',
   },
   evr: {
-    name:    'Everis Sp. z o.o.',
-    display: 'Everis',
-    shortName: 'EVERIS',
-    nip:     '822-24-04-506',
-    adres:   'ul. Sosnowa 6, 05-300 Mińsk Mazowiecki',
-    prefix:  'EVR',
-    badge:   'EVERIS',
-    color:   '#ff7043',
-    kontoId: 'everis_pl',
-    kontoLabel: 'EV',
-    kontoBg:  '#3a2a5a',
-    kontoCol: '#af8fdf'
+    name: 'Everis',
+    display: 'EVERIS',
+    nip: 'PL...',
+    color: '#9b59b6',
+    kontoId: 'EVERIS',
+    kontoBg: '#333',
+    kontoCol: '#fff',
+    kontoLabel: 'ALLEGRO',
+  },
+  fav2: {
+    name: 'Favour',
+    display: 'FAVOUR',
+    nip: 'PL...',
+    color: '#4CAF50',
+    kontoId: 'FAVOUR',
+    kontoBg: '#333',
+    kontoCol: '#fff',
+    kontoLabel: 'ALLEGRO',
   }
 };
 
-const WORKER_URL  = 'https://allegro-autoresponder.favour-biuro.workers.dev';
-const WORKER_KEY  = 'kalkulator2025';
-const MAILTO_ADDR = 'favour.biuro@gmail.com';
+/* LINKI DO AUKCJI */
 
-// ── Detect brand ──
-const urlParams = new URLSearchParams(window.location.search);
-const brandKey  = (urlParams.get('brand') || 'fav').toLowerCase();
-const brand     = BRANDS[brandKey] || BRANDS.fav;
+const AUCTIONLINKS = {
+  fav: {
+    label: 'Favour Oktomo',
+    url: 'https://allegro.pl/oferta/moskitiera-okienna-ramkowa-na-wymiar-aluminium-siatka-owady-do-zlozenia-diy-18351348302'
+  },
+  arl: {
+    label: 'Arlis',
+    url: 'https://allegro.pl/oferta/moskitiera-okienna-drewnopodobna-na-wymiar-ramkowa-pcv-aluminium-diy-owady-18351573045'
+  },
+  alb: {
+    label: 'Albama',
+    url: ''
+  },
+  evr: {
+    label: 'Everis',
+    url: ''
+  },
+  fav2: {
+    label: 'Favour',
+    url: 'https://allegro.pl/oferta/moskitiera-okienna-ramkowa-na-wymiar-aluminium-siatka-owady-do-zlozenia-diy-18351348302'
+  }
+};
 
-// ── Apply brand ──
-document.title = 'Kalkulator Wyceny Moskitiery Okiennej — ' + brand.display;
-document.documentElement.style.setProperty('--accent', brand.color);
-// brand elements and badge — applied after DOM ready
-document.addEventListener('DOMContentLoaded', function() {
-  var bb = document.getElementById('brandBadge');
-  var bn = document.getElementById('brandName');
-  var bs = document.getElementById('brandSub');
-  if(bb) bb.style.display = 'none';
-  if(bn) bn.textContent  = 'Kalkulator Wyceny Moskitiery Okiennej';
-  if(bs) bs.style.display = 'none';
-  var el = document.getElementById('kontoBadgeLabel');
-  var et = document.getElementById('kontoBadgeText');
-  if(el){ el.textContent = brand.kontoId || brand.display; el.style.background = brand.kontoBg || '#333'; el.style.color = brand.kontoCol || '#fff'; }
-  if(et){ et.textContent = brand.kontoLabel || brandKey.slice(0,2).toUpperCase(); }
-});
+/* WORKER / MAIL */
 
+const WORKERURL = 'https://allegro-autoresponder.favour-biuro.workers.dev';
+const WORKERKEY = 'kalkulator2025';
+const MAILTOADDR = 'favour.biuro@gmail.com';
 
+/* ==========================
+   STAN
+========================== */
 
-// ═══════════════════════════════════════════════════
-// OPCJE KOLORÓW
-// ═══════════════════════════════════════════════════
-const KOLORY_PROFILU = [
-  'Biały',
-  'Antracyt',
-  'Brąz',
-  'Czarny',
-  'Złoty dąb',
-  'Orzech',
-  'Ciemny dąb',
-  'Winchester',
-  'Turner oak',
-  'Mahoń'
-];
-
-const KOLORY_SIATKI = ['Czarna', 'Szara'];
-
-// ═══════════════════════════════════════════════════
-// STAN
-// ═══════════════════════════════════════════════════
 let rows = [];
 let rowId = 0;
+let brandKey = 'fav';
+let brand = BRANDS.fav;
 
-function addRow() {
-  const id = ++rowId;
-  rows.push({
-    id, szer: '', wys: '', felc: '', jednostka: 'cm',
-    kolorProfilu: '', kolorSiatki: '', ilosc: 1
-  });
-  renderRows();
-}
+/* ==========================
+   POMOCNICZE
+========================== */
 
-function removeRow(id) {
-  if (rows.length === 1) return;
-  rows = rows.filter(r => r.id !== id);
-  renderRows();
-}
-
-function updateRow(id, field, val) {
-  const r = rows.find(r => r.id === id);
-  if (r) { r[field] = val; renderPrice(); }
-}
-
-function setKolorProfilu(id, kolor) {
-  updateRow(id, 'kolorProfilu', kolor);
-  renderRows();
-}
-
-function setKolorSiatki(id, kolor) {
-  updateRow(id, 'kolorSiatki', kolor);
-  renderRows();
-}
-
-// ── Render rows ──
-function renderRows() {
-  const list = document.getElementById('oknaList');
-  list.innerHTML = rows.map((r, idx) => `
-    <div class="okno-row">
-      <div class="okno-header">
-        <span class="okno-num">OKNO ${idx + 1}</span>
-        ${rows.length > 1 ? `<button class="btn-remove" onclick="removeRow(${r.id})">✕ Usuń</button>` : ''}
-      </div>
-
-      <div class="grid3" style="margin-bottom:10px">
-        <div>
-          <label>Szerokość (A)</label>
-          <input type="number" inputmode="decimal" min="1" value="${r.szer}"
-            placeholder="np. 80"
-            oninput="updateRow(${r.id},'szer',this.value)">
-        </div>
-        <div>
-          <label>Wysokość (B)</label>
-          <input type="number" inputmode="decimal" min="1" value="${r.wys}"
-            placeholder="np. 150"
-            oninput="updateRow(${r.id},'wys',this.value)">
-        </div>
-        <div>
-          <label>Felc C (opcj.)</label>
-          <input type="number" inputmode="decimal" min="0" value="${r.felc}"
-            placeholder="np. 10"
-            oninput="updateRow(${r.id},'felc',this.value)">
-        </div>
-      </div>
-
-      <div class="grid2" style="margin-bottom:10px">
-        <div>
-          <label>Jednostka</label>
-          <select onchange="updateRow(${r.id},'jednostka',this.value)">
-            <option value="cm" ${r.jednostka==='cm'?'selected':''}>cm</option>
-            <option value="mm" ${r.jednostka==='mm'?'selected':''}>mm</option>
-          </select>
-        </div>
-        <div>
-          <label>Ilość szt.</label>
-          <input type="number" inputmode="numeric" min="1" max="99" value="${r.ilosc}"
-            oninput="updateRow(${r.id},'ilosc',this.value)">
-        </div>
-      </div>
-
-      <div style="margin-bottom:10px">
-        <label>Kolor profilu / ramy</label>
-        <div class="color-grid">
-          ${KOLORY_PROFILU.map(k => `
-            <button class="color-btn ${r.kolorProfilu===k && r.kolorProfilu!==''?'active':''}"
-              onclick="setKolorProfilu(${r.id},'${k.replace(/'/g,'\\\'')}')">${k}</button>
-          `).join('')}
-        </div>
-      </div>
-
-      <div>
-        <label>Kolor siatki</label>
-        <div class="color-grid">
-          ${KOLORY_SIATKI.map(k => `
-            <button class="color-btn ${r.kolorSiatki===k && r.kolorSiatki!==''?'active':''}"
-              onclick="setKolorSiatki(${r.id},'${k}')">${k}</button>
-          `).join('')}
-        </div>
-      </div>
-    </div>
-  `).join('');
-  renderPrice();
-}
-
-// ═══════════════════════════════════════════════════
-// WYCENA  — 3 zł / 10cm obwodu
-// ═══════════════════════════════════════════════════
 function toMM(val, jednostka) {
-  const n = parseFloat(val) || 0;
+  const n = parseFloat(val || 0);
+  if (!n || n <= 0) return 0;
   return jednostka === 'mm' ? n : n * 10;
 }
 
+/* cena jednej pozycji */
 function calcRowPrice(r) {
   const szerMM = toMM(r.szer, r.jednostka);
   const wysMM  = toMM(r.wys,  r.jednostka);
   if (!szerMM || !wysMM) return 0;
 
-  const ilosc = parseInt(r.ilosc || 1, 10);
-
-  // obwód w cm
   const obwodCM = (szerMM + wysMM) * 2 / 10;
+  const unitsPerPc = Math.ceil(obwodCM);     // jednostki na sztukę
+  const ilosc = parseInt(r.ilosc || 1, 10);  // ilość sztuk
 
-  // jednostki dla 1 sztuki = cm obwodu
-  const unitsPerPc = obwodCM;
-
-  // zaokrąglenie „w górę” do pełnej liczby jednostek
-  const roundedUnitsPerPc = Math.ceil(unitsPerPc);
-
-  // 3 zł za jednostkę
-  const pricePerPc = roundedUnitsPerPc * 3;
-
-  // cena w zł dla wszystkich sztuk
-  return pricePerPc * ilosc;
+  return unitsPerPc * 3 * ilosc;             // 3 zł / jednostkę
 }
 
+/* ==========================
+   RENDER CENY
+========================== */
+
 function renderPrice() {
-  const rows = window.rows;
+  const list = Array.isArray(rows) ? rows : (window.rows || []);
+  if (!Array.isArray(rows)) {
+    rows = list;
+  }
+
   let total = 0;
   let totalUnits = 0;
 
-  const priceRows = rows.map((r, idx) => {
+  const priceRows = list.map((r, idx) => {
     const p = calcRowPrice(r);
     total += p;
 
@@ -757,7 +626,6 @@ function renderPrice() {
     const wysCM  = Math.round(wysMM / 10);
     const ilosc  = parseInt(r.ilosc || 1, 10);
 
-    // obwód w cm
     const obwodCM = (szerMM + wysMM) * 2 / 10;
     const unitsPerPc = Math.ceil(obwodCM);
     const unitsTotal = unitsPerPc * ilosc;
@@ -782,117 +650,261 @@ function renderPrice() {
   document.getElementById('priceRows').innerHTML = priceRows;
 }
 
-// ═══════════════════════════════════════════════════
-// NUMER ZLECENIA
-// ═══════════════════════════════════════════════════
+/* ==========================
+   RENDER WIERSZY
+========================== */
+
+function renderRows() {
+  const list = document.getElementById('oknaList');
+  list.innerHTML = rows.map((r, idx) => `
+    <div class="okno-row">
+      <div class="okno-header">
+        <span class="okno-num">OKNO ${idx + 1}</span>
+        ${rows.length > 1 ? `<button class="btn-remove" onclick="removeRow(${r.id})">Usuń</button>` : ''}
+      </div>
+      <div class="grid3" style="margin-bottom:10px">
+        <div>
+          <label>Szerokość A</label>
+          <input type="number" inputmode="decimal" min="1"
+                 value="${r.szer}"
+                 placeholder="np. 80"
+                 oninput="updateRow(${r.id}, 'szer', this.value)">
+        </div>
+        <div>
+          <label>Wysokość B</label>
+          <input type="number" inputmode="decimal" min="1"
+                 value="${r.wys}"
+                 placeholder="np. 150"
+                 oninput="updateRow(${r.id}, 'wys', this.value)">
+        </div>
+        <div>
+          <label>Felc C (opcjonalnie)</label>
+          <input type="number" inputmode="decimal" min="0"
+                 value="${r.felc}"
+                 placeholder="np. 10"
+                 oninput="updateRow(${r.id}, 'felc', this.value)">
+        </div>
+      </div>
+      <div class="grid2" style="margin-bottom:10px">
+        <div>
+          <label>Jednostka</label>
+          <select onchange="updateRow(${r.id}, 'jednostka', this.value)">
+            <option value="cm" ${r.jednostka === 'cm' ? 'selected' : ''}>cm</option>
+            <option value="mm" ${r.jednostka === 'mm' ? 'selected' : ''}>mm</option>
+          </select>
+        </div>
+        <div>
+          <label>Ilość szt.</label>
+          <input type="number" inputmode="numeric" min="1" max="99"
+                 value="${r.ilosc}"
+                 oninput="updateRow(${r.id}, 'ilosc', this.value)">
+        </div>
+      </div>
+      <div style="margin-bottom:10px">
+        <label>Kolor profilu (ramy)</label>
+        <div class="color-grid">
+          ${KOLORYPROFILU.map(k => `
+            <button class="color-btn ${r.kolorProfilu === k ? 'active' : ''}"
+                    onclick="setKolorProfilu(${r.id}, '${k.replace(/'/g, "\\'")}')">
+              ${k}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+      <div>
+        <label>Kolor siatki</label>
+        <div class="color-grid">
+          ${KOLORYSIATKI.map(k => `
+            <button class="color-btn ${r.kolorSiatki === k ? 'active' : ''}"
+                    onclick="setKolorSiatki(${r.id}, '${k.replace(/'/g, "\\'")}')">
+              ${k}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  renderPrice();
+}
+
+/* ==========================
+   OPERACJE NA WIERSZACH
+========================== */
+
+function addRow() {
+  const id = rowId++;
+  rows.push({
+    id,
+    szer: '',
+    wys: '',
+    felc: '',
+    jednostka: 'cm',
+    kolorProfilu: '',
+    kolorSiatki: '',
+    ilosc: 1
+  });
+  renderRows();
+}
+
+function removeRow(id) {
+  if (rows.length === 1) return;
+  rows = rows.filter(r => r.id !== id);
+  renderRows();
+}
+
+function updateRow(id, field, val) {
+  const r = rows.find(r => r.id === id);
+  if (r) {
+    r[field] = val;
+    renderPrice();
+  }
+}
+
+function setKolorProfilu(id, kolor) {
+  const r = rows.find(r => r.id === id);
+  if (r) {
+    r.kolorProfilu = kolor;
+    renderRows();
+  }
+}
+
+function setKolorSiatki(id, kolor) {
+  const r = rows.find(r => r.id === id);
+  if (r) {
+    r.kolorSiatki = kolor;
+    renderRows();
+  }
+}
+
+/* ==========================
+   NUMER ZLECENIA
+========================== */
+
 function genNumer() {
   const d   = new Date();
   const yy  = String(d.getFullYear()).slice(2);
-  const mm  = String(d.getMonth()+1).padStart(2,'0');
-  const dd  = String(d.getDate()).padStart(2,'0');
-  const rnd = String(Math.floor(1000+Math.random()*9000));
-  return `${brand.prefix}-${yy}${mm}${dd}-${rnd}`;
+  const mm  = String(d.getMonth() + 1).padStart(2, '0');
+  const dd  = String(d.getDate()).padStart(2, '0');
+  const rnd = String(Math.floor(1000 + Math.random() * 9000));
+  return `${brand.prefix || 'fav'}-${yy}${mm}${dd}-${rnd}`;
 }
 
-// ═══════════════════════════════════════════════════
-// WYSYŁANIE
-// ═══════════════════════════════════════════════════
+/* ==========================
+   ALERTY
+========================== */
+
+function showAlert(type, msg) {
+  const el = document.getElementById(type === 'error' ? 'alertError' : 'alertSuccess');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 4000);
+}
+
+/* ==========================
+   WYSYŁKA FORMULARZA
+========================== */
+
 async function sendForm() {
   const name  = document.getElementById('klientName').value.trim();
   const phone = document.getElementById('klientPhone').value.trim();
   const email = document.getElementById('klientEmail').value.trim();
   const notes = document.getElementById('klientNotes').value.trim();
 
-  // Walidacja
   if (!name)  { showAlert('error', 'Proszę podać imię i nazwisko.'); return; }
   if (!phone) { showAlert('error', 'Proszę podać numer telefonu.'); return; }
 
-  const validRows = rows.filter(r => toMM(r.szer,r.jednostka)>0 && toMM(r.wys,r.jednostka)>0);
+  const validRows = rows.filter(r =>
+    toMM(r.szer, r.jednostka) > 0 &&
+    toMM(r.wys,  r.jednostka) > 0
+  );
+
   if (validRows.length === 0) {
     showAlert('error', 'Proszę podać wymiary co najmniej jednego okna.');
     return;
   }
 
-  // Sprawdź czy wszystkie okna mają wypełnione kolory
   const errors = [];
   rows.forEach((r, idx) => {
-    if (toMM(r.szer,r.jednostka)<=0 || toMM(r.wys,r.jednostka)<=0) return;
+    if (toMM(r.szer, r.jednostka) === 0 || toMM(r.wys, r.jednostka) === 0) return;
     const missing = [];
     if (!r.kolorProfilu) missing.push('kolor profilu');
-    if (!r.kolorSiatki)  missing.push('kolor siatki');
-    if (missing.length > 0) errors.push('Okno ' + (idx+1) + ': brakuje ' + missing.join(' i '));
+    if (!r.kolorSiatki) missing.push('kolor siatki');
+    if (missing.length) errors.push(`Okno ${idx + 1}: brakuje ${missing.join(' i ')}`);
   });
-  if (errors.length > 0) {
-    showAlert('error', errors.join(' · '));
+
+  if (errors.length) {
+    showAlert('error', errors.join('\n'));
     return;
   }
 
   const btn = document.getElementById('btnSend');
   btn.disabled = true;
-  btn.textContent = '⏳ Wysyłanie...';
+  btn.textContent = 'Wysyłanie...';
 
   const orderNumber = genNumer();
+
   const pozycje = validRows.map(r => ({
-    szerokosc:    toMM(r.szer,r.jednostka),
-    wysokosc:     toMM(r.wys,r.jednostka),
-    felc:         toMM(r.felc,r.jednostka),
+    szerokosc: toMM(r.szer, r.jednostka),
+    wysokosc:  toMM(r.wys,  r.jednostka),
+    felc:      toMM(r.felc, r.jednostka),
     kolorProfilu: r.kolorProfilu,
     kolorSiatki:  r.kolorSiatki,
-    ilosc:        parseInt(r.ilosc)||1,
+    ilosc:        parseInt(r.ilosc || 1, 10),
     jednostka:    r.jednostka
   }));
 
   const payload = {
     orderNumber,
-    brand:       brandKey,
-    brandName:   brand.name,
-    brandDisplay:brand.display,
-    nip:         brand.nip,
-    klient:      { name, phone, email, notes },
+    brand: brandKey,
+    brandName: brand.name,
+    brandDisplay: brand.display,
+    nip: brand.nip,
+    klient: { name, phone, email, notes },
     pozycje,
-    podsumowanie:{
-      units: pozycje.reduce((a,p)=>a+p.ilosc,0),
-      cost:  rows.reduce((a,r)=>a+calcRowPrice(r),0)
+    podsumowanie: {
+      units: pozycje.reduce((a, p) => a + p.ilosc, 0),
+      cost: rows.reduce((a, r) => a + calcRowPrice(r), 0)
     }
   };
 
   let saved = false;
   try {
-    const resp = await fetch(WORKER_URL+'/kalkulator/order', {
-      method:  'POST',
-      headers: { 'Content-Type':'application/json', 'x-api-key': WORKER_KEY },
-      body:    JSON.stringify(payload)
+    const resp = await fetch(WORKERURL + '/kalkulator/order', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': WORKERKEY
+      },
+      body: JSON.stringify(payload)
     });
     if (resp.ok) saved = true;
-  } catch(e) {
-    console.warn('Worker niedostępny:', e);
+  } catch (e) {
+    console.warn('Worker niedostępny, e-mail fallback', e);
   }
 
-  if (saved) {
-    showConfirm(orderNumber);
-  } else {
-    // Fallback — mailto
+  if (!saved) {
     const body = encodeURIComponent(
-      'Numer zapytania: ' + orderNumber + '\n' +
-      'Imię i nazwisko: ' + name + '\n' +
-      'Telefon: ' + phone + '\n' +
-      (email ? 'E-mail: ' + email + '\n' : '') +
-      '\nWymiary:\n' + validRows.map((r,i)=>{
-        const s = toMM(r.szer,r.jednostka)/10;
-        const h = toMM(r.wys,r.jednostka)/10;
-        return `${i+1}. ${s}×${h} cm | ${r.kolorProfilu} | siatka: ${r.kolorSiatki} | ${r.ilosc} szt.`;
+      `Numer zapytania: ${orderNumber}\n\n` +
+      `Imię i nazwisko: ${name}\nTelefon: ${phone}\n` +
+      (email ? `E-mail: ${email}\n` : '') +
+      '\nPozycje:\n' +
+      validRows.map((r, i) => {
+        const s = toMM(r.szer, r.jednostka)/10;
+        const h = toMM(r.wys,  r.jednostka)/10;
+        return `${i+1}. ${s}×${h} cm, ${r.kolorProfilu}, siatka ${r.kolorSiatki}, ${r.ilosc} szt.`;
       }).join('\n') +
-      (notes ? '\n\nUwagi: ' + notes : '') +
-      '\n\nBrand: ' + brand.display + ' (' + brand.nip + ')'
+      (notes ? `\n\nUwagi: ${notes}` : '')
     );
-    window.location.href = 'mailto:' + MAILTO_ADDR +
-      '?subject=' + encodeURIComponent('Zapytanie moskitiery ' + orderNumber) +
-      '&body=' + body;
-    showConfirm(orderNumber);
+    window.location.href =
+      `mailto:${MAILTOADDR}?subject=` +
+      encodeURIComponent(`Zapytanie moskitiery ${orderNumber}`) +
+      `&body=${body}`;
   }
 
+  showConfirm(orderNumber);
   btn.disabled = false;
-  btn.textContent = '📨 Wyślij zapytanie o wycenę';
+  btn.textContent = 'Wyślij zapytanie o wycenę';
 }
 
 function showConfirm(num) {
@@ -911,33 +923,12 @@ function resetForm() {
   document.getElementById('klientEmail').value = '';
   document.getElementById('klientNotes').value = '';
   addRow();
+  renderPrice();
 }
 
-function showAlert(type, msg) {
-  const el = document.getElementById(type==='error'?'alertError':'alertSuccess');
-  el.textContent = msg;
-  el.classList.add('show');
-  setTimeout(()=>el.classList.remove('show'), 4000);
-}
-
-
-// ── Instrukcja toggle ──
-function toggleInstr() {
-  const b = document.getElementById('instrBody');
-  const a = document.getElementById('instrArrow');
-  const open = b.style.display === 'block';
-  b.style.display = open ? 'none' : 'block';
-  a.textContent = open ? '▼' : '▲';
-}
-
-// ── Linki do aukcji wg brandu ──
-const AUCTION_LINKS = {
-  fav: { label: 'Favour / Oktomo', url: 'https://allegro.pl/oferta/moskitiera-okienna-ramkowa-na-wymiar-aluminium-siatka-owady-do-zlozenia-diy-18351348302' },
-  str: { label: 'Staroleska',      url: '' },
-  arl: { label: 'Arlis',           url: 'https://allegro.pl/oferta/moskitiera-okienna-drewnopodobna-na-wymiar-ramkowa-pcv-aluminium-diy-owady-18351573045' },
-  alb: { label: 'Albama',          url: '' },
-  evr: { label: 'Everis',          url: '' },
-};
+/* ==========================
+   BRAND, AUKCJA, MOTYW
+========================== */
 
 function initAuctionLink() {
   const al   = document.getElementById('auctionLink');
@@ -945,7 +936,7 @@ function initAuctionLink() {
   const info = AUCTIONLINKS[brandKey];
 
   if (!info || !info.url) {
-    card.style.display = 'none'; // ukryj jeśli brak linku
+    card.style.display = 'none';
     return;
   }
 
@@ -967,33 +958,78 @@ function initAuctionLink() {
   `;
 }
 
-// ── Tryb jasny/ciemny ──
 function toggleTheme() {
   const body = document.body;
-  const btn = document.getElementById('themeBtn');
+  const btn  = document.getElementById('themeBtn');
   if (body.classList.contains('light')) {
     body.classList.remove('light');
-    btn.textContent = '☀️ Jasny';
-    localStorage.setItem('theme','dark');
+    if (btn) btn.textContent = '☀️ Jasny';
+    localStorage.setItem('theme', 'dark');
   } else {
     body.classList.add('light');
-    btn.textContent = '🌙 Ciemny';
-    localStorage.setItem('theme','light');
+    if (btn) btn.textContent = '🌙 Ciemny';
+    localStorage.setItem('theme', 'light');
   }
 }
-// Przywróć zapisany tryb
-(function() {
-  if (localStorage.getItem('theme') === 'light') {
+
+function initTheme() {
+  const t = localStorage.getItem('theme');
+  const btn = document.getElementById('themeBtn');
+  if (t === 'light') {
     document.body.classList.add('light');
-    const btn = document.getElementById('themeBtn');
     if (btn) btn.textContent = '🌙 Ciemny';
+  } else if (btn) {
+    btn.textContent = '☀️ Jasny';
   }
-})();
+}
 
-// ── Init ──
-addRow();
+document.addEventListener('DOMContentLoaded', () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  brandKey = (urlParams.get('brand') || 'fav').toLowerCase();
+  brand = BRANDS[brandKey] || BRANDS.fav;
 
-// ── Konto badge — init w DOMContentLoaded powyżej ──
+  document.title = 'Kalkulator Wyceny Moskitiery Okiennej – ' + brand.display;
+  document.documentElement.style.setProperty('--accent', brand.color);
+
+  const bb = document.getElementById('brandBadge');
+  const bn = document.getElementById('brandName');
+  const bs = document.getElementById('brandSub');
+
+  if (bb) {
+    bb.style.display = 'inline-block';
+    bb.textContent = brand.display;
+  }
+  if (bn) bn.textContent = 'Kalkulator Wyceny Moskitiery Okiennej';
+  if (bs) bs.textContent = '';
+
+  const el = document.getElementById('kontoBadgeLabel');
+  const et = document.getElementById('kontoBadgeText');
+  if (el) {
+    el.textContent = brand.kontoId;
+    el.style.background = brand.kontoBg || '#333';
+    el.style.color = brand.kontoCol || '#fff';
+  }
+  if (et) {
+    et.textContent = brand.kontoLabel || brandKey.slice(0, 2).toUpperCase();
+  }
+
+  initTheme();
+  addRow();
+  renderPrice();
+  initAuctionLink();
+});
+
+/* KOLORY */
+
+const KOLORYPROFILU = [
+  'Biały','Antracyt','Brąz','Czarny',
+  'Złoty dąb','Orzech','Ciemny dąb',
+  'Winchester','Turner oak','Mahoń'
+];
+
+const KOLORYSIATKI = [
+  'Czarna','Szara'
+];
 </script>
 </body>
 </html>
