@@ -636,7 +636,9 @@ function renderPrice() {
 
 return `
   <div class="price-row">
-    <span>Okno ${idx+1}: ${szerCM}×${wysCM} cm – ${units} jednostek</span>
+    <span>
+      Okno ${idx + 1}: ${szerCM}×${wysCM} cm, ${ilosc} szt. (${unitsTotal} jedn.)
+    </span>
     <span>${p.toFixed(2)} zł</span>
   </div>
 `;
