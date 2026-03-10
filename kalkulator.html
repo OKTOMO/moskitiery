@@ -721,8 +721,23 @@ function calcRowPrice(r) {
   const szerMM = toMM(r.szer, r.jednostka);
   const wysMM  = toMM(r.wys,  r.jednostka);
   if (!szerMM || !wysMM) return 0;
+
+  const ilosc = parseInt(r.ilosc || 1, 10);
+
+  // obwód w cm
   const obwodCM = (szerMM + wysMM) * 2 / 10;
-  return Math.round(obwodCM / 10 * 3 * 100) / 100 * (parseInt(r.ilosc) || 1);
+
+  // jednostki dla 1 sztuki wg przelicznika (3 zł za 10 cm obwodu)
+  const unitsPerPc = obwodCM * 3 / 10;
+
+  // zaokrąglenie „w górę” do pełnej liczby jednostek
+  const roundedUnitsPerPc = Math.ceil(unitsPerPc);
+
+  // 3 zł za jednostkę
+  const pricePerPc = roundedUnitsPerPc * 3;
+
+  // cena w zł dla wszystkich sztuk
+  return pricePerPc * ilosc;
 }
 
 function renderPrice() {
@@ -905,17 +920,33 @@ const AUCTION_LINKS = {
   evr: { label: 'Everis',          url: '' },
 };
 
-(function initAuctionLink() {
-  const al = document.getElementById('auctionLink');
+function initAuctionLink() {
+  const al   = document.getElementById('auctionLink');
   const card = document.getElementById('auctionCard');
-  const info = AUCTION_LINKS[brandKey];
+  const info = AUCTIONLINKS[brandKey];
+
   if (!info || !info.url) {
     card.style.display = 'none'; // ukryj jeśli brak linku
     return;
   }
-  al.innerHTML = '<a href="' + info.url + '" target="_blank" style="display:inline-block;background:var(--accent);color:#000;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:800;font-size:15px">🛒 Przejdź do aukcji Allegro</a>';
-})();
 
+  al.innerHTML = `
+    <a href="${info.url}"
+       target="_blank"
+       style="
+         display:inline-block;
+         background:var(--accent);
+         color:#000;
+         padding:12px 28px;
+         border-radius:10px;
+         text-decoration:none;
+         font-weight:800;
+         font-size:15px;
+       ">
+      Wróć do aukcji Allegro
+    </a>
+  `;
+}
 
 // ── Tryb jasny/ciemny ──
 function toggleTheme() {
