@@ -727,8 +727,8 @@ function calcRowPrice(r) {
   // obwód w cm
   const obwodCM = (szerMM + wysMM) * 2 / 10;
 
-  // jednostki dla 1 sztuki wg przelicznika (3 zł za 10 cm obwodu)
-  const unitsPerPc = obwodCM * 3 / 10;
+  // jednostki dla 1 sztuki = cm obwodu
+  const unitsPerPc = obwodCM;
 
   // zaokrąglenie „w górę” do pełnej liczby jednostek
   const roundedUnitsPerPc = Math.ceil(unitsPerPc);
