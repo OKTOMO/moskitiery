@@ -741,25 +741,44 @@ function calcRowPrice(r) {
 }
 
 function renderPrice() {
-  const rows_ = rows;
+  const rows = window.rows;
   let total = 0;
-  const priceRows = rows_.map((r, idx) => {
+  let totalUnits = 0;
+
+  const priceRows = rows.map((r, idx) => {
     const p = calcRowPrice(r);
     total += p;
+
     const szerMM = toMM(r.szer, r.jednostka);
     const wysMM  = toMM(r.wys,  r.jednostka);
     if (!szerMM || !wysMM) return '';
-    const szerCM = Math.round(szerMM/10);
-    const wysCM  = Math.round(wysMM/10);
-    const ilosc  = parseInt(r.ilosc) || 1;
-    return `<div class="price-row">
-      <span>Okno ${idx+1}: ${szerCM}×${wysCM} cm ${ilosc > 1 ? '× '+ilosc : ''}</span>
-      <span>${p.toFixed(2)} zł</span>
-    </div>`;
+
+    const szerCM = Math.round(szerMM / 10);
+    const wysCM  = Math.round(wysMM / 10);
+    const ilosc  = parseInt(r.ilosc || 1, 10);
+
+    // obwód w cm
+    const obwodCM = (szerMM + wysMM) * 2 / 10;
+    const unitsPerPc = Math.ceil(obwodCM);
+    const unitsTotal = unitsPerPc * ilosc;
+    totalUnits += unitsTotal;
+
+    return `
+      <div class="price-row">
+        <span>
+          Okno ${idx + 1}: ${szerCM}×${wysCM} cm${ilosc > 1 ? `, ${ilosc} szt.` : ''}
+          – ${unitsTotal} jednostek
+        </span>
+        <span>${p.toFixed(2)} zł</span>
+      </div>
+    `;
   }).join('');
 
   document.getElementById('priceTotal').textContent =
-    total > 0 ? total.toFixed(2).replace('.',',') + ' zł' : '—';
+    total === 0
+      ? '0,00 zł'
+      : `${total.toFixed(2).replace('.', ',')} zł (${totalUnits} jednostek)`;
+
   document.getElementById('priceRows').innerHTML = priceRows;
 }
 
