@@ -630,7 +630,7 @@ function renderPrice() {
     const ilosc  = parseInt(r.ilosc || 1, 10);
 
     const obwodCM = (szerMM + wysMM) * 2 / 10;
-    const unitsPerPc = Math.ceil(obwodCM);
+    const unitsPerPc = Math.ceil(obwodCM / 10);
     const unitsTotal = unitsPerPc * ilosc;
     totalUnits += unitsTotal;
 
