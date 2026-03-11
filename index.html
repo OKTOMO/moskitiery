@@ -1512,8 +1512,8 @@ function App() {
     const _hasDrzwi=form.pozycje.some(p=>p.isDrzwi);
     const _hasOkna=form.pozycje.some(p=>!p.isDrzwi);
     // Jeśli TYLKO drzwi → prefix D. Mieszane lub tylko okna → bez prefiksu
-    // Jeśli formularz ma JAKIEKOLWIEK drzwi → numer drzwiowy D*.xx FIRMA
-    const _isDrzwi=_hasDrzwi;
+    // Jeśli formularz ma drzwi LUB tryb parsowania to drzwi → numer drzwiowy D*.xx FIRMA
+    const _isDrzwi=_hasDrzwi||parseTyp==="drzwi";
     const numer=numerOverride||nextNumer(orders,form.firma,_isDrzwi);
     const order={
       id:Date.now(), numerZlecenia:numer, firma:form.firma, data:form.data,
@@ -2033,13 +2033,14 @@ function App() {
                   </div>
                   <div>
                     <span className="lbl">Nr zlecenia</span>
+                    {(()=>{const _drzwi=form.pozycje.some(p=>p.isDrzwi)||parseTyp==="drzwi"; return (
                     <input
-                      value={numerOverride||(loading?"ładowanie...":nextNumer(orders,form.firma,form.pozycje.some(p=>p.isDrzwi)))}
+                      value={numerOverride||(loading?"ładowanie...":nextNumer(orders,form.firma,_drzwi))}
                       onChange={e=>setNumerOverride(e.target.value)}
-                      placeholder={loading?"...":nextNumer(orders,form.firma,form.pozycje.some(p=>p.isDrzwi))}
-                      style={{background:"#0d1a0d",color:loading?"#4a6a4a":form.pozycje.some(p=>p.isDrzwi)?"#90b8df":"#dfcf5f",fontWeight:800,fontSize:15}}
+                      placeholder={loading?"...":nextNumer(orders,form.firma,_drzwi)}
+                      style={{background:"#0d1a0d",color:loading?"#4a6a4a":_drzwi?"#90b8df":"#dfcf5f",fontWeight:800,fontSize:15}}
                       readOnly={loading}
-                    />
+                    />);})()}
                     {numerOverride&&<span style={{fontSize:10,color:"#6a8a6a",cursor:"pointer"}} onClick={()=>setNumerOverride("")}>↩ reset do auto</span>}
                     {kalNumerForForm&&<div style={{marginTop:4,display:'flex',alignItems:'center',gap:6}}>
                       <span style={{fontSize:11,background:'rgba(76,175,80,.12)',border:'1px solid rgba(76,175,80,.3)',color:'#7fcf9f',borderRadius:4,padding:'2px 7px',fontFamily:'monospace',letterSpacing:'.05em'}}>📨 {kalNumerForForm}</span>
