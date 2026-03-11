@@ -286,15 +286,15 @@ function obliczDrzwi(pozycje){
     const s=parseFloat(p.szerokosc)||0, w=parseFloat(p.wysokosc)||0, il=parseInt(p.ilosc)||1;
     if(!s||!w) return;
     const sP=s+4, wP=w+4;
-    profilMb += ((sP*2+wP*2)*1,06/100)*il;
+    profilMb += ((sP*2+wP*2)*1.06/100)*il;
     narozniki += 4*il;
     if(p.poprzeczka){ poprzeczki+=il; uchwyty+=2*il; }
     zawiasy += 2*il;
     samodomykajace += (parseInt(p.samodomykajacyL)||0) + (parseInt(p.samodomykajacyP)||0);
     magnesy += 3*il;
     klamki += 2*il;
-    uszczelkaMb += ((2*sP+2*wP)*1.1/100))*il;
-    szczotkaMb += ((2*sP+2*wP)*1.1/100))*il;
+    uszczelkaMb += ((sP*2+wP*2)*1.1/100)*il;
+    szczotkaMb += ((sP*2+wP*2)*1.1/100)*il;
     kartony += il;
     radelka += il;
     instrukcje += il;
