@@ -530,15 +530,15 @@ const BRANDS = {
     kontoCol: '#fff',
     kontoLabel: 'ALLEGRO',
   },
-  fav2: {
-    name: 'Favour',
-    display: 'FAVOUR',
-    prefix: 'fav2',
+  sta: {
+    name: 'Staroleska',
+    display: 'STAROLESKA',
+    prefix: 'sta',
     nip: 'PL...',
-    color: '#4CAF50',
-    kontoId: 'FAVOUR',
-    kontoBg: '#333',
-    kontoCol: '#fff',
+    color: '#1abc9c',
+    kontoId: 'STAROLESKA',
+    kontoBg: '#0d3d30',
+    kontoCol: '#1abc9c',
     kontoLabel: 'ALLEGRO',
   }
 };
@@ -562,9 +562,9 @@ const AUCTIONLINKS = {
     label: 'Everis',
     url: ''
   },
-  fav2: {
-    label: 'Favour',
-    url: 'https://allegro.pl/oferta/moskitiera-okienna-ramkowa-na-wymiar-aluminium-siatka-owady-do-zlozenia-diy-18351348302'
+  sta: {
+    label: 'Staroleska',
+    url: ''  // wstaw link do aukcji staroleska_pl jeśli masz
   }
 };
 
@@ -991,7 +991,17 @@ function initTheme() {
 
 document.addEventListener('DOMContentLoaded', () => {
   const urlParams = new URLSearchParams(window.location.search);
-  brandKey = (urlParams.get('brand') || 'fav').toLowerCase();
+  const brandFromUrl = (urlParams.get('brand') || '').toLowerCase();
+
+  if (brandFromUrl && BRANDS[brandFromUrl]) {
+    // Klient przyszedł z linku aukcji — zapisz brand w localStorage
+    brandKey = brandFromUrl;
+    localStorage.setItem('kalk_brand', brandKey);
+  } else {
+    // Klient wrócił bezpośrednio (zakładka, historia) — odczytaj zapamiętany brand
+    const saved = localStorage.getItem('kalk_brand');
+    brandKey = (saved && BRANDS[saved]) ? saved : 'fav';
+  }
   brand = BRANDS[brandKey] || BRANDS.fav;
 
   document.title = 'Kalkulator Wyceny Moskitiery Okiennej – ' + brand.display;
