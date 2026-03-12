@@ -68,7 +68,7 @@ const KOLORY_RAMKI = ["Biały","Czarny","Antracyt","Brąz","Złoty Dąb","Winche
 const KOLORY_SIATKI = ["Czarna","Szara"];
 const PROFIL_GLEBOKOS = 9;
 const BLASZKI_ROZMIARY = [0,3,5,7,9,12,15,18,20,22,25];
-const DOMYSLNA_GLEBOKOS = 12;
+const DOMYSLNA_GLEBOKOS = 20;
 const STORAGE_KEY = "mosk_orders";
 const FIRMY = [{kod:"F",nazwa:"Favour"},{kod:"AR",nazwa:"Arlis"},{kod:"E",nazwa:"Everis"},{kod:"AP",nazwa:"Albama"}];
 const AUTORESPONDER_URL = "https://allegro-autoresponder.favour-biuro.workers.dev";
@@ -262,6 +262,7 @@ WAŻNE:
 - klientImie = PEŁNE imię i nazwisko klienta w formacie: Nazwisko Imię (np. "Kowalski Jan"). Jeśli w wiadomości jest tylko jedno słowo — wpisz je. Nigdy nie pomijaj nazwiska jeśli jest podane.
 - Z adresu wyciągnij: klientUlica (ulica + nr domu), klientKod (XX-XXX), klientMiasto (miejscowość)
 - WYMIARY: szerokosc zawsze mniejsza wartość, wysokosc zawsze większa. Np. klient podał "214 x 81,5" → szerokosc=81.5, wysokosc=214. Dotyczy zarówno okien jak i drzwi.
+- IGNORUJ NOTATKI CENOWE: frazy w nawiasach zawierające słowa "jednostek", "wg kalkulatora", "kalkulator", "jedn." itp. to adnotacje wewnętrzne sprzedawcy — CAŁKOWICIE IGNORUJ zawarte w nich liczby przy parsowaniu ilosc. Przykład: "(Ilosc jednostek wg kalkulatora 45)" → ilosc=1 (lub wg rzeczywistej ilości sztuk z reszty tekstu), NIE 45.
 
 WIADOMOŚĆ OD KLIENTA:
 ${msg||"(brak)"}
