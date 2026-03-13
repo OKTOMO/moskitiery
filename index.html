@@ -250,9 +250,27 @@ Pozostałe pola:
 
 KOLORY RAMKI (tylko z tej listy):
 Biały, Czarny, Antracyt, Brąz, Złoty Dąb, Winchester, Orzech, Ciemny Dąb, Mahoń, Turner Oak
+
+MAPOWANIE NUMERÓW KOLORÓW (klienci często podają numer z katalogu):
+- nr 1 / kolor 1 → Biały (RAL 9016)
+- nr 2 / kolor 2 → Brąz (RAL 8019)
+- nr 3 / kolor 3 → Antracyt (RAL 7016)
+- nr 4 / kolor 4 → Czarny (RAL 9005)
+- nr 5 / kolor 5 → Złoty Dąb
+- nr 6 / kolor 6 → Ciemny Dąb
+- nr 7 / kolor 7 → Turner Oak
+- nr 8 / kolor 8 → Orzech
+- nr 9 / kolor 9 → Winchester
+- nr 10 / kolor 10 → Mahoń
+
+DODATKOWE ALIASY:
 - "Woodeck", "Turner", "Turner/Woodeck" → Turner Oak
 - "RAL 7016", "Antracyt RAL 7016", "grafitowy" → Antracyt
+- "RAL 8019" → Brąz
+- "RAL 9016" → Biały
+- "RAL 9005" → Czarny
 - "Winch" → Winchester
+- "str. drewna", "struktura drewna" — to oznaczenie faktury, NIE kolor — zignoruj, weź tylko nazwę koloru
 - Jeśli nie rozpoznajesz → Antracyt (domyślny)
 
 KOLOR SIATKI: Czarna lub Szara (domyślnie Czarna)
@@ -3293,7 +3311,7 @@ function App() {
                   <span style={{flex:1,fontFamily:'monospace',fontSize:12,color:'var(--text3)'}}>{b.url}</span>
                   <button onClick={()=>navigator.clipboard?.writeText(b.url)}
                     style={{padding:'4px 10px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text)',borderRadius:5,cursor:'pointer',fontSize:11}}>📋 kopiuj</button>
-                  <a href={'https://oktomo.github.io/moskitiery/kalkulator.html?brand='+b.key} target="_blank"
+                  <a href={'https://'+b.url} target="_blank"
                     style={{padding:'4px 10px',background:b.color,color:'#000',borderRadius:5,cursor:'pointer',fontSize:11,textDecoration:'none',fontWeight:700}}>otwórz ↗</a>
                 </div>
               ))}
@@ -3337,7 +3355,7 @@ function App() {
               )}
             </div>
             <div style={{color:'var(--accent)',fontWeight:'bold',fontSize:'12px',marginBottom:8,letterSpacing:'.1em'}}>PODGLĄD — FAVOUR / OKTOMO</div>
-            <iframe src="https://oktomo.github.io/moskitiery/kalkulator.html?brand=fav" style={{width:'100%',height:'680px',border:'none',borderRadius:8,display:'block'}} title="Kalkulator Favour"/>
+            <iframe src="https://kalkulator.oktomo.pl" style={{width:'100%',height:'680px',border:'none',borderRadius:8,display:'block'}} title="Kalkulator Favour"/>
           </div>
         )}
         {/* ── FAKTURY ── */}
