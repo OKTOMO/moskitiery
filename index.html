@@ -3300,25 +3300,28 @@ function App() {
               <div style={{color:'var(--accent)',fontWeight:'bold',marginBottom:'10px',fontSize:'13px'}}>KALKULATORY — LINKI DO AUKCJI</div>
               <div style={{fontSize:'12px',color:'var(--text3)',marginBottom:'10px'}}>Wklej do opisu aukcji jako tekst (Allegro blokuje aktywne linki):</div>
               {[
-                {key:'fav', label:'Favour / Oktomo', url:'kalkulator.oktomo.pl',     color:'#4CAF50'},
-                {key:'str', label:'Staroleska',       url:'kalkulator.staroleska.pl', color:'#26a69a'},
-                {key:'arl', label:'Arlis',             url:'kalkulator.arlis.pl',     color:'#42a5f5'},
-                {key:'alb', label:'Albama',            url:'kalkulator.albama.pl',    color:'#ab47bc'},
-                {key:'evr', label:'Everis',            url:'kalkulator.everis.pl',    color:'#ff7043'},
+                {[
+                {key:'fav', label:'Favour / Oktomo', url:'kalkulator.oktomo.pl',     color:'#4CAF50', direct:'https://kalkulator.oktomo.pl/kalkulator.html?brand=fav&qr=1'},
+                {key:'str', label:'Staroleska',       url:'kalkulator.staroleska.pl', color:'#26a69a', direct:'https://kalkulator.staroleska.pl/kalkulator.html?brand=sta&qr=1'},
+                {key:'arl', label:'Arlis',             url:'kalkulator.arlis.pl',     color:'#42a5f5', direct:'https://kalkulator.arlis.pl/kalkulator.html?brand=arl&qr=1'},
+                {key:'alb', label:'Albama',            url:'kalkulator.albama.pl',    color:'#ab47bc', direct:'https://kalkulator.albama.pl/kalkulator.html?brand=alb&qr=1'},
+                {key:'evr', label:'Everis',            url:'kalkulator.everis.pl',    color:'#ff7043', direct:'https://kalkulator.everis.pl/kalkulator.html?brand=evr&qr=1'},
               ].map(b=>(
-                <div key={b.key} style={{display:'flex',alignItems:'center',gap:8,marginBottom:6,background:'var(--bg)',borderRadius:6,padding:'8px 12px',border:'1px solid var(--border)'}}>
-                  <span style={{minWidth:130,fontWeight:700,fontSize:13,color:b.color}}>{b.label}</span>
-                  <span style={{flex:1,fontFamily:'monospace',fontSize:12,color:'var(--text3)'}}>{b.url}</span>
-                  <button onClick={()=>navigator.clipboard?.writeText(b.url)}
-                    style={{padding:'4px 10px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text)',borderRadius:5,cursor:'pointer',fontSize:11}}>📋 kopiuj</button>
-                  <a href={'https://'+b.url} target="_blank"
-                    style={{padding:'4px 10px',background:b.color,color:'#000',borderRadius:5,cursor:'pointer',fontSize:11,textDecoration:'none',fontWeight:700}}>otwórz ↗</a>
-                  <a href={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${{encodeURIComponent({'fav':'https://kalkulator.oktomo.pl/kalkulator.html?brand=fav&qr=1','str':'https://kalkulator.staroleska.pl/kalkulator.html?brand=sta&qr=1','arl':'https://kalkulator.arlis.pl/kalkulator.html?brand=arl&qr=1','alb':'https://kalkulator.albama.pl/kalkulator.html?brand=alb&qr=1','evr':'https://kalkulator.everis.pl/kalkulator.html?brand=evr&qr=1'}[b.key]||('https://'+b.url+'/kalkulator.html?brand='+b.key+'&qr=1'))}}`} download={'QR_'+b.key+'.png'} target="_blank"
-                    style={{padding:'4px 10px',background:'#333',color:'#fff',borderRadius:5,cursor:'pointer',fontSize:11,textDecoration:'none',fontWeight:700}}>QR ↓</a>
-                </div>
-                <div style={{textAlign:'center',padding:'6px 0 2px'}}>
-                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${{encodeURIComponent({'fav':'https://kalkulator.oktomo.pl/kalkulator.html?brand=fav&qr=1','str':'https://kalkulator.staroleska.pl/kalkulator.html?brand=sta&qr=1','arl':'https://kalkulator.arlis.pl/kalkulator.html?brand=arl&qr=1','alb':'https://kalkulator.albama.pl/kalkulator.html?brand=alb&qr=1','evr':'https://kalkulator.everis.pl/kalkulator.html?brand=evr&qr=1'}[b.key]||('https://'+b.url+'/kalkulator.html?brand='+b.key+'&qr=1'))}}`} alt={'QR '+b.label} style={{width:80,height:80,borderRadius:4,border:'2px solid '+b.color,display:'block',margin:'0 auto 4px'}}/>
-                  <div style={{fontSize:10,color:'var(--text3)',fontFamily:'monospace'}}>{({'fav':'kalkulator.oktomo.pl','str':'kalkulator.staroleska.pl','arl':'kalkulator.arlis.pl','alb':'kalkulator.albama.pl','evr':'kalkulator.everis.pl'}[b.key]||b.url)+'/kalkulator.html?brand='+b.key+'&qr=1'}</div>
+                <div key={b.key} style={{display:'flex',flexDirection:'column',marginBottom:8,background:'var(--bg)',borderRadius:6,border:'1px solid var(--border)'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 12px'}}>
+                    <span style={{minWidth:130,fontWeight:700,fontSize:13,color:b.color}}>{b.label}</span>
+                    <span style={{flex:1,fontFamily:'monospace',fontSize:12,color:'var(--text3)'}}>{b.url}</span>
+                    <button onClick={()=>navigator.clipboard?.writeText(b.url)}
+                      style={{padding:'4px 10px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text)',borderRadius:5,cursor:'pointer',fontSize:11}}>📋 kopiuj</button>
+                    <a href={'https://'+b.url} target="_blank"
+                      style={{padding:'4px 10px',background:b.color,color:'#000',borderRadius:5,cursor:'pointer',fontSize:11,textDecoration:'none',fontWeight:700}}>otwórz ↗</a>
+                    <a href={'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(b.direct)} download={'QR_'+b.key+'.png'} target="_blank"
+                      style={{padding:'4px 10px',background:'#333',color:'#fff',borderRadius:5,cursor:'pointer',fontSize:11,textDecoration:'none',fontWeight:700}}>QR ↓</a>
+                  </div>
+                  <div style={{textAlign:'center',padding:'4px 12px 10px'}}>
+                    <img src={'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data='+encodeURIComponent(b.direct)} alt={'QR '+b.label} style={{width:80,height:80,borderRadius:4,border:'2px solid '+b.color,display:'block',margin:'0 auto 4px'}}/>
+                    <div style={{fontSize:10,color:'var(--text3)',fontFamily:'monospace'}}>{b.direct}</div>
+                  </div>
                 </div>
               ))}
             </div>
