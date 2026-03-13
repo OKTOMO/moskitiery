@@ -3313,6 +3313,12 @@ function App() {
                     style={{padding:'4px 10px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text)',borderRadius:5,cursor:'pointer',fontSize:11}}>📋 kopiuj</button>
                   <a href={'https://'+b.url} target="_blank"
                     style={{padding:'4px 10px',background:b.color,color:'#000',borderRadius:5,cursor:'pointer',fontSize:11,textDecoration:'none',fontWeight:700}}>otwórz ↗</a>
+                  <a href={'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent('https://'+b.url+'?qr=1')} download={'QR_'+b.key+'.png'} target="_blank"
+                    style={{padding:'4px 10px',background:'#333',color:'#fff',borderRadius:5,cursor:'pointer',fontSize:11,textDecoration:'none',fontWeight:700}}>QR ↓</a>
+                </div>
+                <div style={{textAlign:'center',padding:'6px 0 2px'}}>
+                  <img src={'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data='+encodeURIComponent('https://'+b.url+'?qr=1')} alt={'QR '+b.label} style={{width:80,height:80,borderRadius:4,border:'2px solid '+b.color,display:'block',margin:'0 auto 4px'}}/>
+                  <div style={{fontSize:10,color:'var(--text3)',fontFamily:'monospace'}}>{b.url}?qr=1</div>
                 </div>
               ))}
             </div>
