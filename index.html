@@ -3427,74 +3427,108 @@ function App() {
         )}
 
             {tab==="kalk" && (
-          <div style={{padding:'16px'}}>
+          <div style={{padding:'12px'}}>
+
+            {/* WYSZUKAJ WYCENĘ — PIERWSZA */}
             <div style={{background:'var(--surface)',borderRadius:8,padding:'14px',border:'1px solid var(--border)',marginBottom:'12px'}}>
-              <div style={{color:'var(--accent)',fontWeight:'bold',marginBottom:'10px',fontSize:'13px'}}>KALKULATORY — LINKI DO AUKCJI</div>
-              <div style={{fontSize:'12px',color:'var(--text3)',marginBottom:'10px'}}>Wklej do opisu aukcji jako tekst (Allegro blokuje aktywne linki):</div>
-              {[
-                {key:'fav', label:'Favour / Oktomo', url:'kalkulator.oktomo.pl',     color:'#4CAF50', direct:'https://kalkulator.oktomo.pl/kalkulator.html?brand=fav&qr=1'},
-                {key:'str', label:'Staroleska',       url:'kalkulator.staroleska.pl', color:'#26a69a', direct:'https://kalkulator.staroleska.pl/kalkulator.html?brand=sta&qr=1'},
-                {key:'arl', label:'Arlis',             url:'kalkulator.arlis.pl',     color:'#42a5f5', direct:'https://kalkulator.arlis.pl/kalkulator.html?brand=arl&qr=1'},
-                {key:'alb', label:'Albama',            url:'kalkulator.albama.pl',    color:'#ab47bc', direct:'https://kalkulator.albama.pl/kalkulator.html?brand=alb&qr=1'},
-                {key:'evr', label:'Everis',            url:'kalkulator.everis.pl',    color:'#ff7043', direct:'https://kalkulator.everis.pl/kalkulator.html?brand=evr&qr=1'},
-              ].map(b=>(
-                <div key={b.key} style={{display:'flex',flexDirection:'column',marginBottom:8,background:'var(--bg)',borderRadius:6,border:'1px solid var(--border)'}}>
-                  <div className="kalk-row" style={{display:'flex',alignItems:'center',gap:8,padding:'8px 12px'}}>
-                    <span style={{minWidth:130,fontWeight:700,fontSize:14,color:b.color}}>{b.label}</span>
-                    <span className="kalk-url" style={{flex:1,fontFamily:'monospace',fontSize:14,color:'var(--text3)'}}>{b.url}</span>
-                    <button onClick={()=>navigator.clipboard?.writeText(b.url)}
-                      style={{padding:'4px 10px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text)',borderRadius:5,cursor:'pointer',fontSize:14}}>📋 kopiuj</button>
-                    <a href={'https://'+b.url} target="_blank"
-                      style={{padding:'4px 10px',background:b.color,color:'#000',borderRadius:5,cursor:'pointer',fontSize:14,textDecoration:'none',fontWeight:700}}>otwórz ↗</a>
-                    <a href={'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(b.direct)} download={'QR_'+b.key+'.png'} target="_blank"
-                      style={{padding:'4px 10px',background:'#333',color:'#fff',borderRadius:5,cursor:'pointer',fontSize:14,textDecoration:'none',fontWeight:700}}>QR ↓</a>
-                  </div>
-                  <div style={{textAlign:'center',padding:'4px 12px 10px'}}>
-                    <img src={'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data='+encodeURIComponent(b.direct)} alt={'QR '+b.label} style={{width:80,height:80,borderRadius:4,border:'2px solid '+b.color,display:'block',margin:'0 auto 4px'}}/>
-                    <div style={{fontSize:14,color:'var(--text3)',fontFamily:'monospace'}}>{b.direct}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div style={{background:'var(--surface)',borderRadius:8,padding:'16px',border:'1px solid var(--border)',marginBottom:'16px'}}>
-              <div style={{color:'var(--accent)',fontWeight:'bold',marginBottom:'10px',fontSize:'13px'}}>WYSZUKAJ WYCENĘ</div>
+              <div style={{color:'var(--accent)',fontWeight:'bold',marginBottom:'10px',fontSize:'13px'}}>WYSZUKAJ WYCENĘ Z KALKULATORA</div>
               <div style={{display:'flex',gap:'8px'}}>
-                <input type="text" placeholder="FAV-260304-0001 / ARL-… / EVR-…" value={kalSearch} onChange={e=>setKalSearch(e.target.value)}
+                <input type="text" placeholder="FAV-260304-0001 / ARL-..." value={kalSearch} onChange={e=>setKalSearch(e.target.value)}
                   onKeyDown={e=>{if(e.key==='Enter'){const n=kalSearch.trim();if(!n)return;setKalResult(null);setKalError('');fetch(AUTORESPONDER_URL+'/kalkulator/order/'+encodeURIComponent(n)).then(r=>r.json()).then(d=>{if(d.error)setKalError('Nie znaleziono: '+n);else setKalResult(d);}).catch(()=>setKalError('Blad'));}}}
-                  style={{flex:1,padding:'8px 12px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg)',color:'var(--text)',fontSize:14}}/>
+                  style={{flex:1,padding:'10px 12px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg)',color:'var(--text)',fontSize:16}}/>
                 <button onClick={()=>{const n=kalSearch.trim();if(!n)return;setKalResult(null);setKalError('');fetch(AUTORESPONDER_URL+'/kalkulator/order/'+encodeURIComponent(n)).then(r=>r.json()).then(d=>{if(d.error)setKalError('Nie znaleziono: '+n);else setKalResult(d);}).catch(()=>setKalError('Blad'));}}
-                  style={{padding:'8px 16px',background:'var(--accent)',color:'#000',borderRadius:6,border:'none',cursor:'pointer',fontWeight:'bold'}}>Szukaj</button>
+                  style={{padding:'10px 18px',background:'var(--accent)',color:'#000',borderRadius:6,border:'none',cursor:'pointer',fontWeight:'bold',fontSize:15}}>Szukaj</button>
               </div>
-              {kalError&&<div style={{color:'#ef4444',marginTop:'8px',fontSize:'13px'}}>{kalError}</div>}
-              {kalResult&&(
-                <div style={{marginTop:'12px',background:'var(--bg)',borderRadius:6,padding:'12px',fontSize:'13px'}}>
-                  <div style={{color:'var(--accent)',fontWeight:'bold',marginBottom:'8px',fontSize:'15px'}}>{kalResult.orderNumber}</div>
-                  {kalResult.brandDisplay&&<div style={{fontSize:14,color:'var(--text3)',marginBottom:6}}>Brand: <b>{kalResult.brandDisplay}</b> · NIP: {kalResult.nip}</div>}
-                  <div><span style={{color:'var(--text3)'}}>Klient: </span><b>{kalResult.klient?.name||kalResult.clientName||'—'}</b></div>
-                  {(kalResult.klient?.phone||kalResult.phone)&&<div><span style={{color:'var(--text3)'}}>Tel: </span>{kalResult.klient?.phone||kalResult.phone}</div>}
-                  {(kalResult.klient?.email||kalResult.email)&&<div><span style={{color:'var(--text3)'}}>Email: </span>{kalResult.klient?.email||kalResult.email}</div>}
-                  {(kalResult.klient?.notes||kalResult.notes)&&<div style={{color:'var(--text3)'}}>Uwagi: {kalResult.klient?.notes||kalResult.notes}</div>}
-                  <div style={{marginTop:8}}>
-                  {(kalResult.pozycje||kalResult.positions||[]).map((p,i)=>{
-                    const sz=p.szerokosc||p.width||'?';
-                    const wy=p.wysokosc||p.height||'?';
-                    const kp=(p.kolorProfilu||p.profile||'—').replace(/ RAL \d+/,'');
-                    const ks=p.kolorSiatki||p.mesh||'—';
+              {kalError&&<div style={{color:'#ef4444',marginTop:'8px',fontSize:14}}>{kalError}</div>}
+              {kalResult&&(()=>{
+                const pozycje=kalResult.pozycje||kalResult.positions||[];
+                const totalJedn=Math.round(pozycje.reduce((acc,p)=>{
+                  const s=parseFloat(p.szerokosc||p.width)||0;
+                  const w=parseFloat(p.wysokosc||p.height)||0;
+                  const il=parseFloat(p.ilosc||p.qty)||1;
+                  return acc+((s*2+w*2)*il)/10;
+                },0)*10)/10;
+                const cena=kalResult.podsumowanie?.cost||0;
+                const msgText=(kalResult.klient?.name||kalResult.clientName||'')+
+                  (kalResult.orderNumber?' ('+kalResult.orderNumber+')':'')+'
+'+
+                  pozycje.map((p,i)=>{
+                    const s=p.szerokosc||p.width||'?';const w=p.wysokosc||p.height||'?';
+                    const kp=(p.kolorProfilu||p.profile||'').replace(/ RAL [0-9]+/,'');
                     const il=p.ilosc||p.qty||1;
-                    const unit=p.jednostka==='mm'?'mm':'cm';
-                    return (
-                      <div key={i} style={{background:'var(--surface)',borderRadius:4,padding:'6px 10px',marginBottom:4,display:'flex',justifyContent:'space-between'}}>
-                        <span><b style={{color:'var(--accent2)'}}>{i+1}.</b> {sz}×{wy}{unit} {p.felc?'felc:'+p.felc+' ':''}<span style={{color:'var(--text3)'}}>{kp}/{ks}</span></span>
-                        <span style={{color:'#22c55e',fontWeight:'bold'}}>×{il}</span>
-                      </div>
-                    );
-                  })}
+                    return (i+1)+'. '+s+'x'+w+'cm '+kp+' x'+il;
+                  }).join('
+')+
+                  (totalJedn>0?'
+Jednostek do koszyka: '+totalJedn:'')+
+                  (cena>0?'
+Cena: '+cena.toFixed(2)+' zl':'');
+                return (
+                  <div style={{marginTop:'12px',background:'var(--bg)',borderRadius:6,padding:'12px',fontSize:14}}>
+                    <div style={{color:'var(--accent)',fontWeight:'bold',marginBottom:'8px',fontSize:'15px'}}>{kalResult.orderNumber}</div>
+                    <div style={{marginBottom:4}}><span style={{color:'var(--text3)'}}>Klient: </span><b>{kalResult.klient?.name||kalResult.clientName||'—'}</b></div>
+                    {(kalResult.klient?.phone||kalResult.phone)&&<div style={{marginBottom:4}}><span style={{color:'var(--text3)'}}>Tel: </span><b>{kalResult.klient?.phone||kalResult.phone}</b></div>}
+                    <div style={{marginTop:8}}>
+                      {pozycje.map((p,i)=>{
+                        const sz=p.szerokosc||p.width||'?';
+                        const wy=p.wysokosc||p.height||'?';
+                        const kp=(p.kolorProfilu||p.profile||'—').replace(/ RAL [0-9]+/,'');
+                        const ks=p.kolorSiatki||p.mesh||'—';
+                        const il=p.ilosc||p.qty||1;
+                        return (
+                          <div key={i} style={{background:'var(--surface)',borderRadius:4,padding:'6px 10px',marginBottom:4,display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:4}}>
+                            <span><b style={{color:'var(--accent2)'}}>{i+1}.</b> {sz}x{wy}cm <span style={{color:'var(--text3)',fontSize:13}}>{kp}/{ks}</span></span>
+                            <span style={{color:'#22c55e',fontWeight:'bold'}}>x{il}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div style={{display:'flex',gap:8,marginTop:12,flexWrap:'wrap',alignItems:'center'}}>
+                      {totalJedn>0&&<div style={{background:'#1a3a1a',border:'1px solid #2a6a2a',borderRadius:6,padding:'8px 12px',color:'#7fcf7f',fontWeight:700,fontSize:15}}>
+                        Jednostek: {totalJedn}
+                      </div>}
+                      {cena>0&&<div style={{background:'#1a3a1a',border:'1px solid #2a6a2a',borderRadius:6,padding:'8px 12px',color:'#22c55e',fontWeight:700,fontSize:15}}>
+                        {cena.toFixed(2)} zł
+                      </div>}
+                      <button onClick={()=>navigator.clipboard?.writeText(msgText).then(()=>alert('Skopiowano do schowka!'))}
+                        style={{marginLeft:'auto',padding:'10px 18px',background:'#2a5a3a',border:'1px solid #3a8a4a',borderRadius:6,color:'#afffaf',fontWeight:700,fontSize:15,cursor:'pointer'}}>
+                        📋 Kopiuj wiadomość
+                      </button>
+                    </div>
                   </div>
-                  {kalResult.podsumowanie?.cost>0&&<div style={{color:'#22c55e',fontWeight:'bold',textAlign:'right',marginTop:'8px',fontSize:'15px'}}>SUMA: {kalResult.podsumowanie.cost.toFixed(2)} zł</div>}
-                </div>
-              )}
+                );
+              })()}
             </div>
-            <div style={{color:'var(--accent)',fontWeight:'bold',fontSize:'12px',marginBottom:8,letterSpacing:'.1em'}}>PODGLĄD — FAVOUR / OKTOMO</div>
+
+            {/* LINKI / QR — ZWINIĘTE */}
+            <details style={{background:'var(--surface)',borderRadius:8,border:'1px solid var(--border)',marginBottom:'12px'}}>
+              <summary style={{padding:'12px 14px',cursor:'pointer',color:'var(--accent)',fontWeight:'bold',fontSize:'13px',listStyle:'none',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                KALKULATORY — LINKI DO AUKCJI <span style={{fontSize:12,color:'var(--text3)'}}>rozwiń ▼</span>
+              </summary>
+              <div style={{padding:'0 14px 14px'}}>
+                {[
+                  {key:'fav', label:'Favour', url:'kalkulator.oktomo.pl', color:'#4CAF50', direct:'https://kalkulator.oktomo.pl/kalkulator.html?brand=fav&qr=1'},
+                  {key:'str', label:'Staroleska', url:'kalkulator.staroleska.pl', color:'#26a69a', direct:'https://kalkulator.staroleska.pl/kalkulator.html?brand=sta&qr=1'},
+                  {key:'arl', label:'Arlis', url:'kalkulator.arlis.pl', color:'#42a5f5', direct:'https://kalkulator.arlis.pl/kalkulator.html?brand=arl&qr=1'},
+                  {key:'alb', label:'Albama', url:'kalkulator.albama.pl', color:'#ab47bc', direct:'https://kalkulator.albama.pl/kalkulator.html?brand=alb&qr=1'},
+                  {key:'evr', label:'Everis', url:'kalkulator.everis.pl', color:'#ff7043', direct:'https://kalkulator.everis.pl/kalkulator.html?brand=evr&qr=1'},
+                ].map(b=>(
+                  <div key={b.key} style={{marginBottom:8,background:'var(--bg)',borderRadius:6,border:'1px solid var(--border)'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:6,padding:'8px 10px',flexWrap:'wrap'}}>
+                      <span style={{fontWeight:700,fontSize:14,color:b.color,minWidth:80}}>{b.label}</span>
+                      <span style={{fontFamily:'monospace',fontSize:12,color:'var(--text3)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.url}</span>
+                      <button onClick={()=>navigator.clipboard?.writeText(b.url)} style={{padding:'4px 8px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text)',borderRadius:5,cursor:'pointer',fontSize:13}}>📋</button>
+                      <a href={'https://'+b.url} target="_blank" style={{padding:'4px 8px',background:b.color,color:'#000',borderRadius:5,fontSize:13,textDecoration:'none',fontWeight:700}}>↗</a>
+                      <a href={'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(b.direct)} download={'QR_'+b.key+'.png'} target="_blank" style={{padding:'4px 8px',background:'#333',color:'#fff',borderRadius:5,fontSize:13,textDecoration:'none',fontWeight:700}}>QR↓</a>
+                    </div>
+                    <div style={{textAlign:'center',padding:'2px 12px 8px'}}>
+                      <img src={'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data='+encodeURIComponent(b.direct)} alt={'QR '+b.label} style={{width:72,height:72,borderRadius:4,border:'2px solid '+b.color,display:'block',margin:'0 auto'}}/>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </details>
+
             <iframe className="kalk-iframe" src="https://kalkulator.oktomo.pl" style={{width:'100%',height:'680px',border:'none',borderRadius:8,display:'block'}} title="Kalkulator Favour"/>
           </div>
         )}
