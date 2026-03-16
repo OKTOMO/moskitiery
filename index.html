@@ -2831,7 +2831,7 @@ function App() {
                               {pozycje.map((p,i)=>(
                                 <div key={i} style={{fontSize:14,color:"#5a9a6a",whiteSpace:"nowrap"}}>
                                   {p.szerokosc}×{p.wysokosc} cm{p.felc?` felc:${p.felc}`:""}
-                                  <span style={{color:"#3a7a5a",marginLeft:4}}>{(p.kolorProfilu||"").replace(/ RAL \d+/,"")}/{p.kolorSiatki}</span>
+                                  <span style={{color:"#3a7a5a",marginLeft:4}}>{(p.kolorProfilu||"").replace(new RegExp(" RAL [0-9]+"),"")}/{p.kolorSiatki}</span>
                                   {p.ilosc>1&&<span style={{color:"#afffaf",marginLeft:4}}>×{p.ilosc}</span>}
                                 </div>
                               ))}
@@ -3454,7 +3454,7 @@ function App() {
 '+
                   pozycje.map((p,i)=>{
                     const s=p.szerokosc||p.width||'?';const w=p.wysokosc||p.height||'?';
-                    const kp=(p.kolorProfilu||p.profile||'').replace(/ RAL [0-9]+/,'');
+                    const kp=(p.kolorProfilu||p.profile||'').replace(new RegExp(' RAL [0-9]+'),'');
                     const il=p.ilosc||p.qty||1;
                     return (i+1)+'. '+s+'x'+w+'cm '+kp+' x'+il;
                   }).join('
@@ -3472,7 +3472,7 @@ Cena: '+cena.toFixed(2)+' zl':'');
                       {pozycje.map((p,i)=>{
                         const sz=p.szerokosc||p.width||'?';
                         const wy=p.wysokosc||p.height||'?';
-                        const kp=(p.kolorProfilu||p.profile||'—').replace(/ RAL [0-9]+/,'');
+                        const kp=(p.kolorProfilu||p.profile||'—').replace(new RegExp(' RAL [0-9]+'),'');
                         const ks=p.kolorSiatki||p.mesh||'—';
                         const il=p.ilosc||p.qty||1;
                         return (
@@ -3501,11 +3501,14 @@ Cena: '+cena.toFixed(2)+' zl':'');
             </div>
 
             {/* LINKI / QR — ZWINIĘTE */}
-            <details style={{background:'var(--surface)',borderRadius:8,border:'1px solid var(--border)',marginBottom:'12px'}}>
-              <summary style={{padding:'12px 14px',cursor:'pointer',color:'var(--accent)',fontWeight:'bold',fontSize:'13px',listStyle:'none',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                KALKULATORY — LINKI DO AUKCJI <span style={{fontSize:12,color:'var(--text3)'}}>rozwiń ▼</span>
-              </summary>
-              <div style={{padding:'0 14px 14px'}}>
+            {(()=>{
+              const [qrOpen,setQrOpen]=React.useState(false);
+              return (
+              <div style={{background:'var(--surface)',borderRadius:8,border:'1px solid var(--border)',marginBottom:'12px'}}>
+                <div onClick={()=>setQrOpen(o=>!o)} style={{padding:'12px 14px',cursor:'pointer',color:'var(--accent)',fontWeight:'bold',fontSize:'13px',display:'flex',justifyContent:'space-between',alignItems:'center',userSelect:'none'}}>
+                  KALKULATORY — LINKI DO AUKCJI <span style={{fontSize:12,color:'var(--text3)'}}>{qrOpen?'zwiń ▲':'rozwiń ▼'}</span>
+                </div>
+                {qrOpen&&<div style={{padding:'0 14px 14px'}}>
                 {[
                   {key:'fav', label:'Favour', url:'kalkulator.oktomo.pl', color:'#4CAF50', direct:'https://kalkulator.oktomo.pl/kalkulator.html?brand=fav&qr=1'},
                   {key:'str', label:'Staroleska', url:'kalkulator.staroleska.pl', color:'#26a69a', direct:'https://kalkulator.staroleska.pl/kalkulator.html?brand=sta&qr=1'},
@@ -3526,8 +3529,10 @@ Cena: '+cena.toFixed(2)+' zl':'');
                     </div>
                   </div>
                 ))}
+                </div>}
               </div>
-            </details>
+              );
+            })()}
 
             <iframe className="kalk-iframe" src="https://kalkulator.oktomo.pl" style={{width:'100%',height:'680px',border:'none',borderRadius:8,display:'block'}} title="Kalkulator Favour"/>
           </div>
