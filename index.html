@@ -931,6 +931,8 @@ function App() {
   const [autoSavingText,setAutoSavingText]=useState(false);
   const [autoTextSaved,setAutoTextSaved]=useState(false);
   const [autoResetting,setAutoResetting]=useState(false);
+  const [autoRunning,setAutoRunning]=useState(false);
+  const [autoRunResult,setAutoRunResult]=useState(null);
   // ── AI SUGGEST state ──
   const [msgSuggesting,setMsgSuggesting]=useState(false);
   const [msgSuggestError,setMsgSuggestError]=useState("");
@@ -991,6 +993,16 @@ function App() {
       else alert("❌ "+JSON.stringify(d));
     }catch(e){alert("❌ "+e.message);}
     setAutoSavingText(false);
+  }
+  async function runAutoNow(){
+    setAutoRunning(true); setAutoRunResult(null);
+    try{
+      const r=await fetch(AUTORESPONDER_URL+"/run",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":AUTORESPONDER_KEY},body:JSON.stringify({})});
+      const d=await r.json();
+      setAutoRunResult(d);
+    }catch(e){setAutoRunResult({error:e.message});}
+    setAutoRunning(false);
+    fetchAutoStatus();
   }
   async function resetAutoHistory(){
     if(!confirm("Resetować historię? Autoresponder wyśle ponownie do wszystkich wątków.")) return;
@@ -3925,6 +3937,30 @@ function App() {
                   {autoSyncing?"⟳ Synchronizuję...":"🔑 Synchronizuj tokeny do autorespondera"}
                 </button>
                 {autoSyncResult&&<div style={{marginTop:8,fontSize:14,color:autoSyncResult.startsWith("✅")?"#7fcf7f":"#df8080",padding:"6px 10px",background:"#0a180a",borderRadius:4}}>{autoSyncResult}</div>}
+              </div>
+
+              {/* Uruchom ręcznie */}
+              <div style={{marginBottom:14}}>
+                <button onClick={runAutoNow} disabled={autoRunning} className="btn" style={{width:"100%",background:"#0a2a0a",borderColor:"#2a6a2a",color:"#afffaf"}}>
+                  {autoRunning?"⟳ Uruchamiam...":"▶ Uruchom autoresponder teraz"}
+                </button>
+                {autoRunResult&&(
+                  <div style={{marginTop:8,fontSize:12,background:"#0a140a",border:"1px solid #1e3a1e",borderRadius:4,padding:"8px 10px",maxHeight:160,overflowY:"auto"}}>
+                    {autoRunResult.error?(
+                      <span style={{color:"#df8080"}}>❌ {autoRunResult.error}</span>
+                    ):(
+                      <div>
+                        <div style={{color:"#6aaa6a",marginBottom:4}}>Wynik ({autoRunResult.ts?new Date(autoRunResult.ts).toLocaleTimeString("pl-PL"):""}):</div>
+                        {(autoRunResult.results||[]).map((r,i)=>(
+                          <div key={i} style={{color:r.error?"#df8080":r.status==="wysłano"?"#afffaf":"#6a8a6a",padding:"2px 0"}}>
+                            {r.konto}: {r.error?"❌ "+r.error:r.status==="wysłano"?"✅ wysłano (wątek "+r.thread+")":"ℹ️ "+r.status}
+                          </div>
+                        ))}
+                        {autoRunResult.skipped&&<div style={{color:"#6a8a6a"}}>⚠️ {autoRunResult.skipped}</div>}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Quick reply text */}
