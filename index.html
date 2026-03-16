@@ -1,11 +1,26 @@
 <!DOCTYPE html>
 <html lang="pl"><head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>MosquitoApp</title>
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MosquitoApp">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="theme-color" content="#0d1117">
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script>
+if("serviceWorker" in navigator){
+  window.addEventListener("load",function(){
+    navigator.serviceWorker.register("/moskitiery/sw.js",{scope:"/moskitiery/"})
+      .then(function(r){window._swReg=r;console.log("[PWA] SW ok",r.scope);})
+      .catch(function(e){console.warn("[PWA] SW fail",e);});
+  });
+}
+</script>
 </head><body>
 <div id="root"></div>
 <script>
@@ -880,6 +895,51 @@ function App() {
   const [filterYear,setFilterYear]=useState("wszystkie");
   const [settings,setSettings]=useState(()=>window.jsonbinSettings.getSettings());
   const [settingsSaved,setSettingsSaved]=useState(false);
+
+  // PWA Push
+  const [pushSupported,setPushSupported]=useState(false);
+  const [pushSubscribed,setPushSubscribed]=useState(false);
+  const [pushLoading,setPushLoading]=useState(false);
+  const [pushMsg,setPushMsg]=useState('');
+  const [vapidPublicKey,setVapidPublicKey]=useState(()=>localStorage.getItem('vapid_public_key')||'');
+  useEffect(()=>{
+    if(!('serviceWorker' in navigator&&'PushManager' in window)) return;
+    setPushSupported(true);
+    navigator.serviceWorker.ready.then(r=>r.pushManager.getSubscription().then(s=>setPushSubscribed(!!s))).catch(()=>{});
+  },[]);
+  async function subscribePush(){
+    if(!vapidPublicKey){setPushMsg('Wpisz VAPID Public Key');return;}
+    setPushLoading(true);setPushMsg('');
+    try{
+      const perm=await Notification.requestPermission();
+      if(perm!=='granted'){setPushMsg('Brak zgody');setPushLoading(false);return;}
+      const reg=await navigator.serviceWorker.ready;
+      const k=vapidPublicKey.replace(/-/g,'+').replace(/_/g,'/');
+      const r2=atob(k);const ak=new Uint8Array(r2.length);for(let i=0;i<r2.length;i++)ak[i]=r2.charCodeAt(i);
+      const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:ak});
+      setPushSubscribed(true);
+      localStorage.setItem('vapid_public_key',vapidPublicKey);
+      localStorage.setItem('push_subscription',JSON.stringify(sub.toJSON()));
+      setPushMsg('OK — subskrypcja aktywna!');
+    }catch(e){setPushMsg('Blad: '+e.message);}
+    setPushLoading(false);
+  }
+  async function unsubscribePush(){
+    setPushLoading(true);
+    try{
+      const reg=await navigator.serviceWorker.ready;
+      const sub=await reg.pushManager.getSubscription();
+      if(sub) await sub.unsubscribe();
+      setPushSubscribed(false);localStorage.removeItem('push_subscription');
+      setPushMsg('Subskrypcja usunieta');
+    }catch(e){setPushMsg('Blad: '+e.message);}
+    setPushLoading(false);
+  }
+  function copyPushSub(){
+    const s=localStorage.getItem('push_subscription');
+    if(!s){setPushMsg('Brak subskrypcji');return;}
+    navigator.clipboard.writeText(s).then(()=>setPushMsg('Skopiowano!')).catch(()=>setPushMsg('Blad schowka'));
+  }
   const [allegroTokens,setAllegroTokens]=useState(()=>{
     try{return JSON.parse(localStorage.getItem('allegro_tokens')||'{}');}catch{return {};}
   });
@@ -4021,6 +4081,45 @@ function App() {
               <div style={{marginTop:14,padding:"8px 12px",background:settings.apiKey&&settings.binId?"#0c180c":"#1a1000",border:`1px solid ${settings.apiKey&&settings.binId?"#1a3a1a":"#3a2a00"}`,borderRadius:4,fontSize:14,color:settings.apiKey&&settings.binId?"#5a9a5a":"#8a7a3a"}}>
                 {settings.apiKey&&settings.binId?"✅ Synchronizacja aktywna":"⚠️ Brak konfiguracji — dane lokalne"}
               </div>
+            </div>
+
+            {/* PWA Push */}
+            <div className="card" style={{maxWidth:520}}>
+              <div style={{fontFamily:"monospace",fontSize:16,fontWeight:800,color:"#afffaf",marginBottom:14,display:"flex",alignItems:"center",gap:10}}>
+                PWA / Powiadomienia push
+                <span style={{marginLeft:"auto",fontSize:11,padding:"2px 8px",borderRadius:10,background:pushSubscribed?"#0a2a0a":"#2a1a00",color:pushSubscribed?"#7fcf7f":"#cf9f4a",border:"1px solid "+(pushSubscribed?"#2a5a2a":"#5a3a00")}}>
+                  {pushSubscribed?"AKTYWNE":"NIEAKTYWNE"}
+                </span>
+              </div>
+              {!pushSupported&&<div style={{color:"#df8080",fontSize:14}}>Uzywaj Safari iOS 16.4+ (brak wsparcia SW).</div>}
+              {pushSupported&&(
+                <div>
+                  <div style={{marginBottom:12}}>
+                    <span className="lbl">VAPID Public Key</span>
+                    <input value={vapidPublicKey} onChange={e=>{setVapidPublicKey(e.target.value);localStorage.setItem('vapid_public_key',e.target.value);}}
+                      placeholder="BNxx... (npx web-push generate-vapid-keys)"
+                      style={{fontFamily:"monospace",fontSize:12,background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:5,color:"#c0e0c0",padding:"7px 10px",width:"100%",boxSizing:"border-box"}}/>
+                  </div>
+                  <div style={{display:"flex",gap:8,marginBottom:10}}>
+                    {!pushSubscribed
+                      ?<button onClick={subscribePush} disabled={pushLoading} className="btn" style={{flex:1,background:"#0a2a0a",borderColor:"#2a6a2a",color:"#afffaf"}}>{pushLoading?"Rejestruje...":"Wlacz powiadomienia"}</button>
+                      :<button onClick={unsubscribePush} disabled={pushLoading} className="btn" style={{flex:1,background:"#2a0a0a",borderColor:"#6a2a2a",color:"#df8080"}}>{pushLoading?"Usuwam...":"Wylacz powiadomienia"}</button>
+                    }
+                    <button onClick={copyPushSub} disabled={!pushSubscribed} className="btn"
+                      style={{flex:1,background:"#0e1a2a",borderColor:"#2a4a6a",color:"#7abfdf",opacity:pushSubscribed?1:0.4}}>
+                      Kopiuj endpoint
+                    </button>
+                  </div>
+                  {pushMsg&&<div style={{fontSize:13,padding:"6px 10px",borderRadius:4,background:"#0a140a",color:pushMsg.startsWith('Blad')||pushMsg.startsWith('Brak')?"#df8080":"#afffaf"}}>{pushMsg}</div>}
+                  <div style={{marginTop:12,padding:"10px 12px",background:"#0a100a",border:"1px solid #1a2a1a",borderRadius:6,fontSize:12,color:"#4a7a4a",lineHeight:1.7}}>
+                    <strong style={{color:"#6a9a6a"}}>Instrukcja iOS Safari</strong><br/>
+                    1. Otworz aplikacje w Safari<br/>
+                    2. Udostepnij &gt; Dodaj do ekranu glownego<br/>
+                    3. Uruchom z ekranu glownego (wymagane dla push!)<br/>
+                    4. Wklej VAPID Public Key powyzej i kliknij Wlacz
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
