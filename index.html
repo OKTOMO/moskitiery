@@ -16,64 +16,48 @@
 if("serviceWorker" in navigator){
   window.addEventListener("load",function(){
     navigator.serviceWorker.register("/moskitiery/sw.js",{scope:"/moskitiery/"})
-      .then(function(r){window._swReg=r;})
-      .catch(function(e){console.warn("[PWA]",e);});
+      .then(function(r){window._swReg=r;}).catch(function(e){console.warn("[PWA]",e);});
   });
 }
 </script>
-
 <style>
-/* ═══ MOBILE FIXES ═══ */
+/* ═══ MOBILE RESPONSIVE ═══ */
 @media (max-width: 700px) {
-  /* Ukryj górną nawigację zakładek na mobile */
-  .mosk-nav-tabs { display: none !important; }
-  /* Dolny pasek nawigacji */
+  .mosk-back-btn { display: block !important; }
+  .mosk-nav-tabs   { display: none !important; }
   .mosk-bottom-nav { display: flex !important; }
-  /* Padding pod content żeby nie chował się pod dolnym paskiem */
-  .mosk-content { padding-bottom: 70px !important; }
-  /* Header kompaktowy */
+  .mosk-content    { padding-bottom: 70px !important; }
   .mosk-header-sub { display: none !important; }
-  .mosk-header { padding: 8px 12px !important; }
-  .mosk-logo { font-size: 15px !important; }
-  .mosk-profile-btn { font-size: 12px !important; padding: 3px 7px !important; }
-  /* Dropdown firmy — zawsze w lewo żeby nie uciekał */
-  .mosk-profile-dropdown { right: auto !important; left: 0 !important; }
-  /* Siatki 2-kolumnowe → 1 kolumna */
-  .grid2-main { grid-template-columns: 1fr !important; }
+  .mosk-header     { padding: 8px 10px !important; }
+  .mosk-logo       { font-size: 14px !important; }
+  .mosk-profile-dropdown { right: auto !important; left: 0 !important; max-width: 160px; }
+  .grid2-main      { grid-template-columns: 1fr !important; }
+  .msg-layout      { grid-template-columns: 1fr !important; }
+  .msg-panel-list  { display: var(--msg-list-display, flex) !important; }
+  .msg-panel-chat  { display: var(--msg-chat-display, none) !important; }
 }
-/* Dolny pasek — domyślnie ukryty na desktop */
 .mosk-bottom-nav {
   display: none;
   position: fixed;
   bottom: 0; left: 0; right: 0;
-  height: 60px;
-  background: #0a1008;
-  border-top: 1px solid #1e3a1e;
+  height: 58px;
+  background: #080e08;
+  border-top: 2px solid #1e3a1e;
   z-index: 9999;
   align-items: stretch;
 }
 .mosk-bottom-nav button {
-  flex: 1;
-  background: none;
-  border: none;
-  border-right: 1px solid #1a2a1a;
-  color: #4a7a4a;
-  font-size: 10px;
-  font-weight: 700;
-  cursor: pointer;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2px;
-  padding: 0;
-  letter-spacing: .03em;
-  transition: background .15s;
+  flex: 1; background: none; border: none;
+  border-right: 1px solid #141e14;
+  color: #4a7a4a; font-size: 9px; font-weight: 700;
+  cursor: pointer; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 1px;
+  padding: 0; letter-spacing: .02em; -webkit-tap-highlight-color: transparent;
 }
 .mosk-bottom-nav button:last-child { border-right: none; }
-.mosk-bottom-nav button.active { color: #7fcf7f; background: #0e1e0e; }
-.mosk-bottom-nav button .bnav-icon { font-size: 20px; line-height: 1; }
-.mosk-bottom-nav button .bnav-label { font-size: 9px; }
+.mosk-bottom-nav button.bnav-active { color: #7fcf7f; background: #0e1e0e; }
+.mosk-bottom-nav button .bi { font-size: 19px; line-height: 1; }
+.mosk-bottom-nav button .bl { font-size: 9px; }
 </style>
 </head><body>
 <div id="root"></div>
@@ -949,8 +933,6 @@ function App() {
   const [filterYear,setFilterYear]=useState("wszystkie");
   const [settings,setSettings]=useState(()=>window.jsonbinSettings.getSettings());
   const [settingsSaved,setSettingsSaved]=useState(false);
-
-  // PWA Push
   const [pushSupported,setPushSupported]=useState(false);
   const [pushSubscribed,setPushSubscribed]=useState(false);
   const [pushLoading,setPushLoading]=useState(false);
@@ -971,29 +953,17 @@ function App() {
       const k=vapidPublicKey.replace(/-/g,'+').replace(/_/g,'/');
       const r2=atob(k);const ak=new Uint8Array(r2.length);for(let i=0;i<r2.length;i++)ak[i]=r2.charCodeAt(i);
       const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:ak});
-      setPushSubscribed(true);
-      localStorage.setItem('vapid_public_key',vapidPublicKey);
-      localStorage.setItem('push_subscription',JSON.stringify(sub.toJSON()));
-      setPushMsg('OK — subskrypcja aktywna!');
+      setPushSubscribed(true);localStorage.setItem('vapid_public_key',vapidPublicKey);localStorage.setItem('push_subscription',JSON.stringify(sub.toJSON()));
+      setPushMsg('Subskrypcja aktywna!');
     }catch(e){setPushMsg('Blad: '+e.message);}
     setPushLoading(false);
   }
   async function unsubscribePush(){
     setPushLoading(true);
-    try{
-      const reg=await navigator.serviceWorker.ready;
-      const sub=await reg.pushManager.getSubscription();
-      if(sub) await sub.unsubscribe();
-      setPushSubscribed(false);localStorage.removeItem('push_subscription');
-      setPushMsg('Subskrypcja usunieta');
-    }catch(e){setPushMsg('Blad: '+e.message);}
+    try{const reg=await navigator.serviceWorker.ready;const sub=await reg.pushManager.getSubscription();if(sub)await sub.unsubscribe();setPushSubscribed(false);localStorage.removeItem('push_subscription');setPushMsg('Usunieto');}catch(e){setPushMsg('Blad: '+e.message);}
     setPushLoading(false);
   }
-  function copyPushSub(){
-    const s=localStorage.getItem('push_subscription');
-    if(!s){setPushMsg('Brak subskrypcji');return;}
-    navigator.clipboard.writeText(s).then(()=>setPushMsg('Skopiowano!')).catch(()=>setPushMsg('Blad schowka'));
-  }
+  function copyPushSub(){const s=localStorage.getItem('push_subscription');if(!s){setPushMsg('Brak subskrypcji');return;}navigator.clipboard.writeText(s).then(()=>setPushMsg('Skopiowano!')).catch(()=>setPushMsg('Blad'));}
   const [allegroTokens,setAllegroTokens]=useState(()=>{
     try{return JSON.parse(localStorage.getItem('allegro_tokens')||'{}');}catch{return {};}
   });
@@ -1017,6 +987,7 @@ function App() {
   const allegroToken = allegroTokens[allegroActive]||"";
   // ── WIADOMOŚCI tab state ──
   const [msgKonto,setMsgKonto]=useState(()=>localStorage.getItem('allegro_active')||"favo5");
+  const [msgMobileView,setMsgMobileView]=useState('list'); // 'list' | 'chat'
   const msgKontoRef=React.useRef(localStorage.getItem('allegro_active')||"favo5");
   const [msgThreads,setMsgThreads]=useState([]);
   const [msgLoading,setMsgLoading]=useState(false);
@@ -3183,14 +3154,14 @@ function App() {
               </div>
             )}
             {msgSubTab==="threads"&&(
-            <div style={{display:"grid",gridTemplateColumns:"340px 1fr",gap:12,flex:1,minHeight:0}}>
-              <div style={{background:"#0c1a0c",border:"1px solid #1e3a1e",borderRadius:8,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+            <div className="msg-layout" style={{display:"grid",gridTemplateColumns:"340px 1fr",gap:12,flex:1,minHeight:0,["--msg-list-display"]:msgMobileView==="list"?"flex":"none",["--msg-chat-display"]:msgMobileView==="chat"?"flex":"none"}}>
+              <div className="msg-panel-list" style={{background:"#0c1a0c",border:"1px solid #1e3a1e",borderRadius:8,overflow:"hidden",display:"flex",flexDirection:"column"}}>
                 <div style={{padding:"10px 14px",borderBottom:"1px solid #1a2a1a",fontSize:14,color:"#6aaa6a",letterSpacing:".1em",textTransform:"uppercase"}}>Wątki ({msgThreads.length})</div>
                 <div style={{overflowY:"auto",flex:1}}>
                   {msgThreads.map(function(t){
                     const active=msgActiveThread&&msgActiveThread.id===t.id;
                     return (
-                      <div key={t.id} onClick={function(){msgLoadConvo(t);}} style={{padding:"12px 14px",borderBottom:"1px solid #0f1f0f",cursor:"pointer",background:active?"#1a3a1a":(t.hasUnreadMessages?"#0e1e0e":"transparent"),transition:"background .15s"}}>
+                      <div key={t.id} onClick={function(){msgLoadConvo(t);setMsgMobileView("chat");}} style={{padding:"12px 14px",borderBottom:"1px solid #0f1f0f",cursor:"pointer",background:active?"#1a3a1a":(t.hasUnreadMessages?"#0e1e0e":"transparent"),transition:"background .15s"}}>
                         <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
                           {t.hasUnreadMessages&&<span style={{width:7,height:7,borderRadius:"50%",background:"#7fcf7f",display:"inline-block",flexShrink:0}}/>}
                           <span style={{fontWeight:t.hasUnreadMessages?700:600,color:active?"#afeaaf":"#8abf8a",fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.interlocutor&&t.interlocutor.login||"—"}</span>
@@ -3202,7 +3173,8 @@ function App() {
                   })}
                 </div>
               </div>
-              <div style={{background:"#0c1a0c",border:"1px solid #1e3a1e",borderRadius:8,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+              <div className="msg-panel-chat" style={{background:"#0c1a0c",border:"1px solid #1e3a1e",borderRadius:8,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+                <button onClick={function(){setMsgMobileView("list");}} style={{display:"none",padding:"7px 14px",background:"#0a180a",border:"none",borderBottom:"1px solid #1a2a1a",color:"#7fcf7f",fontSize:14,fontWeight:700,cursor:"pointer",textAlign:"left"}} className="mosk-back-btn">← Wróć do listy</button>
                 {!msgActiveThread?(
                   <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",color:"#2a5a2a",fontSize:14}}>← Wybierz wątek z listy</div>
                 ):(
@@ -4137,61 +4109,39 @@ function App() {
               </div>
             </div>
 
-            {/* PWA Push */}
             <div className="card" style={{maxWidth:520}}>
               <div style={{fontFamily:"monospace",fontSize:16,fontWeight:800,color:"#afffaf",marginBottom:14,display:"flex",alignItems:"center",gap:10}}>
-                PWA / Powiadomienia push
-                <span style={{marginLeft:"auto",fontSize:11,padding:"2px 8px",borderRadius:10,background:pushSubscribed?"#0a2a0a":"#2a1a00",color:pushSubscribed?"#7fcf7f":"#cf9f4a",border:"1px solid "+(pushSubscribed?"#2a5a2a":"#5a3a00")}}>
-                  {pushSubscribed?"AKTYWNE":"NIEAKTYWNE"}
-                </span>
+                PWA / Push
+                <span style={{marginLeft:"auto",fontSize:11,padding:"2px 8px",borderRadius:10,background:pushSubscribed?"#0a2a0a":"#2a1a00",color:pushSubscribed?"#7fcf7f":"#cf9f4a",border:"1px solid "+(pushSubscribed?"#2a5a2a":"#5a3a00")}}>{pushSubscribed?"AKTYWNE":"NIEAKTYWNE"}</span>
               </div>
-              {!pushSupported&&<div style={{color:"#df8080",fontSize:14}}>Uzywaj Safari iOS 16.4+ (brak wsparcia SW).</div>}
-              {pushSupported&&(
-                <div>
-                  <div style={{marginBottom:12}}>
-                    <span className="lbl">VAPID Public Key</span>
-                    <input value={vapidPublicKey} onChange={e=>{setVapidPublicKey(e.target.value);localStorage.setItem('vapid_public_key',e.target.value);}}
-                      placeholder="BNxx..."
-                      style={{fontFamily:"monospace",fontSize:12,background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:5,color:"#c0e0c0",padding:"7px 10px",width:"100%",boxSizing:"border-box"}}/>
-                  </div>
-                  <div style={{display:"flex",gap:8,marginBottom:10}}>
-                    {!pushSubscribed
-                      ?<button onClick={subscribePush} disabled={pushLoading} className="btn" style={{flex:1,background:"#0a2a0a",borderColor:"#2a6a2a",color:"#afffaf"}}>{pushLoading?"Rejestruje...":"Wlacz powiadomienia"}</button>
-                      :<button onClick={unsubscribePush} disabled={pushLoading} className="btn" style={{flex:1,background:"#2a0a0a",borderColor:"#6a2a2a",color:"#df8080"}}>{pushLoading?"Usuwam...":"Wylacz powiadomienia"}</button>
-                    }
-                    <button onClick={copyPushSub} disabled={!pushSubscribed} className="btn"
-                      style={{flex:1,background:"#0e1a2a",borderColor:"#2a4a6a",color:"#7abfdf",opacity:pushSubscribed?1:0.4}}>
-                      Kopiuj endpoint
-                    </button>
-                  </div>
-                  {pushMsg&&<div style={{fontSize:13,padding:"6px 10px",borderRadius:4,background:"#0a140a",color:pushMsg.startsWith('Blad')||pushMsg.startsWith('Brak')?"#df8080":"#afffaf"}}>{pushMsg}</div>}
+              {!pushSupported&&<div style={{color:"#df8080",fontSize:14}}>Uzywaj Safari iOS 16.4+.</div>}
+              {pushSupported&&<div>
+                <span className="lbl">VAPID Public Key</span>
+                <input value={vapidPublicKey} onChange={e=>{setVapidPublicKey(e.target.value);localStorage.setItem('vapid_public_key',e.target.value);}} placeholder="BNxx..." style={{fontFamily:"monospace",fontSize:12,background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:5,color:"#c0e0c0",padding:"7px 10px",width:"100%",boxSizing:"border-box",marginBottom:10}}/>
+                <div style={{display:"flex",gap:8,marginBottom:8}}>
+                  {!pushSubscribed?<button onClick={subscribePush} disabled={pushLoading} className="btn" style={{flex:1,background:"#0a2a0a",borderColor:"#2a6a2a",color:"#afffaf"}}>{pushLoading?"Rejestruje...":"Wlacz powiadomienia"}</button>:<button onClick={unsubscribePush} disabled={pushLoading} className="btn" style={{flex:1,background:"#2a0a0a",borderColor:"#6a2a2a",color:"#df8080"}}>{pushLoading?"Usuwam...":"Wylacz"}</button>}
+                  <button onClick={copyPushSub} disabled={!pushSubscribed} className="btn" style={{flex:1,background:"#0e1a2a",borderColor:"#2a4a6a",color:"#7abfdf",opacity:pushSubscribed?1:0.4}}>Kopiuj endpoint</button>
                 </div>
-              )}
+                {pushMsg&&<div style={{fontSize:13,padding:"6px 10px",borderRadius:4,background:"#0a140a",color:pushMsg.startsWith('Blad')||pushMsg.startsWith('Brak')?"#df8080":"#afffaf"}}>{pushMsg}</div>}
+              </div>}
             </div>
           </div>
         )}
 
-      {/* ── DOLNY PASEK NAWIGACJI (mobile) ── */}
+      {/* DOLNY PASEK (mobile) */}
       <div className="mosk-bottom-nav">
-        {[
-          ["wiadomosci","💬","Wiad."],
-          ["nowe","➕","Nowe"],
-          ["al_zam","🛒","Allegro"],
-          ["baza","📋","Zlecenia"],
-          ["kalk","🧮","Kalk."],
-        ].map(([id,icon,label])=>(
-          <button key={id} className={tab===id?"active":""} onClick={()=>setTab(id)}>
-            <span className="bnav-icon">{icon}</span>
-            <span className="bnav-label">{label}</span>
-          </button>
-        ))}
-        <button className={tab==="allegro"||tab==="ustawienia"?"active":""} onClick={()=>{
+        {[["wiadomosci","💬","Wiad."],["nowe","➕","Nowe"],["al_zam","🛒","Allegro"],["baza","📋","Zlecenia"],["kalk","🧮","Kalk."]].map(function([id,icon,label]){
+          return React.createElement("button",{key:id,className:tab===id?"bnav-active":"",onClick:function(){setTab(id);}},
+            React.createElement("span",{className:"bi"},icon),
+            React.createElement("span",{className:"bl"},label)
+          );
+        })}
+        <button className={tab==="allegro"||tab==="ustawienia"?"bnav-active":""} onClick={function(){
           const pin=localStorage.getItem("admin_pin");
           if(!pin){const np=prompt("Ustaw PIN (4 cyfry):");if(!np||!/[0-9]{4}/.test(np)){alert("PIN musi mieć 4 cyfry.");return;}localStorage.setItem("admin_pin",np);setTab("allegro");return;}
           const e=prompt("PIN:");if(e===pin)setTab("allegro");else alert("Błędny PIN.");
         }}>
-          <span className="bnav-icon">🔒</span>
-          <span className="bnav-label">Admin</span>
+          <span className="bi">🔒</span><span className="bl">Admin</span>
         </button>
       </div>
 
