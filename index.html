@@ -1644,22 +1644,25 @@ function App() {
     @keyframes spin{to{transform:rotate(360deg)}}
     .spin{animation:spin 1s linear infinite;display:inline-block}
     @media(max-width:700px){.grid2{grid-template-columns:1fr!important}.hide-mob{display:none!important}}
-    .light-mode{--bg:#f0f4f0;--bg2:#e4ece4;--surface:#ffffff;--border:#c0d4c0;--text:#1a2a1a;--text2:#2a4a2a;--text3:#4a6a4a;--accent:#2a8a2a;--accent2:#1a6a1a}
-    .light-mode textarea,.light-mode input,.light-mode select{background:#fff;color:#1a2a1a;border-color:#b0c8b0}
-    .light-mode textarea:focus,.light-mode input:focus,.light-mode select:focus{border-color:#3a9a3a;background:#f8fff8}
-    .light-mode .tab{color:#4a7a4a}.light-mode .tab.on{color:#1a7a1a;border-bottom-color:#1a7a1a}
-    .light-mode .btn{background:#e0f0e0;color:#1a5a1a;border-color:#9aca9a}.light-mode .btn:hover{background:#c8e8c8}
-    .light-mode .btn-sm{background:#e8f4e8;color:#1a5a1a;border-color:#9aca9a}
-    .light-mode .btn-pdf{background:#e8f0f8;color:#1a3a6a;border-color:#90b0d8}
-    .light-mode .btn-del{background:#fce8e8;color:#8a2020;border-color:#d89090}
-    .light-mode .card{background:#ffffff;border-color:#c0d4c0}
-    .light-mode .lbl{color:#1a6a1a}
-    .light-mode .stat{background:#f0f8f0;border-color:#b0d4b0}
-    .light-mode .stat-n{color:#1a6a1a}
-    .light-mode .stat-l{color:#4a8a4a}
-    .light-mode .tr:hover{background:#f0f8f0}
-    .light-mode .calc{background:#f0f8f0;border-color:#b0d4b0}
-    .light-mode .firma-badge{background:#f0f0d0;color:#5a5a10}
+    .light-mode{--bg:#f0f4f0;--bg2:#e4ece4;--surface:#ffffff;--border:#b0c8b0;--text:#0a180a;--text2:#1a3a1a;--text3:#2a5a2a;--accent:#1a7a1a;--accent2:#0a5a0a}
+    .light-mode body,.light-mode *{color:#0a180a}
+    .light-mode textarea,.light-mode input,.light-mode select{background:#f8fff8;color:#0a180a;border-color:#8ab88a}
+    .light-mode textarea:focus,.light-mode input:focus,.light-mode select:focus{border-color:#2a8a2a;background:#ffffff}
+    .light-mode .tab{color:#2a5a2a}.light-mode .tab.on{color:#0a6a0a;border-bottom-color:#0a6a0a}
+    .light-mode .tab:hover{color:#0a3a0a}
+    .light-mode .btn{background:#d0ecd0;color:#0a4a0a;border-color:#6ab46a}.light-mode .btn:hover{background:#b8e0b8}
+    .light-mode .btn-sm{background:#daf0da;color:#0a4a0a;border-color:#7ac47a}
+    .light-mode .btn-pdf{background:#daeaf8;color:#0a2a5a;border-color:#70a0d0}.light-mode .btn-pdf:hover{background:#c4dcf0}
+    .light-mode .btn-del{background:#fce8e8;color:#6a1010;border-color:#c87070}.light-mode .btn-del:hover{background:#f0d0d0}
+    .light-mode .card{background:#f0f8f0;border-color:#90c890;color:#0a180a}
+    .light-mode .lbl{color:#0a5a0a;font-weight:700}
+    .light-mode .stat{background:#e8f4e8;border-color:#90c490}
+    .light-mode .stat-n{color:#0a5a0a}
+    .light-mode .stat-l{color:#2a6a2a}
+    .light-mode .tr{border-bottom-color:#c0d8c0}.light-mode .tr:hover{background:#e8f4e8}
+    .light-mode .calc{background:#e8f4e8;border-color:#90c490;color:#0a2a0a}
+    .light-mode .firma-badge{background:#e8e8b0;color:#3a3a00}
+    .light-mode .badge.b-g{background:#c0e4c0;color:#0a3a0a}
   `;
 
   async function allegroRefresh(kontaId){
