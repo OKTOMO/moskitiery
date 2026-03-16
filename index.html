@@ -21,47 +21,64 @@ if("serviceWorker" in navigator){
 }
 </script>
 <style>
-/* ═══ MOBILE RESPONSIVE ═══ */
-@media (max-width: 700px) {
-  .mosk-back-btn { display: block !important; }
-  .mosk-header-right { flex-shrink: 0; max-width: 130px; overflow: hidden; }
-  .mosk-orders-count { display: none !important; }
-  .mosk-nav-tabs   { display: none !important; }
-  .mosk-bottom-nav { display: flex !important; }
-  .mosk-content    { padding-bottom: 70px !important; }
-  .mosk-header-sub { display: none !important; }
-  .mosk-header     { padding: 8px 10px !important; }
-  .mosk-logo       { font-size: 14px !important; }
-  .mosk-profile-dropdown { right: auto !important; left: 0 !important; max-width: 160px; }
-  .grid2-main      { grid-template-columns: 1fr !important; }
-  .msg-layout      { grid-template-columns: 1fr !important; }
-  .msg-panel-list  { display: var(--msg-list-display, flex) !important; }
-  .msg-panel-chat  { display: var(--msg-chat-display, none) !important; }
-}
+/* ═══ GLOBAL MOBILE RESET ═══ */
+html { overflow-x: hidden; }
+body { overflow-x: hidden; max-width: 100vw; }
+* { box-sizing: border-box; }
+
+/* ═══ BOTTOM NAV ═══ */
 .mosk-bottom-nav {
   display: none;
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
-  height: 58px;
-  background: #080e08;
-  border-top: 2px solid #1e3a1e;
-  z-index: 9999;
+  position: fixed; bottom: 0; left: 0; right: 0; height: 58px;
+  background: #080e08; border-top: 2px solid #1e3a1e; z-index: 9999;
   align-items: stretch;
 }
 .mosk-bottom-nav button {
-  flex: 1; background: none; border: none;
-  border-right: 1px solid #141e14;
-  color: #4a7a4a; font-size: 9px; font-weight: 700;
-  cursor: pointer; display: flex; flex-direction: column;
-  align-items: center; justify-content: center; gap: 1px;
-  padding: 0; letter-spacing: .02em; -webkit-tap-highlight-color: transparent;
+  flex: 1; background: none; border: none; border-right: 1px solid #141e14;
+  color: #4a7a4a; font-size: 9px; font-weight: 700; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 1px; padding: 0; -webkit-tap-highlight-color: transparent;
 }
 .mosk-bottom-nav button:last-child { border-right: none; }
 .mosk-bottom-nav button.bnav-active { color: #7fcf7f; background: #0e1e0e; }
 .mosk-bottom-nav button .bi { font-size: 19px; line-height: 1; }
 .mosk-bottom-nav button .bl { font-size: 9px; }
-html, body { overflow-x: hidden; max-width: 100vw; }
-* { box-sizing: border-box; }
+
+/* ═══ MOBILE ONLY ═══ */
+@media (max-width: 700px) {
+  /* Nav */
+  .mosk-nav-tabs   { display: none !important; }
+  .mosk-bottom-nav { display: flex !important; }
+  .mosk-content    { padding: 10px 10px 70px !important; }
+  /* Header */
+  .mosk-header     { padding: 7px 10px !important; }
+  .mosk-header-sub { display: none !important; }
+  .mosk-orders-cnt { display: none !important; }
+  .mosk-profile-dropdown { right: auto !important; left: 0 !important; }
+  /* Grids → single column */
+  .grid2-main      { grid-template-columns: 1fr !important; }
+  .stat-grid4      { grid-template-columns: 1fr 1fr !important; }
+  /* Tables → scroll */
+  .tbl-scroll      { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
+  .tbl-scroll table { min-width: 600px; }
+  /* Hide heavy columns */
+  .hide-mob        { display: none !important; }
+  /* Messages */
+  .msg-layout      { grid-template-columns: 1fr !important; }
+  .msg-list        { display: var(--mll, flex) !important; flex-direction: column; }
+  .msg-chat        { display: var(--mlc, none) !important; flex-direction: column; }
+  .mosk-back-btn   { display: block !important; }
+  /* Kalkulator */
+  .kalk-iframe     { display: none !important; }
+  .kalk-row        { flex-direction: column !important; align-items: flex-start !important; }
+  .kalk-row .kalk-url { display: none !important; }
+  .kalk-row .kalk-btns { flex-wrap: wrap; }
+  /* Nowa wiadomość grid */
+  .msg-new-grid    { grid-template-columns: 1fr !important; }
+  /* Baza filters */
+  .baza-filters    { flex-direction: column !important; align-items: stretch !important; }
+  .baza-filters input { width: 100% !important; }
+}
 </style>
 </head><body>
 <div id="root"></div>
@@ -991,7 +1008,7 @@ function App() {
   const allegroToken = allegroTokens[allegroActive]||"";
   // ── WIADOMOŚCI tab state ──
   const [msgKonto,setMsgKonto]=useState(()=>localStorage.getItem('allegro_active')||"favo5");
-  const [msgMobileView,setMsgMobileView]=useState('list'); // 'list' | 'chat'
+  const [msgMobileView,setMsgMobileView]=useState('list');
   const msgKontoRef=React.useRef(localStorage.getItem('allegro_active')||"favo5");
   const [msgThreads,setMsgThreads]=useState([]);
   const [msgLoading,setMsgLoading]=useState(false);
@@ -2037,13 +2054,13 @@ function App() {
           </div>
           <div className="mosk-header-sub" style={{fontSize:14,color:"#4a8a4a",letterSpacing:".2em",textTransform:"uppercase"}}>System zarządzania zamówieniami</div>
         </div>
-        <div className="mosk-header-right" style={{display:"flex",alignItems:"center",gap:8,minWidth:0}}>
-          <div className="mosk-orders-count" style={{fontSize:14,color:"#5a9a5a",whiteSpace:"nowrap"}}>{orders.length} zamówień · ☁</div>
+        <div style={{display:"flex",alignItems:"center",gap:12}}>
+          <div className="mosk-orders-cnt" style={{fontSize:14,color:"#5a9a5a",whiteSpace:"nowrap"}}>{orders.length} zamówień · ☁</div>
           <div style={{position:"relative",display:"inline-block"}}>
               <button onClick={()=>{
                 const menu=document.getElementById('profile-menu');
                 menu.style.display=menu.style.display==='block'?'none':'block';
-              }} className="mosk-profile-btn" style={{fontSize:14,background:"transparent",border:"1px solid #1e3a1e",borderRadius:4,color:"#4a8a4a",padding:"4px 10px",cursor:"pointer"}}>⇄ {currentProfile.nazwa} ▾</button>
+              }} style={{fontSize:13,background:"transparent",border:"1px solid #1e3a1e",borderRadius:4,color:"#4a8a4a",padding:"3px 7px",cursor:"pointer"}}>⇄ {currentProfile.nazwa} ▾</button>
               <div id="profile-menu" className="mosk-profile-dropdown" style={{display:"none",position:"absolute",right:0,top:"110%",background:"#0e1420",border:"1px solid #1e3a1e",borderRadius:6,zIndex:100,minWidth:140}}>
                 {PROFILE.map(p=>(
                   <div key={p.id} onClick={()=>{
@@ -2390,7 +2407,7 @@ function App() {
                   </span>
                   <button onClick={()=>setAllegroImportShow(false)} style={{marginLeft:"auto",background:"none",border:"none",color:"#5a7a9a",cursor:"pointer",fontSize:18,lineHeight:1}}>✕</button>
                 </div>
-                <div style={{overflowX:"auto"}}>
+                <div className="tbl-scroll">
                   <table style={{width:"100%",borderCollapse:"collapse",fontSize:14}}>
                     <thead>
                       <tr style={{background:"#0c1a2a",borderBottom:"1px solid #1a3a5a"}}>
@@ -2860,7 +2877,7 @@ function App() {
 
         {tab==="baza" && (
           <div>
-            <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
+            <div className="baza-filters" style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
               <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Szukaj..." style={{width:220}}/>
               <select value={filterFirma} onChange={e=>setFilterFirma(e.target.value)} style={{width:"auto"}}>
                 <option value="">Wszystkie firmy</option>
@@ -2883,7 +2900,7 @@ function App() {
             </div>
 
             {filteredOrders.length>0&&(
-              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:12}}>
+              <div className="stat-grid4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:12}}>
                 {[["Moskitier",statsFilt.totalMosk+" szt"],["Linka",statsFilt.totalLinka+" mb"],["Blaszki",statsFilt.totalBlaszki+" szt"],["Siatka",statsFilt.totalM2+" m²"]].map(([l,v])=>(
                   <div key={l} className="stat" style={{padding:"8px 12px"}}>
                     <div style={{fontFamily:"'Syne',sans-serif",fontSize:18,fontWeight:800,color:"#afffaf"}}>{v}</div>
@@ -2893,7 +2910,7 @@ function App() {
               </div>
             )}
 
-            <div className="card" style={{padding:0,overflow:"hidden"}}>
+            <div className="card tbl-scroll" style={{padding:0,overflow:"hidden"}}>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:14}}>
                 <thead>
                   <tr style={{borderBottom:"2px solid #1e3a1e",background:"#0c1a0c"}}>
@@ -2959,7 +2976,7 @@ function App() {
         {tab==="stat" && (
           <div>
             <div style={{fontSize:14,color:"#4a8a4a",letterSpacing:".15em",textTransform:"uppercase",marginBottom:14}}>Łącznie ({orders.length} zamówień)</div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}} className="grid2">
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}} className="grid2 stat-grid4">
               {[["Moskitier",statsAll.totalMosk,"szt"],["Linka",statsAll.totalLinka,"mb"],["Blaszki",statsAll.totalBlaszki,"szt"],["Siatka",statsAll.totalM2,"m²"]].map(([l,v,u])=>(
                 <div key={l} className="stat"><div className="stat-n">{v}</div><div style={{fontSize:14,color:"#afffaf"}}>{u}</div><div className="stat-l">{l}</div></div>
               ))}
@@ -3122,7 +3139,7 @@ function App() {
             {msgSubTab==="threads"&&msgNewShow&&(
               <div style={{background:"#0c1a0c",border:"1px solid #2a5a2a",borderRadius:8,padding:16,marginBottom:12}}>
                 <div style={{fontSize:14,fontWeight:700,color:"#afffaf",marginBottom:10}}>✉️ Nowa wiadomość do kupującego</div>
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+                <div className="msg-new-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
                   <div>
                     <span className="lbl">Login kupującego</span>
                     <input value={msgNewLogin} onChange={function(e){setMsgNewLogin(e.target.value);}} placeholder="np. jan_kowalski" style={{fontFamily:"monospace",fontSize:14}}/>
@@ -3158,8 +3175,8 @@ function App() {
               </div>
             )}
             {msgSubTab==="threads"&&(
-            <div className="msg-layout" style={{display:"grid",gridTemplateColumns:"340px 1fr",gap:12,flex:1,minHeight:0,["--msg-list-display"]:msgMobileView==="list"?"flex":"none",["--msg-chat-display"]:msgMobileView==="chat"?"flex":"none"}}>
-              <div className="msg-panel-list" style={{background:"#0c1a0c",border:"1px solid #1e3a1e",borderRadius:8,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+            <div className="msg-layout" style={{display:"grid",gridTemplateColumns:"340px 1fr",gap:12,flex:1,minHeight:0,["--mll"]:msgMobileView==="list"?"flex":"none",["--mlc"]:msgMobileView==="chat"?"flex":"none"}}>
+              <div className="msg-list" style={{background:"#0c1a0c",border:"1px solid #1e3a1e",borderRadius:8,overflow:"hidden",display:"flex",flexDirection:"column"}}>
                 <div style={{padding:"10px 14px",borderBottom:"1px solid #1a2a1a",fontSize:14,color:"#6aaa6a",letterSpacing:".1em",textTransform:"uppercase"}}>Wątki ({msgThreads.length})</div>
                 <div style={{overflowY:"auto",flex:1}}>
                   {msgThreads.map(function(t){
@@ -3177,8 +3194,8 @@ function App() {
                   })}
                 </div>
               </div>
-              <div className="msg-panel-chat" style={{background:"#0c1a0c",border:"1px solid #1e3a1e",borderRadius:8,overflow:"hidden",display:"flex",flexDirection:"column"}}>
-                <button onClick={function(){setMsgMobileView("list");}} style={{display:"none",padding:"7px 14px",background:"#0a180a",border:"none",borderBottom:"1px solid #1a2a1a",color:"#7fcf7f",fontSize:14,fontWeight:700,cursor:"pointer",textAlign:"left"}} className="mosk-back-btn">← Wróć do listy</button>
+              <div className="msg-chat" style={{background:"#0c1a0c",border:"1px solid #1e3a1e",borderRadius:8,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+                <button className="mosk-back-btn" onClick={function(){setMsgMobileView("list");}} style={{display:"none",padding:"7px 14px",background:"#0a180a",border:"none",borderBottom:"1px solid #1a2a1a",color:"#7fcf7f",fontSize:14,fontWeight:700,cursor:"pointer",textAlign:"left"}}>← Wróć do listy</button>
                 {!msgActiveThread?(
                   <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",color:"#2a5a2a",fontSize:14}}>← Wybierz wątek z listy</div>
                 ):(
@@ -3422,9 +3439,9 @@ function App() {
                 {key:'evr', label:'Everis',            url:'kalkulator.everis.pl',    color:'#ff7043', direct:'https://kalkulator.everis.pl/kalkulator.html?brand=evr&qr=1'},
               ].map(b=>(
                 <div key={b.key} style={{display:'flex',flexDirection:'column',marginBottom:8,background:'var(--bg)',borderRadius:6,border:'1px solid var(--border)'}}>
-                  <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 12px'}}>
+                  <div className="kalk-row" style={{display:'flex',alignItems:'center',gap:8,padding:'8px 12px'}}>
                     <span style={{minWidth:130,fontWeight:700,fontSize:14,color:b.color}}>{b.label}</span>
-                    <span style={{flex:1,fontFamily:'monospace',fontSize:14,color:'var(--text3)'}}>{b.url}</span>
+                    <span className="kalk-url" style={{flex:1,fontFamily:'monospace',fontSize:14,color:'var(--text3)'}}>{b.url}</span>
                     <button onClick={()=>navigator.clipboard?.writeText(b.url)}
                       style={{padding:'4px 10px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text)',borderRadius:5,cursor:'pointer',fontSize:14}}>📋 kopiuj</button>
                     <a href={'https://'+b.url} target="_blank"
@@ -3478,7 +3495,7 @@ function App() {
               )}
             </div>
             <div style={{color:'var(--accent)',fontWeight:'bold',fontSize:'12px',marginBottom:8,letterSpacing:'.1em'}}>PODGLĄD — FAVOUR / OKTOMO</div>
-            <iframe src="https://kalkulator.oktomo.pl" style={{width:'100%',height:'680px',border:'none',borderRadius:8,display:'block'}} title="Kalkulator Favour"/>
+            <iframe className="kalk-iframe" src="https://kalkulator.oktomo.pl" style={{width:'100%',height:'680px',border:'none',borderRadius:8,display:'block'}} title="Kalkulator Favour"/>
           </div>
         )}
         {/* ── FAKTURY ── */}
@@ -4112,18 +4129,16 @@ function App() {
                 {settings.apiKey&&settings.binId?"✅ Synchronizacja aktywna":"⚠️ Brak konfiguracji — dane lokalne"}
               </div>
             </div>
-
             <div className="card" style={{maxWidth:520}}>
               <div style={{fontFamily:"monospace",fontSize:16,fontWeight:800,color:"#afffaf",marginBottom:14,display:"flex",alignItems:"center",gap:10}}>
-                PWA / Push
-                <span style={{marginLeft:"auto",fontSize:11,padding:"2px 8px",borderRadius:10,background:pushSubscribed?"#0a2a0a":"#2a1a00",color:pushSubscribed?"#7fcf7f":"#cf9f4a",border:"1px solid "+(pushSubscribed?"#2a5a2a":"#5a3a00")}}>{pushSubscribed?"AKTYWNE":"NIEAKTYWNE"}</span>
+                PWA / Push <span style={{marginLeft:"auto",fontSize:11,padding:"2px 8px",borderRadius:10,background:pushSubscribed?"#0a2a0a":"#2a1a00",color:pushSubscribed?"#7fcf7f":"#cf9f4a",border:"1px solid "+(pushSubscribed?"#2a5a2a":"#5a3a00")}}>{pushSubscribed?"AKTYWNE":"NIEAKTYWNE"}</span>
               </div>
               {!pushSupported&&<div style={{color:"#df8080",fontSize:14}}>Uzywaj Safari iOS 16.4+.</div>}
               {pushSupported&&<div>
                 <span className="lbl">VAPID Public Key</span>
                 <input value={vapidPublicKey} onChange={e=>{setVapidPublicKey(e.target.value);localStorage.setItem('vapid_public_key',e.target.value);}} placeholder="BNxx..." style={{fontFamily:"monospace",fontSize:12,background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:5,color:"#c0e0c0",padding:"7px 10px",width:"100%",boxSizing:"border-box",marginBottom:10}}/>
                 <div style={{display:"flex",gap:8,marginBottom:8}}>
-                  {!pushSubscribed?<button onClick={subscribePush} disabled={pushLoading} className="btn" style={{flex:1,background:"#0a2a0a",borderColor:"#2a6a2a",color:"#afffaf"}}>{pushLoading?"Rejestruje...":"Wlacz powiadomienia"}</button>:<button onClick={unsubscribePush} disabled={pushLoading} className="btn" style={{flex:1,background:"#2a0a0a",borderColor:"#6a2a2a",color:"#df8080"}}>{pushLoading?"Usuwam...":"Wylacz"}</button>}
+                  {!pushSubscribed?<button onClick={subscribePush} disabled={pushLoading} className="btn" style={{flex:1,background:"#0a2a0a",borderColor:"#2a6a2a",color:"#afffaf"}}>{pushLoading?"...":"Wlacz powiadomienia"}</button>:<button onClick={unsubscribePush} disabled={pushLoading} className="btn" style={{flex:1,background:"#2a0a0a",borderColor:"#6a2a2a",color:"#df8080"}}>{pushLoading?"...":"Wylacz"}</button>}
                   <button onClick={copyPushSub} disabled={!pushSubscribed} className="btn" style={{flex:1,background:"#0e1a2a",borderColor:"#2a4a6a",color:"#7abfdf",opacity:pushSubscribed?1:0.4}}>Kopiuj endpoint</button>
                 </div>
                 {pushMsg&&<div style={{fontSize:13,padding:"6px 10px",borderRadius:4,background:"#0a140a",color:pushMsg.startsWith('Blad')||pushMsg.startsWith('Brak')?"#df8080":"#afffaf"}}>{pushMsg}</div>}
@@ -4132,21 +4147,17 @@ function App() {
           </div>
         )}
 
-      {/* DOLNY PASEK (mobile) */}
+      {/* DOLNY PASEK */}
       <div className="mosk-bottom-nav">
         {[["wiadomosci","💬","Wiad."],["nowe","➕","Nowe"],["al_zam","🛒","Allegro"],["baza","📋","Zlecenia"],["kalk","🧮","Kalk."]].map(function([id,icon,label]){
           return React.createElement("button",{key:id,className:tab===id?"bnav-active":"",onClick:function(){setTab(id);}},
-            React.createElement("span",{className:"bi"},icon),
-            React.createElement("span",{className:"bl"},label)
-          );
+            React.createElement("span",{className:"bi"},icon),React.createElement("span",{className:"bl"},label));
         })}
         <button className={tab==="allegro"||tab==="ustawienia"?"bnav-active":""} onClick={function(){
           const pin=localStorage.getItem("admin_pin");
           if(!pin){const np=prompt("Ustaw PIN (4 cyfry):");if(!np||!/[0-9]{4}/.test(np)){alert("PIN musi mieć 4 cyfry.");return;}localStorage.setItem("admin_pin",np);setTab("allegro");return;}
           const e=prompt("PIN:");if(e===pin)setTab("allegro");else alert("Błędny PIN.");
-        }}>
-          <span className="bi">🔒</span><span className="bl">Admin</span>
-        </button>
+        }}><span className="bi">🔒</span><span className="bl">Admin</span></button>
       </div>
 
       </div>
