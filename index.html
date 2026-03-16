@@ -587,8 +587,6 @@ table.main td.kolor{font-size:14px;font-weight:700}
 // ─── APP ─────────────────────────────────────────────────────────────────────
 function App() {
   const [activeProfile,setActiveProfile]=useState(()=>localStorage.getItem('active_profile')||"");
-  const [theme,setTheme]=useState(()=>localStorage.getItem('app_theme')||'dark');
-  const isLight=theme==='light';
   const [tab,setTab]=useState(()=>new URLSearchParams(window.location.search).has("code")?"allegro":"nowe");
   async function fetchInvoiceFromAllegro(orderId, firma){
     const kontaMap={"F":"favo5","AR":"arlis_pl","AP":"albama_eu","E":"everis_pl"};
@@ -1616,14 +1614,14 @@ function App() {
   const CSS=`
     @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Syne:wght@700;800&display=swap');
     *{box-sizing:border-box;margin:0;padding:0}
-    ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:#3a6a3a;border-radius:3px}
+    ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-thumb{background:#4a8a4a;border-radius:3px}
     textarea,input,select{background:#1e2330;color:#f0f0e8;border:1px solid #3a4a3a;border-radius:5px;padding:9px 11px;font-family:inherit;font-size:14px;outline:none;transition:border-color .2s;width:100%}
     textarea:focus,input:focus,select:focus{border-color:#5fbf5f;background:#222836}
     button{cursor:pointer;font-family:inherit;border:none;border-radius:5px;transition:all .15s}
-    .tab{padding:11px 20px;background:transparent;color:#7a9a7a;border-bottom:2px solid transparent;border-radius:0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600}
-    .tab.on{color:#7fcf7f;border-bottom-color:#7fcf7f}
+    .tab{padding:11px 20px;background:transparent;color:#8abf8a;border-bottom:2px solid transparent;border-radius:0;font-size:12px;letter-spacing:.08em;text-transform:uppercase;font-weight:600}
+    .tab.on{color:#9fef9f;border-bottom-color:#9fef9f}
     .tab:hover{color:#bbb}
-    .btn{background:#1e3a1e;color:#9fcf9f;padding:10px 20px;font-size:13px;border:1px solid #3a6a3a;font-weight:600}
+    .btn{background:#1e3a1e;color:#9fcf9f;padding:10px 20px;font-size:13px;border:1px solid #4a8a4a;font-weight:600}
     .btn:hover{background:#2a5a2a;color:#c0e8c0}.btn:disabled{opacity:.35;cursor:default}
     .btn-sm{padding:5px 14px;font-size:12px;background:#182818;color:#7fcf7f;border:1px solid #2a4a2a;font-weight:600}
     .btn-sm:hover{background:#1e3a1e}
@@ -1632,10 +1630,10 @@ function App() {
     .btn-del{background:#2e1a1a;color:#df8080;border:1px solid #4a2a2a;padding:5px 12px;font-size:12px}
     .btn-del:hover{background:#3e2a2a}
     .card{background:#141a22;border:1px solid #243024;border-radius:8px;padding:18px}
-    .lbl{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#7fcf7f;margin-bottom:5px;display:block;font-weight:600}
+    .lbl{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#9fef9f;margin-bottom:5px;display:block;font-weight:600}
     .stat{background:#0d1a0d;border:1px solid #1e3e1e;border-radius:6px;padding:12px 16px}
-    .stat-n{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:#7fcf7f}
-    .stat-l{font-size:10px;color:#3a6a3a;letter-spacing:.1em;text-transform:uppercase;margin-top:2px}
+    .stat-n{font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:#9fef9f}
+    .stat-l{font-size:10px;color:#4a8a4a;letter-spacing:.1em;text-transform:uppercase;margin-top:2px}
     .tr{border-bottom:1px solid #1a221a}.tr:hover{background:#121a12}
     .badge{display:inline-block;padding:2px 9px;border-radius:3px;font-size:11px;font-weight:700}
     .b-g{background:#1a3a1a;color:#7fcf7f}
@@ -1644,26 +1642,6 @@ function App() {
     @keyframes spin{to{transform:rotate(360deg)}}
     .spin{animation:spin 1s linear infinite;display:inline-block}
     @media(max-width:700px){.grid2{grid-template-columns:1fr!important}.hide-mob{display:none!important}}
-    .light-mode{--bg:#f0f4f0;--bg2:#e4ece4;--surface:#ffffff;--border:#b0c8b0;--text:#0a180a;--text2:#1a3a1a;--text3:#2a5a2a;--accent:#1a7a1a;--accent2:#0a5a0a}
-    .light-mode body,.light-mode *{color:#0a180a}
-    .light-mode textarea,.light-mode input,.light-mode select{background:#f8fff8;color:#0a180a;border-color:#8ab88a}
-    .light-mode textarea:focus,.light-mode input:focus,.light-mode select:focus{border-color:#2a8a2a;background:#ffffff}
-    .light-mode .tab{color:#2a5a2a}.light-mode .tab.on{color:#0a6a0a;border-bottom-color:#0a6a0a}
-    .light-mode .tab:hover{color:#0a3a0a}
-    .light-mode .btn{background:#d0ecd0;color:#0a4a0a;border-color:#6ab46a}.light-mode .btn:hover{background:#b8e0b8}
-    .light-mode .btn-sm{background:#daf0da;color:#0a4a0a;border-color:#7ac47a}
-    .light-mode .btn-pdf{background:#daeaf8;color:#0a2a5a;border-color:#70a0d0}.light-mode .btn-pdf:hover{background:#c4dcf0}
-    .light-mode .btn-del{background:#fce8e8;color:#6a1010;border-color:#c87070}.light-mode .btn-del:hover{background:#f0d0d0}
-    .light-mode .card{background:#f0f8f0;border-color:#90c890;color:#0a180a}
-    .light-mode .lbl{color:#0a5a0a;font-weight:700}
-    .light-mode .stat{background:#e8f4e8;border-color:#90c490}
-    .light-mode .stat-n{color:#0a5a0a}
-    .light-mode .stat-l{color:#2a6a2a}
-    .light-mode .tr{border-bottom-color:#c0d8c0}.light-mode .tr:hover{background:#e8f4e8}
-    .light-mode .calc{background:#e8f4e8;border-color:#90c490;color:#0a2a0a}
-    .light-mode .firma-badge{background:#e8e8b0;color:#3a3a00}
-    .light-mode .badge.b-g{background:#c0e4c0;color:#0a3a0a}
-    .light-mode img{filter:invert(1) hue-rotate(180deg)}
   `;
 
   async function allegroRefresh(kontaId){
@@ -1913,8 +1891,8 @@ function App() {
   if(!activeProfile){
     return (
       <div style={{minHeight:"100vh",background:"#0a0f0a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",fontFamily:"'Syne',sans-serif"}}>
-        <div style={{fontSize:28,fontWeight:900,color:"#7fcf7f",marginBottom:8,letterSpacing:2}}>🦟 MosquitoApp</div>
-        <div style={{fontSize:13,color:"#3a6a3a",marginBottom:48}}>Wybierz profil firmy</div>
+        <div style={{fontSize:28,fontWeight:900,color:"#afffaf",marginBottom:8,letterSpacing:2}}>🦟 MosquitoApp</div>
+        <div style={{fontSize:13,color:"#4a8a4a",marginBottom:48}}>Wybierz profil firmy</div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,width:360}}>
           {PROFILE.map(p=>(
             <button key={p.id} onClick={()=>{
@@ -1945,27 +1923,26 @@ function App() {
   }
 
   return (
-    <div className={isLight?"light-mode":""} style={{minHeight:"100vh",background:"#0c1018",color:"#e8ece8",fontFamily:"'IBM Plex Mono','Courier New',monospace",filter:isLight?"invert(1) hue-rotate(180deg)":"none"}}>
+    <div style={{minHeight:"100vh",background:"#0c1018",color:"#e8ece8",fontFamily:"'IBM Plex Mono','Courier New',monospace"}}>
       <style>{CSS}</style>
 
       <div style={{borderBottom:"1px solid #1e2e1e",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e1420"}}>
         <div>
-          <div style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:800,color:"#7fcf7f",letterSpacing:".05em"}}>
+          <div style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:800,color:"#9fef9f",letterSpacing:".05em"}}>
             🦟 MosquitoApp
             <span style={{fontSize:16,fontWeight:900,color:"#9fcf9f",background:"#0d1a0d",border:"1px solid #2a5a2a",borderRadius:6,padding:"4px 14px",marginLeft:10,letterSpacing:1}}>
               {currentProfile.nazwa}
             </span>
           </div>
-          <div style={{fontSize:10,color:"#3a6a3a",letterSpacing:".2em",textTransform:"uppercase"}}>System zarządzania zamówieniami</div>
+          <div style={{fontSize:10,color:"#4a8a4a",letterSpacing:".2em",textTransform:"uppercase"}}>System zarządzania zamówieniami</div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <div style={{fontSize:12,color:isLight?"#3a6a3a":"#3a6a3a"}}>{orders.length} zamówień · ☁</div>
-          <button onClick={()=>{const t=isLight?'dark':'light';setTheme(t);localStorage.setItem('app_theme',t);}} style={{fontSize:11,background:"transparent",border:"1px solid",borderColor:isLight?"#9aca9a":"#1e3a1e",borderRadius:4,color:isLight?"#2a6a2a":"#3a6a3a",padding:"4px 10px",cursor:"pointer"}}>{isLight?"🌙 Ciemny":"☀️ Jasny"}</button>
+          <div style={{fontSize:12,color:"#5a9a5a"}}>{orders.length} zamówień · ☁</div>
           <div style={{position:"relative",display:"inline-block"}}>
               <button onClick={()=>{
                 const menu=document.getElementById('profile-menu');
                 menu.style.display=menu.style.display==='block'?'none':'block';
-              }} style={{fontSize:10,background:"transparent",border:"1px solid #1e3a1e",borderRadius:4,color:"#3a6a3a",padding:"4px 10px",cursor:"pointer"}}>⇄ {currentProfile.nazwa} ▾</button>
+              }} style={{fontSize:10,background:"transparent",border:"1px solid #1e3a1e",borderRadius:4,color:"#4a8a4a",padding:"4px 10px",cursor:"pointer"}}>⇄ {currentProfile.nazwa} ▾</button>
               <div id="profile-menu" style={{display:"none",position:"absolute",right:0,top:"110%",background:"#0e1420",border:"1px solid #1e3a1e",borderRadius:6,zIndex:100,minWidth:140}}>
                 {PROFILE.map(p=>(
                   <div key={p.id} onClick={()=>{
@@ -2031,10 +2008,10 @@ function App() {
                   style={{height:90,resize:"vertical",marginBottom:10}}/>
 
                 <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:6}}>
-                  <span style={{fontSize:11,color:"#3a6a3a"}}>Parsuj jako:</span>
+                  <span style={{fontSize:11,color:"#4a8a4a"}}>Parsuj jako:</span>
                   <button onClick={()=>setParseTyp("okno")} style={{padding:"4px 12px",fontSize:11,borderRadius:4,border:"1px solid",cursor:"pointer",
                     background:parseTyp==="okno"?"#1a3a1a":"transparent",
-                    color:parseTyp==="okno"?"#9fcf9f":"#3a6a3a",
+                    color:parseTyp==="okno"?"#9fcf9f":"#4a8a4a",
                     borderColor:parseTyp==="okno"?"#2a6a2a":"#1e3a1e"}}>🪟 Okno</button>
                   <button onClick={()=>setParseTyp("drzwi")} style={{padding:"4px 12px",fontSize:11,borderRadius:4,border:"1px solid",cursor:"pointer",
                     background:parseTyp==="drzwi"?"#1a2a4a":"transparent",
@@ -2244,7 +2221,7 @@ function App() {
                             <span style={{color:"#5a9a5a"}}>🔗 JEDN: <strong style={{color:"#9fcf9f"}}>{obliczJedn(poz.szerokosc,poz.wysokosc,poz.ilosc)} mb</strong></span>
                             <span style={{color:"#5a9a5a"}}>📎 Blaszek: <strong style={{color:"#9fcf9f"}}>8 szt</strong></span>
                             <span style={{color:"#5a9a5a"}}>📐 <strong style={{color:"#dfdf8f"}}>{blaszRoz} mm</strong>
-                              <span style={{color:"#3a6a3a",fontSize:11}}> (głęb {g}mm → blaszka {blaszRoz}mm)</span>
+                              <span style={{color:"#4a8a4a",fontSize:11}}> (głęb {g}mm → blaszka {blaszRoz}mm)</span>
                             </span>
                           </div>
                         )}
@@ -2263,7 +2240,7 @@ function App() {
                 onClick={handleSave} disabled={!form.klientImie&&!form.klientMiasto&&!form.pozycje[0].szerokosc}>
                 {editingId!==null?"💾 Zapisz zmiany":"💾 Zapisz zamówienie"}
               </button>
-              {saved&&<div style={{textAlign:"center",color:"#7fcf7f",fontSize:12,marginTop:4}}>✓ Zapisano i zsynchronizowano ☁</div>}
+              {saved&&<div style={{textAlign:"center",color:"#afffaf",fontSize:12,marginTop:4}}>✓ Zapisano i zsynchronizowano ☁</div>}
             </div>
           </div>
         )}
@@ -2387,7 +2364,7 @@ function App() {
                                   <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
                                     {isMosk&&(
                                       <button onClick={()=>importAllegroOrder(imp)}
-                                        style={{padding:"5px 12px",fontSize:11,background:"#1a4a2a",border:"1px solid #3a8a4a",borderRadius:5,color:"#7fcf7f",cursor:"pointer",fontWeight:700,whiteSpace:"nowrap"}}>
+                                        style={{padding:"5px 12px",fontSize:11,background:"#1a4a2a",border:"1px solid #3a8a4a",borderRadius:5,color:"#afffaf",cursor:"pointer",fontWeight:700,whiteSpace:"nowrap"}}>
                                         ➕ Zlecenie
                                       </button>
                                     )}
@@ -2450,7 +2427,7 @@ function App() {
 
                   {/* Nagłówek */}
                   <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
-                    <span style={{fontSize:15,fontWeight:700,color:"#7fcf7f"}}>➕ Import zlecenia</span>
+                    <span style={{fontSize:15,fontWeight:700,color:"#afffaf"}}>➕ Import zlecenia</span>
                     <span style={{marginLeft:"auto",cursor:"pointer",color:"#5a7a5a",fontSize:18}} onClick={()=>setImportModal(null)}>✕</span>
                   </div>
 
@@ -2482,23 +2459,23 @@ function App() {
                           placeholder="KAL-260304-0001"
                           style={{flex:1,padding:"7px 10px",borderRadius:6,border:"1px solid #2a5a3a",background:"#0a140a",color:"#a0dfaf",fontFamily:"monospace",fontSize:13}}/>
                         <button onClick={loadKal} disabled={kalLoading}
-                          style={{padding:"7px 16px",borderRadius:6,border:"1px solid #3a8a4a",background:kalLoading?"#1a2a1a":"#1a4a2a",color:"#7fcf7f",cursor:kalLoading?"not-allowed":"pointer",fontWeight:700}}>
+                          style={{padding:"7px 16px",borderRadius:6,border:"1px solid #3a8a4a",background:kalLoading?"#1a2a1a":"#1a4a2a",color:"#afffaf",cursor:kalLoading?"not-allowed":"pointer",fontWeight:700}}>
                           {kalLoading?"⟳":"🔍"} Załaduj
                         </button>
                       </div>
                       {kalError&&<div style={{color:"#df7a7a",fontSize:12,marginBottom:8}}>❌ {kalError}</div>}
                       {kalData&&(
                         <div style={{background:"#0a1a0a",border:"1px solid #2a5a2a",borderRadius:8,padding:"10px 14px",fontSize:12}}>
-                          <div style={{color:"#7fcf7f",fontWeight:700,marginBottom:6}}>{kalData.orderNumber} — {kalData.clientName}</div>
+                          <div style={{color:"#afffaf",fontWeight:700,marginBottom:6}}>{kalData.orderNumber} — {kalData.clientName}</div>
                           {(kalData.positions||[]).map((p,i)=>(
                             <div key={i} style={{display:"flex",gap:8,alignItems:"center",padding:"4px 0",borderBottom:"1px solid #1a3a1a"}}>
                               <span style={{color:"#5a9a7a",fontFamily:"monospace",minWidth:20}}>{i+1}.</span>
                               <span style={{color:"#a0dfaf",fontWeight:700}}>{p.width||p.szerokosc}×{p.height||p.wysokosc}</span>
                               <span style={{color:"#4a8a6a"}}>{p.profile||p.kolorRamki} / {p.mesh||p.kolorSiatki}</span>
-                              <span style={{color:"#7fcf7f",marginLeft:"auto"}}>×{p.qty||p.ilosc||1}</span>
+                              <span style={{color:"#afffaf",marginLeft:"auto"}}>×{p.qty||p.ilosc||1}</span>
                             </div>
                           ))}
-                          {kalData.totalPrice&&<div style={{color:"#7fcf7f",textAlign:"right",marginTop:6,fontWeight:700}}>Suma: {kalData.totalPrice} zł</div>}
+                          {kalData.totalPrice&&<div style={{color:"#afffaf",textAlign:"right",marginTop:6,fontWeight:700}}>Suma: {kalData.totalPrice} zł</div>}
                         </div>
                       )}
                     </div>
@@ -2597,15 +2574,15 @@ function App() {
                 {shipmentLoading&&<div style={{color:"#7abfdf",fontSize:12,marginBottom:12}}>⟳ Pobieranie usług dostawy...</div>}
                 {!shipmentLoading&&shipmentModal.services.length>0&&(
                   <div style={{marginBottom:14}}>
-                    <div style={{fontSize:11,color:"#4a7a4a",marginBottom:6}}>Usługa dostawy:</div>
+                    <div style={{fontSize:11,color:"#6aaa6a",marginBottom:6}}>Usługa dostawy:</div>
                     <select value={shipmentServiceId} onChange={e=>setShipmentServiceId(e.target.value)}
-                      style={{width:"100%",background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:5,color:"#7fcf7f",padding:"6px 10px",fontSize:12}}>
+                      style={{width:"100%",background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:5,color:"#afffaf",padding:"6px 10px",fontSize:12}}>
                       {shipmentModal.services.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
                   </div>
                 )}
                 <div style={{marginBottom:14}}>
-                  <div style={{fontSize:11,color:"#4a7a4a",marginBottom:6}}>Zawartość paczki:</div>
+                  <div style={{fontSize:11,color:"#6aaa6a",marginBottom:6}}>Zawartość paczki:</div>
                   <input value={shipmentDescription} onChange={e=>setShipmentDescription(e.target.value)}
                     placeholder="np. akcesoria do moskitiery"
                     style={{width:"100%",boxSizing:"border-box",background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:5,color:"#c0e0c0",padding:"6px 10px",fontSize:12,fontFamily:"monospace"}}/>
@@ -2615,14 +2592,14 @@ function App() {
                 const _isInPost=_svcName.includes('inpost')||_svcName.includes('paczkomat');
                 if(_isInPost) return (
                   <div style={{marginBottom:16}}>
-                    <div style={{fontSize:11,color:"#4a7a4a",marginBottom:6}}>Rozmiar paczki (InPost):</div>
+                    <div style={{fontSize:11,color:"#6aaa6a",marginBottom:6}}>Rozmiar paczki (InPost):</div>
                     <div style={{display:"flex",gap:8}}>
                       {[["A","8cm"],["B","19cm"],["C","41cm"]].map(([s,h])=>(
                         <button key={s} onClick={()=>setShipmentSize(s)}
                           style={{flex:1,padding:"8px 0",fontSize:13,fontWeight:700,cursor:"pointer",borderRadius:6,
                             background:shipmentSize===s?"#2a5a2a":"#1a2a1a",
                             border:"1px solid "+(shipmentSize===s?"#4a9a4a":"#2a4a2a"),
-                            color:shipmentSize===s?"#7fcf7f":"#3a6a3a"}}>
+                            color:shipmentSize===s?"#7fcf7f":"#4a8a4a"}}>
                           {s}<div style={{fontSize:9,fontWeight:400,marginTop:2,color:shipmentSize===s?"#5a9a5a":"#2a4a2a"}}>{h}</div>
                         </button>
                       ))}
@@ -2631,11 +2608,11 @@ function App() {
                 );
                 return (
                   <div style={{marginBottom:16}}>
-                    <div style={{fontSize:11,color:"#4a7a4a",marginBottom:8}}>Wymiary i waga:</div>
+                    <div style={{fontSize:11,color:"#6aaa6a",marginBottom:8}}>Wymiary i waga:</div>
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8}}>
                       {[["Dług.",shipmentCustomSize?.length||64,"length"],["Szer.",shipmentCustomSize?.width||38,"width"],["Wys.",shipmentCustomSize?.height||15,"height"],["Waga kg",shipmentCustomSize?.weight||5,"weight"]].map(([lbl,val,key])=>(
                         <div key={key}>
-                          <div style={{fontSize:10,color:"#4a7a4a",marginBottom:3}}>{lbl}</div>
+                          <div style={{fontSize:10,color:"#6aaa6a",marginBottom:3}}>{lbl}</div>
                           <input type="number" min="1" value={val}
                             onChange={e=>setShipmentCustomSize(prev=>({...prev,[key]:parseFloat(e.target.value)||1}))}
                             style={{width:"100%",background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:5,color:"#c0e0c0",padding:"6px 4px",fontSize:13,textAlign:"center",boxSizing:"border-box"}}/>
@@ -2669,7 +2646,7 @@ function App() {
               <span style={{fontSize:11,color:"#7fcf9f",letterSpacing:".12em",textTransform:"uppercase",fontWeight:700}}>📨 Zapytania z kalkulatora</span>
               <button onClick={fetchKalOrders} disabled={kalOrdersLoading}
                 style={{padding:"6px 18px",fontSize:12,fontWeight:700,cursor:kalOrdersLoading?"not-allowed":"pointer",
-                  background:kalOrdersLoading?"#1a2a1a":"#1a3a2a",border:"1px solid #3a7a4a",borderRadius:6,color:"#7fcf7f"}}>
+                  background:kalOrdersLoading?"#1a2a1a":"#1a3a2a",border:"1px solid #3a7a4a",borderRadius:6,color:"#afffaf"}}>
                 {kalOrdersLoading?"⟳ Pobieranie...":"🔄 Odśwież"}
               </button>
               <input value={kalOrdersSearch} onChange={e=>setKalOrdersSearch(e.target.value)}
@@ -2737,11 +2714,11 @@ function App() {
                                 <div key={i} style={{fontSize:10,color:"#5a9a6a",whiteSpace:"nowrap"}}>
                                   {p.szerokosc}×{p.wysokosc} cm{p.felc?` felc:${p.felc}`:""}
                                   <span style={{color:"#3a7a5a",marginLeft:4}}>{(p.kolorProfilu||"").replace(/ RAL \d+/,"")}/{p.kolorSiatki}</span>
-                                  {p.ilosc>1&&<span style={{color:"#7fcf7f",marginLeft:4}}>×{p.ilosc}</span>}
+                                  {p.ilosc>1&&<span style={{color:"#afffaf",marginLeft:4}}>×{p.ilosc}</span>}
                                 </div>
                               ))}
                             </td>
-                            <td style={{padding:"8px 12px",color:"#7fcf7f",fontWeight:700,fontFamily:"monospace",whiteSpace:"nowrap"}}>
+                            <td style={{padding:"8px 12px",color:"#afffaf",fontWeight:700,fontFamily:"monospace",whiteSpace:"nowrap"}}>
                               {o.podsumowanie?.cost!=null?o.podsumowanie.cost.toFixed(2)+" zł":"—"}
                             </td>
                             <td style={{padding:"8px 12px"}}>
@@ -2755,7 +2732,7 @@ function App() {
                               <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                                 {!done&&(
                                   <button onClick={()=>markKalOrderDone(o.orderNumber)}
-                                    style={{padding:"4px 10px",fontSize:10,background:"#1a3a1a",border:"1px solid #3a7a3a",borderRadius:4,color:"#7fcf7f",cursor:"pointer",fontWeight:700}}>
+                                    style={{padding:"4px 10px",fontSize:10,background:"#1a3a1a",border:"1px solid #3a7a3a",borderRadius:4,color:"#afffaf",cursor:"pointer",fontWeight:700}}>
                                     ✅ Zrealizowane
                                   </button>
                                 )}
@@ -2800,7 +2777,7 @@ function App() {
                 <option value="">Wszystkie kolory</option>
                 {KOLORY_RAMKI.map(k=><option key={k} value={k}>{k}</option>)}
               </select>
-              <span style={{marginLeft:"auto",fontSize:12,color:"#4a7a4a"}}>{filteredOrders.length} zamówień</span>
+              <span style={{marginLeft:"auto",fontSize:12,color:"#6aaa6a"}}>{filteredOrders.length} zamówień</span>
               <button className="btn-sm" onClick={exportCSV} title="Eksportuj zamówienia do pliku CSV">⬇ CSV</button>
             </div>
 
@@ -2808,8 +2785,8 @@ function App() {
               <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:12}}>
                 {[["Moskitier",statsFilt.totalMosk+" szt"],["Linka",statsFilt.totalLinka+" mb"],["Blaszki",statsFilt.totalBlaszki+" szt"],["Siatka",statsFilt.totalM2+" m²"]].map(([l,v])=>(
                   <div key={l} className="stat" style={{padding:"8px 12px"}}>
-                    <div style={{fontFamily:"'Syne',sans-serif",fontSize:18,fontWeight:800,color:"#7fcf7f"}}>{v}</div>
-                    <div style={{fontSize:10,color:"#3a6a3a",letterSpacing:".1em",textTransform:"uppercase"}}>{l}</div>
+                    <div style={{fontFamily:"'Syne',sans-serif",fontSize:18,fontWeight:800,color:"#afffaf"}}>{v}</div>
+                    <div style={{fontSize:10,color:"#4a8a4a",letterSpacing:".1em",textTransform:"uppercase"}}>{l}</div>
                   </div>
                 ))}
               </div>
@@ -2880,10 +2857,10 @@ function App() {
         {/* ══ STATYSTYKI ══ */}
         {tab==="stat" && (
           <div>
-            <div style={{fontSize:11,color:"#3a6a3a",letterSpacing:".15em",textTransform:"uppercase",marginBottom:14}}>Łącznie ({orders.length} zamówień)</div>
+            <div style={{fontSize:11,color:"#4a8a4a",letterSpacing:".15em",textTransform:"uppercase",marginBottom:14}}>Łącznie ({orders.length} zamówień)</div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}} className="grid2">
               {[["Moskitier",statsAll.totalMosk,"szt"],["Linka",statsAll.totalLinka,"mb"],["Blaszki",statsAll.totalBlaszki,"szt"],["Siatka",statsAll.totalM2,"m²"]].map(([l,v,u])=>(
-                <div key={l} className="stat"><div className="stat-n">{v}</div><div style={{fontSize:12,color:"#7fcf7f"}}>{u}</div><div className="stat-l">{l}</div></div>
+                <div key={l} className="stat"><div className="stat-n">{v}</div><div style={{fontSize:12,color:"#afffaf"}}>{u}</div><div className="stat-l">{l}</div></div>
               ))}
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}} className="grid2">
@@ -2894,7 +2871,7 @@ function App() {
                   return (<div key={k} style={{marginBottom:10}}>
                     <div style={{display:"flex",justifyContent:"space-between",marginBottom:3,fontSize:12}}>
                       <span style={{color:"#9fcf9f"}}>{k}</span>
-                      <span style={{color:"#7fcf7f"}}>{v} szt ({pct}%)</span>
+                      <span style={{color:"#afffaf"}}>{v} szt ({pct}%)</span>
                     </div>
                     <div style={{height:3,background:"#1a2a1a",borderRadius:2}}>
                       <div style={{height:"100%",width:`${pct}%`,background:"linear-gradient(90deg,#1e5a1e,#7fcf7f)",borderRadius:2}}/>
@@ -2924,7 +2901,7 @@ function App() {
           <div style={{maxWidth:900}}>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:16}}>
               <div className="card">
-                <div style={{fontFamily:"'Syne',sans-serif",fontSize:16,fontWeight:800,color:"#7fcf7f",marginBottom:14}}>🛒 Konta Allegro</div>
+                <div style={{fontFamily:"'Syne',sans-serif",fontSize:16,fontWeight:800,color:"#afffaf",marginBottom:14}}>🛒 Konta Allegro</div>
                 <div style={{marginBottom:10}}>
                   <span className="lbl">Client ID</span>
                   <input value={allegroClientId} onChange={e=>setAllegroClientId(e.target.value)} placeholder="Client ID z developer.allegro.pl" style={{fontFamily:"monospace",fontSize:12}}/>
@@ -2964,7 +2941,7 @@ function App() {
                 {allegroError&&<div style={{marginTop:10,color:"#df8080",fontSize:12}}>{allegroError}</div>}
               </div>
               <div className="card">
-                <div style={{fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:800,color:"#7fcf7f",marginBottom:10}}>ℹ️ Jak to działa</div>
+                <div style={{fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:800,color:"#afffaf",marginBottom:10}}>ℹ️ Jak to działa</div>
                 <div style={{fontSize:12,color:"#5a8a5a",lineHeight:1.7}}>
                   1. Wpisz Client ID i Client Secret z <strong style={{color:"#7a9a7a"}}>developer.allegro.pl</strong><br/>
                   2. Kliknij <strong style={{color:"#7a9a7a"}}>"Zaloguj przez Allegro"</strong><br/>
@@ -3015,7 +2992,7 @@ function App() {
         {tab==="wiadomosci" && (
           <div style={{height:"calc(100vh - 160px)",display:"flex",flexDirection:"column"}}>
             <div style={{display:"flex",gap:8,marginBottom:10,alignItems:"center",flexWrap:"wrap"}}>
-              <span style={{fontSize:11,color:"#3a6a3a",letterSpacing:".12em",textTransform:"uppercase",marginRight:4}}>💬 Wiadomości</span>
+              <span style={{fontSize:11,color:"#4a8a4a",letterSpacing:".12em",textTransform:"uppercase",marginRight:4}}>💬 Wiadomości</span>
               {ALLEGRO_KONTA.map(function(k){
                 const hasTok=!!(allegroTokens[k.id]||"");
                 const active=msgKonto===k.id;
@@ -3033,17 +3010,17 @@ function App() {
               {msgLoading&&<span style={{fontSize:12,color:"#5a8a5a",marginLeft:8}}>⟳ ładowanie...</span>}
               {msgError&&<span style={{fontSize:12,color:"#df8080",marginLeft:8}}>{msgError}</span>}
               {!msgLoading&&msgThreads.length===0&&!msgError&&(
-                <span style={{fontSize:12,color:"#3a6a3a",marginLeft:8}}>Wybierz konto aby załadować wątki</span>
+                <span style={{fontSize:12,color:"#4a8a4a",marginLeft:8}}>Wybierz konto aby załadować wątki</span>
               )}
               <div style={{marginLeft:"auto",display:"flex",gap:6}}>
                 <button onClick={function(){setMsgSubTab("threads");}} style={{padding:"5px 14px",fontSize:12,background:msgSubTab==="threads"?"#2a5a3a":"#1a2a1a",border:"1px solid "+(msgSubTab==="threads"?"#3a7a4a":"#2a4a2a"),borderRadius:5,color:msgSubTab==="threads"?"#7fcf7f":"#4a7a4a",cursor:"pointer",fontWeight:700}}>💬 Wątki</button>
                 <button onClick={function(){setMsgSubTab("instructions");if(aiInstructions.length===0)loadInstructions();}} style={{padding:"5px 14px",fontSize:12,background:msgSubTab==="instructions"?"#1a2a4a":"#1a1a2a",border:"1px solid "+(msgSubTab==="instructions"?"#3a4a8a":"#1a2a4a"),borderRadius:5,color:msgSubTab==="instructions"?"#7abfdf":"#3a4a8a",cursor:"pointer",fontWeight:700}}>📋 Instrukcje AI</button>
-                {msgSubTab==="threads"&&<button onClick={function(){setMsgNewShow(true);setMsgNewError("");}} style={{padding:"5px 14px",fontSize:12,background:"#1a3a2a",border:"1px solid #3a6a3a",borderRadius:5,color:"#7fcf7f",cursor:"pointer",fontWeight:700}}>✉️ Nowa</button>}
+                {msgSubTab==="threads"&&<button onClick={function(){setMsgNewShow(true);setMsgNewError("");}} style={{padding:"5px 14px",fontSize:12,background:"#1a3a2a",border:"1px solid #4a8a4a",borderRadius:5,color:"#afffaf",cursor:"pointer",fontWeight:700}}>✉️ Nowa</button>}
               </div>
             </div>
             {msgSubTab==="threads"&&msgNewShow&&(
               <div style={{background:"#0c1a0c",border:"1px solid #2a5a2a",borderRadius:8,padding:16,marginBottom:12}}>
-                <div style={{fontSize:13,fontWeight:700,color:"#7fcf7f",marginBottom:10}}>✉️ Nowa wiadomość do kupującego</div>
+                <div style={{fontSize:13,fontWeight:700,color:"#afffaf",marginBottom:10}}>✉️ Nowa wiadomość do kupującego</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
                   <div>
                     <span className="lbl">Login kupującego</span>
@@ -3073,8 +3050,8 @@ function App() {
                 )}
                 {msgNewError&&<div style={{color:"#df8080",fontSize:12,marginBottom:8}}>{msgNewError}</div>}
                 <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                  <button onClick={msgSendNew} disabled={msgNewSending} style={{padding:"7px 18px",fontSize:12,background:"#2a5a3a",border:"1px solid #3a7a4a",borderRadius:5,color:"#7fcf7f",cursor:"pointer",fontWeight:700}}>{msgNewSending?"⟳ Wysyłam":"✉️ Wyślij"}</button>
-                  <span style={{fontSize:11,color:"#3a6a3a",fontStyle:"italic"}}>📎 Zdjęcia można dodać w odpowiedzi po wysłaniu</span>
+                  <button onClick={msgSendNew} disabled={msgNewSending} style={{padding:"7px 18px",fontSize:12,background:"#2a5a3a",border:"1px solid #3a7a4a",borderRadius:5,color:"#afffaf",cursor:"pointer",fontWeight:700}}>{msgNewSending?"⟳ Wysyłam":"✉️ Wyślij"}</button>
+                  <span style={{fontSize:11,color:"#4a8a4a",fontStyle:"italic"}}>📎 Zdjęcia można dodać w odpowiedzi po wysłaniu</span>
                   <button onClick={function(){setMsgNewShow(false);setMsgNewAttachments([]);}} style={{padding:"7px 14px",fontSize:12,background:"transparent",border:"1px solid #2a4a2a",borderRadius:5,color:"#5a8a5a",cursor:"pointer"}}>Anuluj</button>
                 </div>
               </div>
@@ -3082,7 +3059,7 @@ function App() {
             {msgSubTab==="threads"&&(
             <div style={{display:"grid",gridTemplateColumns:"340px 1fr",gap:12,flex:1,minHeight:0}}>
               <div style={{background:"#0c1a0c",border:"1px solid #1e3a1e",borderRadius:8,overflow:"hidden",display:"flex",flexDirection:"column"}}>
-                <div style={{padding:"10px 14px",borderBottom:"1px solid #1a2a1a",fontSize:11,color:"#4a7a4a",letterSpacing:".1em",textTransform:"uppercase"}}>Wątki ({msgThreads.length})</div>
+                <div style={{padding:"10px 14px",borderBottom:"1px solid #1a2a1a",fontSize:11,color:"#6aaa6a",letterSpacing:".1em",textTransform:"uppercase"}}>Wątki ({msgThreads.length})</div>
                 <div style={{overflowY:"auto",flex:1}}>
                   {msgThreads.map(function(t){
                     const active=msgActiveThread&&msgActiveThread.id===t.id;
@@ -3106,12 +3083,12 @@ function App() {
                   React.createElement(React.Fragment,null,
                     React.createElement("div",{style:{padding:"12px 16px",borderBottom:"1px solid #1a2a1a",display:"flex",alignItems:"center",gap:10}},
                       React.createElement("span",{style:{fontWeight:700,color:"#9fcf9f",fontSize:14}},msgActiveThread.interlocutor&&msgActiveThread.interlocutor.login||"—"),
-                      React.createElement("span",{style:{fontSize:12,color:"#4a7a4a",marginLeft:4}},msgActiveThread.subject||""),
-                      msgActiveThread.relatedObject&&msgActiveThread.relatedObject.id&&React.createElement("span",{style:{fontSize:10,color:"#3a6a3a",marginLeft:"auto",fontFamily:"monospace"}},"zamówienie: "+msgActiveThread.relatedObject.id)
+                      React.createElement("span",{style:{fontSize:12,color:"#6aaa6a",marginLeft:4}},msgActiveThread.subject||""),
+                      msgActiveThread.relatedObject&&msgActiveThread.relatedObject.id&&React.createElement("span",{style:{fontSize:10,color:"#4a8a4a",marginLeft:"auto",fontFamily:"monospace"}},"zamówienie: "+msgActiveThread.relatedObject.id)
                     ),
                     React.createElement("div",{style:{flex:1,overflowY:"auto",padding:"12px 16px",display:"flex",flexDirection:"column",gap:10}},
                       msgConvoLoading?(
-                        React.createElement("div",{style:{textAlign:"center",color:"#3a6a3a",fontSize:13}},"⟳ ładowanie wiadomości...")
+                        React.createElement("div",{style:{textAlign:"center",color:"#4a8a4a",fontSize:13}},"⟳ ładowanie wiadomości...")
                       ):(
                         msgConvo.map(function(m,i){
                           const isMe=m.author&&m.author.role==="OPERATOR";
@@ -3168,11 +3145,11 @@ function App() {
                             }})
                           ),
                           React.createElement("button",{onClick:handleMsgSuggest,disabled:msgSuggesting||msgConvo.length===0,style:{background:msgSuggesting?"#1a2a2a":"#1a2a3a",border:"1px solid #2a4a6a",borderRadius:6,padding:"8px 12px",fontSize:12,color:"#7abfdf",cursor:msgSuggesting||msgConvo.length===0?"not-allowed":"pointer",whiteSpace:"nowrap",opacity:msgConvo.length===0?0.4:1}},msgSuggesting?"⟳ AI...":"🤖 Sugeruj"),
-                          React.createElement("button",{onClick:msgSend,disabled:msgSending||(msgReply.trim()===""&&msgAttachments.length===0),style:{background:(msgSending||(msgReply.trim()===""&&msgAttachments.length===0))?"#1a2a1a":"#2a5a3a",border:"1px solid #3a7a4a",borderRadius:6,padding:"8px 12px",fontSize:12,color:"#7fcf7f",cursor:(msgSending||(msgReply.trim()===""&&msgAttachments.length===0))?"not-allowed":"pointer",fontWeight:700,whiteSpace:"nowrap",opacity:(msgReply.trim()===""&&msgAttachments.length===0)?0.4:1}},msgSending?"⟳ Wysyłam":"✉️ Wyślij")
+                          React.createElement("button",{onClick:msgSend,disabled:msgSending||(msgReply.trim()===""&&msgAttachments.length===0),style:{background:(msgSending||(msgReply.trim()===""&&msgAttachments.length===0))?"#1a2a1a":"#2a5a3a",border:"1px solid #3a7a4a",borderRadius:6,padding:"8px 12px",fontSize:12,color:"#afffaf",cursor:(msgSending||(msgReply.trim()===""&&msgAttachments.length===0))?"not-allowed":"pointer",fontWeight:700,whiteSpace:"nowrap",opacity:(msgReply.trim()===""&&msgAttachments.length===0)?0.4:1}},msgSending?"⟳ Wysyłam":"✉️ Wyślij")
                         )
                       ),
                       msgSuggestError&&React.createElement("div",{style:{marginTop:4,color:"#df9080",fontSize:12}},msgSuggestError),
-                      msgSendOk&&React.createElement("div",{style:{marginTop:6,color:"#7fcf7f",fontSize:12}},"✅ Wiadomość wysłana!"),
+                      msgSendOk&&React.createElement("div",{style:{marginTop:6,color:"#afffaf",fontSize:12}},"✅ Wiadomość wysłana!"),
                       msgSendError&&React.createElement("div",{style:{marginTop:6,color:"#df8080",fontSize:12}},msgSendError)
                     )
                   )
@@ -3187,7 +3164,7 @@ function App() {
                   <div style={{display:"flex",gap:8,alignItems:"center"}}>
                     {aiInstrSyncMsg&&<span style={{fontSize:11,color:aiInstrSyncMsg.startsWith("✅")?"#7fcf7f":"#df8080"}}>{aiInstrSyncMsg}</span>}
                     <button onClick={loadInstructions} disabled={aiInstrLoading} style={{padding:"4px 12px",fontSize:11,background:"#1a2a3a",border:"1px solid #2a4a6a",borderRadius:5,color:"#7abfdf",cursor:"pointer"}}>{aiInstrLoading?"⟳ ładuję...":"🔄 Załaduj z KV"}</button>
-                    <button onClick={openNewInstr} style={{padding:"4px 12px",fontSize:11,background:"#1a3a2a",border:"1px solid #2a6a3a",borderRadius:5,color:"#7fcf7f",cursor:"pointer",fontWeight:700}}>+ Nowa instrukcja</button>
+                    <button onClick={openNewInstr} style={{padding:"4px 12px",fontSize:11,background:"#1a3a2a",border:"1px solid #2a6a3a",borderRadius:5,color:"#afffaf",cursor:"pointer",fontWeight:700}}>+ Nowa instrukcja</button>
                   </div>
                 </div>
 
@@ -3246,12 +3223,12 @@ function App() {
         {/* ══ KALKULATOR ══ */}
         {tab==="historia" && (
           <div>
-            <div style={{fontSize:11,color:"#3a6a3a",letterSpacing:".15em",textTransform:"uppercase",marginBottom:14}}>📁 Historia zamówień</div>
+            <div style={{fontSize:11,color:"#4a8a4a",letterSpacing:".15em",textTransform:"uppercase",marginBottom:14}}>📁 Historia zamówień</div>
             <div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center",flexWrap:"wrap"}}>
               {["2024","2025","2026"].map(y=>(
                 <button key={y} className={`tab ${histYear===y?"on":""}`} onClick={()=>setHistYear(y)} style={{padding:"6px 16px"}}>{y}</button>
               ))}
-              <span style={{color:"#3a6a3a",margin:"0 4px"}}>|</span>
+              <span style={{color:"#4a8a4a",margin:"0 4px"}}>|</span>
               {(histOrders[histYear]||[]).length>0&&(()=>{
                 const miesiace=[...new Set((histOrders[histYear]||[]).map(o=>o.data?o.data.slice(0,7):"").filter(Boolean))].sort().reverse();
                 return miesiace.map(m=>{
@@ -3276,7 +3253,7 @@ function App() {
               {(histOrders[histYear]||[]).length>0&&(
                 <button className="btn-sm" style={{color:"#cf7f7f",borderColor:"#6a2a2a"}} onClick={()=>{if(confirm("Usunąć dane roku "+histYear+"?")){const u={...histOrders};delete u[histYear];setHistOrders(u);localStorage.setItem("hist_orders",JSON.stringify(u));}}}>🗑 Wyczyść {histYear}</button>
               )}
-              {(histOrders[histYear]||[]).length>0&&<span style={{marginLeft:"auto",fontSize:11,color:"#4a7a4a"}}>{(histOrders[histYear]||[]).length} zamówień</span>}
+              {(histOrders[histYear]||[]).length>0&&<span style={{marginLeft:"auto",fontSize:11,color:"#6aaa6a"}}>{(histOrders[histYear]||[]).length} zamówień</span>}
             </div>
             {(()=>{
               const ordsAll=histOrders[histYear]||[];
@@ -3285,12 +3262,12 @@ function App() {
                 if(histSearch&&!`${o.numerZlecenia||""} ${o.klientImie||""} ${o.klientMiasto||""}`.toLowerCase().includes(histSearch.toLowerCase())) return false;
                 return true;
               });
-              if(ords.length===0) return <div style={{color:"#3a6a3a",textAlign:"center",padding:40}}>Brak danych — importuj plik CSV<br/><span style={{fontSize:11,opacity:.7}}>Format: ten sam co eksport ⬇ CSV z zakładki Baza</span></div>;
+              if(ords.length===0) return <div style={{color:"#4a8a4a",textAlign:"center",padding:40}}>Brak danych — importuj plik CSV<br/><span style={{fontSize:11,opacity:.7}}>Format: ten sam co eksport ⬇ CSV z zakładki Baza</span></div>;
               const s=getHistStats(ords);
               return <>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
                   {[["Moskitier",s.totalMosk,"szt"],["Linka",s.totalLinka,"mb"],["Blaszki",s.totalBlaszki,"szt"]].map(([l,v,u])=>(
-                    <div key={l} className="stat"><div className="stat-n">{v}</div><div style={{fontSize:12,color:"#7fcf7f"}}>{u}</div><div className="stat-l">{l}</div></div>
+                    <div key={l} className="stat"><div className="stat-n">{v}</div><div style={{fontSize:12,color:"#afffaf"}}>{u}</div><div className="stat-l">{l}</div></div>
                   ))}
                 </div>
                 <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:16}}>
@@ -3481,7 +3458,7 @@ function App() {
                       };
                     return (
                     <div style={{background:"#081408",border:"1px solid #1a3a1a",borderRadius:6,padding:"10px 12px",marginBottom:10}}>
-                      <div style={{fontSize:10,color:"#4a7a4a",fontWeight:700,marginBottom:6,letterSpacing:".08em"}}>🔗 ZACIĄGNIJ DANE Z ALLEGRO</div>
+                      <div style={{fontSize:10,color:"#6aaa6a",fontWeight:700,marginBottom:6,letterSpacing:".08em"}}>🔗 ZACIĄGNIJ DANE Z ALLEGRO</div>
                       <div style={{display:"flex",gap:6,alignItems:"center"}}>
                         <input value={fvAllegroId}
                           onChange={e=>{setFvAllegroId(e.target.value);setFvAllegroStatus("");}}
@@ -3839,7 +3816,7 @@ function App() {
                   setProdDataDo(now.toISOString().slice(0,10));
                 }}>Ten tydzień</button>
                 <button className="btn-sm" onClick={()=>{setProdDataOd("");setProdDataDo("");}}>Wszystkie</button>
-                <span style={{fontSize:11,color:"#3a6a3a",marginLeft:"auto"}}>
+                <span style={{fontSize:11,color:"#4a8a4a",marginLeft:"auto"}}>
                   {filteredOrders.length} zamówień
                 </span>
               </div>
@@ -3847,32 +3824,32 @@ function App() {
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
                 {/* Profil */}
                 <div className="card">
-                  <div style={{fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:800,color:"#7fcf7f",marginBottom:12}}>🔩 Profil aluminiowy</div>
+                  <div style={{fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:800,color:"#afffaf",marginBottom:12}}>🔩 Profil aluminiowy</div>
                   <table style={{width:"100%",fontSize:13}}>
                     <tbody>
                       <tr><td style={{color:"#5a8a5a",paddingBottom:6}}>RAL (Biały/Brąz/Antracyt/Czarny)</td><td style={{textAlign:"right",color:"#9fcf9f",fontWeight:700}}>{r2(profilRAL)} mb</td></tr>
                       <tr><td style={{color:"#5a8a5a"}}>Struktura drewna</td><td style={{textAlign:"right",color:"#9fcf9f",fontWeight:700}}>{r2(profilStruktura)} mb</td></tr>
-                      <tr style={{borderTop:"1px solid #1e3a1e"}}><td style={{color:"#7fcf7f",paddingTop:8,fontWeight:700}}>RAZEM</td><td style={{textAlign:"right",color:"#7fcf7f",fontWeight:700,paddingTop:8}}>{r2(profilRAL+profilStruktura)} mb</td></tr>
+                      <tr style={{borderTop:"1px solid #1e3a1e"}}><td style={{color:"#afffaf",paddingTop:8,fontWeight:700}}>RAZEM</td><td style={{textAlign:"right",color:"#afffaf",fontWeight:700,paddingTop:8}}>{r2(profilRAL+profilStruktura)} mb</td></tr>
                     </tbody>
                   </table>
                 </div>
 
                 {/* Siatka */}
                 <div className="card">
-                  <div style={{fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:800,color:"#7fcf7f",marginBottom:12}}>🕸️ Siatka</div>
+                  <div style={{fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:800,color:"#afffaf",marginBottom:12}}>🕸️ Siatka</div>
                   <table style={{width:"100%",fontSize:13}}>
                     <tbody>
                       {[["Czarna 100cm",siatkaCzarna100],["Czarna 140cm",siatkaCzarna140],["Czarna 160cm",siatkaCzarna160],["Szara 100cm",siatkaSzara100],["Szara 140cm",siatkaSzara140],["Szara 160cm",siatkaSzara160]].map(([l,v])=>(
                         <tr key={l}><td style={{color:"#5a8a5a",paddingBottom:4}}>{l}</td><td style={{textAlign:"right",color:v>0?"#9fcf9f":"#2a4a2a",fontWeight:700}}>{r2(v)} mb</td></tr>
                       ))}
-                      <tr style={{borderTop:"1px solid #1e3a1e"}}><td style={{color:"#7fcf7f",paddingTop:8,fontWeight:700}}>RAZEM</td><td style={{textAlign:"right",color:"#7fcf7f",fontWeight:700,paddingTop:8}}>{r2(siatkaCzarna100+siatkaCzarna140+siatkaCzarna160+siatkaSzara100+siatkaSzara140+siatkaSzara160)} mb</td></tr>
+                      <tr style={{borderTop:"1px solid #1e3a1e"}}><td style={{color:"#afffaf",paddingTop:8,fontWeight:700}}>RAZEM</td><td style={{textAlign:"right",color:"#afffaf",fontWeight:700,paddingTop:8}}>{r2(siatkaCzarna100+siatkaCzarna140+siatkaCzarna160+siatkaSzara100+siatkaSzara140+siatkaSzara160)} mb</td></tr>
                     </tbody>
                   </table>
                 </div>
 
                 {/* Akcesoria */}
                 <div className="card">
-                  <div style={{fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:800,color:"#7fcf7f",marginBottom:12}}>🔧 Akcesoria</div>
+                  <div style={{fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:800,color:"#afffaf",marginBottom:12}}>🔧 Akcesoria</div>
                   <table style={{width:"100%",fontSize:13}}>
                     <tbody>
                       {[["Narożniki",narozniki,"szt"],["Uszczelka",r2(uszczelka),"mb"],["Blaszki",blaszki,"szt"],["Blachowkręty",blachowkret,"szt"],["Poprzeczki",r2(poprzeczki),"mb"],["Łączniki poprzeczek",laczniki,"szt"]].map(([l,v,u])=>(
@@ -3884,7 +3861,7 @@ function App() {
 
                 {/* Opakowanie */}
                 <div className="card">
-                  <div style={{fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:800,color:"#7fcf7f",marginBottom:12}}>📦 Opakowanie & narzędzia</div>
+                  <div style={{fontFamily:"'Syne',sans-serif",fontSize:14,fontWeight:800,color:"#afffaf",marginBottom:12}}>📦 Opakowanie & narzędzia</div>
                   <table style={{width:"100%",fontSize:13}}>
                     <tbody>
                       {[["Karton",karton,"szt"],["Instrukcja",instrukcja,"szt"],["Radełko",radełko,"szt"]].map(([l,v,u])=>(
@@ -3919,7 +3896,7 @@ function App() {
 
             {/* ── AUTORESPONDER ── */}
             <div className="card" style={{maxWidth:600}}>
-              <div style={{fontFamily:"'Syne',sans-serif",fontSize:16,fontWeight:800,color:"#7fcf7f",marginBottom:14,display:"flex",alignItems:"center",gap:10}}>
+              <div style={{fontFamily:"'Syne',sans-serif",fontSize:16,fontWeight:800,color:"#afffaf",marginBottom:14,display:"flex",alignItems:"center",gap:10}}>
                 🤖 Autoresponder
                 <button onClick={fetchAutoStatus} disabled={autoStatusLoading} style={{marginLeft:"auto",padding:"4px 12px",fontSize:11,background:"#1a2a1a",border:"1px solid #2a4a2a",borderRadius:5,color:"#5a9a5a",cursor:"pointer"}}>
                   {autoStatusLoading?"⟳ ładuję...":"🔄 Odśwież status"}
@@ -3933,10 +3910,10 @@ function App() {
                     <span style={{color:"#df8080"}}>❌ {autoStatus.error}</span>
                   ):(
                     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                      <div><span style={{color:"#4a7a4a"}}>Ostatnie uruchomienie:</span><br/><span style={{color:"#9fcf9f",fontWeight:700}}>{autoStatus.lastRun?new Date(autoStatus.lastRun).toLocaleString("pl-PL"):"—"}</span></div>
-                      <div><span style={{color:"#4a7a4a"}}>Obsłużone wątki:</span><br/><span style={{color:"#9fcf9f",fontWeight:700}}>{autoStatus.sentCount||0}</span></div>
-                      <div><span style={{color:"#4a7a4a"}}>Konta:</span><br/><span style={{color:"#9fcf9f",fontWeight:700}}>{(autoStatus.accounts||[]).join(", ")||"—"}</span></div>
-                      <div><span style={{color:"#4a7a4a"}}>Status:</span><br/><span style={{color:(autoStatus.accounts||[]).length>0?"#7fcf7f":"#df8080",fontWeight:700}}>{(autoStatus.accounts||[]).length>0?"✅ Aktywny":"⚠️ Brak tokenów"}</span></div>
+                      <div><span style={{color:"#6aaa6a"}}>Ostatnie uruchomienie:</span><br/><span style={{color:"#9fcf9f",fontWeight:700}}>{autoStatus.lastRun?new Date(autoStatus.lastRun).toLocaleString("pl-PL"):"—"}</span></div>
+                      <div><span style={{color:"#6aaa6a"}}>Obsłużone wątki:</span><br/><span style={{color:"#9fcf9f",fontWeight:700}}>{autoStatus.sentCount||0}</span></div>
+                      <div><span style={{color:"#6aaa6a"}}>Konta:</span><br/><span style={{color:"#9fcf9f",fontWeight:700}}>{(autoStatus.accounts||[]).join(", ")||"—"}</span></div>
+                      <div><span style={{color:"#6aaa6a"}}>Status:</span><br/><span style={{color:(autoStatus.accounts||[]).length>0?"#7fcf7f":"#df8080",fontWeight:700}}>{(autoStatus.accounts||[]).length>0?"✅ Aktywny":"⚠️ Brak tokenów"}</span></div>
                     </div>
                   )}
                 </div>
@@ -3959,7 +3936,7 @@ function App() {
                   <button onClick={saveAutoQuickText} disabled={autoSavingText} className="btn">
                     {autoSavingText?"⟳ Zapisuję...":"💾 Zapisz i wyślij do Workera"}
                   </button>
-                  {autoTextSaved&&<span style={{color:"#7fcf7f",fontSize:12}}>✓ Zapisano!</span>}
+                  {autoTextSaved&&<span style={{color:"#afffaf",fontSize:12}}>✓ Zapisano!</span>}
                 </div>
               </div>
 
@@ -3975,7 +3952,7 @@ function App() {
 
             {/* ── INSTRUKCJA AI ── */}
             <div className="card" style={{maxWidth:600}}>
-              <div style={{fontFamily:"'Syne',sans-serif",fontSize:16,fontWeight:800,color:"#7fcf7f",marginBottom:14}}>🤖 Instrukcja AI (sugeruj odpowiedź)</div>
+              <div style={{fontFamily:"'Syne',sans-serif",fontSize:16,fontWeight:800,color:"#afffaf",marginBottom:14}}>🤖 Instrukcja AI (sugeruj odpowiedź)</div>
               <span className="lbl" style={{marginBottom:6}}>Instrukcja systemowa dla przycisku "Sugeruj" w Wiadomościach</span>
               <textarea value={aiInstruction} onChange={e=>setAiInstruction(e.target.value)}
                 placeholder={"Jesteś pomocnym asystentem sklepu sprzedającego moskitiery..."}
@@ -3984,13 +3961,13 @@ function App() {
                 <button onClick={()=>{localStorage.setItem("ai_msg_instruction",aiInstruction);setAiInstrSaved(true);setTimeout(()=>setAiInstrSaved(false),2000);}} className="btn">
                   💾 Zapisz instrukcję
                 </button>
-                {aiInstrSaved&&<span style={{color:"#7fcf7f",fontSize:12}}>✓ Zapisano!</span>}
+                {aiInstrSaved&&<span style={{color:"#afffaf",fontSize:12}}>✓ Zapisano!</span>}
               </div>
             </div>
 
             {/* ── JSONBIN ── */}
             <div className="card" style={{maxWidth:520}}>
-              <div style={{fontFamily:"'Syne',sans-serif",fontSize:16,fontWeight:800,color:"#7fcf7f",marginBottom:14}}>☁ Synchronizacja JSONBin</div>
+              <div style={{fontFamily:"'Syne',sans-serif",fontSize:16,fontWeight:800,color:"#afffaf",marginBottom:14}}>☁ Synchronizacja JSONBin</div>
               <div style={{marginBottom:14}}>
                 <span className="lbl">Master Key</span>
                 <input value={settings.apiKey||""} onChange={e=>setSettings(s=>({...s,apiKey:e.target.value}))} placeholder="$2b$10$..." style={{fontFamily:"monospace",fontSize:12}}/>
@@ -4004,7 +3981,7 @@ function App() {
               <button className="btn" onClick={()=>{window.jsonbinSettings.saveSettings(settings);setSettingsSaved(true);setTimeout(()=>setSettingsSaved(false),2000);}}>
                 💾 Zapisz
               </button>
-              {settingsSaved&&<span style={{marginLeft:12,color:"#7fcf7f",fontSize:12}}>✓ Zapisano!</span>}
+              {settingsSaved&&<span style={{marginLeft:12,color:"#afffaf",fontSize:12}}>✓ Zapisano!</span>}
               <div style={{marginTop:14,padding:"8px 12px",background:settings.apiKey&&settings.binId?"#0c180c":"#1a1000",border:`1px solid ${settings.apiKey&&settings.binId?"#1a3a1a":"#3a2a00"}`,borderRadius:4,fontSize:12,color:settings.apiKey&&settings.binId?"#5a9a5a":"#8a7a3a"}}>
                 {settings.apiKey&&settings.binId?"✅ Synchronizacja aktywna":"⚠️ Brak konfiguracji — dane lokalne"}
               </div>
