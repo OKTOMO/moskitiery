@@ -3449,20 +3449,17 @@ function App() {
                   return acc+((s*2+w*2)*il)/10;
                 },0)*10)/10;
                 const cena=kalResult.podsumowanie?.cost||0;
+                const nl='\n';
                 const msgText=(kalResult.klient?.name||kalResult.clientName||'')+
-                  (kalResult.orderNumber?' ('+kalResult.orderNumber+')':'')+'
-'+
+                  (kalResult.orderNumber?' ('+kalResult.orderNumber+')':'')+nl+
                   pozycje.map((p,i)=>{
                     const s=p.szerokosc||p.width||'?';const w=p.wysokosc||p.height||'?';
                     const kp=(p.kolorProfilu||p.profile||'').replace(new RegExp(' RAL [0-9]+'),'');
                     const il=p.ilosc||p.qty||1;
                     return (i+1)+'. '+s+'x'+w+'cm '+kp+' x'+il;
-                  }).join('
-')+
-                  (totalJedn>0?'
-Jednostek do koszyka: '+totalJedn:'')+
-                  (cena>0?'
-Cena: '+cena.toFixed(2)+' zl':'');
+                  }).join(nl)+
+                  (totalJedn>0?nl+'Jednostek do koszyka: '+totalJedn:'')+
+                  (cena>0?nl+'Cena: '+cena.toFixed(2)+' zl':'');
                 return (
                   <div style={{marginTop:'12px',background:'var(--bg)',borderRadius:6,padding:'12px',fontSize:14}}>
                     <div style={{color:'var(--accent)',fontWeight:'bold',marginBottom:'8px',fontSize:'15px'}}>{kalResult.orderNumber}</div>
