@@ -16,11 +16,65 @@
 if("serviceWorker" in navigator){
   window.addEventListener("load",function(){
     navigator.serviceWorker.register("/moskitiery/sw.js",{scope:"/moskitiery/"})
-      .then(function(r){window._swReg=r;console.log("[PWA] SW ok",r.scope);})
-      .catch(function(e){console.warn("[PWA] SW fail",e);});
+      .then(function(r){window._swReg=r;})
+      .catch(function(e){console.warn("[PWA]",e);});
   });
 }
 </script>
+
+<style>
+/* ═══ MOBILE FIXES ═══ */
+@media (max-width: 700px) {
+  /* Ukryj górną nawigację zakładek na mobile */
+  .mosk-nav-tabs { display: none !important; }
+  /* Dolny pasek nawigacji */
+  .mosk-bottom-nav { display: flex !important; }
+  /* Padding pod content żeby nie chował się pod dolnym paskiem */
+  .mosk-content { padding-bottom: 70px !important; }
+  /* Header kompaktowy */
+  .mosk-header-sub { display: none !important; }
+  .mosk-header { padding: 8px 12px !important; }
+  .mosk-logo { font-size: 15px !important; }
+  .mosk-profile-btn { font-size: 12px !important; padding: 3px 7px !important; }
+  /* Dropdown firmy — zawsze w lewo żeby nie uciekał */
+  .mosk-profile-dropdown { right: auto !important; left: 0 !important; }
+  /* Siatki 2-kolumnowe → 1 kolumna */
+  .grid2-main { grid-template-columns: 1fr !important; }
+}
+/* Dolny pasek — domyślnie ukryty na desktop */
+.mosk-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 60px;
+  background: #0a1008;
+  border-top: 1px solid #1e3a1e;
+  z-index: 9999;
+  align-items: stretch;
+}
+.mosk-bottom-nav button {
+  flex: 1;
+  background: none;
+  border: none;
+  border-right: 1px solid #1a2a1a;
+  color: #4a7a4a;
+  font-size: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0;
+  letter-spacing: .03em;
+  transition: background .15s;
+}
+.mosk-bottom-nav button:last-child { border-right: none; }
+.mosk-bottom-nav button.active { color: #7fcf7f; background: #0e1e0e; }
+.mosk-bottom-nav button .bnav-icon { font-size: 20px; line-height: 1; }
+.mosk-bottom-nav button .bnav-label { font-size: 9px; }
+</style>
 </head><body>
 <div id="root"></div>
 <script>
@@ -1998,15 +2052,15 @@ function App() {
     <div style={{minHeight:"100vh",background:"#0c1018",color:"#e8ece8",fontFamily:"'IBM Plex Mono','Courier New',monospace"}}>
       <style>{CSS}</style>
 
-      <div style={{borderBottom:"1px solid #1e2e1e",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e1420"}}>
+      <div className="mosk-header" style={{borderBottom:"1px solid #1e2e1e",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e1420"}}>
         <div>
-          <div style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:800,color:"#9fef9f",letterSpacing:".05em"}}>
+          <div className="mosk-logo" style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:800,color:"#9fef9f",letterSpacing:".05em"}}>
             🦟 MosquitoApp
             <span style={{fontSize:16,fontWeight:900,color:"#9fcf9f",background:"#0d1a0d",border:"1px solid #2a5a2a",borderRadius:6,padding:"4px 14px",marginLeft:10,letterSpacing:1}}>
               {currentProfile.nazwa}
             </span>
           </div>
-          <div style={{fontSize:14,color:"#4a8a4a",letterSpacing:".2em",textTransform:"uppercase"}}>System zarządzania zamówieniami</div>
+          <div className="mosk-header-sub" style={{fontSize:14,color:"#4a8a4a",letterSpacing:".2em",textTransform:"uppercase"}}>System zarządzania zamówieniami</div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
           <div style={{fontSize:14,color:"#5a9a5a"}}>{orders.length} zamówień · ☁</div>
@@ -2014,8 +2068,8 @@ function App() {
               <button onClick={()=>{
                 const menu=document.getElementById('profile-menu');
                 menu.style.display=menu.style.display==='block'?'none':'block';
-              }} style={{fontSize:14,background:"transparent",border:"1px solid #1e3a1e",borderRadius:4,color:"#4a8a4a",padding:"4px 10px",cursor:"pointer"}}>⇄ {currentProfile.nazwa} ▾</button>
-              <div id="profile-menu" style={{display:"none",position:"absolute",right:0,top:"110%",background:"#0e1420",border:"1px solid #1e3a1e",borderRadius:6,zIndex:100,minWidth:140}}>
+              }} className="mosk-profile-btn" style={{fontSize:14,background:"transparent",border:"1px solid #1e3a1e",borderRadius:4,color:"#4a8a4a",padding:"4px 10px",cursor:"pointer"}}>⇄ {currentProfile.nazwa} ▾</button>
+              <div id="profile-menu" className="mosk-profile-dropdown" style={{display:"none",position:"absolute",right:0,top:"110%",background:"#0e1420",border:"1px solid #1e3a1e",borderRadius:6,zIndex:100,minWidth:140}}>
                 {PROFILE.map(p=>(
                   <div key={p.id} onClick={()=>{
                     localStorage.setItem('active_profile',p.id);
@@ -2035,7 +2089,7 @@ function App() {
         </div>
       </div>
 
-      <div style={{display:"flex",borderBottom:"1px solid #1e2a1e",paddingLeft:16,background:"#0e1420",flexWrap:"wrap"}}>
+      <div className="mosk-nav-tabs" style={{display:"flex",borderBottom:"1px solid #1e2a1e",paddingLeft:0,background:"#0e1420",overflowX:"auto",flexWrap:"nowrap",WebkitOverflowScrolling:"touch"}}>
         {[["nowe","➕ Dodaj zamówienie"],["al_zam","🛒 Allegro"],["baza","📋 Zlecenia"],["zapytania","📨 Zapytania KAL"],["stat","📊 Stat"],["produkcja","🏭 Produkcja"],["kalk","🧮 Kalkulator"],["faktury","🧾 Faktury"],["wiadomosci","💬 Wiadomości"]].map(([id,l])=>(
           <button key={id} className={`tab ${tab===id?"on":""}`} onClick={()=>setTab(id)}>{l}</button>
         ))}
@@ -2060,11 +2114,11 @@ function App() {
         </div>
       )}
 
-      <div style={{padding:16,maxWidth:1100,margin:"0 auto"}}>
+      <div className="mosk-content" style={{padding:16,maxWidth:1100,margin:"0 auto"}}>
 
         {/* ══ DODAJ ZAMÓWIENIE ══ */}
         {tab==="nowe" && (
-          <div className="grid2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+          <div className="grid2 grid2-main" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
             <div style={{display:"flex",flexDirection:"column",gap:14}}>
 
               {/* Wiadomość + adres */}
@@ -4097,7 +4151,7 @@ function App() {
                   <div style={{marginBottom:12}}>
                     <span className="lbl">VAPID Public Key</span>
                     <input value={vapidPublicKey} onChange={e=>{setVapidPublicKey(e.target.value);localStorage.setItem('vapid_public_key',e.target.value);}}
-                      placeholder="BNxx... (npx web-push generate-vapid-keys)"
+                      placeholder="BNxx..."
                       style={{fontFamily:"monospace",fontSize:12,background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:5,color:"#c0e0c0",padding:"7px 10px",width:"100%",boxSizing:"border-box"}}/>
                   </div>
                   <div style={{display:"flex",gap:8,marginBottom:10}}>
@@ -4111,18 +4165,35 @@ function App() {
                     </button>
                   </div>
                   {pushMsg&&<div style={{fontSize:13,padding:"6px 10px",borderRadius:4,background:"#0a140a",color:pushMsg.startsWith('Blad')||pushMsg.startsWith('Brak')?"#df8080":"#afffaf"}}>{pushMsg}</div>}
-                  <div style={{marginTop:12,padding:"10px 12px",background:"#0a100a",border:"1px solid #1a2a1a",borderRadius:6,fontSize:12,color:"#4a7a4a",lineHeight:1.7}}>
-                    <strong style={{color:"#6a9a6a"}}>Instrukcja iOS Safari</strong><br/>
-                    1. Otworz aplikacje w Safari<br/>
-                    2. Udostepnij &gt; Dodaj do ekranu glownego<br/>
-                    3. Uruchom z ekranu glownego (wymagane dla push!)<br/>
-                    4. Wklej VAPID Public Key powyzej i kliknij Wlacz
-                  </div>
                 </div>
               )}
             </div>
           </div>
         )}
+
+      {/* ── DOLNY PASEK NAWIGACJI (mobile) ── */}
+      <div className="mosk-bottom-nav">
+        {[
+          ["wiadomosci","💬","Wiad."],
+          ["nowe","➕","Nowe"],
+          ["al_zam","🛒","Allegro"],
+          ["baza","📋","Zlecenia"],
+          ["kalk","🧮","Kalk."],
+        ].map(([id,icon,label])=>(
+          <button key={id} className={tab===id?"active":""} onClick={()=>setTab(id)}>
+            <span className="bnav-icon">{icon}</span>
+            <span className="bnav-label">{label}</span>
+          </button>
+        ))}
+        <button className={tab==="allegro"||tab==="ustawienia"?"active":""} onClick={()=>{
+          const pin=localStorage.getItem("admin_pin");
+          if(!pin){const np=prompt("Ustaw PIN (4 cyfry):");if(!np||!/[0-9]{4}/.test(np)){alert("PIN musi mieć 4 cyfry.");return;}localStorage.setItem("admin_pin",np);setTab("allegro");return;}
+          const e=prompt("PIN:");if(e===pin)setTab("allegro");else alert("Błędny PIN.");
+        }}>
+          <span className="bnav-icon">🔒</span>
+          <span className="bnav-label">Admin</span>
+        </button>
+      </div>
 
       </div>
     </div>
