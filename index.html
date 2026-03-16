@@ -280,6 +280,9 @@ WAŻNE:
 - klientImie = PEŁNE imię i nazwisko klienta w formacie: Nazwisko Imię (np. "Kowalski Jan"). Jeśli w wiadomości jest tylko jedno słowo — wpisz je. Nigdy nie pomijaj nazwiska jeśli jest podane.
 - Z adresu wyciągnij: klientUlica (ulica + nr domu), klientKod (XX-XXX), klientMiasto (miejscowość)
 - WYMIARY: szerokosc zawsze mniejsza wartość, wysokosc zawsze większa. Np. klient podał "214 x 81,5" → szerokosc=81.5, wysokosc=214. Dotyczy zarówno okien jak i drzwi.
+- JEDNOSTKI mm vs cm: wymiary ZAWSZE zwracaj w cm. Jeśli klient podał wartości w mm (np. "780 x 2165 mm" lub liczby >400 bez jednostki), podziel przez 10. Przykład: 780mm → 78cm, 2165mm → 216.5cm. Jeśli wartość bez jednostki jest np. 78 lub 216 — to już cm, nie przeliczaj.
+- NOTACJA "2×WARTOŚĆ": klient mierzy dwukrotnie i zapisuje np. "A wysokość 2×216,5" lub "2×78 cm" — oznacza to JEDNĄ wartość 216,5 (lub 78), mierzoną dwa razy. Użyj tej jednej wartości, NIE mnóż przez 2.
+- DRZWI "NA GOTOWO" / "NA ZERO" / "WYMIAR ZEWNĘTRZNY": klient podaje gotowy wymiar zewnętrzny ramy. Zapisz szerokosc i wysokosc dokładnie jak podał (bez odejmowania). Ustaw isDrzwi:true. Dodaj do uwagi: "wymiar zewnętrzny".
 - IGNORUJ NOTATKI CENOWE: frazy w nawiasach zawierające słowa "jednostek", "wg kalkulatora", "kalkulator", "jedn." itp. to adnotacje wewnętrzne sprzedawcy — CAŁKOWICIE IGNORUJ zawarte w nich liczby przy parsowaniu ilosc. Przykład: "(Ilosc jednostek wg kalkulatora 45)" → ilosc=1 (lub wg rzeczywistej ilości sztuk z reszty tekstu), NIE 45.
 
 WIADOMOŚĆ OD KLIENTA:
@@ -305,7 +308,7 @@ function obliczDrzwi(pozycje){
     const s=parseFloat(p.szerokosc)||0, w=parseFloat(p.wysokosc)||0, il=parseInt(p.ilosc)||1;
     if(!s||!w) return;
     const sP=s+4, wP=w+4;
-    profilMb += ((sP*2+wP*2)*1.06/100)*il;  // pełny obwód + 6% odpad
+    profilMb += ((sP*2+wP*2)*1.10/100)*il;  // pełny obwód + 10% odpad
     narozniki += 4*il;
     if(p.poprzeczka){ poprzeczki+=il; uchwyty+=2*il; }
     zawiasy += 2*il;
@@ -485,7 +488,7 @@ function drukujPDF_drzwi(order) {
   const rows=[...dataRows,...emptyRows].join("");
 
   const html=`<!DOCTYPE html><html lang="pl"><head><meta charset="utf-8">
-<title>${order.numerZleceniaDrzwi||order.numerZlecenia||""} ${order.klientImie||""} DRZWI</title>
+<title>${order.numerZleceniaDrzwi||order.numerZlecenia||""} ${order.klientImie||""} ${order.klientMiasto||""} DRZWI</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Arial,sans-serif;font-size:10px;padding:10px 14px;color:#000;background:#fff;width:297mm}
@@ -584,6 +587,8 @@ table.main td.kolor{font-size:14px;font-weight:700}
 // ─── APP ─────────────────────────────────────────────────────────────────────
 function App() {
   const [activeProfile,setActiveProfile]=useState(()=>localStorage.getItem('active_profile')||"");
+  const [theme,setTheme]=useState(()=>localStorage.getItem('app_theme')||'dark');
+  const isLight=theme==='light';
   const [tab,setTab]=useState(()=>new URLSearchParams(window.location.search).has("code")?"allegro":"nowe");
   async function fetchInvoiceFromAllegro(orderId, firma){
     const kontaMap={"F":"favo5","AR":"arlis_pl","AP":"albama_eu","E":"everis_pl"};
@@ -867,6 +872,7 @@ function App() {
   const [parseTyp,setParseTyp]=useState("okno");
   const [form,setForm]=useState(()=>pustyForm(localStorage.getItem("active_profile")||"F"));
   const [numerOverride,setNumerOverride]=useState("");
+  const [editingId,setEditingId]=useState(null);
   const [kalNumerForForm,setKalNumerForForm]=useState(""); // osobny numer z kalkulatora
   const [saved,setSaved]=useState(false);
   const [search,setSearch]=useState("");
@@ -891,7 +897,7 @@ function App() {
     try{return JSON.parse(localStorage.getItem('allegro_refreshes')||'{}');}catch{return {};}
   });
   const [prodFirma,setProdFirma]=useState("all");
-  const [prodOdpadProfil,setProdOdpadProfil]=useState(1.06);  // 6% odpad profil
+  const [prodOdpadProfil,setProdOdpadProfil]=useState(1.10);  // 10% odpad profil
   const [claudeKey,setClaudeKey]=useState(()=>localStorage.getItem("claude_api_key")||"");
   const [prodOdpadSiatka,setProdOdpadSiatka]=useState(1.1);
   const [prodDataOd,setProdDataOd]=useState("");
@@ -1551,7 +1557,12 @@ function App() {
         blaszRozmiar: obliczRozmiarBlaszki(p.glebokosc),
       }))
     };
-    updateOrders([order,...orders]);
+    if(editingId!==null){
+      updateOrders(orders.map(x=>x.id===editingId?{...order,id:editingId}:x));
+      setEditingId(null);
+    } else {
+      updateOrders([order,...orders]);
+    }
     setSaved(true);
     setWiadomosc(""); setAdres(""); setForm(pustyForm(form.firma)); setNumerOverride(""); setKalNumerForForm(""); setAllegroOrderIdForForm("");
     const hasDrzwiPos=order.pozycje.some(p=>p.isDrzwi);
@@ -1633,6 +1644,22 @@ function App() {
     @keyframes spin{to{transform:rotate(360deg)}}
     .spin{animation:spin 1s linear infinite;display:inline-block}
     @media(max-width:700px){.grid2{grid-template-columns:1fr!important}.hide-mob{display:none!important}}
+    .light-mode{--bg:#f0f4f0;--bg2:#e4ece4;--surface:#ffffff;--border:#c0d4c0;--text:#1a2a1a;--text2:#2a4a2a;--text3:#4a6a4a;--accent:#2a8a2a;--accent2:#1a6a1a}
+    .light-mode textarea,.light-mode input,.light-mode select{background:#fff;color:#1a2a1a;border-color:#b0c8b0}
+    .light-mode textarea:focus,.light-mode input:focus,.light-mode select:focus{border-color:#3a9a3a;background:#f8fff8}
+    .light-mode .tab{color:#4a7a4a}.light-mode .tab.on{color:#1a7a1a;border-bottom-color:#1a7a1a}
+    .light-mode .btn{background:#e0f0e0;color:#1a5a1a;border-color:#9aca9a}.light-mode .btn:hover{background:#c8e8c8}
+    .light-mode .btn-sm{background:#e8f4e8;color:#1a5a1a;border-color:#9aca9a}
+    .light-mode .btn-pdf{background:#e8f0f8;color:#1a3a6a;border-color:#90b0d8}
+    .light-mode .btn-del{background:#fce8e8;color:#8a2020;border-color:#d89090}
+    .light-mode .card{background:#ffffff;border-color:#c0d4c0}
+    .light-mode .lbl{color:#1a6a1a}
+    .light-mode .stat{background:#f0f8f0;border-color:#b0d4b0}
+    .light-mode .stat-n{color:#1a6a1a}
+    .light-mode .stat-l{color:#4a8a4a}
+    .light-mode .tr:hover{background:#f0f8f0}
+    .light-mode .calc{background:#f0f8f0;border-color:#b0d4b0}
+    .light-mode .firma-badge{background:#f0f0d0;color:#5a5a10}
   `;
 
   async function allegroRefresh(kontaId){
@@ -1914,7 +1941,7 @@ function App() {
   }
 
   return (
-    <div style={{minHeight:"100vh",background:"#0c1018",color:"#e8ece8",fontFamily:"'IBM Plex Mono','Courier New',monospace"}}>
+    <div className={isLight?"light-mode":""} style={{minHeight:"100vh",background:isLight?"#f0f4f0":"#0c1018",color:isLight?"#1a2a1a":"#e8ece8",fontFamily:"'IBM Plex Mono','Courier New',monospace"}}>
       <style>{CSS}</style>
 
       <div style={{borderBottom:"1px solid #1e2e1e",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e1420"}}>
@@ -1928,7 +1955,8 @@ function App() {
           <div style={{fontSize:10,color:"#3a6a3a",letterSpacing:".2em",textTransform:"uppercase"}}>System zarządzania zamówieniami</div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <div style={{fontSize:12,color:"#3a6a3a"}}>{orders.length} zamówień · ☁</div>
+          <div style={{fontSize:12,color:isLight?"#3a6a3a":"#3a6a3a"}}>{orders.length} zamówień · ☁</div>
+          <button onClick={()=>{const t=isLight?'dark':'light';setTheme(t);localStorage.setItem('app_theme',t);}} style={{fontSize:11,background:"transparent",border:"1px solid",borderColor:isLight?"#9aca9a":"#1e3a1e",borderRadius:4,color:isLight?"#2a6a2a":"#3a6a3a",padding:"4px 10px",cursor:"pointer"}}>{isLight?"🌙 Ciemny":"☀️ Jasny"}</button>
           <div style={{position:"relative",display:"inline-block"}}>
               <button onClick={()=>{
                 const menu=document.getElementById('profile-menu');
@@ -2223,9 +2251,13 @@ function App() {
               })}
               </div>
 
-              <button className="btn" style={{width:"100%",padding:"12px",fontSize:14}}
+              {editingId!==null&&<div style={{background:"#1a2a0a",border:"1px solid #4a7a2a",borderRadius:6,padding:"6px 12px",marginBottom:8,fontSize:12,color:"#9acf7a",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span>✏️ Tryb edycji — zmiany nadpiszą zlecenie</span>
+                <button onClick={()=>{setEditingId(null);setNumerOverride("");setForm(pustyForm(form.firma));setSaved(false);}} style={{background:"#2a1a1a",border:"1px solid #5a2a2a",color:"#cf7a7a",borderRadius:4,padding:"2px 8px",cursor:"pointer",fontSize:11}}>✕ Anuluj</button>
+              </div>}
+              <button className="btn" style={{width:"100%",padding:"12px",fontSize:14,background:editingId!==null?"#4a6a2a":"var(--accent)"}}
                 onClick={handleSave} disabled={!form.klientImie&&!form.klientMiasto&&!form.pozycje[0].szerokosc}>
-                💾 Zapisz zamówienie
+                {editingId!==null?"💾 Zapisz zmiany":"💾 Zapisz zamówienie"}
               </button>
               {saved&&<div style={{textAlign:"center",color:"#7fcf7f",fontSize:12,marginTop:4}}>✓ Zapisano i zsynchronizowano ☁</div>}
             </div>
@@ -2724,7 +2756,7 @@ function App() {
                                   </button>
                                 )}
                                 <button onClick={()=>doImportOrder({
-                                  imp:{klientImie:o.klient?.name||"",klientUlica:"",klientKod:"",klientMiasto:"",telefon:o.klient?.phone||"",allegroOrderId:"",kontoId:"",firma:"F",offerNames:"",data:o.createdAt?o.createdAt.slice(0,10):""},
+                                  imp:{klientImie:o.klient?.name||"",klientUlica:"",klientKod:"",klientMiasto:o.klient?.city||"",telefon:o.klient?.phone||"",allegroOrderId:"",kontoId:"",firma:"F",offerNames:"",data:o.createdAt?o.createdAt.slice(0,10):""},
                                   kalData:o,
                                   pozycje:[]
                                 })}
@@ -2816,7 +2848,7 @@ function App() {
                           {o.pozycje.some(p=>!p.isDrzwi)&&<button className="btn-pdf" onClick={()=>drukujPDF(o)}>🪟 PDF</button>}
                           {o.pozycje.some(p=>p.isDrzwi)&&<button className="btn-pdf" style={{background:"#1a2a4a"}} onClick={()=>drukujPDF_drzwi(o)}>🚪 PDF</button>}
                         </td>
-                        <td style={{padding:"10px 10px"}}><button className="btn-pdf" style={{background:"#2a4a6a"}} onClick={()=>{setForm({data:o.data,firma:o.firma,klientImie:o.klientImie,klientMiasto:o.klientMiasto,telefon:o.telefon,uwagi:o.uwagi,pozycje:o.pozycje.map(p=>({...p}))});setNumerOverride(o.numerZlecenia);updateOrders(orders.filter(x=>x.id!==o.id));setTab("nowe");setSaved(false);}}>✏️</button></td>
+                        <td style={{padding:"10px 10px"}}><button className="btn-pdf" style={{background:"#2a4a6a"}} onClick={()=>{setForm({data:o.data,firma:o.firma,klientImie:o.klientImie,klientUlica:o.klientUlica||"",klientKod:o.klientKod||"",klientMiasto:o.klientMiasto,telefon:o.telefon,uwagi:o.uwagi,pozycje:o.pozycje.map(p=>({...p}))});setNumerOverride(o.numerZlecenia);setEditingId(o.id);setTab("nowe");setSaved(false);}}>✏️</button></td>
                         <td style={{padding:"10px 10px"}}>
                           <button className="btn-pdf" style={{background:"#1a3a4a",color:"#7acfdf",borderColor:"#2a6a7a"}}
                             title={"Napisz do: "+(o.klientImie||"klient")+(o.allegroOrderId?" | UUID: "+o.allegroOrderId:"")}
