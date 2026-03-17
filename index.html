@@ -1797,7 +1797,7 @@ function App() {
     if(!clientId||!secret){setAllegroError("Najpierw wpisz i zapisz Client ID oraz Client Secret");return;}
     localStorage.setItem('allegro_active', kontaId);
     setAllegroActive(kontaId);
-    const url='https://allegro.pl/auth/oauth/authorize?response_type=code&client_id='+encodeURIComponent(clientId)+'&redirect_uri='+encodeURIComponent('https://oktomo.github.io/moskitiery');
+    const url='https://allegro.pl/auth/oauth/authorize?response_type=code&prompt=login&client_id='+encodeURIComponent(clientId)+'&redirect_uri='+encodeURIComponent('https://oktomo.github.io/moskitiery');
     window.location.href=url;
   }
 
