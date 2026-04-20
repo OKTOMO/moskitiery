@@ -2,7 +2,10 @@
 <html lang="pl"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>MosquitoApp</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>MosquitoApp v2.1</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1508,10 +1511,12 @@ function App() {
   }
 
   async function handleSave(){
-    // Pobierz świeże dane z chmury — gwarantuje poprawny nextNumer po reload/aktualizacji
+    // Merge lokalny state + chmura — bierz MAX numeru z obu źródeł
     const _liveOrds=await freshOrders();
-    const _ordBase=_liveOrds.length>0?_liveOrds:orders;
-    if(_liveOrds.length!==orders.length) setOrders(_liveOrds);
+    const _allIds=new Set(orders.map(o=>o.id));
+    const _merged=[...orders,..._liveOrds.filter(o=>!_allIds.has(o.id))];
+    const _ordBase=_merged.length>0?_merged:orders;
+    if(_liveOrds.length>orders.length) setOrders(_liveOrds);
     const _hasDrzwi=form.pozycje.some(p=>p.isDrzwi);
     const _hasOkna=form.pozycje.some(p=>!p.isDrzwi);
     const _mixed=_hasDrzwi&&_hasOkna;
