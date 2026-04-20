@@ -1,85 +1,11 @@
 <!DOCTYPE html>
 <html lang="pl"><head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MosquitoApp</title>
-<link rel="manifest" href="manifest.json">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="MosquitoApp">
-<link rel="apple-touch-icon" href="icon-192.png">
-<meta name="theme-color" content="#0d1117">
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script>
-if("serviceWorker" in navigator){
-  window.addEventListener("load",function(){
-    navigator.serviceWorker.register("/moskitiery/sw.js",{scope:"/moskitiery/"})
-      .then(function(r){window._swReg=r;}).catch(function(e){console.warn("[PWA]",e);});
-  });
-}
-</script>
-<style>
-/* ═══ GLOBAL MOBILE RESET ═══ */
-html { overflow-x: hidden; }
-body { overflow-x: hidden; max-width: 100vw; }
-* { box-sizing: border-box; }
-
-/* ═══ BOTTOM NAV ═══ */
-.mosk-bottom-nav {
-  display: none;
-  position: fixed; bottom: 0; left: 0; right: 0; height: 58px;
-  background: #080e08; border-top: 2px solid #1e3a1e; z-index: 9999;
-  align-items: stretch;
-}
-.mosk-bottom-nav button {
-  flex: 1; background: none; border: none; border-right: 1px solid #141e14;
-  color: #4a7a4a; font-size: 9px; font-weight: 700; cursor: pointer;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 1px; padding: 0; -webkit-tap-highlight-color: transparent;
-}
-.mosk-bottom-nav button:last-child { border-right: none; }
-.mosk-bottom-nav button.bnav-active { color: #7fcf7f; background: #0e1e0e; }
-.mosk-bottom-nav button .bi { font-size: 19px; line-height: 1; }
-.mosk-bottom-nav button .bl { font-size: 9px; }
-
-/* ═══ MOBILE ONLY ═══ */
-@media (max-width: 700px) {
-  /* Nav */
-  .mosk-nav-tabs   { display: none !important; }
-  .mosk-bottom-nav { display: flex !important; }
-  .mosk-content    { padding: 10px 10px 70px !important; }
-  /* Header */
-  .mosk-header     { padding: 7px 10px !important; }
-  .mosk-header-sub { display: none !important; }
-  .mosk-orders-cnt { display: none !important; }
-  .mosk-profile-dropdown { right: auto !important; left: 0 !important; }
-  /* Grids → single column */
-  .grid2-main      { grid-template-columns: 1fr !important; }
-  .stat-grid4      { grid-template-columns: 1fr 1fr !important; }
-  /* Tables → scroll */
-  .tbl-scroll      { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
-  .tbl-scroll table { min-width: 600px; }
-  /* Hide heavy columns */
-  .hide-mob        { display: none !important; }
-  /* Messages */
-  .msg-layout      { grid-template-columns: 1fr !important; }
-  .msg-list        { display: var(--mll, flex) !important; flex-direction: column; }
-  .msg-chat        { display: var(--mlc, none) !important; flex-direction: column; }
-  .mosk-back-btn   { display: block !important; }
-  /* Kalkulator */
-  .kalk-iframe     { display: none !important; }
-  .kalk-row        { flex-direction: column !important; align-items: flex-start !important; }
-  .kalk-row .kalk-url { display: none !important; }
-  .kalk-row .kalk-btns { flex-wrap: wrap; }
-  /* Nowa wiadomość grid */
-  .msg-new-grid    { grid-template-columns: 1fr !important; }
-  /* Baza filters */
-  .baza-filters    { flex-direction: column !important; align-items: stretch !important; }
-  .baza-filters input { width: 100% !important; }
-}
-</style>
 </head><body>
 <div id="root"></div>
 <script>
@@ -344,20 +270,48 @@ DODATKOWE ALIASY:
 - "RAL 9016" → Biały
 - "RAL 9005" → Czarny
 - "Winch" → Winchester
+- "brąz", "brązowy", "ciemny brąz", "jasny brąz" → Brąz
 - "str. drewna", "struktura drewna" — to oznaczenie faktury, NIE kolor — zignoruj, weź tylko nazwę koloru
 - Jeśli nie rozpoznajesz → Antracyt (domyślny)
 
 KOLOR SIATKI: Czarna lub Szara (domyślnie Czarna)
 
 WAŻNE:
-- Identyczne pozycje (same wymiary+kolory+typ) → scal sumując ilości
+- Identyczne pozycje (DOKŁADNIE te same wymiary, kolor ramki, kolor siatki i typ) → scal sumując ilości. Identyczne = ta sama liczba co do 0.1cm. Nawet 0.1cm różnicy = OSOBNA pozycja, nigdy nie scalaj.
+- "1 szt 64,8x136,5" i "1 szt 64x136,5" to zawsze DWIE osobne pozycje mimo tej samej ilości.
+- Jeśli klient wymienia kilka wymiarów z osobnym "1 szt" przy każdym — to tyle pozycji ile wymiarów, ilosc=1 dla każdej.
 - klientImie = PEŁNE imię i nazwisko klienta w formacie: Nazwisko Imię (np. "Kowalski Jan"). Jeśli w wiadomości jest tylko jedno słowo — wpisz je. Nigdy nie pomijaj nazwiska jeśli jest podane.
+- klientMiasto ZAWSZE wypełnij jeśli występuje w adresie lub treści wiadomości — także dla drzwi.
 - Z adresu wyciągnij: klientUlica (ulica + nr domu), klientKod (XX-XXX), klientMiasto (miejscowość)
 - WYMIARY: szerokosc zawsze mniejsza wartość, wysokosc zawsze większa. Np. klient podał "214 x 81,5" → szerokosc=81.5, wysokosc=214. Dotyczy zarówno okien jak i drzwi.
 - JEDNOSTKI mm vs cm: wymiary ZAWSZE zwracaj w cm. Jeśli klient podał wartości w mm (np. "780 x 2165 mm" lub liczby >400 bez jednostki), podziel przez 10. Przykład: 780mm → 78cm, 2165mm → 216.5cm. Jeśli wartość bez jednostki jest np. 78 lub 216 — to już cm, nie przeliczaj.
 - NOTACJA "2×WARTOŚĆ": klient mierzy dwukrotnie i zapisuje np. "A wysokość 2×216,5" lub "2×78 cm" — oznacza to JEDNĄ wartość 216,5 (lub 78), mierzoną dwa razy. Użyj tej jednej wartości, NIE mnóż przez 2.
 - DRZWI "NA GOTOWO" / "NA ZERO" / "WYMIAR ZEWNĘTRZNY": klient podaje gotowy wymiar zewnętrzny ramy. Zapisz szerokosc i wysokosc dokładnie jak podał (bez odejmowania). Ustaw isDrzwi:true. Dodaj do uwagi: "wymiar zewnętrzny".
 - IGNORUJ NOTATKI CENOWE: frazy w nawiasach zawierające słowa "jednostek", "wg kalkulatora", "kalkulator", "jedn." itp. to adnotacje wewnętrzne sprzedawcy — CAŁKOWICIE IGNORUJ zawarte w nich liczby przy parsowaniu ilosc. Przykład: "(Ilosc jednostek wg kalkulatora 45)" → ilosc=1 (lub wg rzeczywistej ilości sztuk z reszty tekstu), NIE 45.
+
+IGNORUJ OBLICZENIA JEDNOSTEK — KRYTYCZNA ZASADA:
+Sprzedawca dopisuje kalkulację jednostek w stylu "A×2+B×2=wynik/10" lub "536/10=53,6". To WYLICZENIA ROBOCZE — nie wymiary. CAŁKOWICIE IGNORUJ przy parsowaniu szerokosc/wysokosc/ilosc.
+Przykłady:
+- "73,5x2+221,5x2=590/10=59 x3 177zł" → szerokosc=73.5, wysokosc=221.5, ilosc=3
+- "134×2+134×2=536/10=53,6" → szerokosc=134, wysokosc=134, ilosc=1
+- "2x103+2x136=478~48jednostek" → szerokosc=103, wysokosc=136, ilosc=1
+- "48 jednostek" za wymiarem → ignoruj (jedn. robocze, NIE sztuki)
+Zasada: wynik po "=" w ciągu "A×N+B×N=..." to kalkulacja. "X jednostek" bez "szt/sztuk" = jedn. robocze.
+
+NOTACJA X/Y DLA JEDNEGO WYMIARU:
+Klient podaje dwa pomiary przez ukośnik np. "120/124".
+- Okna: użyj mniejszej wartości, obie wpisz do uwagi. Przykład: "120/124" → szerokosc=120, uwagi="120/124"
+- Drzwi: szerokosc=min, szer2=max (jak dotychczas)
+
+CZTERY POMIARY OKNA:
+Gdy klient podaje 4 liczby parami np. "46+46+66+66":
+- 2 mniejsze = szerokość, 2 większe = wysokość, użyj mniejszej z każdej pary.
+- Przykład: "46+46+66+66" → szerokosc=46, wysokosc=66, ilosc=1
+
+ZAWIAS — STRONA MONTAŻU:
+- zawias="L": "lewa", "lewy", "po lewej", "strona montażu zawiasów: lewa"
+- zawias="P": "prawa", "prawy", "po prawej", "strona montażu zawiasów: prawa"
+- Domyślnie: "L". Przykład: "strona montażu zawiasów: lewa" → zawias="L"
 
 WIADOMOŚĆ OD KLIENTA:
 ${msg||"(brak)"}
@@ -954,37 +908,6 @@ function App() {
   const [filterYear,setFilterYear]=useState("wszystkie");
   const [settings,setSettings]=useState(()=>window.jsonbinSettings.getSettings());
   const [settingsSaved,setSettingsSaved]=useState(false);
-  const [pushSupported,setPushSupported]=useState(false);
-  const [pushSubscribed,setPushSubscribed]=useState(false);
-  const [pushLoading,setPushLoading]=useState(false);
-  const [pushMsg,setPushMsg]=useState('');
-  const [vapidPublicKey,setVapidPublicKey]=useState(()=>localStorage.getItem('vapid_public_key')||'');
-  useEffect(()=>{
-    if(!('serviceWorker' in navigator&&'PushManager' in window)) return;
-    setPushSupported(true);
-    navigator.serviceWorker.ready.then(r=>r.pushManager.getSubscription().then(s=>setPushSubscribed(!!s))).catch(()=>{});
-  },[]);
-  async function subscribePush(){
-    if(!vapidPublicKey){setPushMsg('Wpisz VAPID Public Key');return;}
-    setPushLoading(true);setPushMsg('');
-    try{
-      const perm=await Notification.requestPermission();
-      if(perm!=='granted'){setPushMsg('Brak zgody');setPushLoading(false);return;}
-      const reg=await navigator.serviceWorker.ready;
-      const k=vapidPublicKey.replace(/-/g,'+').replace(/_/g,'/');
-      const r2=atob(k);const ak=new Uint8Array(r2.length);for(let i=0;i<r2.length;i++)ak[i]=r2.charCodeAt(i);
-      const sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:ak});
-      setPushSubscribed(true);localStorage.setItem('vapid_public_key',vapidPublicKey);localStorage.setItem('push_subscription',JSON.stringify(sub.toJSON()));
-      setPushMsg('Subskrypcja aktywna!');
-    }catch(e){setPushMsg('Blad: '+e.message);}
-    setPushLoading(false);
-  }
-  async function unsubscribePush(){
-    setPushLoading(true);
-    try{const reg=await navigator.serviceWorker.ready;const sub=await reg.pushManager.getSubscription();if(sub)await sub.unsubscribe();setPushSubscribed(false);localStorage.removeItem('push_subscription');setPushMsg('Usunieto');}catch(e){setPushMsg('Blad: '+e.message);}
-    setPushLoading(false);
-  }
-  function copyPushSub(){const s=localStorage.getItem('push_subscription');if(!s){setPushMsg('Brak subskrypcji');return;}navigator.clipboard.writeText(s).then(()=>setPushMsg('Skopiowano!')).catch(()=>setPushMsg('Blad'));}
   const [allegroTokens,setAllegroTokens]=useState(()=>{
     try{return JSON.parse(localStorage.getItem('allegro_tokens')||'{}');}catch{return {};}
   });
@@ -1008,7 +931,6 @@ function App() {
   const allegroToken = allegroTokens[allegroActive]||"";
   // ── WIADOMOŚCI tab state ──
   const [msgKonto,setMsgKonto]=useState(()=>localStorage.getItem('allegro_active')||"favo5");
-  const [msgMobileView,setMsgMobileView]=useState('list');
   const msgKontoRef=React.useRef(localStorage.getItem('allegro_active')||"favo5");
   const [msgThreads,setMsgThreads]=useState([]);
   const [msgLoading,setMsgLoading]=useState(false);
@@ -1054,6 +976,9 @@ function App() {
   const [aiInstrEditName,setAiInstrEditName]=useState("");
   const [aiInstrEditContent,setAiInstrEditContent]=useState("");
   const [aiActiveInstrId,setAiActiveInstrId]=useState(()=>localStorage.getItem("ai_active_instr_id")||"");
+  const [withDrzwi, setWithDrzwi] = React.useState(false);
+  const [wiadomoscDrzwi, setWiadomoscDrzwi] = React.useState('');
+  const [parsingDrzwi, setParsingDrzwi] = React.useState(false);
   const [kalSearch, setKalSearch] = React.useState('');
   const [kalResult, setKalResult] = React.useState(null);
   const [kalError, setKalError] = React.useState('');
@@ -1120,82 +1045,6 @@ function App() {
     }catch(e){alert("❌ "+e.message);}
     setAutoResetting(false);
   }
-  // ── INSTRUCTIONS functions ──
-  async function loadInstructions(){
-    setAiInstrLoading(true);
-    try{
-      const r=await fetch(AUTORESPONDER_URL+"/instructions",{headers:{"x-api-key":AUTORESPONDER_KEY}});
-      const d=await r.json();
-      if(d.ok){
-        setAiInstructions(d.instructions||[]);
-        localStorage.setItem("ai_instructions",JSON.stringify(d.instructions||[]));
-        setAiInstrSyncMsg("✅ Załadowano "+( d.instructions||[]).length+" instrukcji");
-      } else {
-        setAiInstrSyncMsg("❌ "+JSON.stringify(d));
-      }
-    }catch(e){setAiInstrSyncMsg("❌ "+e.message);}
-    setAiInstrLoading(false);
-    setTimeout(()=>setAiInstrSyncMsg(""),3000);
-  }
-  async function saveInstructions(list){
-    setAiInstrSyncing(true);
-    try{
-      const r=await fetch(AUTORESPONDER_URL+"/instructions",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":AUTORESPONDER_KEY},body:JSON.stringify({instructions:list})});
-      const d=await r.json();
-      if(d.ok){
-        setAiInstructions(list);
-        localStorage.setItem("ai_instructions",JSON.stringify(list));
-        setAiInstrSyncMsg("✅ Zapisano "+list.length+" instrukcji w KV");
-      } else {
-        setAiInstrSyncMsg("❌ "+JSON.stringify(d));
-      }
-    }catch(e){setAiInstrSyncMsg("❌ "+e.message);}
-    setAiInstrSyncing(false);
-    setTimeout(()=>setAiInstrSyncMsg(""),3000);
-  }
-  function openNewInstr(){
-    setAiInstrEdit({id:null});
-    setAiInstrEditName("");
-    setAiInstrEditContent("");
-  }
-  function openEditInstr(instr){
-    setAiInstrEdit(instr);
-    setAiInstrEditName(instr.name);
-    setAiInstrEditContent(instr.content);
-  }
-  function cancelEditInstr(){
-    setAiInstrEdit(null);
-    setAiInstrEditName("");
-    setAiInstrEditContent("");
-  }
-  function saveEditInstr(){
-    if(!aiInstrEditName.trim()||!aiInstrEditContent.trim()) return;
-    let list;
-    if(aiInstrEdit&&aiInstrEdit.id){
-      list=aiInstructions.map(i=>i.id===aiInstrEdit.id?{...i,name:aiInstrEditName.trim(),content:aiInstrEditContent.trim()}:i);
-    } else {
-      const newId="instr_"+Date.now();
-      list=[...aiInstructions,{id:newId,name:aiInstrEditName.trim(),content:aiInstrEditContent.trim()}];
-      if(!aiActiveInstrId){setAiActiveInstrId(newId);localStorage.setItem("ai_active_instr_id",newId);}
-    }
-    setAiInstrEdit(null);
-    saveInstructions(list);
-  }
-  function deleteInstr(id){
-    if(!confirm("Usunąć instrukcję?")) return;
-    const list=aiInstructions.filter(i=>i.id!==id);
-    if(aiActiveInstrId===id){
-      const newActive=list.length>0?list[0].id:"";
-      setAiActiveInstrId(newActive);
-      localStorage.setItem("ai_active_instr_id",newActive);
-    }
-    saveInstructions(list);
-  }
-  function setActiveInstr(id){
-    setAiActiveInstrId(id);
-    localStorage.setItem("ai_active_instr_id",id);
-  }
-
   // ── INSTRUCTIONS functions ──
   async function loadInstructions(){
     setAiInstrLoading(true);setAiInstrSyncMsg("");
@@ -1576,20 +1425,52 @@ function App() {
     }
   },[]);
   function updateOrders(next){setOrders(next);cloudSave(next);}
+  // Pobierz świeże zamówienia z chmury i zwróć je (dla nextNumer)
+  async function freshOrders(){
+    try{ const r=await window.storage.get(STORAGE_KEY,true); return r?JSON.parse(r.value):[]; }catch{return orders;}
+  }
+
+  function mapPozycje(pozycje, forceDrzwi, forceOkno){
+    if(!pozycje?.length) return [];
+    return pozycje.map(p=>{
+      const isDrzwi = forceDrzwi ? true : forceOkno ? false : !!p.isDrzwi;
+      const s=parseFloat(p.szerokosc)||0, w=parseFloat(p.wysokosc)||0;
+      const szer = s>w&&w>0 ? w : s;
+      const wys  = s>w&&w>0 ? s : w;
+      if(isDrzwi) return {
+        isDrzwi:true, szerokosc:String(szer||p.szerokosc||""), szer2:p.szer2||"",
+        wysokosc:String(wys||p.wysokosc||""), wys2:p.wys2||"",
+        kolorRamki:p.kolorRamki||"Antracyt", kolorSiatki:p.kolorSiatki||"Czarna",
+        zawias:p.zawias||"L", poprzeczka:p.poprzeczka!=null?p.poprzeczka:true,
+        samodomykajacyL:p.samodomykajacyL||0, samodomykajacyP:p.samodomykajacyP||0,
+        ilosc:p.ilosc||1, uwagi:p.uwagi||""
+      };
+      return {
+        szerokosc:String(szer||p.szerokosc||""), wysokosc:String(wys||p.wysokosc||""),
+        glebokosc:String(normalizujGlebokosc(p.glebokosc!=null?p.glebokosc:DOMYSLNA_GLEBOKOS)),
+        kolorRamki:p.kolorRamki||"Antracyt", kolorSiatki:p.kolorSiatki||"Czarna",
+        ilosc:p.ilosc||1
+      };
+    });
+  }
 
   async function handleParse() {
     if(!wiadomosc.trim()&&!adres.trim()) return;
     setParsing(true); setSaved(false);
     try {
-      const r=await parseAI(wiadomosc,adres,parseTyp);
-      // Jeśli typ wybrany ręcznie, nadpisz isDrzwi we wszystkich pozycjach
-      if(r.pozycje?.length && parseTyp==="drzwi") r.pozycje.forEach(p=>{ p.isDrzwi=true; });
-      if(r.pozycje?.length && parseTyp==="okno")  r.pozycje.forEach(p=>{ p.isDrzwi=false; });
-      // Zawsze: szerokosc = mniejszy wymiar, wysokosc = większy
-      if(r.pozycje?.length) r.pozycje.forEach(p=>{
-        const s=parseFloat(p.szerokosc)||0, w=parseFloat(p.wysokosc)||0;
-        if(s>w && w>0){ p.szerokosc=w; p.wysokosc=s; }
-      });
+      const r=await parseAI(wiadomosc,adres,withDrzwi?"okno":parseTyp);
+      const pozOkna=mapPozycje(r.pozycje, false, !withDrzwi&&parseTyp!=="drzwi");
+      let pozDrzwi=[];
+      if(withDrzwi && wiadomoscDrzwi.trim()){
+        setParsingDrzwi(true);
+        try{
+          const rd=await parseAI(wiadomoscDrzwi, adres, "drzwi");
+          pozDrzwi=mapPozycje(rd.pozycje, true, false);
+        }catch(e2){ console.warn("Drzwi parse error:",e2); }
+        setParsingDrzwi(false);
+      } else if(withDrzwi){
+        pozDrzwi=[pustaPozDrzwi()];
+      }
       setForm(f=>({
         ...f,
         klientImie:   r.klientImie   ||f.klientImie,
@@ -1597,41 +1478,18 @@ function App() {
         klientKod:    r.klientKod    ||f.klientKod,
         klientMiasto: r.klientMiasto ||f.klientMiasto,
         telefon:      r.telefon      ||f.telefon,
-        uwagi:        f.uwagi, // uwagi klienta NIE lecą automatycznie
-        pozycje: r.pozycje?.length ? r.pozycje.map(p=>p.isDrzwi?({
-          isDrzwi:        true,
-          szerokosc:      p.szerokosc   ||"",
-          szer2:          p.szer2       ||"",
-          wysokosc:       p.wysokosc    ||"",
-          wys2:           p.wys2        ||"",
-          kolorRamki:     p.kolorRamki  ||"Antracyt",
-          kolorSiatki:    p.kolorSiatki ||"Czarna",
-          zawias:         p.zawias      ||"L",
-          poprzeczka:     p.poprzeczka!=null?p.poprzeczka:true,
-          samodomykajacyL: p.samodomykajacyL||0,
-          samodomykajacyP: p.samodomykajacyP||0,
-          ilosc:          p.ilosc       ||1,
-          uwagi:          p.uwagi       ||""
-        }):({
-          szerokosc:   p.szerokosc   ||"",
-          wysokosc:    p.wysokosc    ||"",
-          glebokosc:   String(normalizujGlebokosc(p.glebokosc!=null?p.glebokosc:DOMYSLNA_GLEBOKOS)),
-          kolorRamki:  p.kolorRamki  ||"Antracyt",
-          kolorSiatki: p.kolorSiatki ||"Czarna",
-          ilosc:       p.ilosc       ||1
-        })):f.pozycje
+        uwagi:        f.uwagi,
+        pozycje: [...pozOkna,...pozDrzwi].length ? [...pozOkna,...pozDrzwi] : f.pozycje
       }));
     } catch(e){
-      console.error("Błąd parsowania AI:", e);
+      setParsing(false); setParsingDrzwi(false);
+      console.error("B\u0142\u0105d parsowania AI:", e);
       let msg = e.message || String(e);
-      if(msg === "Failed to fetch") {
-        msg = "Failed to fetch — sprawdź:\n1. Czy klucz API Claude jest wpisany w Ustawieniach?\n2. Czy Worker allegro-autoresponder.favour-biuro.workers.dev działa?\n3. Czy masz połączenie z internetem?";
-      } else if(msg.includes("401") || msg.includes("403")) {
-        msg = "Błąd autoryzacji ("+msg+") — sprawdź klucz API Claude w Ustawieniach.";
-      } else if(msg.includes("Brak klucza")) {
-        msg = "Brak klucza API Claude — wpisz go w Ustawieniach (ikona ⚙️).";
-      }
-      alert("Błąd parsowania AI:\n"+msg);
+      if(msg==="Failed to fetch") msg="Failed to fetch \u2014 sprawd\u017a klucz API i Worker.";
+      else if(msg.includes("401")||msg.includes("403")) msg="B\u0142\u0105d autoryzacji \u2014 sprawd\u017a klucz API Claude.";
+      else if(msg.includes("Brak klucza")) msg="Brak klucza API Claude \u2014 wpisz go w Ustawieniach.";
+      alert("B\u0142\u0105d parsowania AI:\n"+msg);
+      return;
     }
     setParsing(false);
   }
@@ -1649,42 +1507,77 @@ function App() {
     });
   }
 
-  function handleSave(){
+  async function handleSave(){
+    // Pobierz świeże dane z chmury — gwarantuje poprawny nextNumer po reload/aktualizacji
+    const _liveOrds=await freshOrders();
+    const _ordBase=_liveOrds.length>0?_liveOrds:orders;
+    if(_liveOrds.length!==orders.length) setOrders(_liveOrds);
     const _hasDrzwi=form.pozycje.some(p=>p.isDrzwi);
     const _hasOkna=form.pozycje.some(p=>!p.isDrzwi);
-    // Jeśli TYLKO drzwi → prefix D. Mieszane lub tylko okna → bez prefiksu
-    // Jeśli formularz ma drzwi LUB tryb parsowania to drzwi → numer drzwiowy D*.xx FIRMA
-    const _isDrzwi=_hasDrzwi||parseTyp==="drzwi";
-    const numer=numerOverride||nextNumer(orders,form.firma,_isDrzwi);
-    const order={
-      id:Date.now(), numerZlecenia:numer, firma:form.firma, data:form.data,
+    const _mixed=_hasDrzwi&&_hasOkna;
+    const base={
+      firma:form.firma, data:form.data,
       allegroOrderId:allegroOrderIdForForm||"",
       kalNumer:kalNumerForForm||"",
       klientImie:form.klientImie, klientUlica:form.klientUlica||"", klientKod:form.klientKod||"", klientMiasto:form.klientMiasto,
       telefon:form.telefon, uwagi:form.uwagi,
-      pozycje:form.pozycje.map(p=>p.isDrzwi?({
-        ...p,
-        kolorSiatki: p.kolorSiatki||"Czarna",
-      }):({
-        ...p,
-        glebokosc:    p.glebokosc||String(DOMYSLNA_GLEBOKOS),
-        kolorSiatki:  p.kolorSiatki||"Czarna",
-        linka:        obliczLinke(p.szerokosc,p.wysokosc),
-        blaszRozmiar: obliczRozmiarBlaszki(p.glebokosc),
-      }))
     };
     if(editingId!==null){
-      updateOrders(orders.map(x=>x.id===editingId?{...order,id:editingId}:x));
+      // Edycja: jeden rekord jak dotychczas
+      const _isDrzwi=_hasDrzwi&&!_hasOkna;
+      const numer=numerOverride||nextNumer(_ordBase,form.firma,_isDrzwi);
+      const order={
+        ...base, id:editingId, numerZlecenia:numer,
+        pozycje:form.pozycje.map(p=>p.isDrzwi?({...p,kolorSiatki:p.kolorSiatki||"Czarna"}):({
+          ...p, glebokosc:p.glebokosc||String(DOMYSLNA_GLEBOKOS),
+          kolorSiatki:p.kolorSiatki||"Czarna",
+          linka:obliczLinke(p.szerokosc,p.wysokosc),
+          blaszRozmiar:obliczRozmiarBlaszki(p.glebokosc),
+        }))
+      };
+      updateOrders(orders.map(x=>x.id===editingId?order:x));
       setEditingId(null);
+      if(order.pozycje.some(p=>!p.isDrzwi)) drukujPDF(order);
+      if(order.pozycje.some(p=>p.isDrzwi)) drukujPDF_drzwi(order);
+    } else if(_mixed){
+      // Zamówienie mieszane: dwa osobne rekordy z własnymi numerami
+      const numerOkna=nextNumer(_ordBase,form.firma,false);
+      const orderOkna={
+        ...base, id:Date.now(), numerZlecenia:numerOkna,
+        pozycje:form.pozycje.filter(p=>!p.isDrzwi).map(p=>({
+          ...p, glebokosc:p.glebokosc||String(DOMYSLNA_GLEBOKOS),
+          kolorSiatki:p.kolorSiatki||"Czarna",
+          linka:obliczLinke(p.szerokosc,p.wysokosc),
+          blaszRozmiar:obliczRozmiarBlaszki(p.glebokosc),
+        }))
+      };
+      const numerDrzwi=nextNumer([...orders,orderOkna],form.firma,true);
+      const orderDrzwi={
+        ...base, id:Date.now()+1, numerZlecenia:numerDrzwi,
+        pozycje:form.pozycje.filter(p=>p.isDrzwi).map(p=>({...p,kolorSiatki:p.kolorSiatki||"Czarna"}))
+      };
+      updateOrders([orderDrzwi,orderOkna,..._ordBase]);
+      drukujPDF(orderOkna);
+      drukujPDF_drzwi(orderDrzwi);
     } else {
-      updateOrders([order,...orders]);
+      // Tylko okna lub tylko drzwi
+      const _isDrzwi=_hasDrzwi;
+      const numer=numerOverride||nextNumer(_ordBase,form.firma,_isDrzwi);
+      const order={
+        ...base, id:Date.now(), numerZlecenia:numer,
+        pozycje:form.pozycje.map(p=>p.isDrzwi?({...p,kolorSiatki:p.kolorSiatki||"Czarna"}):({
+          ...p, glebokosc:p.glebokosc||String(DOMYSLNA_GLEBOKOS),
+          kolorSiatki:p.kolorSiatki||"Czarna",
+          linka:obliczLinke(p.szerokosc,p.wysokosc),
+          blaszRozmiar:obliczRozmiarBlaszki(p.glebokosc),
+        }))
+      };
+      updateOrders([order,..._ordBase]);
+      if(order.pozycje.some(p=>!p.isDrzwi)) drukujPDF(order);
+      if(order.pozycje.some(p=>p.isDrzwi)) drukujPDF_drzwi(order);
     }
     setSaved(true);
     setWiadomosc(""); setAdres(""); setForm(pustyForm(form.firma)); setNumerOverride(""); setKalNumerForForm(""); setAllegroOrderIdForForm("");
-    const hasDrzwiPos=order.pozycje.some(p=>p.isDrzwi);
-    const hasOknaPos=order.pozycje.some(p=>!p.isDrzwi);
-    if(hasOknaPos) drukujPDF(order);
-    if(hasDrzwiPos) drukujPDF_drzwi(order);
   }
 
   function getStats(ords){
@@ -1797,7 +1690,7 @@ function App() {
     if(!clientId||!secret){setAllegroError("Najpierw wpisz i zapisz Client ID oraz Client Secret");return;}
     localStorage.setItem('allegro_active', kontaId);
     setAllegroActive(kontaId);
-    const url='https://allegro.pl/auth/oauth/authorize?response_type=code&prompt=login&client_id='+encodeURIComponent(clientId)+'&redirect_uri='+encodeURIComponent('https://oktomo.github.io/moskitiery');
+    const url='https://allegro.pl/auth/oauth/authorize?response_type=code&client_id='+encodeURIComponent(clientId)+'&redirect_uri='+encodeURIComponent('https://oktomo.github.io/moskitiery');
     window.location.href=url;
   }
 
@@ -2044,24 +1937,24 @@ function App() {
     <div style={{minHeight:"100vh",background:"#0c1018",color:"#e8ece8",fontFamily:"'IBM Plex Mono','Courier New',monospace"}}>
       <style>{CSS}</style>
 
-      <div className="mosk-header" style={{borderBottom:"1px solid #1e2e1e",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e1420"}}>
+      <div style={{borderBottom:"1px solid #1e2e1e",padding:"14px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",background:"#0e1420"}}>
         <div>
-          <div className="mosk-logo" style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:800,color:"#9fef9f",letterSpacing:".05em"}}>
+          <div style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:800,color:"#9fef9f",letterSpacing:".05em"}}>
             🦟 MosquitoApp
             <span style={{fontSize:16,fontWeight:900,color:"#9fcf9f",background:"#0d1a0d",border:"1px solid #2a5a2a",borderRadius:6,padding:"4px 14px",marginLeft:10,letterSpacing:1}}>
               {currentProfile.nazwa}
             </span>
           </div>
-          <div className="mosk-header-sub" style={{fontSize:14,color:"#4a8a4a",letterSpacing:".2em",textTransform:"uppercase"}}>System zarządzania zamówieniami</div>
+          <div style={{fontSize:14,color:"#4a8a4a",letterSpacing:".2em",textTransform:"uppercase"}}>System zarządzania zamówieniami</div>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:12}}>
-          <div className="mosk-orders-cnt" style={{fontSize:14,color:"#5a9a5a",whiteSpace:"nowrap"}}>{orders.length} zamówień · ☁</div>
+          <div style={{fontSize:14,color:"#5a9a5a"}}>{orders.length} zamówień · ☁</div>
           <div style={{position:"relative",display:"inline-block"}}>
               <button onClick={()=>{
                 const menu=document.getElementById('profile-menu');
                 menu.style.display=menu.style.display==='block'?'none':'block';
-              }} style={{fontSize:13,background:"transparent",border:"1px solid #1e3a1e",borderRadius:4,color:"#4a8a4a",padding:"3px 7px",cursor:"pointer"}}>⇄ {currentProfile.nazwa} ▾</button>
-              <div id="profile-menu" className="mosk-profile-dropdown" style={{display:"none",position:"absolute",right:0,top:"110%",background:"#0e1420",border:"1px solid #1e3a1e",borderRadius:6,zIndex:100,minWidth:140}}>
+              }} style={{fontSize:14,background:"transparent",border:"1px solid #1e3a1e",borderRadius:4,color:"#4a8a4a",padding:"4px 10px",cursor:"pointer"}}>⇄ {currentProfile.nazwa} ▾</button>
+              <div id="profile-menu" style={{display:"none",position:"absolute",right:0,top:"110%",background:"#0e1420",border:"1px solid #1e3a1e",borderRadius:6,zIndex:100,minWidth:140}}>
                 {PROFILE.map(p=>(
                   <div key={p.id} onClick={()=>{
                     localStorage.setItem('active_profile',p.id);
@@ -2081,7 +1974,7 @@ function App() {
         </div>
       </div>
 
-      <div className="mosk-nav-tabs" style={{display:"flex",borderBottom:"1px solid #1e2a1e",paddingLeft:0,background:"#0e1420",overflowX:"auto",flexWrap:"nowrap",WebkitOverflowScrolling:"touch"}}>
+      <div style={{display:"flex",borderBottom:"1px solid #1e2a1e",paddingLeft:16,background:"#0e1420",flexWrap:"wrap"}}>
         {[["nowe","➕ Dodaj zamówienie"],["al_zam","🛒 Allegro"],["baza","📋 Zlecenia"],["zapytania","📨 Zapytania KAL"],["stat","📊 Stat"],["produkcja","🏭 Produkcja"],["kalk","🧮 Kalkulator"],["faktury","🧾 Faktury"],["wiadomosci","💬 Wiadomości"]].map(([id,l])=>(
           <button key={id} className={`tab ${tab===id?"on":""}`} onClick={()=>setTab(id)}>{l}</button>
         ))}
@@ -2106,11 +1999,11 @@ function App() {
         </div>
       )}
 
-      <div className="mosk-content" style={{padding:16,maxWidth:1100,margin:"0 auto"}}>
+      <div style={{padding:16,maxWidth:1100,margin:"0 auto"}}>
 
         {/* ══ DODAJ ZAMÓWIENIE ══ */}
         {tab==="nowe" && (
-          <div className="grid2 grid2-main" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+          <div className="grid2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
             <div style={{display:"flex",flexDirection:"column",gap:14}}>
 
               {/* Wiadomość + adres */}
@@ -2125,19 +2018,42 @@ function App() {
                   placeholder={"Wklej dane adresowe z Allegro:\n\nNp: Kowalski Jan\nul. Kwiatowa 5/10\n00-001 Warszawa\nPL +48600000000"}
                   style={{height:90,resize:"vertical",marginBottom:10}}/>
 
-                <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:6}}>
-                  <span style={{fontSize:14,color:"#4a8a4a"}}>Parsuj jako:</span>
-                  <button onClick={()=>setParseTyp("okno")} style={{padding:"4px 12px",fontSize:14,borderRadius:4,border:"1px solid",cursor:"pointer",
-                    background:parseTyp==="okno"?"#1a3a1a":"transparent",
-                    color:parseTyp==="okno"?"#9fcf9f":"#4a8a4a",
-                    borderColor:parseTyp==="okno"?"#2a6a2a":"#1e3a1e"}}>🪟 Okno</button>
-                  <button onClick={()=>setParseTyp("drzwi")} style={{padding:"4px 12px",fontSize:14,borderRadius:4,border:"1px solid",cursor:"pointer",
-                    background:parseTyp==="drzwi"?"#1a2a4a":"transparent",
-                    color:parseTyp==="drzwi"?"#90b8df":"#3a5a8a",
-                    borderColor:parseTyp==="drzwi"?"#2a4a8a":"#1e2a4e"}}>🚪 Drzwi</button>
-                </div>
+                {/* Tryb parsowania */}
+                {!withDrzwi&&(
+                  <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:6}}>
+                    <span style={{fontSize:14,color:"#4a8a4a"}}>Parsuj jako:</span>
+                    <button onClick={()=>setParseTyp("okno")} style={{padding:"4px 12px",fontSize:14,borderRadius:4,border:"1px solid",cursor:"pointer",
+                      background:parseTyp==="okno"?"#1a3a1a":"transparent",
+                      color:parseTyp==="okno"?"#9fcf9f":"#4a8a4a",
+                      borderColor:parseTyp==="okno"?"#2a6a2a":"#1e3a1e"}}>🪟 Okno</button>
+                    <button onClick={()=>setParseTyp("drzwi")} style={{padding:"4px 12px",fontSize:14,borderRadius:4,border:"1px solid",cursor:"pointer",
+                      background:parseTyp==="drzwi"?"#1a2a4a":"transparent",
+                      color:parseTyp==="drzwi"?"#90b8df":"#3a5a8a",
+                      borderColor:parseTyp==="drzwi"?"#2a4a8a":"#1e2a4e"}}>🚪 Drzwi</button>
+                  </div>
+                )}
+
+                {/* Checkbox: dorzuć drzwi do zamówienia */}
+                <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",marginBottom:withDrzwi?10:6,fontSize:14,color:withDrzwi?"#90b8df":"#4a6a8a",userSelect:"none"}}>
+                  <input type="checkbox" checked={withDrzwi} onChange={e=>{setWithDrzwi(e.target.checked);if(!e.target.checked)setWiadomoscDrzwi('');}}
+                    style={{width:16,height:16,cursor:"pointer",accentColor:"#4a8adf"}}/>
+                  🚪 To zamówienie zawiera też drzwi
+                </label>
+
+                {withDrzwi&&(
+                  <div style={{marginBottom:10}}>
+                    <span className="lbl" style={{marginBottom:6,color:"#7a9abf"}}>Wiadomość o drzwiach (wymiary, kolory, zawias)</span>
+                    <textarea value={wiadomoscDrzwi} onChange={e=>setWiadomoscDrzwi(e.target.value)}
+                      placeholder={"Wklej wymiary drzwi...
+
+Np: 83x226 cm antracyt, siatka czarna, zawias lewy"}
+                      style={{height:80,resize:"vertical",marginBottom:0,borderColor:"#2a4a8a",background:"#0a0e1e"}}/>
+                  </div>
+                )}
+
                 <button className="btn" style={{width:"100%"}} onClick={handleParse} disabled={parsing||(!wiadomosc.trim()&&!adres.trim())}>
-                  {parsing?<><span className="spin">⟳</span> Parsowanie AI...</>:`🤖 Parsuj z AI → ${parseTyp==="drzwi"?"(drzwi)":"(okna)"}`}
+                  {parsing?<><span className="spin">⟳</span> {parsingDrzwi?"Parsowanie drzwi...":"Parsowanie AI..."}</>
+                    :withDrzwi?"🤖 Parsuj z AI → okna + drzwi":`🤖 Parsuj z AI → ${parseTyp==="drzwi"?"(drzwi)":"(okna)"}`}
                 </button>
               </div>
 
@@ -2350,6 +2266,22 @@ function App() {
               })}
               </div>
 
+              {(()=>{
+                const _okna=form.pozycje.filter(p=>!p.isDrzwi);
+                if(_okna.length<2) return null;
+                const _totalJedn=_okna.reduce((a,p)=>a+obliczJedn(p.szerokosc,p.wysokosc,p.ilosc),0);
+                const _totalSzt=_okna.reduce((a,p)=>a+(parseFloat(p.ilosc)||1),0);
+                const _totalBlaszki=_totalSzt*8;
+                const _totalLinka=obliczLinkeLaczna(_okna);
+                return (
+                  <div style={{background:"#0c1a0c",border:"1px solid #2a4a2a",borderRadius:6,padding:"8px 14px",marginBottom:8,display:"flex",gap:16,flexWrap:"wrap",fontSize:14}}>
+                    <span style={{color:"#3a7a3a",fontWeight:700}}>RAZEM {_totalSzt} szt:</span>
+                    <span style={{color:"#5a9a5a"}}>JEDN: <strong style={{color:"#afffaf"}}>{Math.round(_totalJedn*10)/10} mb</strong></span>
+                    <span style={{color:"#5a9a5a"}}>Blaszki: <strong style={{color:"#afffaf"}}>{_totalBlaszki} szt</strong></span>
+                    <span style={{color:"#5a9a5a"}}>Linka: <strong style={{color:"#afffaf"}}>{_totalLinka} mb</strong></span>
+                  </div>
+                );
+              })()}
               {editingId!==null&&<div style={{background:"#1a2a0a",border:"1px solid #4a7a2a",borderRadius:6,padding:"6px 12px",marginBottom:8,fontSize:14,color:"#9acf7a",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <span>✏️ Tryb edycji — zmiany nadpiszą zlecenie</span>
                 <button onClick={()=>{setEditingId(null);setNumerOverride("");setForm(pustyForm(form.firma));setSaved(false);}} style={{background:"#2a1a1a",border:"1px solid #5a2a2a",color:"#cf7a7a",borderRadius:4,padding:"2px 8px",cursor:"pointer",fontSize:14}}>✕ Anuluj</button>
@@ -2407,7 +2339,7 @@ function App() {
                   </span>
                   <button onClick={()=>setAllegroImportShow(false)} style={{marginLeft:"auto",background:"none",border:"none",color:"#5a7a9a",cursor:"pointer",fontSize:18,lineHeight:1}}>✕</button>
                 </div>
-                <div className="tbl-scroll">
+                <div style={{overflowX:"auto"}}>
                   <table style={{width:"100%",borderCollapse:"collapse",fontSize:14}}>
                     <thead>
                       <tr style={{background:"#0c1a2a",borderBottom:"1px solid #1a3a5a"}}>
@@ -2831,7 +2763,7 @@ function App() {
                               {pozycje.map((p,i)=>(
                                 <div key={i} style={{fontSize:14,color:"#5a9a6a",whiteSpace:"nowrap"}}>
                                   {p.szerokosc}×{p.wysokosc} cm{p.felc?` felc:${p.felc}`:""}
-                                  <span style={{color:"#3a7a5a",marginLeft:4}}>{(p.kolorProfilu||"").replace(new RegExp(" RAL [0-9]+"),"")}/{p.kolorSiatki}</span>
+                                  <span style={{color:"#3a7a5a",marginLeft:4}}>{(p.kolorProfilu||"").replace(/ RAL \d+/,"")}/{p.kolorSiatki}</span>
                                   {p.ilosc>1&&<span style={{color:"#afffaf",marginLeft:4}}>×{p.ilosc}</span>}
                                 </div>
                               ))}
@@ -2877,7 +2809,7 @@ function App() {
 
         {tab==="baza" && (
           <div>
-            <div className="baza-filters" style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
+            <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
               <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Szukaj..." style={{width:220}}/>
               <select value={filterFirma} onChange={e=>setFilterFirma(e.target.value)} style={{width:"auto"}}>
                 <option value="">Wszystkie firmy</option>
@@ -2900,7 +2832,7 @@ function App() {
             </div>
 
             {filteredOrders.length>0&&(
-              <div className="stat-grid4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:12}}>
+              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:12}}>
                 {[["Moskitier",statsFilt.totalMosk+" szt"],["Linka",statsFilt.totalLinka+" mb"],["Blaszki",statsFilt.totalBlaszki+" szt"],["Siatka",statsFilt.totalM2+" m²"]].map(([l,v])=>(
                   <div key={l} className="stat" style={{padding:"8px 12px"}}>
                     <div style={{fontFamily:"'Syne',sans-serif",fontSize:18,fontWeight:800,color:"#afffaf"}}>{v}</div>
@@ -2910,7 +2842,7 @@ function App() {
               </div>
             )}
 
-            <div className="card tbl-scroll" style={{padding:0,overflow:"hidden"}}>
+            <div className="card" style={{padding:0,overflow:"hidden"}}>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:14}}>
                 <thead>
                   <tr style={{borderBottom:"2px solid #1e3a1e",background:"#0c1a0c"}}>
@@ -2976,7 +2908,7 @@ function App() {
         {tab==="stat" && (
           <div>
             <div style={{fontSize:14,color:"#4a8a4a",letterSpacing:".15em",textTransform:"uppercase",marginBottom:14}}>Łącznie ({orders.length} zamówień)</div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}} className="grid2 stat-grid4">
+            <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}} className="grid2">
               {[["Moskitier",statsAll.totalMosk,"szt"],["Linka",statsAll.totalLinka,"mb"],["Blaszki",statsAll.totalBlaszki,"szt"],["Siatka",statsAll.totalM2,"m²"]].map(([l,v,u])=>(
                 <div key={l} className="stat"><div className="stat-n">{v}</div><div style={{fontSize:14,color:"#afffaf"}}>{u}</div><div className="stat-l">{l}</div></div>
               ))}
@@ -3139,7 +3071,7 @@ function App() {
             {msgSubTab==="threads"&&msgNewShow&&(
               <div style={{background:"#0c1a0c",border:"1px solid #2a5a2a",borderRadius:8,padding:16,marginBottom:12}}>
                 <div style={{fontSize:14,fontWeight:700,color:"#afffaf",marginBottom:10}}>✉️ Nowa wiadomość do kupującego</div>
-                <div className="msg-new-grid" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
                   <div>
                     <span className="lbl">Login kupującego</span>
                     <input value={msgNewLogin} onChange={function(e){setMsgNewLogin(e.target.value);}} placeholder="np. jan_kowalski" style={{fontFamily:"monospace",fontSize:14}}/>
@@ -3175,14 +3107,14 @@ function App() {
               </div>
             )}
             {msgSubTab==="threads"&&(
-            <div className="msg-layout" style={{display:"grid",gridTemplateColumns:"340px 1fr",gap:12,flex:1,minHeight:0,["--mll"]:msgMobileView==="list"?"flex":"none",["--mlc"]:msgMobileView==="chat"?"flex":"none"}}>
-              <div className="msg-list" style={{background:"#0c1a0c",border:"1px solid #1e3a1e",borderRadius:8,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+            <div style={{display:"grid",gridTemplateColumns:"340px 1fr",gap:12,flex:1,minHeight:0}}>
+              <div style={{background:"#0c1a0c",border:"1px solid #1e3a1e",borderRadius:8,overflow:"hidden",display:"flex",flexDirection:"column"}}>
                 <div style={{padding:"10px 14px",borderBottom:"1px solid #1a2a1a",fontSize:14,color:"#6aaa6a",letterSpacing:".1em",textTransform:"uppercase"}}>Wątki ({msgThreads.length})</div>
                 <div style={{overflowY:"auto",flex:1}}>
                   {msgThreads.map(function(t){
                     const active=msgActiveThread&&msgActiveThread.id===t.id;
                     return (
-                      <div key={t.id} onClick={function(){msgLoadConvo(t);setMsgMobileView("chat");}} style={{padding:"12px 14px",borderBottom:"1px solid #0f1f0f",cursor:"pointer",background:active?"#1a3a1a":(t.hasUnreadMessages?"#0e1e0e":"transparent"),transition:"background .15s"}}>
+                      <div key={t.id} onClick={function(){msgLoadConvo(t);}} style={{padding:"12px 14px",borderBottom:"1px solid #0f1f0f",cursor:"pointer",background:active?"#1a3a1a":(t.hasUnreadMessages?"#0e1e0e":"transparent"),transition:"background .15s"}}>
                         <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
                           {t.hasUnreadMessages&&<span style={{width:7,height:7,borderRadius:"50%",background:"#7fcf7f",display:"inline-block",flexShrink:0}}/>}
                           <span style={{fontWeight:t.hasUnreadMessages?700:600,color:active?"#afeaaf":"#8abf8a",fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.interlocutor&&t.interlocutor.login||"—"}</span>
@@ -3194,8 +3126,7 @@ function App() {
                   })}
                 </div>
               </div>
-              <div className="msg-chat" style={{background:"#0c1a0c",border:"1px solid #1e3a1e",borderRadius:8,overflow:"hidden",display:"flex",flexDirection:"column"}}>
-                <button className="mosk-back-btn" onClick={function(){setMsgMobileView("list");}} style={{display:"none",padding:"7px 14px",background:"#0a180a",border:"none",borderBottom:"1px solid #1a2a1a",color:"#7fcf7f",fontSize:14,fontWeight:700,cursor:"pointer",textAlign:"left"}}>← Wróć do listy</button>
+              <div style={{background:"#0c1a0c",border:"1px solid #1e3a1e",borderRadius:8,overflow:"hidden",display:"flex",flexDirection:"column"}}>
                 {!msgActiveThread?(
                   <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",color:"#2a5a2a",fontSize:14}}>← Wybierz wątek z listy</div>
                 ):(
@@ -3427,111 +3358,75 @@ function App() {
         )}
 
             {tab==="kalk" && (
-          <div style={{padding:'12px'}}>
-
-            {/* WYSZUKAJ WYCENĘ — PIERWSZA */}
+          <div style={{padding:'16px'}}>
             <div style={{background:'var(--surface)',borderRadius:8,padding:'14px',border:'1px solid var(--border)',marginBottom:'12px'}}>
-              <div style={{color:'var(--accent)',fontWeight:'bold',marginBottom:'10px',fontSize:'13px'}}>WYSZUKAJ WYCENĘ Z KALKULATORA</div>
-              <div style={{display:'flex',gap:'8px'}}>
-                <input type="text" placeholder="FAV-260304-0001 / ARL-..." value={kalSearch} onChange={e=>setKalSearch(e.target.value)}
-                  onKeyDown={e=>{if(e.key==='Enter'){const n=kalSearch.trim();if(!n)return;setKalResult(null);setKalError('');fetch(AUTORESPONDER_URL+'/kalkulator/order/'+encodeURIComponent(n)).then(r=>r.json()).then(d=>{if(d.error)setKalError('Nie znaleziono: '+n);else setKalResult(d);}).catch(()=>setKalError('Blad'));}}}
-                  style={{flex:1,padding:'10px 12px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg)',color:'var(--text)',fontSize:16}}/>
-                <button onClick={()=>{const n=kalSearch.trim();if(!n)return;setKalResult(null);setKalError('');fetch(AUTORESPONDER_URL+'/kalkulator/order/'+encodeURIComponent(n)).then(r=>r.json()).then(d=>{if(d.error)setKalError('Nie znaleziono: '+n);else setKalResult(d);}).catch(()=>setKalError('Blad'));}}
-                  style={{padding:'10px 18px',background:'var(--accent)',color:'#000',borderRadius:6,border:'none',cursor:'pointer',fontWeight:'bold',fontSize:15}}>Szukaj</button>
-              </div>
-              {kalError&&<div style={{color:'#ef4444',marginTop:'8px',fontSize:14}}>{kalError}</div>}
-              {kalResult&&(()=>{
-                const pozycje=kalResult.pozycje||kalResult.positions||[];
-                const totalJedn=Math.round(pozycje.reduce((acc,p)=>{
-                  const s=parseFloat(p.szerokosc||p.width)||0;
-                  const w=parseFloat(p.wysokosc||p.height)||0;
-                  const il=parseFloat(p.ilosc||p.qty)||1;
-                  return acc+((s*2+w*2)*il)/10;
-                },0)*10)/10;
-                const cena=kalResult.podsumowanie?.cost||0;
-                const nl='\n';
-                const msgText=(kalResult.klient?.name||kalResult.clientName||'')+
-                  (kalResult.orderNumber?' ('+kalResult.orderNumber+')':'')+nl+
-                  pozycje.map((p,i)=>{
-                    const s=p.szerokosc||p.width||'?';const w=p.wysokosc||p.height||'?';
-                    const kp=(p.kolorProfilu||p.profile||'').replace(new RegExp(' RAL [0-9]+'),'');
-                    const il=p.ilosc||p.qty||1;
-                    return (i+1)+'. '+s+'x'+w+'cm '+kp+' x'+il;
-                  }).join(nl)+
-                  (totalJedn>0?nl+'Jednostek do koszyka: '+totalJedn:'')+
-                  (cena>0?nl+'Cena: '+cena.toFixed(2)+' zl':'');
-                return (
-                  <div style={{marginTop:'12px',background:'var(--bg)',borderRadius:6,padding:'12px',fontSize:14}}>
-                    <div style={{color:'var(--accent)',fontWeight:'bold',marginBottom:'8px',fontSize:'15px'}}>{kalResult.orderNumber}</div>
-                    <div style={{marginBottom:4}}><span style={{color:'var(--text3)'}}>Klient: </span><b>{kalResult.klient?.name||kalResult.clientName||'—'}</b></div>
-                    {(kalResult.klient?.phone||kalResult.phone)&&<div style={{marginBottom:4}}><span style={{color:'var(--text3)'}}>Tel: </span><b>{kalResult.klient?.phone||kalResult.phone}</b></div>}
-                    <div style={{marginTop:8}}>
-                      {pozycje.map((p,i)=>{
-                        const sz=p.szerokosc||p.width||'?';
-                        const wy=p.wysokosc||p.height||'?';
-                        const kp=(p.kolorProfilu||p.profile||'—').replace(new RegExp(' RAL [0-9]+'),'');
-                        const ks=p.kolorSiatki||p.mesh||'—';
-                        const il=p.ilosc||p.qty||1;
-                        return (
-                          <div key={i} style={{background:'var(--surface)',borderRadius:4,padding:'6px 10px',marginBottom:4,display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:4}}>
-                            <span><b style={{color:'var(--accent2)'}}>{i+1}.</b> {sz}x{wy}cm <span style={{color:'var(--text3)',fontSize:13}}>{kp}/{ks}</span></span>
-                            <span style={{color:'#22c55e',fontWeight:'bold'}}>x{il}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <div style={{display:'flex',gap:8,marginTop:12,flexWrap:'wrap',alignItems:'center'}}>
-                      {totalJedn>0&&<div style={{background:'#1a3a1a',border:'1px solid #2a6a2a',borderRadius:6,padding:'8px 12px',color:'#7fcf7f',fontWeight:700,fontSize:15}}>
-                        Jednostek: {totalJedn}
-                      </div>}
-                      {cena>0&&<div style={{background:'#1a3a1a',border:'1px solid #2a6a2a',borderRadius:6,padding:'8px 12px',color:'#22c55e',fontWeight:700,fontSize:15}}>
-                        {cena.toFixed(2)} zł
-                      </div>}
-                      <button onClick={()=>navigator.clipboard?.writeText(msgText).then(()=>alert('Skopiowano do schowka!'))}
-                        style={{marginLeft:'auto',padding:'10px 18px',background:'#2a5a3a',border:'1px solid #3a8a4a',borderRadius:6,color:'#afffaf',fontWeight:700,fontSize:15,cursor:'pointer'}}>
-                        📋 Kopiuj wiadomość
-                      </button>
-                    </div>
+              <div style={{color:'var(--accent)',fontWeight:'bold',marginBottom:'10px',fontSize:'13px'}}>KALKULATORY — LINKI DO AUKCJI</div>
+              <div style={{fontSize:'12px',color:'var(--text3)',marginBottom:'10px'}}>Wklej do opisu aukcji jako tekst (Allegro blokuje aktywne linki):</div>
+              {[
+                {key:'fav', label:'Favour / Oktomo', url:'kalkulator.oktomo.pl',     color:'#4CAF50', direct:'https://kalkulator.oktomo.pl/kalkulator.html?brand=fav&qr=1'},
+                {key:'str', label:'Staroleska',       url:'kalkulator.staroleska.pl', color:'#26a69a', direct:'https://kalkulator.staroleska.pl/kalkulator.html?brand=sta&qr=1'},
+                {key:'arl', label:'Arlis',             url:'kalkulator.arlis.pl',     color:'#42a5f5', direct:'https://kalkulator.arlis.pl/kalkulator.html?brand=arl&qr=1'},
+                {key:'alb', label:'Albama',            url:'kalkulator.albama.pl',    color:'#ab47bc', direct:'https://kalkulator.albama.pl/kalkulator.html?brand=alb&qr=1'},
+                {key:'evr', label:'Everis',            url:'kalkulator.everis.pl',    color:'#ff7043', direct:'https://kalkulator.everis.pl/kalkulator.html?brand=evr&qr=1'},
+              ].map(b=>(
+                <div key={b.key} style={{display:'flex',flexDirection:'column',marginBottom:8,background:'var(--bg)',borderRadius:6,border:'1px solid var(--border)'}}>
+                  <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 12px'}}>
+                    <span style={{minWidth:130,fontWeight:700,fontSize:14,color:b.color}}>{b.label}</span>
+                    <span style={{flex:1,fontFamily:'monospace',fontSize:14,color:'var(--text3)'}}>{b.url}</span>
+                    <button onClick={()=>navigator.clipboard?.writeText(b.url)}
+                      style={{padding:'4px 10px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text)',borderRadius:5,cursor:'pointer',fontSize:14}}>📋 kopiuj</button>
+                    <a href={'https://'+b.url} target="_blank"
+                      style={{padding:'4px 10px',background:b.color,color:'#000',borderRadius:5,cursor:'pointer',fontSize:14,textDecoration:'none',fontWeight:700}}>otwórz ↗</a>
+                    <a href={'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(b.direct)} download={'QR_'+b.key+'.png'} target="_blank"
+                      style={{padding:'4px 10px',background:'#333',color:'#fff',borderRadius:5,cursor:'pointer',fontSize:14,textDecoration:'none',fontWeight:700}}>QR ↓</a>
                   </div>
-                );
-              })()}
-            </div>
-
-            {/* LINKI / QR — ZWINIĘTE */}
-            {(()=>{
-              const [qrOpen,setQrOpen]=React.useState(false);
-              return (
-              <div style={{background:'var(--surface)',borderRadius:8,border:'1px solid var(--border)',marginBottom:'12px'}}>
-                <div onClick={()=>setQrOpen(o=>!o)} style={{padding:'12px 14px',cursor:'pointer',color:'var(--accent)',fontWeight:'bold',fontSize:'13px',display:'flex',justifyContent:'space-between',alignItems:'center',userSelect:'none'}}>
-                  KALKULATORY — LINKI DO AUKCJI <span style={{fontSize:12,color:'var(--text3)'}}>{qrOpen?'zwiń ▲':'rozwiń ▼'}</span>
+                  <div style={{textAlign:'center',padding:'4px 12px 10px'}}>
+                    <img src={'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data='+encodeURIComponent(b.direct)} alt={'QR '+b.label} style={{width:80,height:80,borderRadius:4,border:'2px solid '+b.color,display:'block',margin:'0 auto 4px'}}/>
+                    <div style={{fontSize:14,color:'var(--text3)',fontFamily:'monospace'}}>{b.direct}</div>
+                  </div>
                 </div>
-                {qrOpen&&<div style={{padding:'0 14px 14px'}}>
-                {[
-                  {key:'fav', label:'Favour', url:'kalkulator.oktomo.pl', color:'#4CAF50', direct:'https://kalkulator.oktomo.pl/kalkulator.html?brand=fav&qr=1'},
-                  {key:'str', label:'Staroleska', url:'kalkulator.staroleska.pl', color:'#26a69a', direct:'https://kalkulator.staroleska.pl/kalkulator.html?brand=sta&qr=1'},
-                  {key:'arl', label:'Arlis', url:'kalkulator.arlis.pl', color:'#42a5f5', direct:'https://kalkulator.arlis.pl/kalkulator.html?brand=arl&qr=1'},
-                  {key:'alb', label:'Albama', url:'kalkulator.albama.pl', color:'#ab47bc', direct:'https://kalkulator.albama.pl/kalkulator.html?brand=alb&qr=1'},
-                  {key:'evr', label:'Everis', url:'kalkulator.everis.pl', color:'#ff7043', direct:'https://kalkulator.everis.pl/kalkulator.html?brand=evr&qr=1'},
-                ].map(b=>(
-                  <div key={b.key} style={{marginBottom:8,background:'var(--bg)',borderRadius:6,border:'1px solid var(--border)'}}>
-                    <div style={{display:'flex',alignItems:'center',gap:6,padding:'8px 10px',flexWrap:'wrap'}}>
-                      <span style={{fontWeight:700,fontSize:14,color:b.color,minWidth:80}}>{b.label}</span>
-                      <span style={{fontFamily:'monospace',fontSize:12,color:'var(--text3)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{b.url}</span>
-                      <button onClick={()=>navigator.clipboard?.writeText(b.url)} style={{padding:'4px 8px',background:'var(--surface)',border:'1px solid var(--border)',color:'var(--text)',borderRadius:5,cursor:'pointer',fontSize:13}}>📋</button>
-                      <a href={'https://'+b.url} target="_blank" style={{padding:'4px 8px',background:b.color,color:'#000',borderRadius:5,fontSize:13,textDecoration:'none',fontWeight:700}}>↗</a>
-                      <a href={'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='+encodeURIComponent(b.direct)} download={'QR_'+b.key+'.png'} target="_blank" style={{padding:'4px 8px',background:'#333',color:'#fff',borderRadius:5,fontSize:13,textDecoration:'none',fontWeight:700}}>QR↓</a>
-                    </div>
-                    <div style={{textAlign:'center',padding:'2px 12px 8px'}}>
-                      <img src={'https://api.qrserver.com/v1/create-qr-code/?size=120x120&data='+encodeURIComponent(b.direct)} alt={'QR '+b.label} style={{width:72,height:72,borderRadius:4,border:'2px solid '+b.color,display:'block',margin:'0 auto'}}/>
-                    </div>
-                  </div>
-                ))}
-                </div>}
+              ))}
+            </div>
+            <div style={{background:'var(--surface)',borderRadius:8,padding:'16px',border:'1px solid var(--border)',marginBottom:'16px'}}>
+              <div style={{color:'var(--accent)',fontWeight:'bold',marginBottom:'10px',fontSize:'13px'}}>WYSZUKAJ WYCENĘ</div>
+              <div style={{display:'flex',gap:'8px'}}>
+                <input type="text" placeholder="FAV-260304-0001 / ARL-… / EVR-…" value={kalSearch} onChange={e=>setKalSearch(e.target.value)}
+                  onKeyDown={e=>{if(e.key==='Enter'){const n=kalSearch.trim();if(!n)return;setKalResult(null);setKalError('');fetch(AUTORESPONDER_URL+'/kalkulator/order/'+encodeURIComponent(n)).then(r=>r.json()).then(d=>{if(d.error)setKalError('Nie znaleziono: '+n);else setKalResult(d);}).catch(()=>setKalError('Blad'));}}}
+                  style={{flex:1,padding:'8px 12px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg)',color:'var(--text)',fontSize:14}}/>
+                <button onClick={()=>{const n=kalSearch.trim();if(!n)return;setKalResult(null);setKalError('');fetch(AUTORESPONDER_URL+'/kalkulator/order/'+encodeURIComponent(n)).then(r=>r.json()).then(d=>{if(d.error)setKalError('Nie znaleziono: '+n);else setKalResult(d);}).catch(()=>setKalError('Blad'));}}
+                  style={{padding:'8px 16px',background:'var(--accent)',color:'#000',borderRadius:6,border:'none',cursor:'pointer',fontWeight:'bold'}}>Szukaj</button>
               </div>
-              );
-            })()}
-
-            <iframe className="kalk-iframe" src="https://kalkulator.oktomo.pl" style={{width:'100%',height:'680px',border:'none',borderRadius:8,display:'block'}} title="Kalkulator Favour"/>
+              {kalError&&<div style={{color:'#ef4444',marginTop:'8px',fontSize:'13px'}}>{kalError}</div>}
+              {kalResult&&(
+                <div style={{marginTop:'12px',background:'var(--bg)',borderRadius:6,padding:'12px',fontSize:'13px'}}>
+                  <div style={{color:'var(--accent)',fontWeight:'bold',marginBottom:'8px',fontSize:'15px'}}>{kalResult.orderNumber}</div>
+                  {kalResult.brandDisplay&&<div style={{fontSize:14,color:'var(--text3)',marginBottom:6}}>Brand: <b>{kalResult.brandDisplay}</b> · NIP: {kalResult.nip}</div>}
+                  <div><span style={{color:'var(--text3)'}}>Klient: </span><b>{kalResult.klient?.name||kalResult.clientName||'—'}</b></div>
+                  {(kalResult.klient?.phone||kalResult.phone)&&<div><span style={{color:'var(--text3)'}}>Tel: </span>{kalResult.klient?.phone||kalResult.phone}</div>}
+                  {(kalResult.klient?.email||kalResult.email)&&<div><span style={{color:'var(--text3)'}}>Email: </span>{kalResult.klient?.email||kalResult.email}</div>}
+                  {(kalResult.klient?.notes||kalResult.notes)&&<div style={{color:'var(--text3)'}}>Uwagi: {kalResult.klient?.notes||kalResult.notes}</div>}
+                  <div style={{marginTop:8}}>
+                  {(kalResult.pozycje||kalResult.positions||[]).map((p,i)=>{
+                    const sz=p.szerokosc||p.width||'?';
+                    const wy=p.wysokosc||p.height||'?';
+                    const kp=(p.kolorProfilu||p.profile||'—').replace(/ RAL \d+/,'');
+                    const ks=p.kolorSiatki||p.mesh||'—';
+                    const il=p.ilosc||p.qty||1;
+                    const unit=p.jednostka==='mm'?'mm':'cm';
+                    return (
+                      <div key={i} style={{background:'var(--surface)',borderRadius:4,padding:'6px 10px',marginBottom:4,display:'flex',justifyContent:'space-between'}}>
+                        <span><b style={{color:'var(--accent2)'}}>{i+1}.</b> {sz}×{wy}{unit} {p.felc?'felc:'+p.felc+' ':''}<span style={{color:'var(--text3)'}}>{kp}/{ks}</span></span>
+                        <span style={{color:'#22c55e',fontWeight:'bold'}}>×{il}</span>
+                      </div>
+                    );
+                  })}
+                  </div>
+                  {kalResult.podsumowanie?.cost>0&&<div style={{color:'#22c55e',fontWeight:'bold',textAlign:'right',marginTop:'8px',fontSize:'15px'}}>SUMA: {kalResult.podsumowanie.cost.toFixed(2)} zł</div>}
+                </div>
+              )}
+            </div>
+            <div style={{color:'var(--accent)',fontWeight:'bold',fontSize:'12px',marginBottom:8,letterSpacing:'.1em'}}>PODGLĄD — FAVOUR / OKTOMO</div>
+            <iframe src="https://kalkulator.oktomo.pl" style={{width:'100%',height:'680px',border:'none',borderRadius:8,display:'block'}} title="Kalkulator Favour"/>
           </div>
         )}
         {/* ── FAKTURY ── */}
@@ -4165,36 +4060,8 @@ function App() {
                 {settings.apiKey&&settings.binId?"✅ Synchronizacja aktywna":"⚠️ Brak konfiguracji — dane lokalne"}
               </div>
             </div>
-            <div className="card" style={{maxWidth:520}}>
-              <div style={{fontFamily:"monospace",fontSize:16,fontWeight:800,color:"#afffaf",marginBottom:14,display:"flex",alignItems:"center",gap:10}}>
-                PWA / Push <span style={{marginLeft:"auto",fontSize:11,padding:"2px 8px",borderRadius:10,background:pushSubscribed?"#0a2a0a":"#2a1a00",color:pushSubscribed?"#7fcf7f":"#cf9f4a",border:"1px solid "+(pushSubscribed?"#2a5a2a":"#5a3a00")}}>{pushSubscribed?"AKTYWNE":"NIEAKTYWNE"}</span>
-              </div>
-              {!pushSupported&&<div style={{color:"#df8080",fontSize:14}}>Uzywaj Safari iOS 16.4+.</div>}
-              {pushSupported&&<div>
-                <span className="lbl">VAPID Public Key</span>
-                <input value={vapidPublicKey} onChange={e=>{setVapidPublicKey(e.target.value);localStorage.setItem('vapid_public_key',e.target.value);}} placeholder="BNxx..." style={{fontFamily:"monospace",fontSize:12,background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:5,color:"#c0e0c0",padding:"7px 10px",width:"100%",boxSizing:"border-box",marginBottom:10}}/>
-                <div style={{display:"flex",gap:8,marginBottom:8}}>
-                  {!pushSubscribed?<button onClick={subscribePush} disabled={pushLoading} className="btn" style={{flex:1,background:"#0a2a0a",borderColor:"#2a6a2a",color:"#afffaf"}}>{pushLoading?"...":"Wlacz powiadomienia"}</button>:<button onClick={unsubscribePush} disabled={pushLoading} className="btn" style={{flex:1,background:"#2a0a0a",borderColor:"#6a2a2a",color:"#df8080"}}>{pushLoading?"...":"Wylacz"}</button>}
-                  <button onClick={copyPushSub} disabled={!pushSubscribed} className="btn" style={{flex:1,background:"#0e1a2a",borderColor:"#2a4a6a",color:"#7abfdf",opacity:pushSubscribed?1:0.4}}>Kopiuj endpoint</button>
-                </div>
-                {pushMsg&&<div style={{fontSize:13,padding:"6px 10px",borderRadius:4,background:"#0a140a",color:pushMsg.startsWith('Blad')||pushMsg.startsWith('Brak')?"#df8080":"#afffaf"}}>{pushMsg}</div>}
-              </div>}
-            </div>
           </div>
         )}
-
-      {/* DOLNY PASEK */}
-      <div className="mosk-bottom-nav">
-        {[["wiadomosci","💬","Wiad."],["nowe","➕","Nowe"],["al_zam","🛒","Allegro"],["baza","📋","Zlecenia"],["kalk","🧮","Kalk."]].map(function([id,icon,label]){
-          return React.createElement("button",{key:id,className:tab===id?"bnav-active":"",onClick:function(){setTab(id);}},
-            React.createElement("span",{className:"bi"},icon),React.createElement("span",{className:"bl"},label));
-        })}
-        <button className={tab==="allegro"||tab==="ustawienia"?"bnav-active":""} onClick={function(){
-          const pin=localStorage.getItem("admin_pin");
-          if(!pin){const np=prompt("Ustaw PIN (4 cyfry):");if(!np||!/[0-9]{4}/.test(np)){alert("PIN musi mieć 4 cyfry.");return;}localStorage.setItem("admin_pin",np);setTab("allegro");return;}
-          const e=prompt("PIN:");if(e===pin)setTab("allegro");else alert("Błędny PIN.");
-        }}><span className="bi">🔒</span><span className="bl">Admin</span></button>
-      </div>
 
       </div>
     </div>
