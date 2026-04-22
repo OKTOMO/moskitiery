@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260421.7</title>
+<title>MosquitoApp v20260421.8</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -2018,7 +2018,7 @@ function App() {
                 )}
                 <button className="btn" style={{width:"100%"}} onClick={handleParse} disabled={parsing||(!wiadomosc.trim()&&!adres.trim())}>
                   {parsing?<><span className="spin">⟳</span> {parsingDrzwi?"Parsowanie drzwi...":"Parsowanie AI..."}</>
-                    :withDrzwi?"🤖 Parsuj z AI → okna + drzwi":`🤖 Parsuj z AI → ${parseTyp==="drzwi"?"(drzwi)":"(okna)"}`}
+                    :withDrzwi?"🤖 Parsuj z AI → okna + drzwi":("🤖 Parsuj z AI → "+(parseTyp==="drzwi"?"(drzwi)":"(okna)"))}
                 </button>
               </div>
 
