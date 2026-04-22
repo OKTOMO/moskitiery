@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260421.2</title>
+<title>MosquitoApp v20260421.4</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -962,6 +962,8 @@ function App() {
   const [aiActiveInstrId,setAiActiveInstrId]=useState(()=>localStorage.getItem("ai_active_instr_id")||"");
   const [withDrzwi, setWithDrzwi] = React.useState(false);
   const [dpdModal, setDpdModal] = React.useState(null); // {order}
+  const [lastSavedOrder, setLastSavedOrder] = React.useState(null);
+  const [nadajDPD, setNadajDPD] = React.useState(false);
   const [dpdWaga, setDpdWaga] = React.useState('5');
   const [dpdLoading, setDpdLoading] = React.useState(false);
   const [dpdConfig, setDpdConfig] = React.useState(()=>JSON.parse(localStorage.getItem('dpd_config')||'{}'));
@@ -1539,7 +1541,12 @@ function App() {
       updateOrders([order,..._ordBase]);
     }
     setSaved(true);
+    setLastSavedOrder(order);
+    setTimeout(()=>setLastSavedOrder(null), 60000);
     setWiadomosc(""); setAdres(""); setForm(pustyForm(form.firma)); setNumerOverride(""); setKalNumerForForm(""); setAllegroOrderIdForForm("");
+    if(nadajDPD && order.klientUlica && order.klientKod){
+      setDpdModal(order); setDpdWaga('5');
+    }
     const hasDrzwiPos=order.pozycje.some(p=>p.isDrzwi);
     const hasOknaPos=order.pozycje.some(p=>!p.isDrzwi);
     if(hasOknaPos) drukujPDF(order);
@@ -2242,11 +2249,39 @@ function App() {
                 <span>✏️ Tryb edycji — zmiany nadpiszą zlecenie</span>
                 <button onClick={()=>{setEditingId(null);setNumerOverride("");setForm(pustyForm(form.firma));setSaved(false);}} style={{background:"#2a1a1a",border:"1px solid #5a2a2a",color:"#cf7a7a",borderRadius:4,padding:"2px 8px",cursor:"pointer",fontSize:14}}>✕ Anuluj</button>
               </div>}
+              {!editingId&&(
+                <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",marginBottom:8,fontSize:14,
+                  color:nadajDPD?"#9fcf9f":"#4a6a8a",userSelect:"none",
+                  padding:"8px 12px",background:nadajDPD?"#0a1e0a":"transparent",
+                  border:`1px solid ${nadajDPD?"#2a6a2a":"#1a2a1a"}`,borderRadius:6}}>
+                  <input type="checkbox" checked={nadajDPD} onChange={e=>setNadajDPD(e.target.checked)}
+                    style={{width:16,height:16,cursor:"pointer",accentColor:"#4acf4a"}}/>
+                  📦 Nadaj przesyłkę DPD po zapisaniu
+                </label>
+              )}
               <button className="btn" style={{width:"100%",padding:"12px",fontSize:14,background:editingId!==null?"#4a6a2a":"var(--accent)"}}
                 onClick={handleSave} disabled={!form.klientImie&&!form.klientMiasto&&!form.pozycje[0].szerokosc}>
-                {editingId!==null?"💾 Zapisz zmiany":"💾 Zapisz zamówienie"}
+                {editingId!==null?"💾 Zapisz zmiany":nadajDPD?"💾 Zapisz + 📦 DPD":"💾 Zapisz zamówienie"}
               </button>
-              {saved&&<div style={{textAlign:"center",color:"#afffaf",fontSize:14,marginTop:4}}>✓ Zapisano i zsynchronizowano ☁</div>}
+              {saved&&lastSavedOrder&&(
+                <div style={{background:"#0a1e0a",border:"1px solid #2a6a2a",borderRadius:8,padding:"14px 16px",marginTop:8,position:"relative"}}>
+                  <button onClick={()=>{setSaved(false);setLastSavedOrder(null);}} style={{position:"absolute",top:8,right:10,background:"none",border:"none",color:"#4a7a4a",cursor:"pointer",fontSize:16,lineHeight:1}}>×</button>
+                  <div style={{color:"#afffaf",fontWeight:700,fontSize:14,marginBottom:8}}>
+                    ✅ Zapisano: <span style={{color:"#7fcf9f"}}>{lastSavedOrder.numerZlecenia}</span>
+                    {lastSavedOrder.numerZleceniaDrzwi&&<span style={{color:"#7ab8df",marginLeft:8}}>{lastSavedOrder.numerZleceniaDrzwi}</span>}
+                  </div>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    {lastSavedOrder.pozycje.some(p=>!p.isDrzwi)&&(
+                      <button className="btn-pdf" onClick={()=>drukujPDF(lastSavedOrder)}>🧿 PDF okna</button>
+                    )}
+                    {lastSavedOrder.pozycje.some(p=>p.isDrzwi)&&(
+                      <button className="btn-pdf" style={{background:"#1a2a4a"}} onClick={()=>drukujPDF_drzwi(lastSavedOrder)}>🚪 PDF drzwi</button>
+                    )}
+                    <button className="btn-pdf" style={{background:"#1a3a1a",borderColor:"#3a7a3a",color:"#9fcf9f"}} onClick={()=>{setDpdModal(lastSavedOrder);setDpdWaga("5");}}>📦 Nadaj DPD</button>
+                  </div>
+                </div>
+              )}
+              {saved&&!lastSavedOrder&&<div style={{textAlign:"center",color:"#afffaf",fontSize:14,marginTop:4}}>✓ Zapisano ☁</div>}
             </div>
           </div>
         )}
