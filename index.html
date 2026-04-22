@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260422.4</title>
+<title>MosquitoApp v20260422.6</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -871,6 +871,12 @@ function App() {
     setTimeout(function(){URL.revokeObjectURL(url);},3000);
   }
   const [histYear,setHistYear]=useState("2025");
+  const [histPdfImporting,setHistPdfImporting]=useState(false);
+  const [impPdfFiles,setImpPdfFiles]=useState([]);
+  const [impPdfLog,setImpPdfLog]=useState([]);
+  const [impPdfRunning,setImpPdfRunning]=useState(false);
+  const [impPdfSummary,setImpPdfSummary]=useState(null);
+  const [histPdfLog,setHistPdfLog]=useState([]);
   const [histMonth,setHistMonth]=useState("");
   const [histSearch,setHistSearch]=useState("");
   const [histOrders,setHistOrders]=useState(()=>{try{return JSON.parse(localStorage.getItem("hist_orders")||"{}")}catch{return{}}});
@@ -1479,6 +1485,52 @@ function App() {
     setDpdLoading(false);
   }
 
+  async function runImpPdf(){
+    const wKey=localStorage.getItem('mosk_worker_key')||'';
+    if(!wKey){alert('Wpisz klucz Workera w Admin → Ustawienia → Baza danych');return;}
+    if(impPdfFiles.length===0){alert('Najpierw wybierz pliki PDF');return;}
+    setImpPdfRunning(true);
+    const log=[];
+    const setLog=l=>{setImpPdfLog([...l]);};
+    const liveOrds=await freshOrders();
+    const existNums=new Set(liveOrds.map(o=>o.numerZlecenia));
+    const newOrds=[];
+    let skipped=0,errors=0;
+    for(const f of impPdfFiles){
+      const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(f);});
+      try{
+        const resp=await fetch('https://allegro-autoresponder.favour-biuro.workers.dev/pdf/parse',{
+          method:'POST',headers:{'Content-Type':'application/json','x-api-key':wKey},
+          body:JSON.stringify({pdfBase64:b64,fileName:f.name})
+        });
+        const d=await resp.json();
+        if(!d.ok) throw new Error(d.error||'błąd parsowania');
+        const o={...d.order,id:Date.now()+Math.random()};
+        if(existNums.has(o.numerZlecenia)){
+          log.push('⏭️ Pominięto: '+o.numerZlecenia+' (już istnieje)');
+          skipped++;
+        } else {
+          newOrds.push(o);
+          existNums.add(o.numerZlecenia);
+          log.push('✅ '+o.numerZlecenia+' | '+o.klientImie+' | '+(o.pozycje?.length||0)+' poz.');
+        }
+      }catch(err){
+        log.push('❌ '+f.name+': '+err.message);
+        errors++;
+      }
+      setLog(log);
+      await new Promise(r=>setTimeout(r,1200));
+    }
+    if(newOrds.length>0){
+      const allOrds=[...newOrds,...liveOrds];
+      updateOrders(allOrds);
+      log.push('💾 Zapisano '+newOrds.length+' zamówień do bazy KV');
+    }
+    setImpPdfSummary({added:newOrds.length,skipped,errors});
+    setLog(log);
+    setImpPdfRunning(false);
+  }
+
   function mapPozycje(poz,fD,fO){
     if(!poz?.length) return [];
     return poz.map(p=>{
@@ -1995,11 +2047,12 @@ function App() {
           else alert("Błędny PIN.");
         }}>🔒 Admin</button>
       </div>
-      {(tab==="allegro"||tab==="ustawienia"||tab==="historia")&&(
+      {(tab==="allegro"||tab==="ustawienia"||tab==="historia"||tab==="importpdf")&&(
         <div style={{background:"#080e08",borderBottom:"1px solid #1e2a1e",display:"flex",gap:0,paddingLeft:32}}>
           <button className={`tab ${tab==="allegro"?"on":""}`} onClick={()=>setTab("allegro")} style={{fontSize:14,padding:"7px 14px"}}>🛒 Allegro</button>
           <button className={`tab ${tab==="ustawienia"?"on":""}`} onClick={()=>setTab("ustawienia")} style={{fontSize:14,padding:"7px 14px"}}>⚙️ Chmura</button>
           <button className={`tab ${tab==="historia"?"on":""}`} onClick={()=>setTab("historia")} style={{fontSize:14,padding:"7px 14px"}}>📁 Historia</button>
+          <button className={`tab ${tab==="importpdf"?"on":""}`} onClick={()=>setTab("importpdf")} style={{fontSize:14,padding:"7px 14px"}}>📥 Import PDF</button>
         </div>
       )}
 
@@ -2926,6 +2979,52 @@ function App() {
           </div>
         )}
 
+        {/* ══ IMPORT PDF ══ */}
+        {tab==="importpdf" && (
+          <div style={{maxWidth:700}}>
+            <div style={{fontSize:14,color:"#4a8a4a",letterSpacing:".15em",textTransform:"uppercase",marginBottom:14}}>📥 Import PDF → Baza zamówień</div>
+            <div className="card" style={{marginBottom:16}}>
+              <div style={{fontSize:13,color:"#4a7a5a",marginBottom:12,lineHeight:1.6}}>
+                Wczytaj PDFy zleceń wygenerowane przez MosquitoApp i dodaj je do głównej bazy.
+                Przydatne do odtworzenia brakujących zamówień.
+              </div>
+              <div style={{border:"2px dashed #2a5a2a",borderRadius:8,padding:24,textAlign:"center",marginBottom:12,cursor:"pointer"}}
+                onClick={()=>document.getElementById("impPdfInput").click()}>
+                <div style={{color:"#4a7a4a",fontSize:14}}>📄 Kliknij lub przeciągnij pliki PDF<br/>
+                  <span style={{fontSize:12,color:"#3a5a3a"}}>Możesz wybrać wiele plików naraz</span>
+                </div>
+              </div>
+              <input id="impPdfInput" type="file" accept=".pdf" multiple style={{display:"none"}}
+                onChange={e=>{setImpPdfFiles([...e.target.files]);setImpPdfLog([]);setImpPdfSummary(null);e.target.value="";}} />
+              {impPdfFiles.length>0&&(
+                <div style={{marginBottom:12}}>
+                  <div style={{fontSize:13,color:"#5a8a5a",marginBottom:6}}>{impPdfFiles.length} plików wybranych:</div>
+                  <div style={{maxHeight:120,overflowY:"auto",fontSize:12,color:"#4a7a4a"}}>
+                    {impPdfFiles.map((f,i)=>(
+                      <div key={i} style={{padding:"2px 0",borderBottom:"1px solid #1a2a1a"}}>{f.name}</div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {impPdfSummary&&(
+                <div style={{background:"#0a2a0a",border:"1px solid #2a6a2a",borderRadius:5,padding:"8px 12px",marginBottom:10,fontSize:14}}>
+                  ✅ Dodano: <strong>{impPdfSummary.added}</strong> | ⏭️ Pominięto: <strong>{impPdfSummary.skipped}</strong> | ❌ Błędy: <strong>{impPdfSummary.errors}</strong>
+                </div>
+              )}
+              <button className="btn" style={{width:"100%",marginBottom:10}} onClick={runImpPdf} disabled={impPdfRunning||impPdfFiles.length===0}>
+                {impPdfRunning?<><span className="spin">⟳</span> Importuję...</>:"📥 Importuj do bazy KV"}
+              </button>
+              {impPdfLog.length>0&&(
+                <div style={{background:"#050c05",border:"1px solid #1a2a1a",borderRadius:5,padding:"8px 12px",fontSize:12,maxHeight:200,overflowY:"auto",lineHeight:1.8}}>
+                  {impPdfLog.map((l,i)=>(
+                    <div key={i} style={{color:l.startsWith("✅")?"#7acf7a":l.startsWith("❌")?"#cf4a4a":l.startsWith("⏭")?"#cf9a4a":"#4a7a9a"}}>{l}</div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* ══ STATYSTYKI ══ */}
         {tab==="stat" && (
           <div>
@@ -3335,14 +3434,43 @@ function App() {
             </div>
             <div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center",flexWrap:"wrap"}}>
               <input value={histSearch} onChange={e=>setHistSearch(e.target.value)} placeholder="🔍 Szukaj klienta, miasta..." style={{width:220,fontSize:14}}/>
-              <label className="btn-sm" style={{cursor:"pointer"}}>
-                📂 Importuj CSV → {histYear}{histMonth?" / "+histMonth.slice(5):""}
-                <input type="file" accept=".csv" style={{display:"none"}} onChange={e=>{
-                  const file=e.target.files[0]; if(!file) return;
-                  const reader=new FileReader();
-                  reader.onload=ev=>importHistCSV(histYear,ev.target.result);
-                  reader.readAsText(file,"UTF-8");
+              <label className="btn-sm" style={{cursor:"pointer",background:histPdfImporting?"#1a2a1a":"",opacity:histPdfImporting?0.7:1}}>
+                {histPdfImporting?<><span className="spin">⟳</span> Importuję PDF...</>:"📄 Importuj PDF → "+histYear}
+                <input type="file" accept=".pdf" multiple style={{display:"none"}} disabled={histPdfImporting} onChange={async e=>{
+                  const files=[...e.target.files]; if(!files.length) return;
                   e.target.value="";
+                  const wKey=localStorage.getItem('mosk_worker_key')||'';
+                  if(!wKey){alert('Wpisz klucz Workera w Admin → Ustawienia → Baza danych');return;}
+                  setHistPdfImporting(true);
+                  setHistPdfLog([]);
+                  const log=[];
+                  const newOrds=[];
+                  const existing=histOrders[histYear]||[];
+                  const existNums=new Set(existing.map(o=>o.numerZlecenia));
+                  for(const file of files){
+                    const b64=await new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.onerror=rej;r.readAsDataURL(file);});
+                    try{
+                      const resp=await fetch('https://allegro-autoresponder.favour-biuro.workers.dev/pdf/parse',{
+                        method:'POST',headers:{'Content-Type':'application/json','x-api-key':wKey},
+                        body:JSON.stringify({pdfBase64:b64,fileName:file.name})
+                      });
+                      const d=await resp.json();
+                      if(!d.ok) throw new Error(d.error||'błąd parsowania');
+                      const o=d.order;
+                      if(existNums.has(o.numerZlecenia)){log.push('⏭️ Pominięto: '+o.numerZlecenia);}
+                      else{newOrds.push(o);existNums.add(o.numerZlecenia);log.push('✅ '+o.numerZlecenia+' | '+o.klientImie);}
+                    }catch(err){log.push('❌ '+file.name+': '+err.message);}
+                    setHistPdfLog([...log]);
+                    await new Promise(r=>setTimeout(r,1200));
+                  }
+                  if(newOrds.length>0){
+                    const updated={...histOrders,[histYear]:[...existing,...newOrds]};
+                    setHistOrders(updated);
+                    localStorage.setItem('hist_orders',JSON.stringify(updated));
+                    log.push('💾 Zapisano '+newOrds.length+' nowych zamówień');
+                    setHistPdfLog([...log]);
+                  }
+                  setHistPdfImporting(false);
                 }}/>
               </label>
               {(histOrders[histYear]||[]).length>0&&(
@@ -3350,6 +3478,13 @@ function App() {
               )}
               {(histOrders[histYear]||[]).length>0&&<span style={{marginLeft:"auto",fontSize:14,color:"#6aaa6a"}}>{(histOrders[histYear]||[]).length} zamówień</span>}
             </div>
+            {histPdfLog.length>0&&(
+              <div style={{background:"#050c05",border:"1px solid #1a2a1a",borderRadius:5,padding:"8px 12px",marginBottom:10,fontSize:12,maxHeight:120,overflowY:"auto",lineHeight:1.8}}>
+                {histPdfLog.map((l,i)=>(
+                  <div key={i} style={{color:l.startsWith("✅")?"#7acf7a":l.startsWith("❌")?"#cf4a4a":l.startsWith("⏭")?"#cf9a4a":"#4a7a9a"}}>{l}</div>
+                ))}
+              </div>
+            )}
             {(()=>{
               const ordsAll=histOrders[histYear]||[];
               const ords=ordsAll.filter(o=>{
@@ -3357,7 +3492,7 @@ function App() {
                 if(histSearch&&!`${o.numerZlecenia||""} ${o.klientImie||""} ${o.klientMiasto||""}`.toLowerCase().includes(histSearch.toLowerCase())) return false;
                 return true;
               });
-              if(ords.length===0) return <div style={{color:"#4a8a4a",textAlign:"center",padding:40}}>Brak danych — importuj plik CSV<br/><span style={{fontSize:14,opacity:.7}}>Format: ten sam co eksport ⬇ CSV z zakładki Baza</span></div>;
+              if(ords.length===0) return <div style={{color:"#4a8a4a",textAlign:"center",padding:40}}>Brak danych — importuj pliki PDF zleceń<br/><span style={{fontSize:14,opacity:.7}}>Wrzuć PDFy wygenerowane przez MosquitoApp</span></div>;
               const s=getHistStats(ords);
               return <>
                 <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,marginBottom:20}}>
