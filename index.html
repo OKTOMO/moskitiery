@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260421.1</title>
+<title>MosquitoApp v20260421.2</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -961,6 +961,10 @@ function App() {
   const [aiInstrEditContent,setAiInstrEditContent]=useState("");
   const [aiActiveInstrId,setAiActiveInstrId]=useState(()=>localStorage.getItem("ai_active_instr_id")||"");
   const [withDrzwi, setWithDrzwi] = React.useState(false);
+  const [dpdModal, setDpdModal] = React.useState(null); // {order}
+  const [dpdWaga, setDpdWaga] = React.useState('5');
+  const [dpdLoading, setDpdLoading] = React.useState(false);
+  const [dpdConfig, setDpdConfig] = React.useState(()=>JSON.parse(localStorage.getItem('dpd_config')||'{}'));
   const [wiadomoscDrzwi, setWiadomoscDrzwi] = React.useState('');
   const [parsingDrzwi, setParsingDrzwi] = React.useState(false);
   const [kalSearch, setKalSearch] = React.useState('');
@@ -1410,6 +1414,36 @@ function App() {
   },[]);
   function updateOrders(next){setOrders(next);cloudSave(next);}
   async function freshOrders(){try{const r=await window.storage.get(STORAGE_KEY,true);return r?JSON.parse(r.value):[];}catch{return orders;}}
+
+  async function dpdNadaj(){
+    if(!dpdModal) return;
+    const o=dpdModal;
+    if(!o.klientUlica||!o.klientKod||!o.klientMiasto){alert('Brak adresu klienta w zamówieniu — uzupełnij przed nadaniem.');return;}
+    setDpdLoading(true);
+    try{
+      const r=await fetch(AUTORESPONDER_URL+'/dpd/label',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},
+        body:JSON.stringify({
+          odbiorca:{imie:o.klientImie,ulica:o.klientUlica,kod:o.klientKod,miasto:o.klientMiasto},
+          waga:parseFloat(dpdWaga)||5,
+          telefon:o.telefon||'',
+          referencja:o.numerZlecenia||''
+        })
+      });
+      const d=await r.json();
+      if(!d.ok){alert('❌ Błąd DPD: '+(d.error||JSON.stringify(d)));setDpdLoading(false);return;}
+      // Otwórz PDF etykiety
+      const pdfBlob=new Blob([Uint8Array.from(atob(d.pdf),c=>c.charCodeAt(0))],{type:'application/pdf'});
+      const url=URL.createObjectURL(pdfBlob);
+      window.open(url,'_blank');
+      // Zapisz numer listu przewozowego w zamówieniu
+      updateOrders(orders.map(x=>x.id===o.id?{...x,dpdWaybill:d.waybillId,dpdAt:new Date().toLocaleDateString('pl-PL')}:x));
+      setDpdModal(null);
+      alert('✅ Etykieta DPD wygenerowana! Nr listu: '+d.waybillId);
+    }catch(e){alert('❌ '+e.message);}
+    setDpdLoading(false);
+  }
 
   function mapPozycje(poz,fD,fO){
     if(!poz?.length) return [];
@@ -2800,6 +2834,7 @@ function App() {
                         <td style={{padding:"10px 10px",display:"flex",gap:4}}>
                           {o.pozycje.some(p=>!p.isDrzwi)&&<button className="btn-pdf" onClick={()=>drukujPDF(o)} title="Drukuj PDF — okna">🪟 PDF</button>}
                           {o.pozycje.some(p=>p.isDrzwi)&&<button className="btn-pdf" style={{background:"#1a2a4a"}} onClick={()=>drukujPDF_drzwi(o)} title="Drukuj PDF — drzwi">🚪 PDF</button>}
+                          <button className="btn-pdf" style={{background:o.dpdWaybill?"#0a2a1a":"#1a1a2a",borderColor:o.dpdWaybill?"#2a6a4a":"#3a3a5a",color:o.dpdWaybill?"#6acf9a":"#8a8abf",fontSize:12}} onClick={()=>{setDpdModal(o);setDpdWaga("5");}} title={o.dpdWaybill?"DPD: "+o.dpdWaybill:"Nadeślij DPD"}>{o.dpdWaybill?"📦 "+o.dpdWaybill.slice(-6):"📦 DPD"}</button>
                         </td>
                         <td style={{padding:"10px 10px"}}><button className="btn-pdf" style={{background:"#2a4a6a"}} onClick={()=>{setForm({data:o.data,firma:o.firma,klientImie:o.klientImie,klientUlica:o.klientUlica||"",klientKod:o.klientKod||"",klientMiasto:o.klientMiasto,telefon:o.telefon,uwagi:o.uwagi,pozycje:o.pozycje.map(p=>({...p}))});setNumerOverride(o.numerZlecenia);setEditingId(o.id);setTab("nowe");setSaved(false);}} title="Edytuj zamówienie">✏️</button></td>
                         <td style={{padding:"10px 10px"}}>
@@ -3888,6 +3923,35 @@ function App() {
         {/* ══ USTAWIENIA ══ */}
         {tab==="ustawienia" && (
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
+
+            {/* ── DPD ── */}
+            <div className="card" style={{maxWidth:600}}>
+              <div style={{fontFamily:"'Syne',sans-serif",fontSize:16,fontWeight:800,color:"#afffaf",marginBottom:14}}>📦 Konfiguracja DPD</div>
+              <div style={{fontSize:13,color:"#4a7a5a",marginBottom:12,lineHeight:1.6}}>
+                Login, hasło i FID (nr klienta) z umowy DPD.
+                Dane są zapisywane w Cloudflare KV — nie w przeglądarce.
+              </div>
+              {[["login","Login DPD (nr klienta)","text"],["fid","FID (Master FID)","text"],["password","Hasło DPD","password"]].map(([key,label,type])=>(
+                <div key={key} style={{marginBottom:10}}>
+                  <span className="lbl">{label}</span>
+                  <input type={type} value={dpdConfig[key]||""}
+                    onChange={e=>setDpdConfig(c=>({...c,[key]:e.target.value}))}
+                    placeholder={label}
+                    style={{fontFamily:"monospace",fontSize:14}}/>
+                </div>
+              ))}
+              <button className="btn" style={{width:"100%"}} onClick={async()=>{
+                const r=await fetch(AUTORESPONDER_URL+'/dpd/config',{method:'POST',
+                  headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},
+                  body:JSON.stringify(dpdConfig)});
+                const d=await r.json();
+                if(d.ok){localStorage.setItem('dpd_config',JSON.stringify(dpdConfig));alert('✅ Zapisano konfigurację DPD');}
+                else alert('❌ '+JSON.stringify(d));
+              }}>💾 Zapisz konfigurację DPD do Workera</button>
+              <div style={{marginTop:10,fontSize:12,color:"#3a5a3a"}}>
+                Nadawca: Favour Magdalena Rudnicka, ul. Obrońców Westerplatte 27A, 08-110 Siedlce
+              </div>
+            </div>
 
             {/* ── AUTORESPONDER ── */}
             <div className="card" style={{maxWidth:600}}>
