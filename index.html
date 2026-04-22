@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260422.10</title>
+<title>MosquitoApp v20260422.11</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1291,7 +1291,19 @@ function App() {
     const kalMatch=allText.match(/(?:FAV|STR|ARL|ALB|EVR|KAL)-\d{6}-\d{4}/i);
     const kalNum=kalMatch?kalMatch[0].toUpperCase():"";
     const firstOffer=(imp.offerNames||"").split(", ")[0];
-    const parsedPoz=parseDimsFromOfferName(firstOffer);
+    let parsedPoz=parseDimsFromOfferName(firstOffer);
+    // Jeśli brak wymiarów w nazwie oferty — spróbuj z buyerMsg
+    if(!parsedPoz && imp.buyerMsg){
+      parsedPoz=parseDimsFromOfferName(imp.buyerMsg);
+    }
+    // Uzupełnij kolor z buyerMsg jeśli parsedPoz istnieje ale kolor domyślny
+    if(parsedPoz && imp.buyerMsg){
+      const msg=imp.buyerMsg.toLowerCase();
+      const KOLORY_RAMKI_MAP=[["winchester","Winchester"],["biał","Biały"],["antracyt","Antracyt"],["brąz","Brąz"],["czarn","Czarny"],["orzech","Orzech"],["turner","Turner Oak"],["złoty dąb","Złoty Dąb"],["ciemny dąb","Ciemny Dąb"]];
+      const KOLORY_SIATKI_MAP=[["czarn","Czarna"],["szar","Szara"]];
+      for(const [pat,val] of KOLORY_RAMKI_MAP){ if(msg.includes(pat)){parsedPoz.kolorRamki=val;break;} }
+      for(const [pat,val] of KOLORY_SIATKI_MAP){ if(msg.includes(pat)){parsedPoz.kolorSiatki=val;break;} }
+    }
     setImportModal({
       imp,
       mode:kalNum?"kal":(parsedPoz?"parse":"manual"),
@@ -2573,7 +2585,7 @@ function App() {
                             <td style={{padding:"8px 12px",color:"#7a9abf"}}>{imp.klientMiasto||"—"}</td>
                             <td style={{padding:"8px 12px",maxWidth:240}}>
                               <div style={{color:"#5a8a9a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={imp.offerNames}>{imp.offerNames||"—"}</div>
-                              {imp.buyerMsg&&<div style={{marginTop:3,fontSize:13,color:"#cfaf6f",fontStyle:"italic",whiteSpace:"pre-wrap",wordBreak:"break-word"}} title={imp.buyerMsg}>💬 {imp.buyerMsg}</div>}
+                              {imp.buyerMsg&&<div style={{marginTop:3,fontSize:12,color:"#cfaf6f",fontStyle:"italic",overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}} title={imp.buyerMsg}>💬 {imp.buyerMsg}</div>}
                             </td>
                             <td style={{padding:"8px 12px",whiteSpace:"nowrap"}}>
                               <span style={{fontSize:14,padding:"2px 8px",borderRadius:10,fontWeight:700,
