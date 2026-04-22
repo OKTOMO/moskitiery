@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260422.6</title>
+<title>MosquitoApp v20260422.9</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -684,6 +684,8 @@ function App() {
   const [fvAllegroId,setFvAllegroId]=useState("");
   const [allegroOrderIdForForm,setAllegroOrderIdForForm]=useState("");
   const [allegroImportLoading,setAllegroImportLoading]=useState(false);
+  const [alZamSearch,setAlZamSearch]=useState('');
+  const [alZamKonto,setAlZamKonto]=useState('');
   const [allegroImportResults,setAllegroImportResults]=useState([]); // lista zamówień z Allegro
   const [appStatuses,setAppStatuses]=useState(()=>{try{return JSON.parse(localStorage.getItem('app_statuses')||'{}');}catch{return {};}});
   const [allegroImportShow,setAllegroImportShow]=useState(false);
@@ -717,6 +719,84 @@ function App() {
       pozycje:[{nazwa:"Moskitiera PCV na wymiar",ilosc:1,jm:"szt",cenaNetto:0,vat:23}],
       uwagi:"",platnosc:"przelew"};
   }
+  function genFAxml(fv, sp){
+    // Generuje XML FA(2) zgodny z KSeF
+    const pad2=n=>String(n).padStart(2,"0");
+    const today=new Date();
+    const dataWyst=fv.data||(today.getFullYear()+"-"+pad2(today.getMonth()+1)+"-"+pad2(today.getDate()));
+    const dataSprz=fv.dataSprzedazy||dataWyst;
+    // Przelicz pozycje
+    let sumaNettoSum=0, sumaPodatku=0, sumaBruttoSum=0;
+    const pozXml=fv.pozycje.map((p,i)=>{
+      const ilosc=parseFloat(p.ilosc)||1;
+      const cenaNetto=parseFloat(p.cenaNetto)||0;
+      const vat=parseFloat(p.vat)||23;
+      const wartNetto=Math.round(cenaNetto*ilosc*100)/100;
+      const podatek=Math.round(wartNetto*vat/100*100)/100;
+      const wartBrutto=Math.round((wartNetto+podatek)*100)/100;
+      sumaNettoSum+=wartNetto; sumaPodatku+=podatek; sumaBruttoSum+=wartBrutto;
+      const jednostka=p.jednostka||"szt";
+      return `<fa:FaWiersz><fa:NrWierszaFa>${i+1}</fa:NrWierszaFa>`+
+        `<fa:P_7>${escXml(p.nazwa||"Usluga")}</fa:P_7>`+
+        `<fa:P_8A>${escXml(jednostka)}</fa:P_8A>`+
+        `<fa:P_8B>${ilosc.toFixed(4)}</fa:P_8B>`+
+        `<fa:P_9A>${cenaNetto.toFixed(2)}</fa:P_9A>`+
+        `<fa:P_11>${wartNetto.toFixed(2)}</fa:P_11>`+
+        `<fa:P_12>${vat}</fa:P_12>`+
+        `</fa:FaWiersz>`;
+    }).join("");
+    sumaNettoSum=Math.round(sumaNettoSum*100)/100;
+    sumaPodatku=Math.round(sumaPodatku*100)/100;
+    sumaBruttoSum=Math.round(sumaBruttoSum*100)/100;
+    const nipSprzedawcy=(sp.nip||"").replace(/[^0-9]/g,"");
+    const nipNabywcy=(fv.nabywcaNip||"").replace(/[^0-9]/g,"");
+    const rodzajFaktury=fv.typ==="korekta"?"KOR":"VAT";
+    const xml=`<?xml version="1.0" encoding="UTF-8"?>`+
+    `<fa:Faktura xmlns:fa="http://crd.gov.pl/wzor/2023/06/29/12648/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">`+
+    `<fa:Naglowek>`+
+    `<fa:KodFormularza kodSystemowy="FA (2)" wersjaSchemy="1-0E">FA</fa:KodFormularza>`+
+    `<fa:WariantFormularza>2</fa:WariantFormularza>`+
+    `<fa:DataWytworzeniaFa>${new Date().toISOString().replace("Z","+00:00")}</fa:DataWytworzeniaFa>`+
+    `<fa:SystemInfo>MosquitoApp v1</fa:SystemInfo>`+
+    `</fa:Naglowek>`+
+    `<fa:Podmiot1>`+
+    `<fa:DaneIdentyfikacyjne><fa:NIP>${nipSprzedawcy}</fa:NIP><fa:PelnaNazwa>${escXml(sp.nazwa)}</fa:PelnaNazwa></fa:DaneIdentyfikacyjne>`+
+    `<fa:Adres><fa:KodKraju>PL</fa:KodKraju><fa:AdresL1>${escXml(sp.adres)}</fa:AdresL1><fa:AdresL2>${escXml(sp.kod)} ${escXml(sp.miasto)}</fa:AdresL2></fa:Adres>`+
+    `</fa:Podmiot1>`+
+    `<fa:Podmiot2>`+
+    (nipNabywcy
+      ?`<fa:DaneIdentyfikacyjne><fa:NIP>${nipNabywcy}</fa:NIP><fa:PelnaNazwa>${escXml(fv.nabywcaNazwa)}</fa:PelnaNazwa></fa:DaneIdentyfikacyjne>`
+      :`<fa:DaneIdentyfikacyjne><fa:BrakID/><fa:PelnaNazwa>${escXml(fv.nabywcaNazwa)}</fa:PelnaNazwa></fa:DaneIdentyfikacyjne>`)+
+    `<fa:Adres><fa:KodKraju>PL</fa:KodKraju><fa:AdresL1>${escXml(fv.nabywcaAdres)}</fa:AdresL1><fa:AdresL2>${escXml(fv.nabywcaKod)} ${escXml(fv.nabywcaMiasto)}</fa:AdresL2></fa:Adres>`+
+    `</fa:Podmiot2>`+
+    `<fa:Fa>`+
+    `<fa:KodWaluty>PLN</fa:KodWaluty>`+
+    `<fa:P_1>${dataWyst}</fa:P_1>`+
+    `<fa:P_2>${escXml(fv.numer)}</fa:P_2>`+
+    `<fa:P_6>${dataSprz}</fa:P_6>`+
+    `<fa:P_13_1>${sumaNettoSum.toFixed(2)}</fa:P_13_1>`+
+    `<fa:P_14_1>${sumaPodatku.toFixed(2)}</fa:P_14_1>`+
+    `<fa:P_15>${sumaBruttoSum.toFixed(2)}</fa:P_15>`+
+    `<fa:Adnotacje><fa:P_16>2</fa:P_16><fa:P_17>2</fa:P_17><fa:P_18>2</fa:P_18><fa:P_18A>2</fa:P_18A>`+
+    `<fa:P_19>2</fa:P_19><fa:P_19A>2</fa:P_19A><fa:P_19B>2</fa:P_19B><fa:P_19C>2</fa:P_19C>`+
+    `<fa:P_20>2</fa:P_20><fa:P_21>2</fa:P_21><fa:P_22>2</fa:P_22><fa:P_23>2</fa:P_23>`+
+    `<fa:P_PMarzy>2</fa:P_PMarzy></fa:Adnotacje>`+
+    `<fa:RodzajFaktury>${rodzajFaktury}</fa:RodzajFaktury>`+
+    `<fa:FaWiersze>${pozXml}</fa:FaWiersze>`+
+    `<fa:Platnosc>`+
+    `<fa:TerminPlatnosci><fa:Termin>${fv.terminPlatnosci||dataWyst}</fa:Termin></fa:TerminPlatnosci>`+
+    `<fa:FormaPlatnosci>${fv.platnosc==="gotowka"?"6":"5"}</fa:FormaPlatnosci>`+
+    (sp.konto?`<fa:RachunekBankowy><fa:NrRB>${sp.konto.replace(/\s/g,"")}</fa:NrRB><fa:NazwaBanku>${escXml(sp.bank)}</fa:NazwaBanku></fa:RachunekBankowy>`:"+")+
+    `</fa:Platnosc>`+
+    `</fa:Fa>`+
+    `</fa:Faktura>`;
+    return xml;
+  }
+
+  function escXml(str){
+    return String(str||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&apos;");
+  }
+
   function drukujFakture(fv){
     const sp=FIRMY_DANE[fv.firma]||{};
     const dataWyst=fv.data?new Date(fv.data).toLocaleDateString("pl-PL"):"";
@@ -876,6 +956,13 @@ function App() {
   const [impPdfLog,setImpPdfLog]=useState([]);
   const [impPdfRunning,setImpPdfRunning]=useState(false);
   const [impPdfSummary,setImpPdfSummary]=useState(null);
+  const [gusLoading,setGusLoading]=useState(false);
+  const [gusStatus,setGusStatus]=useState('');
+  const [ksefSending,setKsefSending]=useState(false);
+  const [ksefStatus,setKsefStatus]=useState('');
+  const [ksefTokens,setKsefTokens]=useState(()=>{
+    try{return JSON.parse(localStorage.getItem('ksef_tokens')||'{}');}catch{return {};}
+  });
   const [histPdfLog,setHistPdfLog]=useState([]);
   const [histMonth,setHistMonth]=useState("");
   const [histSearch,setHistSearch]=useState("");
@@ -1238,7 +1325,7 @@ function App() {
     return "Czarna";
   }
 
-  function doImportOrder(modal){
+  async function doImportOrder(modal){
     const {imp,pozycje,kalData}=modal;
     const poz=(kalData&&kalData.pozycje&&kalData.pozycje.length>0)
       ?kalData.pozycje.map(p=>({
@@ -1268,6 +1355,18 @@ function App() {
     setAllegroImportShow(false);
     setTab("nowe");
     setSaved(false);
+    // Zmień status na W REALIZACJI w Allegro
+    if(imp.allegroOrderId && imp.kontoId){
+      try{
+        const wKey=localStorage.getItem("mosk_worker_key")||"";
+        await fetch(AUTORESPONDER_URL+"/order/status",{
+          method:"POST",
+          headers:{"Content-Type":"application/json","x-api-key":wKey||AUTORESPONDER_KEY},
+          body:JSON.stringify({allegroOrderId:imp.allegroOrderId,kontoId:imp.kontoId,status:"PROCESSING"})
+        });
+        setOrderAppStatus(imp.allegroOrderId,"W realizacji");
+      }catch(e){console.warn("Status update failed:",e);}
+    }
   }
 
   // ── SHIPMENT functions ──
@@ -2382,6 +2481,16 @@ function App() {
                   background:allegroImportLoading?"#1a2a2a":"#1a3a4a",border:"1px solid #2a6a8a",borderRadius:6,color:"#7acfdf"}}>
                 {allegroImportLoading?"⟳ Pobieranie...":"📥 Pobierz zamówienia"}
               </button>
+              <input value={alZamSearch} onChange={e=>setAlZamSearch(e.target.value)}
+                placeholder="🔍 Szukaj: klient, login, miasto..."
+                style={{fontSize:14,width:220,padding:"5px 10px"}}/>
+              <select value={alZamKonto} onChange={e=>setAlZamKonto(e.target.value)}
+                style={{fontSize:14,padding:"5px 8px"}}>
+                <option value="">Wszystkie konta</option>
+                {["favo5","staroleska_pl","sinlook_pl","arlis_pl","everis_pl","albama_eu"].filter(k=>allegroTokens[k]).map(k=>(
+                  <option key={k} value={k}>{k}</option>
+                ))}
+              </select>
               {/* Legenda kont */}
               <div style={{display:"flex",gap:6,flexWrap:"wrap",marginLeft:"auto"}}>
                 {[["favo5","#2a5a3a","#7fcf7f"],["staroleska_pl","#2a4a2a","#5abf7a"],["sinlook_pl","#1a4a3a","#4abf9a"],
@@ -2423,7 +2532,19 @@ function App() {
                       </tr>
                     </thead>
                     <tbody>
-                      {allegroImportResults.map((imp,idx)=>{
+                      {allegroImportResults
+                        .filter(imp=>{
+                          if(alZamKonto && imp.kontoId!==alZamKonto) return false;
+                          if(alZamSearch){
+                            const q=alZamSearch.toLowerCase();
+                            return (imp.klientImie||"").toLowerCase().includes(q)||
+                              (imp.klientLogin||"").toLowerCase().includes(q)||
+                              (imp.klientMiasto||"").toLowerCase().includes(q)||
+                              (imp.allegroOrderId||"").toLowerCase().includes(q);
+                          }
+                          return true;
+                        })
+                        .map((imp,idx)=>{
                         const KONTO_COLORS={
                           "favo5":["#2a5a3a","#7fcf7f"],"staroleska_pl":["#2a4a2a","#5abf7a"],"sinlook_pl":["#1a4a3a","#4abf9a"],
                           "arlis_pl":["#2a3a5a","#7abfdf"],"everis_pl":["#3a2a5a","#af8fdf"],
@@ -2474,6 +2595,38 @@ function App() {
                               })()}
                             </td>
                             <td style={{padding:"8px 12px",whiteSpace:"nowrap"}}>
+                              {/* Ikona faktury */}
+                              {imp.invoiceRequired&&(
+                                <div style={{marginBottom:5}}>
+                                  <button title={imp.nabywcaNip?"Faktura VAT (B2B) — NIP: "+imp.nabywcaNip:"Faktura (B2C)"}
+                                    style={{fontSize:12,padding:"2px 8px",borderRadius:4,cursor:"pointer",fontWeight:700,
+                                      background:imp.nabywcaNip?"#1a2a4a":"#2a1a3a",
+                                      border:"1px solid "+(imp.nabywcaNip?"#3a6aaf":"#6a3a8a"),
+                                      color:imp.nabywcaNip?"#7ab8df":"#af7adf"}}
+                                    onClick={()=>{
+                                      const sp=FIRMY_DANE[imp.firma]||{};
+                                      const today=new Date().toISOString().slice(0,10);
+                                      setFvForm({
+                                        ...pustyFvForm(imp.firma),
+                                        nabywcaNazwa:imp.nabywcaNazwa||imp.klientImie||"",
+                                        nabywcaNip:imp.nabywcaNip||"",
+                                        nabywcaAdres:imp.nabywcaUlica||imp.klientUlica||"",
+                                        nabywcaKod:imp.nabywcaKod||imp.klientKod||"",
+                                        nabywcaMiasto:imp.nabywcaMiasto||imp.klientMiasto||"",
+                                        data:today,dataSprzedazy:imp.data||today,
+                                        terminPlatnosci:today,
+                                        pozycje:imp.pozycje&&imp.pozycje.length>0?imp.pozycje:[{nazwa:"Moskitiery",ilosc:1,cenaNetto:0,vat:23,jednostka:"szt"}],
+                                        allegroOrderId:imp.allegroOrderId,
+                                        firma:imp.firma
+                                      });
+                                      setFvAllegroId(imp.allegroOrderId||"");
+                                      setFvAllegroStatus("");
+                                      setTab("faktury");
+                                    }}>
+                                    {imp.nabywcaNip?"🧾 FV B2B":"🧾 FV B2C"}
+                                  </button>
+                                </div>
+                              )}
                               {(()=>{
                                 const isMosk=(imp.offerNames||"").toLowerCase().includes("moskitiera");
                                 const allegroLink="https://allegro.pl/orders/"+imp.allegroOrderId;
@@ -3745,7 +3898,33 @@ function App() {
                     <div><span className="lbl">Nazwa / Imię Nazwisko</span>
                       <input value={fvForm.nabywcaNazwa} onChange={e=>setFvForm(f=>({...f,nabywcaNazwa:e.target.value}))} placeholder="Jan Kowalski"/></div>
                     <div><span className="lbl">NIP (opcjonalnie)</span>
-                      <input value={fvForm.nabywcaNip} onChange={e=>setFvForm(f=>({...f,nabywcaNip:e.target.value}))} placeholder="000-000-00-00"/></div>
+                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                        <input value={fvForm.nabywcaNip} onChange={e=>{setFvForm(f=>({...f,nabywcaNip:e.target.value}));setGusStatus('');}} placeholder="000-000-00-00" style={{flex:1}}/>
+                        <button className="btn-sm" disabled={gusLoading||!(fvForm.nabywcaNip||"").replace(/[^0-9]/g,"").length===10}
+                          style={{whiteSpace:"nowrap",fontSize:12,padding:"4px 8px"}}
+                          onClick={async()=>{
+                            const nip=(fvForm.nabywcaNip||"").replace(/[^0-9]/g,"");
+                            if(nip.length!==10){alert("NIP musi mieć 10 cyfr");return;}
+                            setGusLoading(true);setGusStatus("⧳ Szukam...");
+                            const wKey=localStorage.getItem("mosk_worker_key")||"";
+                            try{
+                              const r=await fetch("https://allegro-autoresponder.favour-biuro.workers.dev/gus/lookup",{
+                                method:"POST",headers:{"Content-Type":"application/json","x-api-key":wKey},
+                                body:JSON.stringify({nip})
+                              });
+                              const d=await r.json();
+                              if(d.ok){
+                                setFvForm(f=>({...f,nabywcaNazwa:d.nazwa||f.nabywcaNazwa,nabywcaAdres:d.ulica||f.nabywcaAdres,nabywcaKod:d.kod||f.nabywcaKod,nabywcaMiasto:d.miasto||f.nabywcaMiasto}));
+                                setGusStatus("✅ "+d.nazwa);
+                              } else {setGusStatus("❌ "+(d.error||"Błąd GUS"));}
+                            }catch(e){setGusStatus("❌ "+e.message);}
+                            setGusLoading(false);
+                          }}>
+                          {gusLoading?"⧳":"🏛️ GUS"}
+                        </button>
+                      </div>
+                      {gusStatus&&<div style={{fontSize:11,marginTop:3,color:gusStatus.startsWith("✅")?"#7acf7a":"#cf4a4a"}}>{gusStatus}</div>}
+                    </div>
                     <div><span className="lbl">Ulica</span>
                       <input value={fvForm.nabywcaAdres} onChange={e=>setFvForm(f=>({...f,nabywcaAdres:e.target.value}))} placeholder="ul. Kwiatowa 5"/></div>
                     <div style={{display:"grid",gridTemplateColumns:"90px 1fr",gap:8}}>
@@ -3857,7 +4036,51 @@ function App() {
                   const numer=fvForm.numer||nextFvNumer(fvForm.firma,fvForm.typ||"faktura");
                   drukujFakture({...fvForm,numer,typ:fvForm.typ||"faktura"});
                 }}>🖨️ Drukuj / PDF</button>
+                {fvForm.typ!=="proforma"&&(
+                  <button className="btn" style={{flex:1,fontSize:14,background:"#0a1a2a",borderColor:"#2a4a7a",color:"#7ab8df"}} disabled={ksefSending}
+                    onClick={async()=>{
+                      const numer=fvForm.numer||nextFvNumer(fvForm.firma,fvForm.typ||"faktura");
+                      const fv={...fvForm,numer,typ:fvForm.typ||"faktura"};
+                      const token=ksefTokens[fv.firma]||"";
+                      if(!token){alert("Brak tokenu KSeF dla firmy "+fv.firma+". Dodaj go w Admin → Ustawienia → KSeF.");return;}
+                      const sp=FIRMY_DANE[fv.firma]||{};
+                      setKsefSending(true);setKsefStatus("⧳ Generuję XML...");
+                      try{
+                        const xml=genFAxml(fv,sp);
+                        setKsefStatus("⧳ Wysyłam do KSeF...");
+                        const wKey=localStorage.getItem("mosk_worker_key")||"";
+                        const r=await fetch("https://allegro-autoresponder.favour-biuro.workers.dev/ksef/send",{
+                          method:"POST",headers:{"Content-Type":"application/json","x-api-key":wKey},
+                          body:JSON.stringify({xml,token,nip:sp.nip.replace(/[^0-9]/g,""),srodowisko:ksefTokens._srodowisko||"test"})
+                        });
+                        const d=await r.json();
+                        if(d.ok){
+                          setKsefStatus("✅ KSeF: "+d.ksefNumer);
+                          const numer2=fvForm.numer||numer;
+                          const existing=faktury.findIndex(f=>f.id===fv.id);
+                          const updated={...fv,ksefNumer:d.ksefNumer,id:fv.id||Date.now()};
+                          let nowe;
+                          if(existing>=0){nowe=[...faktury];nowe[existing]=updated;}
+                          else{nowe=[updated,...faktury];}
+                          saveFaktury(nowe);
+                          alert("✅ Faktura wysłana do KSeF!\nNumer KSeF: "+d.ksefNumer);
+                        } else {
+                          setKsefStatus("❌ "+(d.error||"Błąd KSeF"));
+                          alert("❌ Błąd KSeF: "+(d.error||JSON.stringify(d)));
+                        }
+                      }catch(e){
+                        setKsefStatus("❌ "+e.message);
+                        alert("❌ "+e.message);
+                      }
+                      setKsefSending(false);
+                    }}>
+                    {ksefSending?"⧳ Wysyłam...":"📤 Wyślij do KSeF"}
+                  </button>
+                )}
               </div>
+              {ksefStatus&&<div style={{fontSize:12,marginTop:6,padding:"4px 8px",borderRadius:4,
+                background:ksefStatus.startsWith("✅")?"#0a2a0a":ksefStatus.startsWith("❌")?"#2a0a0a":"#0a0a2a",
+                color:ksefStatus.startsWith("✅")?"#7acf7a":ksefStatus.startsWith("❌")?"#cf4a4a":"#7a9abf"}}>{ksefStatus}</div>}
             </div>
           );
 
@@ -4163,6 +4386,42 @@ function App() {
               </div>
               <div style={{fontSize:12,color:"#3a5a3a"}}>
                 Po migracji odśwież stronę — wszystkie zamówienia pojawią się z KV.
+              </div>
+            </div>
+
+            {/* ── KSEF ── */}
+            <div className="card" style={{maxWidth:600}}>
+              <div style={{fontFamily:"'Syne',sans-serif",fontSize:16,fontWeight:800,color:"#afffaf",marginBottom:14}}>📤 KSeF — Krajowy System e-Faktur</div>
+              <div style={{fontSize:13,color:"#4a7a5a",marginBottom:12,lineHeight:1.6}}>
+                Wpisz tokeny KSeF dla każdej firmy. Token uzyskasz logując się na ksef.mf.gov.pl przez profil zaufany/mObywatel.
+              </div>
+              <div style={{marginBottom:10}}>
+                <span className="lbl">Środowisko</span>
+                <select value={ksefTokens._srodowisko||"test"} onChange={e=>{
+                  const updated={...ksefTokens,_srodowisko:e.target.value};
+                  setKsefTokens(updated);localStorage.setItem("ksef_tokens",JSON.stringify(updated));
+                }}>
+                  <option value="test">Testowe (ksef-test.mf.gov.pl)</option>
+                  <option value="prod">Produkcyjne (ksef.mf.gov.pl)</option>
+                </select>
+              </div>
+              {["F","AR","E"].map(firmaId=>{
+                const fDane=FIRMY_DANE[firmaId]||{};
+                return(
+                  <div key={firmaId} style={{marginBottom:10}}>
+                    <span className="lbl">{fDane.nazwa} (NIP: {fDane.nip})</span>
+                    <input type="password" value={ksefTokens[firmaId]||""}
+                      onChange={e=>{
+                        const updated={...ksefTokens,[firmaId]:e.target.value};
+                        setKsefTokens(updated);localStorage.setItem("ksef_tokens",JSON.stringify(updated));
+                      }}
+                      placeholder={"Token KSeF dla "+fDane.nazwa}
+                      style={{fontFamily:"monospace",fontSize:13}}/>
+                  </div>
+                );
+              })}
+              <div style={{fontSize:12,color:"#3a5a3a",marginTop:8}}>
+                Tokeny są przechowywane lokalnie w przeglądarce. Na produkcji zalecamy użycie środowiska testowego najpierw.
               </div>
             </div>
 
