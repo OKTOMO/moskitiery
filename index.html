@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260422.1</title>
+<title>MosquitoApp v20260422.2</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -192,15 +192,11 @@ async function cloudSave(o){
     const result = await window.storage.set(STORAGE_KEY, JSON.stringify(o), true);
     if(result && result.error){
       console.error('cloudSave error:', result.error);
-      alert('⚠️ Zamówienie zapisane lokalnie, ale BŁĄD synchronizacji z chmurą!
-' +
-            'Błąd: ' + result.error + '
-' +
-            'Zapisz ręcznie lub spróbuj za chwilę.');
+      alert('⚠️ BŁĄD synchronizacji z chmurą! ' + result.error);
     }
   }catch(e){
     console.error('cloudSave exception:', e);
-    alert('⚠️ BŁĄD zapisu do chmury: ' + e.message);
+    alert('⚠️ BŁĄD zapisu: ' + e.message);
   }
 }
 
