@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Import PDFów zleceń → JSONBin</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #0a100a; color: #c0dfc0; font-family: 'Courier New', monospace; padding: 20px; min-height: 100vh; }
+h1 { color: #afffaf; font-size: 20px; margin-bottom: 6px; }
+.sub { color: #4a7a4a; font-size: 13px; margin-bottom: 20px; }
+.card { background: #0f1a0f; border: 1px solid #1e3a1e; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+label { display: block; font-size: 12px; color: #4a7a4a; margin-bottom: 4px; text-transform: uppercase; letter-spacing: .1em; }
+input, textarea { width: 100%; background: #0a140a; border: 1px solid #1e3a1e; border-radius: 4px; color: #9fcf9f; padding: 8px 10px; font-family: monospace; font-size: 13px; margin-bottom: 12px; }
+input[type=password] { letter-spacing: .2em; }
+.drop { border: 2px dashed #2a5a2a; border-radius: 8px; padding: 40px; text-align: center; cursor: pointer; transition: all .2s; margin-bottom: 16px; }
+.drop.over { border-color: #afffaf; background: #0a1e0a; }
+.drop-txt { color: #4a7a4a; font-size: 14px; }
+.btn { background: #1a3a1a; border: 1px solid #2a6a2a; color: #afffaf; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 14px; font-family: monospace; width: 100%; }
+.btn:hover { background: #2a4a2a; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn-sm { padding: 4px 10px; font-size: 12px; width: auto; margin-left: 8px; }
+.btn-red { background: #3a1a1a; border-color: #6a2a2a; color: #df8a8a; }
+.file-list { margin-bottom: 16px; }
+.file-item { display: flex; align-items: center; gap:8px; padding: 8px 10px; background: #0a140a; border: 1px solid #1e3a1e; border-radius: 5px; margin-bottom: 6px; font-size: 13px; }
+.file-item .name { flex: 1; color: #7a9a7a; }
+.status { font-size: 12px; padding: 2px 8px; border-radius: 3px; }
+.s-wait { background: #1a1a2a; color: #6a6aaf; }
+.s-read { background: #1a2a1a; color: #4acf4a; }
+.s-ok { background: #0a2a0a; color: #7acf7a; }
+.s-err { background: #2a0a0a; color: #cf4a4a; }
+.s-skip { background: #2a1a0a; color: #cf9a4a; }
+.log { background: #050c05; border: 1px solid #1a2a1a; border-radius: 5px; padding: 12px; font-size: 12px; height: 200px; overflow-y: auto; line-height: 1.8; }
+.log .ok { color: #7acf7a; }
+.log .err { color: #cf4a4a; }
+.log .info { color: #4a7a9a; }
+.log .warn { color: #cf9a4a; }
+.preview { background: #050c05; border: 1px solid #1a2a1a; border-radius: 5px; padding: 10px; font-size: 12px; margin-top: 8px; max-height: 150px; overflow-y: auto; color: #6a9a6a; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.summary { padding: 12px 16px; background: #0a2a0a; border: 1px solid #2a6a2a; border-radius: 6px; font-size: 14px; color: #9fcf9f; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+
+<h1>📄 Import PDFów zleceń → JSONBin</h1>
+<p class="sub">Wczytaj PDFy wygenerowane przez MosquitoApp i dodaj brakujące zamówienia do bazy</p>
+
+<div class="card">
+  <div class="grid2">
+    <div>
+      <label>Klucz Workera (x-api-key z ustawień aplikacji)</label>
+      <input type="password" id="workerKey" placeholder="Klucz API z MosquitoApp → Ustawienia"/>
+    </div>
+    <div>
+      <label>Klucz JSONBin (apiKey z mosk_jsonbin_settings)</label>
+      <input type="password" id="jsonbinKey" placeholder="$2b$10$..."/>
+    </div>
+  </div>
+  <div class="grid2">
+    <div>
+      <label>JSONBin ID (binId z mosk_jsonbin_settings)</label>
+      <input type="text" id="jsonbinId" placeholder="69..."/>
+    </div>
+    <div>
+      <label>URL Workera (opcjonalne)</label>
+      <input type="text" id="workerUrl" placeholder="https://allegro-autoresponder.favour-biuro.workers.dev" value="https://allegro-autoresponder.favour-biuro.workers.dev"/>
+    </div>
+  </div>
+  <div style="font-size:12px;color:#3a6a3a;margin-bottom:8px;">
+    💡 Klucz Workera: w MosquitoApp → Admin → Ustawienia → pole "Klucz API". JSONBin: <code>JSON.parse(localStorage.getItem('mosk_jsonbin_settings'))</code><br>
+    💡 Klucz Claude musi być zapisany w Workerze: w MosquitoApp → Admin → Ustawienia → Zapisz ustawienia (jeśli jeszcze nie ma).
+  </div>
+  <div style="margin-bottom:8px;">
+    <label>Klucz API Claude — wymagany do parsowania PDFów (zapisze się w Workerze)</label>
+    <input type="password" id="claudeKeyInput" placeholder="sk-ant-api... (z localStorage.getItem('claude_api_key'))"/>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px;">
+    <button class="btn" onclick="saveClaudeKey()" style="width:auto;padding:6px 16px;font-size:12px;">💾 Zapisz klucz Claude do Workera</button>
+    <button class="btn" onclick="testConnection()" style="width:auto;padding:6px 16px;font-size:12px;">🔌 Testuj połączenie</button>
+  </div>
+  <span id="connStatus" style="font-size:12px;"></span>
+</div>
+
+<div class="card">
+  <label>Wrzuć PDFy zleceń</label>
+  <div class="drop" id="drop" onclick="document.getElementById('fileInput').click()">
+    <div class="drop-txt">📁 Przeciągnij PDFy tutaj lub kliknij<br><span style="font-size:12px;color:#3a5a3a;">Możesz wrzucić wiele plików naraz</span></div>
+  </div>
+  <input type="file" id="fileInput" accept=".pdf" multiple style="display:none" onchange="addFiles(this.files)"/>
+  
+  <div class="file-list" id="fileList"></div>
+  
+  <div id="summary" style="display:none" class="summary"></div>
+  
+  <button class="btn" id="importBtn" onclick="startImport()" disabled>⬆️ Importuj do JSONBin</button>
+</div>
+
+<div class="card">
+  <label>Log operacji</label>
+  <div class="log" id="log"><span class="info">Czekam na pliki...</span></div>
+</div>
+
+<script>
+const files = [];
+const results = [];
+
+// ── Drag & drop ──
+const drop = document.getElementById('drop');
+drop.addEventListener('dragover', e => { e.preventDefault(); drop.classList.add('over'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+drop.addEventListener('drop', e => { e.preventDefault(); drop.classList.remove('over'); addFiles(e.dataTransfer.files); });
+
+function addFiles(fileList) {
+  for (const f of fileList) {
+    if (f.type !== 'application/pdf') continue;
+    if (files.find(x => x.name === f.name)) continue;
+    files.push({ file: f, name: f.name, status: 'wait', data: null, error: null });
+  }
+  renderFileList();
+  document.getElementById('importBtn').disabled = files.length === 0;
+}
+
+function removeFile(name) {
+  const idx = files.findIndex(x => x.name === name);
+  if (idx >= 0) files.splice(idx, 1);
+  renderFileList();
+  document.getElementById('importBtn').disabled = files.length === 0;
+}
+
+function renderFileList() {
+  const el = document.getElementById('fileList');
+  if (files.length === 0) { el.innerHTML = ''; return; }
+  el.innerHTML = files.map(f => `
+    <div class="file-item">
+      <span class="name">${f.name}</span>
+      <span class="status s-${f.status}">${
+        f.status === 'wait' ? '⏳ Oczekuje' :
+        f.status === 'read' ? '📖 Odczytano' :
+        f.status === 'ok'   ? '✅ Zapisano' :
+        f.status === 'skip' ? '⏭️ Pominięto (istnieje)' :
+        f.status === 'err'  ? '❌ Błąd' : f.status
+      }</span>
+      ${f.data ? `<span style="font-size:11px;color:#4a7a4a">${f.data.numerZlecenia} | ${f.data.klientImie}</span>` : ''}
+      ${f.status === 'wait' ? `<button class="btn btn-sm btn-red" onclick="removeFile('${f.name}')">✕</button>` : ''}
+    </div>
+    ${f.error ? `<div style="font-size:11px;color:#cf4a4a;padding:2px 10px">${f.error}</div>` : ''}
+  `).join('');
+}
+
+function log(msg, type = 'info') {
+  const el = document.getElementById('log');
+  el.innerHTML += `<div class="${type}">${new Date().toLocaleTimeString('pl-PL')} ${msg}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── Zapisz klucz Claude do Workera ──
+async function saveClaudeKey() {
+  const workerKey = document.getElementById('workerKey').value.trim();
+  const claudeKey = document.getElementById('claudeKeyInput').value.trim();
+  const workerUrl = document.getElementById('workerUrl').value.trim() || 'https://allegro-autoresponder.favour-biuro.workers.dev';
+  if (!workerKey || !claudeKey) { alert('Wpisz klucz Workera i klucz Claude'); return; }
+  const status = document.getElementById('connStatus');
+  status.textContent = '⧳ Zapisuję...'; status.style.color = '#4a7a9a';
+  try {
+    const r = await fetch(workerUrl + '/sync', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','x-api-key': workerKey},
+      body: JSON.stringify({ config: { claudeApiKey: claudeKey } })
+    });
+    const d = await r.json();
+    status.textContent = d.ok ? '✅ Klucz Claude zapisany w Workerze' : '❌ ' + JSON.stringify(d);
+    status.style.color = d.ok ? '#7acf7a' : '#cf4a4a';
+  } catch(e) {
+    status.textContent = '❌ ' + e.message;
+    status.style.color = '#cf4a4a';
+  }
+}
+
+// ── Test połączenia ──
+async function testConnection() {
+  const key = document.getElementById('jsonbinKey').value.trim();
+  const binId = document.getElementById('jsonbinId').value.trim();
+  const status = document.getElementById('connStatus');
+  if (!key || !binId) { status.textContent = '⚠️ Wpisz klucz i ID'; status.style.color = '#cf9a4a'; return; }
+  status.textContent = '⟳ Łączę...'; status.style.color = '#4a7a9a';
+  try {
+    const r = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, { headers: { 'X-Master-Key': key } });
+    const d = await r.json();
+    const count = Array.isArray(d.record) ? d.record.length : '?';
+    status.textContent = `✅ OK — ${count} zamówień w bazie`;
+    status.style.color = '#7acf7a';
+  } catch(e) {
+    status.textContent = '❌ ' + e.message;
+    status.style.color = '#cf4a4a';
+  }
+}
+
+// ── PDF → base64 ──
+function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+// ── Claude API przez Worker — odczytaj PDF ──
+async function parsePDF(file, claudeKey) {
+  const base64 = await fileToBase64(file);
+  const workerUrl = document.getElementById('workerUrl').value.trim() || 'https://allegro-autoresponder.favour-biuro.workers.dev';
+  const workerKey = document.getElementById('workerKey').value.trim();
+  const r = await fetch(workerUrl + '/pdf/parse', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json','x-api-key': workerKey},
+    body: JSON.stringify({ pdfBase64: base64, fileName: file.name })
+  });
+  const d = await r.json();
+  if (!d.ok) throw new Error(d.error || JSON.stringify(d));
+  return d.order;
+}
+
+// ── Pobierz zamówienia z JSONBin ──
+async function loadOrders() {
+  const key = document.getElementById('jsonbinKey').value.trim();
+  const binId = document.getElementById('jsonbinId').value.trim();
+  const r = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, { headers: { 'X-Master-Key': key } });
+  const d = await r.json();
+  return Array.isArray(d.record) ? d.record : [];
+}
+
+// ── Zapisz zamówienia do JSONBin ──
+async function saveOrders(orders) {
+  const key = document.getElementById('jsonbinKey').value.trim();
+  const binId = document.getElementById('jsonbinId').value.trim();
+  const r = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', 'X-Master-Key': key },
+    body: JSON.stringify(orders)
+  });
+  if (!r.ok) throw new Error('JSONBin PUT: ' + r.status);
+}
+
+// ── Główna funkcja importu ──
+async function startImport() {
+  const jsonbinKey = document.getElementById('jsonbinKey').value.trim();
+  const jsonbinId = document.getElementById('jsonbinId').value.trim();
+  const workerKey = document.getElementById('workerKey').value.trim();
+
+  if (!workerKey) { alert('Wpisz klucz Workera'); return; }
+  if (!jsonbinKey || !jsonbinId) { alert('Wpisz dane JSONBin'); return; }
+
+  document.getElementById('importBtn').disabled = true;
+  document.getElementById('log').innerHTML = '';
+  log('🚀 Rozpoczynam import...', 'info');
+
+  // Pobierz istniejące zamówienia
+  let existingOrders;
+  try {
+    existingOrders = await loadOrders();
+    log(`📊 W bazie: ${existingOrders.length} zamówień`, 'info');
+  } catch(e) {
+    log('❌ Błąd połączenia z JSONBin: ' + e.message, 'err');
+    document.getElementById('importBtn').disabled = false;
+    return;
+  }
+
+  const existingNums = new Set(existingOrders.map(o => o.numerZlecenia));
+  let added = 0, skipped = 0, errors = 0;
+  const newOrders = [];
+
+  for (const f of files) {
+    if (f.status === 'ok' || f.status === 'skip') continue;
+    
+    log(`📖 Odczytuję: ${f.name}`, 'info');
+    f.status = 'read';
+    renderFileList();
+
+    try {
+      const order = await parsePDF(f.file);
+      f.data = order;
+      
+      if (existingNums.has(order.numerZlecenia)) {
+        log(`⏭️ Pominięto ${order.numerZlecenia} — już istnieje w bazie`, 'warn');
+        f.status = 'skip';
+        skipped++;
+      } else {
+        // Dodaj wymagane pola
+        order.id = Date.now() + Math.random();
+        order.allegroOrderId = order.allegroOrderId || '';
+        order.kalNumer = order.kalNumer || '';
+        newOrders.push(order);
+        existingNums.add(order.numerZlecenia);
+        log(`✅ Odczytano: ${order.numerZlecenia} | ${order.klientImie} | ${order.pozycje?.length || 0} poz.`, 'ok');
+        f.status = 'ok';
+        added++;
+      }
+    } catch(e) {
+      log(`❌ Błąd ${f.name}: ${e.message}`, 'err');
+      f.error = e.message;
+      f.status = 'err';
+      errors++;
+    }
+
+    renderFileList();
+    // Pauza między requestami do Claude
+    await new Promise(r => setTimeout(r, 1500));
+  }
+
+  // Zapisz do JSONBin jeśli są nowe
+  if (newOrders.length > 0) {
+    try {
+      log(`💾 Zapisuję ${newOrders.length} nowych zamówień do JSONBin...`, 'info');
+      const allOrders = [...newOrders, ...existingOrders];
+      await saveOrders(allOrders);
+      log(`🎉 Zapisano! Baza ma teraz ${allOrders.length} zamówień.`, 'ok');
+    } catch(e) {
+      log('❌ Błąd zapisu do JSONBin: ' + e.message, 'err');
+    }
+  }
+
+  // Podsumowanie
+  const sumEl = document.getElementById('summary');
+  sumEl.style.display = 'block';
+  sumEl.innerHTML = `✅ Dodano: <strong>${added}</strong> | ⏭️ Pominięto: <strong>${skipped}</strong> | ❌ Błędy: <strong>${errors}</strong>`;
+  
+  log('─── Koniec importu ───', 'info');
+  document.getElementById('importBtn').disabled = false;
+}
+</script>
+</body>
+</html>
