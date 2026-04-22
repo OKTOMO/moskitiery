@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260422.2</title>
+<title>MosquitoApp v20260422.3</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -995,6 +995,7 @@ function App() {
   const [dpdModal, setDpdModal] = React.useState(null); // {order}
   const [lastSavedOrder, setLastSavedOrder] = React.useState(null);
   const [nadajDPD, setNadajDPD] = React.useState(false);
+  const [workerKey, setWorkerKeyState] = React.useState(()=>localStorage.getItem('mosk_worker_key')||'');
   const [dpdWaga, setDpdWaga] = React.useState('5');
   const [dpdLoading, setDpdLoading] = React.useState(false);
   const [dpdConfig, setDpdConfig] = React.useState(()=>JSON.parse(localStorage.getItem('dpd_config')||'{}'));
@@ -3997,8 +3998,8 @@ function App() {
               </div>
               <div style={{marginBottom:10}}>
                 <span className="lbl">Klucz Workera (masterKey)</span>
-                <input type="password" value={localStorage.getItem('mosk_worker_key')||''}
-                  onChange={e=>{localStorage.setItem('mosk_worker_key',e.target.value);}}
+                <input type="password" value={workerKey}
+                  onChange={e=>{setWorkerKeyState(e.target.value);localStorage.setItem('mosk_worker_key',e.target.value);}}
                   placeholder="Twój masterKey z Cloudflare KV → config"
                   style={{fontFamily:"monospace",fontSize:14}}/>
               </div>
