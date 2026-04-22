@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260422.9</title>
+<title>MosquitoApp v20260422.10</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1345,7 +1345,7 @@ function App() {
       klientKod:imp.klientKod,
       klientMiasto:imp.klientMiasto,
       telefon:imp.telefon,
-      uwagi:imp.offerNames||"",
+      uwagi:[imp.offerNames,imp.buyerMsg].filter(Boolean).join(" | "),
       pozycje:poz
     });
     setAllegroOrderIdForForm(imp.allegroOrderId);
@@ -2571,7 +2571,10 @@ function App() {
                               ):null;})()}
                             </td>
                             <td style={{padding:"8px 12px",color:"#7a9abf"}}>{imp.klientMiasto||"—"}</td>
-                            <td style={{padding:"8px 12px",color:"#5a8a9a",maxWidth:220,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={imp.offerNames}>{imp.offerNames||"—"}</td>
+                            <td style={{padding:"8px 12px",maxWidth:240}}>
+                              <div style={{color:"#5a8a9a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={imp.offerNames}>{imp.offerNames||"—"}</div>
+                              {imp.buyerMsg&&<div style={{marginTop:3,fontSize:13,color:"#cfaf6f",fontStyle:"italic",whiteSpace:"pre-wrap",wordBreak:"break-word"}} title={imp.buyerMsg}>💬 {imp.buyerMsg}</div>}
+                            </td>
                             <td style={{padding:"8px 12px",whiteSpace:"nowrap"}}>
                               <span style={{fontSize:14,padding:"2px 8px",borderRadius:10,fontWeight:700,
                                 background:imp.status==="READY_FOR_PROCESSING"?"#1a3a1a":imp.status==="BOUGHT"?"#1a2a3a":"#1a1a2a",
