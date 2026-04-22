@@ -3,58 +3,78 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260421.8</title>
+<title>MosquitoApp v20260422.1</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head><body>
 <div id="root"></div>
 <script>
-const SETTINGS_KEY = 'mosk_jsonbin_settings';
+const WORKER_URL = 'https://allegro-autoresponder.favour-biuro.workers.dev';
 
+function getWorkerKey() {
+  return localStorage.getItem('mosk_worker_key') || '';
+}
+
+// Zachowaj kompatybilnosc z JSONBin dla migracji
+const SETTINGS_KEY = 'mosk_jsonbin_settings';
 function getSettings() {
   try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); } catch { return {}; }
 }
-function saveSettings(s) {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(s));
-}
+function saveSettings(s) { localStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); }
 window.jsonbinSettings = { getSettings, saveSettings };
 
 window.storage = {
   async get(key) {
-    const { apiKey, binId } = getSettings();
-    if (!apiKey || !binId) return null;
+    const workerKey = getWorkerKey();
+    if (!workerKey) {
+      // Fallback: JSONBin
+      const { apiKey, binId } = getSettings();
+      if (!apiKey || !binId) return null;
+      try {
+        const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, { headers: { 'X-Master-Key': apiKey } });
+        const data = await res.json();
+        let record = data.record;
+        if (Array.isArray(record)) return { key, value: JSON.stringify(record) };
+        if (record && Array.isArray(record.orders)) return { key, value: JSON.stringify(record.orders) };
+        return { key, value: '[]' };
+      } catch { return null; }
+    }
     try {
-      const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`, {
-        headers: { 'X-Master-Key': apiKey }
-      });
+      const res = await fetch(WORKER_URL + '/mosk/orders', { headers: { 'x-api-key': workerKey } });
       const data = await res.json();
-      // obsługa zarówno [] jak i {"orders":[]}
-      let record = data.record;
-      if (Array.isArray(record)) {
-        return { key, value: JSON.stringify(record) };
-      } else if (record && Array.isArray(record.orders)) {
-        return { key, value: JSON.stringify(record.orders) };
-      }
-      return { key, value: '[]' };
-    } catch { return null; }
+      return { key, value: JSON.stringify(data.orders || []) };
+    } catch(e) { console.error('KV get error:', e); return null; }
   },
 
   async set(key, value) {
-    const { apiKey, binId } = getSettings();
-    if (!apiKey || !binId) {
-      localStorage.setItem(key, value);
-      return { key, value };
+    const workerKey = getWorkerKey();
+    if (!workerKey) {
+      // Fallback: JSONBin
+      const { apiKey, binId } = getSettings();
+      if (!apiKey || !binId) { localStorage.setItem(key, value); return { key, value }; }
+      try {
+        const res = await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'X-Master-Key': apiKey },
+          body: value
+        });
+        if (!res.ok) return { key, value, error: 'JSONBin HTTP ' + res.status };
+        return { key, value };
+      } catch(e) { return { key, value, error: e.message }; }
     }
     try {
-      const orders = JSON.parse(value);
-      await fetch(`https://api.jsonbin.io/v3/b/${binId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'X-Master-Key': apiKey },
-        body: JSON.stringify(orders)
+      const res = await fetch(WORKER_URL + '/mosk/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': workerKey },
+        body: JSON.stringify({ orders: JSON.parse(value) })
       });
+      if (!res.ok) return { key, value, error: 'KV HTTP ' + res.status };
       return { key, value };
-    } catch { return null; }
+    } catch(e) {
+      console.error('KV set error:', e);
+      return { key, value, error: e.message };
+    }
   },
 
   async delete(key) { return window.storage.set(key, '[]'); },
@@ -167,7 +187,22 @@ function nextNumer(orders, firma, isDrzwi=false) {
 async function cloudLoad() {
   try{ const r=await window.storage.get(STORAGE_KEY,true); return r?JSON.parse(r.value):[]; }catch{return [];}
 }
-async function cloudSave(o){ try{await window.storage.set(STORAGE_KEY,JSON.stringify(o),true);}catch{} }
+async function cloudSave(o){
+  try{
+    const result = await window.storage.set(STORAGE_KEY, JSON.stringify(o), true);
+    if(result && result.error){
+      console.error('cloudSave error:', result.error);
+      alert('⚠️ Zamówienie zapisane lokalnie, ale BŁĄD synchronizacji z chmurą!
+' +
+            'Błąd: ' + result.error + '
+' +
+            'Zapisz ręcznie lub spróbuj za chwilę.');
+    }
+  }catch(e){
+    console.error('cloudSave exception:', e);
+    alert('⚠️ BŁĄD zapisu do chmury: ' + e.message);
+  }
+}
 
 async function parseAI(msg, adres, typ) {
   const prompt=`Wyodrębnij dane z wiadomości i zwróć TYLKO JSON bez markdown.
@@ -3956,6 +3991,48 @@ function App() {
         {/* ══ USTAWIENIA ══ */}
         {tab==="ustawienia" && (
           <div style={{display:"flex",flexDirection:"column",gap:16}}>
+
+            {/* ── BAZA DANYCH (KV) ── */}
+            <div className="card" style={{maxWidth:600}}>
+              <div style={{fontFamily:"'Syne',sans-serif",fontSize:16,fontWeight:800,color:"#afffaf",marginBottom:14}}>🗄️ Baza danych (Cloudflare KV)</div>
+              <div style={{fontSize:13,color:"#4a7a5a",marginBottom:12,lineHeight:1.6}}>
+                Zamówienia są teraz przechowywane w Cloudflare KV — bez limitów rozmiaru.<br/>
+                Wpisz klucz Workera (masterKey) aby włączyć zapis do KV.
+              </div>
+              <div style={{marginBottom:10}}>
+                <span className="lbl">Klucz Workera (masterKey)</span>
+                <input type="password" value={localStorage.getItem('mosk_worker_key')||''}
+                  onChange={e=>{localStorage.setItem('mosk_worker_key',e.target.value);}}
+                  placeholder="Twój masterKey z Cloudflare KV → config"
+                  style={{fontFamily:"monospace",fontSize:14}}/>
+              </div>
+              <div style={{display:"flex",gap:8,marginBottom:10}}>
+                <button className="btn" style={{flex:1,fontSize:13}} onClick={async()=>{
+                  const key=localStorage.getItem('mosk_worker_key')||'';
+                  if(!key){alert('Wpisz najpierw klucz Workera');return;}
+                  const r=await fetch('https://allegro-autoresponder.favour-biuro.workers.dev/mosk/orders',{headers:{'x-api-key':key}});
+                  const d=await r.json();
+                  if(d.ok) alert('✅ Połączenie OK — w KV jest '+d.count+' zamówień');
+                  else alert('❌ '+JSON.stringify(d));
+                }}>🔌 Testuj KV</button>
+                <button className="btn" style={{flex:1,fontSize:13,background:"#1a2a3a",borderColor:"#2a4a6a"}} onClick={async()=>{
+                  const key=localStorage.getItem('mosk_worker_key')||'';
+                  const {apiKey,binId}=window.jsonbinSettings.getSettings();
+                  if(!key||!apiKey||!binId){alert('Wpisz klucz Workera i upewnij się że masz dane JSONBin');return;}
+                  if(!confirm('Migrować '+orders.length+' zamówień z JSONBin do KV?')) return;
+                  const r=await fetch('https://allegro-autoresponder.favour-biuro.workers.dev/mosk/migrate',{
+                    method:'POST',headers:{'Content-Type':'application/json','x-api-key':key},
+                    body:JSON.stringify({binId,binKey:apiKey})
+                  });
+                  const d=await r.json();
+                  if(d.ok) alert('✅ Migracja OK — '+d.count+' zamówień w KV');
+                  else alert('❌ '+JSON.stringify(d));
+                }}>📦 Migruj z JSONBin → KV</button>
+              </div>
+              <div style={{fontSize:12,color:"#3a5a3a"}}>
+                Po migracji odśwież stronę — wszystkie zamówienia pojawią się z KV.
+              </div>
+            </div>
 
             {/* ── DPD ── */}
             <div className="card" style={{maxWidth:600}}>
