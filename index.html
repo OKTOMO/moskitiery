@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260422.12</title>
+<title>MosquitoApp v20260422.13</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1292,17 +1292,20 @@ function App() {
     const kalNum=kalMatch?kalMatch[0].toUpperCase():"";
     const firstOffer=(imp.offerNames||"").split(", ")[0];
     let parsedPoz=parseDimsFromOfferName(firstOffer);
-    // Jeśli brak wymiarów w nazwie oferty — spróbuj z buyerMsg
-    if(!parsedPoz && imp.buyerMsg){
-      parsedPoz=parseDimsFromOfferName(imp.buyerMsg);
-    }
-    // Uzupełnij kolor z buyerMsg jeśli parsedPoz istnieje ale kolor domyślny
-    if(parsedPoz && imp.buyerMsg){
-      const msg=imp.buyerMsg.toLowerCase();
-      const KOLORY_RAMKI_MAP=[["winchester","Winchester"],["biał","Biały"],["antracyt","Antracyt"],["brąz","Brąz"],["czarny","Czarny"],["orzech","Orzech"],["turner","Turner Oak"],["złoty dąb","Złoty Dąb"],["ciemny dąb","Ciemny Dąb"]];
-      const KOLORY_SIATKI_MAP=[["czarn","Czarna"],["szar","Szara"]];
-      for(const [pat,val] of KOLORY_RAMKI_MAP){ if(msg.includes(pat)){parsedPoz.kolorRamki=val;break;} }
-      for(const [pat,val] of KOLORY_SIATKI_MAP){ if(msg.includes(pat)){parsedPoz.kolorSiatki=val;break;} }
+    if(!parsedPoz && imp.buyerMsg) parsedPoz=parseDimsFromOfferName(imp.buyerMsg);
+    // Wykryj kolory z buyerMsg (priorytet) lub offerNames
+    const colorSrc=((imp.buyerMsg||"")+" "+(imp.offerNames||"")).toLowerCase();
+    const KOLORY_RAMKI_MAP=[
+      ["winchester","Winchester"],["biały","Biały"],["bial","Biały"],
+      ["antracyt","Antracyt"],["brąz","Brąz"],["braz","Brąz"],
+      ["czarny","Czarny"],["orzech","Orzech"],
+      ["turner","Turner Oak"],["złoty dąb","Złoty Dąb"],["zloty dab","Złoty Dąb"],
+      ["ciemny dąb","Ciemny Dąb"],["ciemny dab","Ciemny Dąb"]
+    ];
+    const KOLORY_SIATKI_MAP=[["szara","Szara"],["szar","Szara"],["czarna","Czarna"],["czarn","Czarna"]];
+    if(parsedPoz){
+      for(const [pat,val] of KOLORY_RAMKI_MAP){ if(colorSrc.includes(pat)){parsedPoz.kolorRamki=val;break;} }
+      for(const [pat,val] of KOLORY_SIATKI_MAP){ if(colorSrc.includes(pat)){parsedPoz.kolorSiatki=val;break;} }
     }
     setImportModal({
       imp,
@@ -1495,7 +1498,8 @@ function App() {
             length:{value:size.length,unit:"CENTIMETER"},
             width:{value:size.width,unit:"CENTIMETER"},
             height:{value:size.height,unit:"CENTIMETER"}
-          }]
+          }],
+          ...(isInPost && imp.pickupPointId ? {additionalProperties:[{name:"PICKUP_POINT_ID",value:imp.pickupPointId}]} : {})
         }]
       };
       console.log("createBody:", JSON.stringify(createBody, null, 2));
