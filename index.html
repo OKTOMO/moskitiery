@@ -3,9 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-<title>MosquitoApp v2.1</title>
+<title>MosquitoApp v20260421.1</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -273,18 +271,16 @@ DODATKOWE ALIASY:
 - "RAL 9016" → Biały
 - "RAL 9005" → Czarny
 - "Winch" → Winchester
-- "brąz", "brązowy", "ciemny brąz", "jasny brąz" → Brąz
+- "brąz", "brązowy", "ciemny brąz" → Brąz
 - "str. drewna", "struktura drewna" — to oznaczenie faktury, NIE kolor — zignoruj, weź tylko nazwę koloru
 - Jeśli nie rozpoznajesz → Antracyt (domyślny)
 
 KOLOR SIATKI: Czarna lub Szara (domyślnie Czarna)
 
 WAŻNE:
-- Identyczne pozycje (DOKŁADNIE te same wymiary, kolor ramki, kolor siatki i typ) → scal sumując ilości. Identyczne = ta sama liczba co do 0.1cm. Nawet 0.1cm różnicy = OSOBNA pozycja, nigdy nie scalaj.
-- "1 szt 64,8x136,5" i "1 szt 64x136,5" to zawsze DWIE osobne pozycje mimo tej samej ilości.
-- Jeśli klient wymienia kilka wymiarów z osobnym "1 szt" przy każdym — to tyle pozycji ile wymiarów, ilosc=1 dla każdej.
+- Identyczne pozycje (DOKŁADNIE te same wymiary co do 0.1cm, kolor, typ) → scal. Nawet 0.1cm różnicy = OSOBNA pozycja. "64,8x136,5" i "64x136,5" = DWIĘ pozycje.
 - klientImie = PEŁNE imię i nazwisko klienta w formacie: Nazwisko Imię (np. "Kowalski Jan"). Jeśli w wiadomości jest tylko jedno słowo — wpisz je. Nigdy nie pomijaj nazwiska jeśli jest podane.
-- klientMiasto ZAWSZE wypełnij jeśli występuje w adresie lub treści wiadomości — także dla drzwi.
+- klientMiasto ZAWSZE wypełnij jeśli występuje w adresie lub treści — także dla drzwi.
 - Z adresu wyciągnij: klientUlica (ulica + nr domu), klientKod (XX-XXX), klientMiasto (miejscowość)
 - WYMIARY: szerokosc zawsze mniejsza wartość, wysokosc zawsze większa. Np. klient podał "214 x 81,5" → szerokosc=81.5, wysokosc=214. Dotyczy zarówno okien jak i drzwi.
 - JEDNOSTKI mm vs cm: wymiary ZAWSZE zwracaj w cm. Jeśli klient podał wartości w mm (np. "780 x 2165 mm" lub liczby >400 bez jednostki), podziel przez 10. Przykład: 780mm → 78cm, 2165mm → 216.5cm. Jeśli wartość bez jednostki jest np. 78 lub 216 — to już cm, nie przeliczaj.
@@ -292,29 +288,14 @@ WAŻNE:
 - DRZWI "NA GOTOWO" / "NA ZERO" / "WYMIAR ZEWNĘTRZNY": klient podaje gotowy wymiar zewnętrzny ramy. Zapisz szerokosc i wysokosc dokładnie jak podał (bez odejmowania). Ustaw isDrzwi:true. Dodaj do uwagi: "wymiar zewnętrzny".
 - IGNORUJ NOTATKI CENOWE: frazy w nawiasach zawierające słowa "jednostek", "wg kalkulatora", "kalkulator", "jedn." itp. to adnotacje wewnętrzne sprzedawcy — CAŁKOWICIE IGNORUJ zawarte w nich liczby przy parsowaniu ilosc. Przykład: "(Ilosc jednostek wg kalkulatora 45)" → ilosc=1 (lub wg rzeczywistej ilości sztuk z reszty tekstu), NIE 45.
 
-IGNORUJ OBLICZENIA JEDNOSTEK — KRYTYCZNA ZASADA:
-Sprzedawca dopisuje kalkulację jednostek w stylu "A×2+B×2=wynik/10" lub "536/10=53,6". To WYLICZENIA ROBOCZE — nie wymiary. CAŁKOWICIE IGNORUJ przy parsowaniu szerokosc/wysokosc/ilosc.
-Przykłady:
-- "73,5x2+221,5x2=590/10=59 x3 177zł" → szerokosc=73.5, wysokosc=221.5, ilosc=3
-- "134×2+134×2=536/10=53,6" → szerokosc=134, wysokosc=134, ilosc=1
-- "2x103+2x136=478~48jednostek" → szerokosc=103, wysokosc=136, ilosc=1
-- "48 jednostek" za wymiarem → ignoruj (jedn. robocze, NIE sztuki)
-Zasada: wynik po "=" w ciągu "A×N+B×N=..." to kalkulacja. "X jednostek" bez "szt/sztuk" = jedn. robocze.
+IGNORUJ OBLICZENIA JEDNOSTEK:
+Sprzedawca dopisuje kalkulację: "A×2+B×2=wynik/10". To WYLICZENIA ROBOCZE — nie wymiary.
+Przykłady: "73,5x2+221,5x2=590/10=59 x3" → szerokosc=73.5, wysokosc=221.5, ilosc=3
+"48 jednostek" za wymiarem → ignoruj (NIE sztuki)
 
-NOTACJA X/Y DLA JEDNEGO WYMIARU:
-Klient podaje dwa pomiary przez ukośnik np. "120/124".
-- Okna: użyj mniejszej wartości, obie wpisz do uwagi. Przykład: "120/124" → szerokosc=120, uwagi="120/124"
-- Drzwi: szerokosc=min, szer2=max (jak dotychczas)
-
-CZTERY POMIARY OKNA:
-Gdy klient podaje 4 liczby parami np. "46+46+66+66":
-- 2 mniejsze = szerokość, 2 większe = wysokość, użyj mniejszej z każdej pary.
-- Przykład: "46+46+66+66" → szerokosc=46, wysokosc=66, ilosc=1
-
-ZAWIAS — STRONA MONTAŻU:
-- zawias="L": "lewa", "lewy", "po lewej", "strona montażu zawiasów: lewa"
-- zawias="P": "prawa", "prawy", "po prawej", "strona montażu zawiasów: prawa"
-- Domyślnie: "L". Przykład: "strona montażu zawiasów: lewa" → zawias="L"
+NOTACJA X/Y: "120/124" dla okna → szerokosc=120, uwagi="120/124"
+CZTERY POMIARY OKNA: "46+46+66+66" → szerokosc=46, wysokosc=66
+ZAWIAS: "strona montażu zawiasów: lewa" → zawias="L", "prawa" → "P"
 
 WIADOMOŚĆ OD KLIENTA:
 ${msg||"(brak)"}
@@ -1428,71 +1409,50 @@ function App() {
     }
   },[]);
   function updateOrders(next){setOrders(next);cloudSave(next);}
-  // Pobierz świeże zamówienia z chmury i zwróć je (dla nextNumer)
-  async function freshOrders(){
-    try{ const r=await window.storage.get(STORAGE_KEY,true); return r?JSON.parse(r.value):[]; }catch{return orders;}
-  }
+  async function freshOrders(){try{const r=await window.storage.get(STORAGE_KEY,true);return r?JSON.parse(r.value):[];}catch{return orders;}}
 
-  function mapPozycje(pozycje, forceDrzwi, forceOkno){
-    if(!pozycje?.length) return [];
-    return pozycje.map(p=>{
-      const isDrzwi = forceDrzwi ? true : forceOkno ? false : !!p.isDrzwi;
-      const s=parseFloat(p.szerokosc)||0, w=parseFloat(p.wysokosc)||0;
-      const szer = s>w&&w>0 ? w : s;
-      const wys  = s>w&&w>0 ? s : w;
-      if(isDrzwi) return {
-        isDrzwi:true, szerokosc:String(szer||p.szerokosc||""), szer2:p.szer2||"",
-        wysokosc:String(wys||p.wysokosc||""), wys2:p.wys2||"",
-        kolorRamki:p.kolorRamki||"Antracyt", kolorSiatki:p.kolorSiatki||"Czarna",
-        zawias:p.zawias||"L", poprzeczka:p.poprzeczka!=null?p.poprzeczka:true,
-        samodomykajacyL:p.samodomykajacyL||0, samodomykajacyP:p.samodomykajacyP||0,
-        ilosc:p.ilosc||1, uwagi:p.uwagi||""
-      };
-      return {
-        szerokosc:String(szer||p.szerokosc||""), wysokosc:String(wys||p.wysokosc||""),
+  function mapPozycje(poz,fD,fO){
+    if(!poz?.length) return [];
+    return poz.map(p=>{
+      const d=fD?true:fO?false:!!p.isDrzwi;
+      const s=parseFloat(p.szerokosc)||0,w=parseFloat(p.wysokosc)||0;
+      const sz=s>w&&w>0?w:s,wy=s>w&&w>0?s:w;
+      if(d) return {isDrzwi:true,szerokosc:String(sz||p.szerokosc||""),szer2:p.szer2||"",
+        wysokosc:String(wy||p.wysokosc||""),wys2:p.wys2||"",
+        kolorRamki:p.kolorRamki||"Antracyt",kolorSiatki:p.kolorSiatki||"Czarna",
+        zawias:p.zawias||"L",poprzeczka:p.poprzeczka!=null?p.poprzeczka:true,
+        samodomykajacyL:p.samodomykajacyL||0,samodomykajacyP:p.samodomykajacyP||0,
+        ilosc:p.ilosc||1,uwagi:p.uwagi||""};
+      return {szerokosc:String(sz||p.szerokosc||""),wysokosc:String(wy||p.wysokosc||""),
         glebokosc:String(normalizujGlebokosc(p.glebokosc!=null?p.glebokosc:DOMYSLNA_GLEBOKOS)),
-        kolorRamki:p.kolorRamki||"Antracyt", kolorSiatki:p.kolorSiatki||"Czarna",
-        ilosc:p.ilosc||1
-      };
+        kolorRamki:p.kolorRamki||"Antracyt",kolorSiatki:p.kolorSiatki||"Czarna",ilosc:p.ilosc||1};
     });
   }
 
-  async function handleParse() {
+  async function handleParse(){
     if(!wiadomosc.trim()&&!adres.trim()) return;
-    setParsing(true); setSaved(false);
-    try {
+    setParsing(true);setSaved(false);
+    try{
       const r=await parseAI(wiadomosc,adres,withDrzwi?"okno":parseTyp);
-      const pozOkna=mapPozycje(r.pozycje, false, !withDrzwi&&parseTyp!=="drzwi");
+      const pozOkna=mapPozycje(r.pozycje,false,!withDrzwi&&parseTyp!=="drzwi");
       let pozDrzwi=[];
-      if(withDrzwi && wiadomoscDrzwi.trim()){
+      if(withDrzwi&&wiadomoscDrzwi.trim()){
         setParsingDrzwi(true);
-        try{
-          const rd=await parseAI(wiadomoscDrzwi, adres, "drzwi");
-          pozDrzwi=mapPozycje(rd.pozycje, true, false);
-        }catch(e2){ console.warn("Drzwi parse error:",e2); }
+        try{const rd=await parseAI(wiadomoscDrzwi,adres,"drzwi");pozDrzwi=mapPozycje(rd.pozycje,true,false);}catch(e2){}
         setParsingDrzwi(false);
-      } else if(withDrzwi){
-        pozDrzwi=[pustaPozDrzwi()];
-      }
-      setForm(f=>({
-        ...f,
-        klientImie:   r.klientImie   ||f.klientImie,
-        klientUlica:  r.klientUlica  ||f.klientUlica,
-        klientKod:    r.klientKod    ||f.klientKod,
-        klientMiasto: r.klientMiasto ||f.klientMiasto,
-        telefon:      r.telefon      ||f.telefon,
-        uwagi:        f.uwagi,
-        pozycje: [...pozOkna,...pozDrzwi].length ? [...pozOkna,...pozDrzwi] : f.pozycje
+      } else if(withDrzwi){pozDrzwi=[pustaPozDrzwi()];}
+      setForm(f=>({...f,
+        klientImie:r.klientImie||f.klientImie,klientUlica:r.klientUlica||f.klientUlica,
+        klientKod:r.klientKod||f.klientKod,klientMiasto:r.klientMiasto||f.klientMiasto,
+        telefon:r.telefon||f.telefon,uwagi:f.uwagi,
+        pozycje:[...pozOkna,...pozDrzwi].length?[...pozOkna,...pozDrzwi]:f.pozycje
       }));
-    } catch(e){
-      setParsing(false); setParsingDrzwi(false);
-      console.error("B\u0142\u0105d parsowania AI:", e);
-      let msg = e.message || String(e);
-      if(msg==="Failed to fetch") msg="Failed to fetch \u2014 sprawd\u017a klucz API i Worker.";
-      else if(msg.includes("401")||msg.includes("403")) msg="B\u0142\u0105d autoryzacji \u2014 sprawd\u017a klucz API Claude.";
-      else if(msg.includes("Brak klucza")) msg="Brak klucza API Claude \u2014 wpisz go w Ustawieniach.";
-      alert("B\u0142\u0105d parsowania AI:\n"+msg);
-      return;
+    }catch(e){
+      setParsing(false);setParsingDrzwi(false);
+      let msg=e.message||String(e);
+      if(msg==="Failed to fetch") msg="Failed to fetch — sprawdź klucz API i Worker.";
+      alert("Błąd AI:
+"+msg);return;
     }
     setParsing(false);
   }
@@ -1511,78 +1471,45 @@ function App() {
   }
 
   async function handleSave(){
-    // Merge lokalny state + chmura — bierz MAX numeru z obu źródeł
     const _liveOrds=await freshOrders();
     const _allIds=new Set(orders.map(o=>o.id));
-    const _merged=[...orders,..._liveOrds.filter(o=>!_allIds.has(o.id))];
-    const _ordBase=_merged.length>0?_merged:orders;
+    const _ordBase=[...orders,..._liveOrds.filter(o=>!_allIds.has(o.id))];
     if(_liveOrds.length>orders.length) setOrders(_liveOrds);
     const _hasDrzwi=form.pozycje.some(p=>p.isDrzwi);
     const _hasOkna=form.pozycje.some(p=>!p.isDrzwi);
-    const _mixed=_hasDrzwi&&_hasOkna;
-    const base={
-      firma:form.firma, data:form.data,
+    // Jeśli TYLKO drzwi → prefix D. Mieszane lub tylko okna → bez prefiksu
+    // Jeśli formularz ma drzwi LUB tryb parsowania to drzwi → numer drzwiowy D*.xx FIRMA
+    const _isDrzwi=_hasDrzwi||parseTyp==="drzwi";
+    const numer=numerOverride||nextNumer(_ordBase,form.firma,_isDrzwi);
+    const order={
+      id:Date.now(), numerZlecenia:numer, firma:form.firma, data:form.data,
       allegroOrderId:allegroOrderIdForForm||"",
       kalNumer:kalNumerForForm||"",
       klientImie:form.klientImie, klientUlica:form.klientUlica||"", klientKod:form.klientKod||"", klientMiasto:form.klientMiasto,
       telefon:form.telefon, uwagi:form.uwagi,
+      pozycje:form.pozycje.map(p=>p.isDrzwi?({
+        ...p,
+        kolorSiatki: p.kolorSiatki||"Czarna",
+      }):({
+        ...p,
+        glebokosc:    p.glebokosc||String(DOMYSLNA_GLEBOKOS),
+        kolorSiatki:  p.kolorSiatki||"Czarna",
+        linka:        obliczLinke(p.szerokosc,p.wysokosc),
+        blaszRozmiar: obliczRozmiarBlaszki(p.glebokosc),
+      }))
     };
     if(editingId!==null){
-      // Edycja: jeden rekord jak dotychczas
-      const _isDrzwi=_hasDrzwi&&!_hasOkna;
-      const numer=numerOverride||nextNumer(_ordBase,form.firma,_isDrzwi);
-      const order={
-        ...base, id:editingId, numerZlecenia:numer,
-        pozycje:form.pozycje.map(p=>p.isDrzwi?({...p,kolorSiatki:p.kolorSiatki||"Czarna"}):({
-          ...p, glebokosc:p.glebokosc||String(DOMYSLNA_GLEBOKOS),
-          kolorSiatki:p.kolorSiatki||"Czarna",
-          linka:obliczLinke(p.szerokosc,p.wysokosc),
-          blaszRozmiar:obliczRozmiarBlaszki(p.glebokosc),
-        }))
-      };
-      updateOrders(orders.map(x=>x.id===editingId?order:x));
+      updateOrders(orders.map(x=>x.id===editingId?{...order,id:editingId}:x));
       setEditingId(null);
-      if(order.pozycje.some(p=>!p.isDrzwi)) drukujPDF(order);
-      if(order.pozycje.some(p=>p.isDrzwi)) drukujPDF_drzwi(order);
-    } else if(_mixed){
-      // Zamówienie mieszane: dwa osobne rekordy z własnymi numerami
-      const numerOkna=nextNumer(_ordBase,form.firma,false);
-      const orderOkna={
-        ...base, id:Date.now(), numerZlecenia:numerOkna,
-        pozycje:form.pozycje.filter(p=>!p.isDrzwi).map(p=>({
-          ...p, glebokosc:p.glebokosc||String(DOMYSLNA_GLEBOKOS),
-          kolorSiatki:p.kolorSiatki||"Czarna",
-          linka:obliczLinke(p.szerokosc,p.wysokosc),
-          blaszRozmiar:obliczRozmiarBlaszki(p.glebokosc),
-        }))
-      };
-      const numerDrzwi=nextNumer([...orders,orderOkna],form.firma,true);
-      const orderDrzwi={
-        ...base, id:Date.now()+1, numerZlecenia:numerDrzwi,
-        pozycje:form.pozycje.filter(p=>p.isDrzwi).map(p=>({...p,kolorSiatki:p.kolorSiatki||"Czarna"}))
-      };
-      updateOrders([orderDrzwi,orderOkna,..._ordBase]);
-      drukujPDF(orderOkna);
-      drukujPDF_drzwi(orderDrzwi);
     } else {
-      // Tylko okna lub tylko drzwi
-      const _isDrzwi=_hasDrzwi;
-      const numer=numerOverride||nextNumer(_ordBase,form.firma,_isDrzwi);
-      const order={
-        ...base, id:Date.now(), numerZlecenia:numer,
-        pozycje:form.pozycje.map(p=>p.isDrzwi?({...p,kolorSiatki:p.kolorSiatki||"Czarna"}):({
-          ...p, glebokosc:p.glebokosc||String(DOMYSLNA_GLEBOKOS),
-          kolorSiatki:p.kolorSiatki||"Czarna",
-          linka:obliczLinke(p.szerokosc,p.wysokosc),
-          blaszRozmiar:obliczRozmiarBlaszki(p.glebokosc),
-        }))
-      };
       updateOrders([order,..._ordBase]);
-      if(order.pozycje.some(p=>!p.isDrzwi)) drukujPDF(order);
-      if(order.pozycje.some(p=>p.isDrzwi)) drukujPDF_drzwi(order);
     }
     setSaved(true);
     setWiadomosc(""); setAdres(""); setForm(pustyForm(form.firma)); setNumerOverride(""); setKalNumerForForm(""); setAllegroOrderIdForForm("");
+    const hasDrzwiPos=order.pozycje.some(p=>p.isDrzwi);
+    const hasOknaPos=order.pozycje.some(p=>!p.isDrzwi);
+    if(hasOknaPos) drukujPDF(order);
+    if(hasDrzwiPos) drukujPDF_drzwi(order);
   }
 
   function getStats(ords){
@@ -2023,42 +1950,36 @@ function App() {
                   placeholder={"Wklej dane adresowe z Allegro:\n\nNp: Kowalski Jan\nul. Kwiatowa 5/10\n00-001 Warszawa\nPL +48600000000"}
                   style={{height:90,resize:"vertical",marginBottom:10}}/>
 
-                {/* Tryb parsowania */}
                 {!withDrzwi&&(
                   <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:6}}>
                     <span style={{fontSize:14,color:"#4a8a4a"}}>Parsuj jako:</span>
                     <button onClick={()=>setParseTyp("okno")} style={{padding:"4px 12px",fontSize:14,borderRadius:4,border:"1px solid",cursor:"pointer",
                       background:parseTyp==="okno"?"#1a3a1a":"transparent",
                       color:parseTyp==="okno"?"#9fcf9f":"#4a8a4a",
-                      borderColor:parseTyp==="okno"?"#2a6a2a":"#1e3a1e"}}>🪟 Okno</button>
+                      borderColor:parseTyp==="okno"?"#2a6a2a":"#1e3a1e"}}>🧿 Okno</button>
                     <button onClick={()=>setParseTyp("drzwi")} style={{padding:"4px 12px",fontSize:14,borderRadius:4,border:"1px solid",cursor:"pointer",
                       background:parseTyp==="drzwi"?"#1a2a4a":"transparent",
                       color:parseTyp==="drzwi"?"#90b8df":"#3a5a8a",
                       borderColor:parseTyp==="drzwi"?"#2a4a8a":"#1e2a4e"}}>🚪 Drzwi</button>
                   </div>
                 )}
-
-                {/* Checkbox: dorzuć drzwi do zamówienia */}
-                <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",marginBottom:withDrzwi?10:6,fontSize:14,color:withDrzwi?"#90b8df":"#4a6a8a",userSelect:"none"}}>
+                <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",marginBottom:6,fontSize:14,color:withDrzwi?"#90b8df":"#4a6a8a",userSelect:"none"}}>
                   <input type="checkbox" checked={withDrzwi} onChange={e=>{setWithDrzwi(e.target.checked);if(!e.target.checked)setWiadomoscDrzwi('');}}
-                    style={{width:16,height:16,cursor:"pointer",accentColor:"#4a8adf"}}/>
+                    style={{width:16,height:16,cursor:"pointer"}}/>
                   🚪 To zamówienie zawiera też drzwi
                 </label>
-
                 {withDrzwi&&(
                   <div style={{marginBottom:10}}>
-                    <span className="lbl" style={{marginBottom:6,color:"#7a9abf"}}>Wiadomość o drzwiach (wymiary, kolory, zawias)</span>
+                    <span className="lbl" style={{marginBottom:6,color:"#7a9abf"}}>Wiadomość o drzwiach</span>
                     <textarea value={wiadomoscDrzwi} onChange={e=>setWiadomoscDrzwi(e.target.value)}
-                      placeholder={"Wklej wymiary drzwi...
-
-Np: 83x226 cm antracyt, siatka czarna, zawias lewy"}
-                      style={{height:80,resize:"vertical",marginBottom:0,borderColor:"#2a4a8a",background:"#0a0e1e"}}/>
+                      placeholder="Wymiary drzwi, kolor, zawias..."
+                      style={{height:80,resize:"vertical",borderColor:"#2a4a8a",background:"#0a0e1e"}}/>
                   </div>
                 )}
-
                 <button className="btn" style={{width:"100%"}} onClick={handleParse} disabled={parsing||(!wiadomosc.trim()&&!adres.trim())}>
                   {parsing?<><span className="spin">⟳</span> {parsingDrzwi?"Parsowanie drzwi...":"Parsowanie AI..."}</>
                     :withDrzwi?"🤖 Parsuj z AI → okna + drzwi":`🤖 Parsuj z AI → ${parseTyp==="drzwi"?"(drzwi)":"(okna)"}`}
+                </button>:`🤖 Parsuj z AI → ${parseTyp==="drzwi"?"(drzwi)":"(okna)"}`}
                 </button>
               </div>
 
@@ -2272,20 +2193,16 @@ Np: 83x226 cm antracyt, siatka czarna, zawias lewy"}
               </div>
 
               {(()=>{
-                const _okna=form.pozycje.filter(p=>!p.isDrzwi);
-                if(_okna.length<2) return null;
-                const _totalJedn=_okna.reduce((a,p)=>a+obliczJedn(p.szerokosc,p.wysokosc,p.ilosc),0);
-                const _totalSzt=_okna.reduce((a,p)=>a+(parseFloat(p.ilosc)||1),0);
-                const _totalBlaszki=_totalSzt*8;
-                const _totalLinka=obliczLinkeLaczna(_okna);
-                return (
-                  <div style={{background:"#0c1a0c",border:"1px solid #2a4a2a",borderRadius:6,padding:"8px 14px",marginBottom:8,display:"flex",gap:16,flexWrap:"wrap",fontSize:14}}>
-                    <span style={{color:"#3a7a3a",fontWeight:700}}>RAZEM {_totalSzt} szt:</span>
-                    <span style={{color:"#5a9a5a"}}>JEDN: <strong style={{color:"#afffaf"}}>{Math.round(_totalJedn*10)/10} mb</strong></span>
-                    <span style={{color:"#5a9a5a"}}>Blaszki: <strong style={{color:"#afffaf"}}>{_totalBlaszki} szt</strong></span>
-                    <span style={{color:"#5a9a5a"}}>Linka: <strong style={{color:"#afffaf"}}>{_totalLinka} mb</strong></span>
-                  </div>
-                );
+                const _ok=form.pozycje.filter(p=>!p.isDrzwi);
+                if(_ok.length<2) return null;
+                const _tj=_ok.reduce((a,p)=>a+obliczJedn(p.szerokosc,p.wysokosc,p.ilosc),0);
+                const _ts=_ok.reduce((a,p)=>a+(parseFloat(p.ilosc)||1),0);
+                return(<div style={{background:"#0c1a0c",border:"1px solid #2a4a2a",borderRadius:6,padding:"8px 14px",marginBottom:8,display:"flex",gap:16,flexWrap:"wrap",fontSize:14}}>
+                  <span style={{color:"#3a7a3a",fontWeight:700}}>RAZEM {_ts} szt:</span>
+                  <span style={{color:"#5a9a5a"}}>JEDN: <strong style={{color:"#afffaf"}}>{Math.round(_tj*10)/10} mb</strong></span>
+                  <span style={{color:"#5a9a5a"}}>Blaszki: <strong style={{color:"#afffaf"}}>{_ts*8} szt</strong></span>
+                  <span style={{color:"#5a9a5a"}}>Linka: <strong style={{color:"#afffaf"}}>{obliczLinkeLaczna(_ok)} mb</strong></span>
+                </div>);
               })()}
               {editingId!==null&&<div style={{background:"#1a2a0a",border:"1px solid #4a7a2a",borderRadius:6,padding:"6px 12px",marginBottom:8,fontSize:14,color:"#9acf7a",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
                 <span>✏️ Tryb edycji — zmiany nadpiszą zlecenie</span>
@@ -2971,27 +2888,50 @@ Np: 83x226 cm antracyt, siatka czarna, zawias lewy"}
                   setAllegroCreds(true);setTimeout(()=>setAllegroCreds(false),2000);
                 }}>{allegroCreds?"✓ Zapisano":"💾 Zapisz dane logowania"}</button>
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                  {ALLEGRO_KONTA.filter(k=>currentProfile.konta.includes(k.id)).map(k=>{
+                  {ALLEGRO_KONTA.map(k=>{
                     const token=allegroTokens[k.id]||"";
-                    return (
-                      <div key={k.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"#0a0f0a",border:"1px solid #1a2a1a",borderRadius:6}}>
-                        <span style={{flex:1,fontWeight:700,color:"#7a9a7a"}}>{k.label}</span>
-                        <span style={{fontSize:14,color:"#3a5a3a",marginRight:4}}>{k.firma}</span>
+                    const isOwn=currentProfile.konta.includes(k.id);
+                    return(
+                      <div key={k.id} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 12px",
+                        background:token?"#0a140a":"#140a0a",
+                        border:`1px solid ${token?"#1a3a1a":"#3a1a1a"}`,
+                        borderRadius:6,opacity:isOwn?1:0.55}}>
+                        <div style={{width:8,height:8,borderRadius:"50%",background:token?"#4acf4a":"#cf4a4a",flexShrink:0}}/>
+                        <span style={{flex:1,fontWeight:700,color:token?"#7a9a7a":"#8a5a5a",fontSize:14}}>{k.label}</span>
+                        <span style={{fontSize:12,color:"#3a5a3a",fontFamily:"monospace"}}>{k.firma}</span>
                         {token
-                          ? <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                              <span style={{fontSize:14,color:"#5a9a5a"}}>✅ zalogowany</span>
-                              <button className="btn-sm" onClick={()=>allegroLoadMessages(token, k.id)} title="Pobierz wiadomości z Allegro">📬 Pobierz</button>
-                              <button className="btn-del" style={{padding:"3px 8px",fontSize:14}} onClick={()=>{
-                                const tokens={...allegroTokens};delete tokens[k.id];
-                                localStorage.setItem('allegro_tokens',JSON.stringify(tokens));setAllegroTokens(tokens);
+                          ?<div style={{display:"flex",gap:5,alignItems:"center"}}>
+                              <span style={{fontSize:13,color:"#4a8a4a"}}>✅</span>
+                              <button className="btn-sm" onClick={()=>allegroLogin(k.id)} style={{fontSize:12,padding:"2px 7px"}}>🔄 Odśwież</button>
+                              <button className="btn-del" style={{padding:"2px 7px",fontSize:12}} onClick={()=>{
+                                const t={...allegroTokens};delete t[k.id];
+                                const rr=JSON.parse(localStorage.getItem('allegro_refreshes')||'{}');
+                                delete rr[k.id];
+                                localStorage.setItem('allegro_tokens',JSON.stringify(t));
+                                localStorage.setItem('allegro_refreshes',JSON.stringify(rr));
+                                setAllegroTokens(t);
                               }}>✕</button>
                             </div>
-                          : <button className="btn-sm" onClick={()=>allegroLogin(k.id)} title="Zaloguj konto Allegro">🔑 Zaloguj</button>
+                          :<button className="btn-sm" onClick={()=>allegroLogin(k.id)}
+                              style={{background:"#3a1a1a",borderColor:"#6a2a2a",color:"#df8a8a",fontSize:13}}>
+                              🔑 Zaloguj
+                            </button>
                         }
                       </div>
                     );
                   })}
                 </div>
+                <div style={{marginTop:8,padding:"6px 10px",background:"#0a0f0a",borderRadius:5,fontSize:13,color:"#3a5a3a"}}>
+                  {ALLEGRO_KONTA.filter(k=>allegroTokens[k.id]).length}/{ALLEGRO_KONTA.length} kont zalogowanych{ALLEGRO_KONTA.filter(k=>!allegroTokens[k.id]).length>0&&(<span style={{color:"#cf8a4a",marginLeft:8}}>⚠️ Brak: {ALLEGRO_KONTA.filter(k=>!allegroTokens[k.id]).map(k=>k.label).join(", ")}</span>)}
+                </div>
+                <button className="btn" style={{width:"100%",marginTop:8,fontSize:13}} onClick={async()=>{
+                  const ac=JSON.parse(localStorage.getItem('allegro_tokens')||'{}')||{};
+                  const rf=JSON.parse(localStorage.getItem('allegro_refreshes')||'{}')||{};
+                  const tok={};Object.keys(ac).forEach(k=>{if(ac[k])tok[k]={access:ac[k],refresh:rf[k]||''};});
+                  const r=await fetch(AUTORESPONDER_URL+'/sync',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},body:JSON.stringify({tokens:tok})});
+                  const d=await r.json();
+                  alert(d.ok?'✅ Zsynchronizowano '+Object.keys(tok).length+' kont':'❌ '+JSON.stringify(d));
+                }}>🔑 Synchronizuj wszystkie tokeny do Workera</button>
                 {allegroUrl&&<a href={allegroUrl} target="_blank" rel="noreferrer" style={{display:"block",marginTop:12,padding:"10px",background:"#1e3a1e",color:"#9fcf9f",borderRadius:6,textAlign:"center",fontWeight:700,fontSize:14,textDecoration:"none"}}>🔑 Kliknij tutaj aby zalogować się przez Allegro</a>}
                 {allegroError&&<div style={{marginTop:10,color:"#df8080",fontSize:14}}>{allegroError}</div>}
               </div>
