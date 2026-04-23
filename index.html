@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260423.30</title>
+<title>MosquitoApp v20260423.31</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1612,14 +1612,20 @@ function App() {
       const pdfBlob=new Blob([Uint8Array.from(atob(d2.pdf),c=>c.charCodeAt(0))],{type:"application/pdf"});
       const pdfUrl=URL.createObjectURL(pdfBlob);
       window.open(pdfUrl,"_blank");
-      // Zapisz shipmentId do ponownego druku
+      // Zapisz shipmentId + waybill do ponownego druku i trackingu
       if(shipmentModal.imp.allegroOrderId){
         setAllegroShipments(prev=>{
-          const next={...prev,[shipmentModal.imp.allegroOrderId]:{shipmentId:d1.shipmentId,kontoId:imp.kontoId,date:new Date().toLocaleDateString('pl-PL')}};
+          const next={...prev,[shipmentModal.imp.allegroOrderId]:{
+            shipmentId:d1.shipmentId,
+            waybill:d1.waybill||null,
+            carrierId:d1.carrierId||null,
+            kontoId:imp.kontoId,
+            date:new Date().toLocaleDateString('pl-PL')
+          }};
           localStorage.setItem('allegro_shipments',JSON.stringify(next));
           return next;
         });
-        setOrderAppStatus(shipmentModal.imp.allegroOrderId,"Wysłano");
+        setOrderAppStatus(shipmentModal.imp.allegroOrderId,"W realizacji");
       }
       setShipmentModal(null);
     }catch(e){
@@ -2785,6 +2791,28 @@ function App() {
                                           style={{padding:"5px 10px",fontSize:14,background:"#1a3a2a",border:"1px solid #2a7a4a",borderRadius:5,color:"#6fcf9f",cursor:"pointer",fontWeight:700,whiteSpace:"nowrap"}}>
                                           🖨️ Drukuj
                                         </button>
+                                        {allegroShipments[imp.allegroOrderId].waybill&&(
+                                          <button onClick={async()=>{
+                                            const sh=allegroShipments[imp.allegroOrderId];
+                                            try{
+                                              const r=await fetch(AUTORESPONDER_URL+"/shipment/tracking?kontoId="+sh.kontoId+"&waybill="+encodeURIComponent(sh.waybill)+"&carrierId="+encodeURIComponent(sh.carrierId||""),{
+                                                headers:{"x-api-key":AUTORESPONDER_KEY}
+                                              });
+                                              const d=await r.json();
+                                              const events=(d.tracking&&d.tracking.tracking)||[];
+                                              const last=events[events.length-1];
+                                              const msg=last?`${last.status||""}: ${last.description||""} (${last.date||""})`:JSON.stringify(d.tracking);
+                                              // Auto-zmień status na Wysłano gdy kurier odebrał
+                                              const delivered=events.some(e=>(e.status||"").includes("DELIVERED")||(e.status||"").includes("PICKED_UP")||(e.status||"").includes("IN_TRANSIT"));
+                                              if(delivered) setOrderAppStatus(imp.allegroOrderId,"Wysłano");
+                                              alert("📦 Tracking "+sh.waybill+":\n"+msg);
+                                            }catch(e){alert("❌ "+e.message);}
+                                          }}
+                                            title={"Sprawdź status: "+allegroShipments[imp.allegroOrderId].waybill}
+                                            style={{padding:"5px 8px",fontSize:14,background:"#1a2a3a",border:"1px solid #2a4a7a",borderRadius:5,color:"#6a9abf",cursor:"pointer"}}>
+                                            🔍
+                                          </button>
+                                        )}
                                         <button onClick={()=>openShipmentModal(imp)} title="Nowa etykieta"
                                           style={{padding:"5px 8px",fontSize:14,background:"#1a2a1a",border:"1px solid #2a4a2a",borderRadius:5,color:"#4a7a4a",cursor:"pointer"}}>
                                           📦
