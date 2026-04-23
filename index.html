@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260423.34</title>
+<title>MosquitoApp v20260423.37</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1318,6 +1318,13 @@ function App() {
         if(s>10&&w>10) pozycje.push({szerokosc:String(s),wysokosc:String(w),glebokosc:String(DOMYSLNA_GLEBOKOS),kolorRamki,kolorSiatki,ilosc});
       }
     }
+    // Format 3: szerokość 65cm, wysokość 135cm / szerokosc: 65 cm
+    const dimRe3=/(?:szeroko[sś][śc]\w*|szer\.?)\s*[:\-]?\s*(\d{2,3}[,.]?\d*)\s*(?:cm|CM)?\s*[,;]?\s*(?:wysoko[sś][śc]\w*|wys\.?)\s*[:\-]?\s*(\d{2,3}[,.]?\d*)\s*(?:cm|CM)?/gi;
+    while((m=dimRe3.exec(msg))!==null){
+      let s=parseFloat(m[1].replace(",",".")), w=parseFloat(m[2].replace(",","."));
+      if(s>w&&w>0){const tmp=s;s=w;w=tmp;}
+      if(s>10&&w>10) { pozycje.push({szerokosc:String(s),wysokosc:String(w),glebokosc:String(DOMYSLNA_GLEBOKOS),kolorRamki,kolorSiatki,ilosc:1}); found=true; }
+    }
     return pozycje.length>0?pozycje:null;
   }
 
@@ -1491,10 +1498,12 @@ function App() {
     // Duża mata: 125cm szerokość (BS), mała: ss
     const duza=isMata&&(offerLower.includes("205")||offerLower.includes("duż"));
     const names=(imp.offerNames||"").split(", ").filter(function(n){return !MOSK_REGEX.test(n);});
-    let autoDesc=nrZlec||names.join(", ");
+    let autoDesc="";
     if(isMata){
       const ilosc=(imp.pozycje&&imp.pozycje.length>0?imp.pozycje.reduce((a,p)=>a+(parseInt(p.ilosc)||1),0):1);
       autoDesc=(nrZlec?nrZlec+" ":"")+ilosc+" "+(duza?"BS":"ss");
+    } else if(nrZlec){
+      autoDesc=nrZlec;
     }
     setShipmentDescription(autoDesc);
     if(isMata) setShipmentCustomSize(duza?{length:130,width:10,height:10,weight:4}:{length:110,width:10,height:10,weight:2});
@@ -2892,7 +2901,7 @@ function App() {
                   </div>
 
                   {/* Zakładki trybu */}
-                  <div style={{display:"flex",gap:6,marginBottom:16}}>
+                  <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
                     {[["kal","🧮 Z kalkulatora"],["parse","📐 Z nazwy oferty"],["manual","✏️ Ręcznie"]].map(([m,l])=>(
                       <button key={m} onClick={()=>setIM({mode:m})}
                         style={{padding:"5px 12px",fontSize:14,borderRadius:6,cursor:"pointer",fontWeight:700,
@@ -2900,9 +2909,37 @@ function App() {
                           border:"1px solid "+(mode===m?"#3a8a4a":"#1a3a2a"),
                           color:mode===m?"#7fcf7f":"#3a6a4a"}}>{l}</button>
                     ))}
+                    {imp.buyerMsg&&(
+                      <button onClick={async()=>{
+                        setIM({kalLoading:true,kalError:""});
+                        try{
+                          const r=await fetch(AUTORESPONDER_URL+"/order/parse",{
+                            method:"POST",
+                            headers:{"Content-Type":"application/json","x-api-key":AUTORESPONDER_KEY},
+                            body:JSON.stringify({msg:imp.buyerMsg})
+                          });
+                          const d=await r.json();
+                          if(!d.ok||!d.pozycje||d.pozycje.length===0) throw new Error(d.error||"AI nie znalazło wymiarów");
+                          setIM({pozycje:d.pozycje,mode:"parse",kalLoading:false,kalError:""});
+                        }catch(e){
+                          setIM({kalLoading:false,kalError:"🤖 "+e.message});
+                        }
+                      }}
+                        style={{padding:"5px 12px",fontSize:14,borderRadius:6,cursor:"pointer",fontWeight:700,
+                          background:"#1a1a3a",border:"1px solid #3a3a8a",color:"#9a9adf"}}>
+                        🤖 Parsuj z AI
+                      </button>
+                    )}
                   </div>
 
-                  {/* ── KAL tryb ── */}
+                  {/* buyerMsg podgląd */}
+                  {imp.buyerMsg&&(
+                    <div style={{background:"#0a0e1a",border:"1px solid #1a2a4a",borderRadius:6,padding:"6px 10px",marginBottom:12,fontSize:12,color:"#6a8abf",fontStyle:"italic"}}>
+                      💬 {imp.buyerMsg}
+                    </div>
+                  )}
+                  {importModal.kalError&&<div style={{color:"#df7a7a",fontSize:13,marginBottom:8}}>❌ {importModal.kalError}</div>}
+                  {importModal.kalLoading&&<div style={{color:"#7abfdf",fontSize:13,marginBottom:8}}>🤖 AI analizuje wiadomość...</div>}
                   {mode==="kal"&&(
                     <div>
                       <div style={{display:"flex",gap:8,marginBottom:8}}>
@@ -3053,7 +3090,20 @@ function App() {
                   <div style={{fontWeight:700,color:"#a0cfdf"}}>{shipmentModal.imp.klientImie}</div>
                   <div>{shipmentModal.imp.klientUlica}</div>
                   <div>{shipmentModal.imp.klientKod} {shipmentModal.imp.klientMiasto}</div>
-                  <div style={{marginTop:4,fontSize:14,color:"#4a7a9a",fontFamily:"monospace"}}>{shipmentModal.imp.allegroOrderId}</div>
+                  <div style={{marginTop:4,fontSize:12,color:"#4a7a9a",fontFamily:"monospace"}}>{shipmentModal.imp.allegroOrderId}</div>
+                  {/* Pozycje zamówienia */}
+                  <div style={{marginTop:8,background:"#0a140a",border:"1px solid #1a3a1a",borderRadius:5,padding:"6px 10px"}}>
+                    {(shipmentModal.imp.offerNames||"").split(", ").map((name,i)=>(
+                      <div key={i} style={{fontSize:12,color:"#5a9a7a",padding:"2px 0",borderBottom:i<(shipmentModal.imp.offerNames||"").split(", ").length-1?"1px solid #1a2a1a":"none"}}>
+                        • {name}
+                      </div>
+                    ))}
+                    {shipmentModal.imp.pozycje&&shipmentModal.imp.pozycje.length>1&&(
+                      <div style={{fontSize:11,color:"#3a6a4a",marginTop:4}}>
+                        {shipmentModal.imp.pozycje.reduce((a,p)=>a+(parseInt(p.ilosc)||1),0)} szt. łącznie
+                      </div>
+                    )}
+                  </div>
                 </div>
                 {shipmentLoading&&<div style={{color:"#7abfdf",fontSize:14,marginBottom:12}}>⟳ Pobieranie usług dostawy...</div>}
                 {!shipmentLoading&&shipmentModal.services.length>0&&(
