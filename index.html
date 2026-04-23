@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260422.13</title>
+<title>MosquitoApp v20260422.14</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1288,6 +1288,7 @@ function App() {
 
   function importAllegroOrder(imp){
     const allText=(imp.offerNames||"")+" "+(imp.uwagi||"");
+    console.log("importAllegroOrder buyerMsg:", JSON.stringify(imp.buyerMsg));
     const kalMatch=allText.match(/(?:FAV|STR|ARL|ALB|EVR|KAL)-\d{6}-\d{4}/i);
     const kalNum=kalMatch?kalMatch[0].toUpperCase():"";
     const firstOffer=(imp.offerNames||"").split(", ")[0];
@@ -1499,7 +1500,7 @@ function App() {
             width:{value:size.width,unit:"CENTIMETER"},
             height:{value:size.height,unit:"CENTIMETER"}
           }],
-          ...(isInPost && imp.pickupPointId ? {additionalProperties:[{name:"PICKUP_POINT_ID",value:imp.pickupPointId}]} : {})
+          ...(isInPost ? {additionalServices:["sendingAtPoint"]} : {})
         }]
       };
       console.log("createBody:", JSON.stringify(createBody, null, 2));
