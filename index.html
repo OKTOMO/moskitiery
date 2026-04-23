@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260423.23</title>
+<title>MosquitoApp v20260423.24</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1519,7 +1519,31 @@ function App() {
     const service=services.find(s=>s.id===shipmentServiceId)||services[0];
     const isInPost=(service?.name||'').toLowerCase().includes('inpost')||(service?.name||'').toLowerCase().includes('paczkomat')||(service?.carrierId||'').toLowerCase().includes('inpost');
     const SIZES={"A":{length:64,width:38,height:8,weight:25},"B":{length:64,width:38,height:19,weight:25},"C":{length:64,width:38,height:41,weight:25}};
-    const size=isInPost?(SIZES[shipmentSize]||SIZES["A"]):{length:shipmentCustomSize?.length||64,width:shipmentCustomSize?.width||38,height:shipmentCustomSize?.height||15,weight:shipmentCustomSize?.weight||5};
+    // Auto-kalkulator paczek
+    const desc=(shipmentDescription||"").toLowerCase();
+    const ssMatch=desc.match(/(\d+)\s*ss/);
+    const bsMatch=desc.match(/(\d+)\s*bs/);
+    const ssCount=ssMatch?parseInt(ssMatch[1]):0;
+    const bsCount=bsMatch?parseInt(bsMatch[1]):0;
+    let autoPkgs=[];
+    if(ssCount>0||bsCount>0){
+      if(ssCount>0){
+        const batches=Math.ceil(ssCount/4);
+        for(let b=0;b<batches;b++){
+          const n=Math.min(4,ssCount-b*4);
+          autoPkgs.push({type:"PACKAGE",weight:{value:n*2,unit:"KILOGRAMS"},length:{value:110,unit:"CENTIMETER"},width:{value:n*10,unit:"CENTIMETER"},height:{value:10,unit:"CENTIMETER"},textOnLabel:`${n} ss`});
+        }
+      }
+      if(bsCount>0){
+        const batches=Math.ceil(bsCount/2);
+        for(let b=0;b<batches;b++){
+          const n=Math.min(2,bsCount-b*2);
+          autoPkgs.push({type:"PACKAGE",weight:{value:n*4,unit:"KILOGRAMS"},length:{value:130,unit:"CENTIMETER"},width:{value:n*10,unit:"CENTIMETER"},height:{value:10,unit:"CENTIMETER"},textOnLabel:`${n} BS`});
+        }
+      }
+    }
+    const manualPkg={type:"PACKAGE",weight:{value:isInPost?(SIZES[shipmentSize]||SIZES["A"]).weight:shipmentCustomSize?.weight||5,unit:"KILOGRAMS"},length:{value:isInPost?(SIZES[shipmentSize]||SIZES["A"]).length:shipmentCustomSize?.length||64,unit:"CENTIMETER"},width:{value:isInPost?(SIZES[shipmentSize]||SIZES["A"]).width:shipmentCustomSize?.width||38,unit:"CENTIMETER"},height:{value:isInPost?(SIZES[shipmentSize]||SIZES["A"]).height:shipmentCustomSize?.height||15,unit:"CENTIMETER"},textOnLabel:shipmentDescription||""};
+    const packages=autoPkgs.length>0?autoPkgs:[manualPkg];
     if(!service){setShipmentError("❌ Brak dostępnych usług dostawy dla tego zamówienia");setShipmentCreating(false);return;}
     try{
       // Krok 1: utwórz przesyłkę
@@ -1550,13 +1574,7 @@ function App() {
             email:imp.klientEmail||"",
             ...(isInPost && imp.pickupPointId ? {point:imp.pickupPointId} : {})
           },
-          packages:[{
-            type:"PACKAGE",
-            weight:{value:size.weight,unit:"KILOGRAMS"},
-            length:{value:size.length,unit:"CENTIMETER"},
-            width:{value:size.width,unit:"CENTIMETER"},
-            height:{value:size.height,unit:"CENTIMETER"}
-          }],
+          packages,
           ...(isInPost?{additionalServices:["sendingAtPoint"]}:{})
         }
       };
@@ -3000,7 +3018,37 @@ function App() {
                 return (
                   <div style={{marginBottom:16}}>
                     <div style={{fontSize:14,color:"#6aaa6a",marginBottom:8}}>Wymiary i waga:</div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8}}>
+                    {(()=>{
+                      // Auto-kalkulator paczki na podstawie opisu
+                      const desc=(shipmentDescription||"").toLowerCase();
+                      const ssMatch=desc.match(/(\d+)\s*ss/);
+                      const bsMatch=desc.match(/(\d+)\s*bs/);
+                      const ssCount=ssMatch?parseInt(ssMatch[1]):0;
+                      const bsCount=bsMatch?parseInt(bsMatch[1]):0;
+                      if(ssCount>0||bsCount>0){
+                        const pkgs=[];
+                        if(ssCount>0){
+                          const batches=Math.ceil(ssCount/4);
+                          for(let b=0;b<batches;b++){
+                            const n=Math.min(4,ssCount-b*4);
+                            pkgs.push({l:110,w:n*10,h:10,wt:n*2,label:`${n} ss`});
+                          }
+                        }
+                        if(bsCount>0){
+                          const batches=Math.ceil(bsCount/2);
+                          for(let b=0;b<batches;b++){
+                            const n=Math.min(2,bsCount-b*2);
+                            pkgs.push({l:130,w:n*10,h:10,wt:n*4,label:`${n} BS`});
+                          }
+                        }
+                        return <div style={{background:"#0a1a0a",border:"1px solid #1a3a1a",borderRadius:6,padding:"8px 10px",fontSize:13,color:"#5a9a5a"}}>
+                          🤖 Auto: {pkgs.map((p,i)=>`Paczka ${i+1}: ${p.l}×${p.w}×${p.h}cm, ${p.wt}kg (${p.label})`).join(" | ")}
+                          <div style={{fontSize:12,color:"#3a6a3a",marginTop:4}}>Wymiary i etykiety wyliczone automatycznie</div>
+                        </div>;
+                      }
+                      return null;
+                    })()}
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,marginTop:8}}>
                       {[["Dług.",shipmentCustomSize?.length||64,"length"],["Szer.",shipmentCustomSize?.width||38,"width"],["Wys.",shipmentCustomSize?.height||15,"height"],["Waga kg",shipmentCustomSize?.weight||5,"weight"]].map(([lbl,val,key])=>(
                         <div key={key}>
                           <div style={{fontSize:14,color:"#6aaa6a",marginBottom:3}}>{lbl}</div>
@@ -3009,6 +3057,9 @@ function App() {
                             style={{width:"100%",background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:5,color:"#c0e0c0",padding:"6px 4px",fontSize:14,textAlign:"center",boxSizing:"border-box"}}/>
                         </div>
                       ))}
+                    </div>
+                    <div style={{fontSize:12,color:"#3a5a3a",marginTop:6}}>
+                      Wpisz w opisie "2 ss" lub "1 BS" aby auto-wyliczyć wymiary i wagę
                     </div>
                   </div>
                 );
