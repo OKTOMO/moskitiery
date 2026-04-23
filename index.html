@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260423.29</title>
+<title>MosquitoApp v20260423.30</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -688,6 +688,7 @@ function App() {
   const [alZamKonto,setAlZamKonto]=useState('');
   const [allegroImportResults,setAllegroImportResults]=useState([]); // lista zamówień z Allegro
   const [appStatuses,setAppStatuses]=useState(()=>{try{return JSON.parse(localStorage.getItem('app_statuses')||'{}');}catch{return {};}});
+  const [allegroShipments,setAllegroShipments]=useState(()=>{try{return JSON.parse(localStorage.getItem('allegro_shipments')||'{}');}catch{return {};}});
   const [allegroImportShow,setAllegroImportShow]=useState(false);
   const [allegroImportError,setAllegroImportError]=useState("");
   const [shipmentModal,setShipmentModal]=useState(null);
@@ -1611,8 +1612,15 @@ function App() {
       const pdfBlob=new Blob([Uint8Array.from(atob(d2.pdf),c=>c.charCodeAt(0))],{type:"application/pdf"});
       const pdfUrl=URL.createObjectURL(pdfBlob);
       window.open(pdfUrl,"_blank");
-      // Auto-ustaw status aplikacji na "Wysłano"
-      if(shipmentModal.imp.allegroOrderId) setOrderAppStatus(shipmentModal.imp.allegroOrderId,"W realizacji");
+      // Zapisz shipmentId do ponownego druku
+      if(shipmentModal.imp.allegroOrderId){
+        setAllegroShipments(prev=>{
+          const next={...prev,[shipmentModal.imp.allegroOrderId]:{shipmentId:d1.shipmentId,kontoId:imp.kontoId,date:new Date().toLocaleDateString('pl-PL')}};
+          localStorage.setItem('allegro_shipments',JSON.stringify(next));
+          return next;
+        });
+        setOrderAppStatus(shipmentModal.imp.allegroOrderId,"Wysłano");
+      }
       setShipmentModal(null);
     }catch(e){
       setShipmentError("❌ "+e.message);
@@ -2758,10 +2766,36 @@ function App() {
                                         ➕ Zlecenie
                                       </button>
                                     )}
-                                    <button onClick={()=>openShipmentModal(imp)}
-                                      style={{padding:"5px 12px",fontSize:14,background:"#2a3a1a",border:"1px solid #5a7a2a",borderRadius:5,color:"#afdf7f",cursor:"pointer",fontWeight:700,whiteSpace:"nowrap"}}>
-                                      📦 Etykieta
-                                    </button>
+                                    {allegroShipments[imp.allegroOrderId]?(
+                                      <div style={{display:"flex",gap:3}}>
+                                        <button onClick={async()=>{
+                                          const sh=allegroShipments[imp.allegroOrderId];
+                                          try{
+                                            const r=await fetch(AUTORESPONDER_URL+"/shipment/label?kontoId="+sh.kontoId,{
+                                              method:"POST",headers:{"x-api-key":AUTORESPONDER_KEY,"Content-Type":"application/json"},
+                                              body:JSON.stringify({shipmentIds:[sh.shipmentId],pageSize:"A6"})
+                                            });
+                                            const d=await r.json();
+                                            if(!d.pdf) throw new Error(d.error||"Brak PDF");
+                                            const blob=new Blob([Uint8Array.from(atob(d.pdf),c=>c.charCodeAt(0))],{type:"application/pdf"});
+                                            window.open(URL.createObjectURL(blob),"_blank");
+                                          }catch(e){alert("❌ "+e.message);}
+                                        }}
+                                          title={"Ponownie drukuj etykietę z "+allegroShipments[imp.allegroOrderId].date}
+                                          style={{padding:"5px 10px",fontSize:14,background:"#1a3a2a",border:"1px solid #2a7a4a",borderRadius:5,color:"#6fcf9f",cursor:"pointer",fontWeight:700,whiteSpace:"nowrap"}}>
+                                          🖨️ Drukuj
+                                        </button>
+                                        <button onClick={()=>openShipmentModal(imp)} title="Nowa etykieta"
+                                          style={{padding:"5px 8px",fontSize:14,background:"#1a2a1a",border:"1px solid #2a4a2a",borderRadius:5,color:"#4a7a4a",cursor:"pointer"}}>
+                                          📦
+                                        </button>
+                                      </div>
+                                    ):(
+                                      <button onClick={()=>openShipmentModal(imp)}
+                                        style={{padding:"5px 12px",fontSize:14,background:"#2a3a1a",border:"1px solid #5a7a2a",borderRadius:5,color:"#afdf7f",cursor:"pointer",fontWeight:700,whiteSpace:"nowrap"}}>
+                                        📦 Etykieta
+                                      </button>
+                                    )}
                                     <a href={allegroLink} target="_blank" rel="noreferrer"
                                       style={{padding:"5px 12px",fontSize:14,background:"#1a2a3a",border:"1px solid #2a5a7a",borderRadius:5,color:"#7abfdf",cursor:"pointer",fontWeight:700,whiteSpace:"nowrap",textDecoration:"none",display:"inline-block"}}>
                                       🔗 Allegro
