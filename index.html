@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260423.12</title>
+<title>MosquitoApp v20260423.13</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1550,10 +1550,10 @@ function App() {
           },
           packages:[{
             type:"PACKAGE",
-            weight:{value:size.weight,unit:"KILOGRAM"},
-            length:{value:size.length,unit:"CENTIMETER"},
-            width:{value:size.width,unit:"CENTIMETER"},
-            height:{value:size.height,unit:"CENTIMETER"}
+            weight:{value:size.weight,unit:"KILOGRAMS"},
+            length:{value:size.length,unit:"CENTIMETERS"},
+            width:{value:size.width,unit:"CENTIMETERS"},
+            height:{value:size.height,unit:"CENTIMETERS"}
           }],
           ...(isInPost?{additionalServices:["sendingAtPoint"]}:{})
         }
