@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260423.24</title>
+<title>MosquitoApp v20260423.25</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1480,10 +1480,27 @@ function App() {
   }
 
   async function openShipmentModal(imp){
-    // Auto-opis: tytuły ofert bez moskitier okiennych/drzwiowych
+    // Znajdź powiązane zlecenie po allegroOrderId
+    const linkedOrder=orders.find(o=>o.allegroOrderId===imp.allegroOrderId);
+    const nrZlec=linkedOrder?linkedOrder.numerZlecenia:"";
+    // Auto-opis: numer zlecenia lub tytuły ofert
     const MOSK_REGEX=/moskitiera\s*(okienna|drzwiowa|okna|drzwi|ramkowa|na okno|na drzwi)/i;
+    const MATA_REGEX=/mata|podkładka|ochronna/i;
+    const isMata=MATA_REGEX.test(imp.offerNames||"");
     const names=(imp.offerNames||"").split(", ").filter(function(n){return !MOSK_REGEX.test(n);});
-    setShipmentDescription(names.join(", "));
+    // Dla mat — spróbuj wykryć rozmiar i wygenerować ss/BS
+    let autoDesc=nrZlec||names.join(", ");
+    if(isMata && !nrZlec){
+      // Bez zlecenia — zostaw nazwę oferty
+      autoDesc=names.join(", ");
+    }
+    setShipmentDescription(autoDesc);
+    // Auto-wymiary dla mat
+    if(isMata){
+      const offerLower=(imp.offerNames||"").toLowerCase();
+      const duza=offerLower.includes("125")&&offerLower.includes("205")||offerLower.includes("duż");
+      setShipmentCustomSize(duza?{length:130,width:10,height:10,weight:4}:{length:110,width:10,height:10,weight:2});
+    }
     setShipmentModal({imp, services:[]});
     setShipmentLoading(true);
     setShipmentError("");
