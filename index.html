@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260423.9</title>
+<title>MosquitoApp v20260423.10</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -2629,23 +2629,23 @@ function App() {
                               </div>
                             </td>
                             <td style={{padding:"8px 12px",color:"#7a9abf",whiteSpace:"nowrap"}}>{imp.data}</td>
-                            <td style={{padding:"8px 12px"}}>
-                              <div style={{fontWeight:imp.alreadyExists?400:600,color:isObrobione?"#5a8a5a":"#a0cfdf",display:"flex",alignItems:"center",gap:5}}>
-                                {isObrobione&&<span style={{fontSize:16}}>✅</span>}
+                            <td style={{padding:"8px 12px",maxWidth:140,overflow:"hidden"}} title={[imp.klientImie,imp.klientLogin,imp.klientMiasto].filter(Boolean).join(" | ")}>
+                              <div style={{fontWeight:imp.alreadyExists?400:600,color:isObrobione?"#5a8a5a":"#a0cfdf",display:"flex",alignItems:"center",gap:5,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                                {isObrobione&&<span style={{fontSize:14}}>✅</span>}
                                 {imp.klientImie||"—"}
                               </div>
-                              {imp.klientLogin&&<div style={{fontSize:14,color:"#3a6a8a",fontFamily:"monospace"}}>{imp.klientLogin}</div>}
+                              {imp.klientLogin&&<div style={{fontSize:12,color:"#3a6a8a",fontFamily:"monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{imp.klientLogin}</div>}
                               {(()=>{const kal=findKalForAllegro(imp.klientImie);return kal?(
-                                <div style={{marginTop:4,display:"flex",alignItems:"center",gap:5,background:"#1a3a1a",border:"1px solid #3a7a3a",borderRadius:5,padding:"2px 7px",width:"fit-content"}}>
+                                <div style={{marginTop:2,display:"flex",alignItems:"center",gap:3,background:"#1a3a1a",border:"1px solid #3a7a3a",borderRadius:4,padding:"1px 5px",width:"fit-content"}}>
                                   <span style={{fontSize:9,color:"#5fcf7f",fontWeight:700,fontFamily:"monospace"}}>{kal.orderNumber}</span>
-                                  {kal.status==="zrealizowane"?<span style={{fontSize:9,color:"#7a9a7a"}}>✓ zreal.</span>:<span style={{fontSize:9,color:"#ffcf6f"}}>⏳ otwarte</span>}
+                                  {kal.status==="zrealizowane"?<span style={{fontSize:9,color:"#7a9a7a"}}>✓</span>:<span style={{fontSize:9,color:"#ffcf6f"}}>⏳</span>}
                                 </div>
                               ):null;})()}
                             </td>
-                            <td style={{padding:"8px 12px",color:"#7a9abf"}}>{imp.klientMiasto||"—"}</td>
-                            <td style={{padding:"8px 12px",maxWidth:240}}>
-                              <div style={{color:"#5a8a9a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={imp.offerNames}>{imp.offerNames||"—"}</div>
-                              {imp.buyerMsg&&<div style={{marginTop:3,fontSize:12,color:"#cfaf6f",fontStyle:"italic",overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}} title={imp.buyerMsg}>💬 {imp.buyerMsg}</div>}
+                            <td style={{padding:"8px 8px",color:"#7a9abf",whiteSpace:"nowrap",maxWidth:80,overflow:"hidden",textOverflow:"ellipsis"}} title={imp.klientMiasto}>{imp.klientMiasto||"—"}</td>
+                            <td style={{padding:"8px 8px",maxWidth:160}} title={[imp.offerNames,imp.buyerMsg].filter(Boolean).join("\n")}>
+                              <div style={{color:"#5a8a9a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontSize:13}}>{imp.offerNames||"—"}</div>
+                              {imp.buyerMsg&&<div style={{marginTop:2,fontSize:11,color:"#cfaf6f",fontStyle:"italic",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>💬 {imp.buyerMsg}</div>}
                             </td>
                             <td style={{padding:"8px 12px",whiteSpace:"nowrap"}}>
                               <span style={{fontSize:14,padding:"2px 8px",borderRadius:10,fontWeight:700,
