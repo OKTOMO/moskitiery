@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260423.7</title>
+<title>MosquitoApp v20260423.8</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1303,7 +1303,7 @@ function App() {
     // Próbuj format mm najpierw
     let found=false;
     while((m=dimRe2.exec(msg))!==null){
-      let s=Math.round(parseFloat(m[1])/10), w=Math.round(parseFloat(m[2])/10);
+      let s=parseFloat((parseFloat(m[1])/10).toFixed(1)), w=parseFloat((parseFloat(m[2])/10).toFixed(1));
       if(s>w&&w>0){const tmp=s;s=w;w=tmp;}
       const ilosc=parseInt(m[3])||1;
       if(s>10&&w>10) { pozycje.push({szerokosc:String(s),wysokosc:String(w),glebokosc:String(DOMYSLNA_GLEBOKOS),kolorRamki,kolorSiatki,ilosc}); found=true; }
