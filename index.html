@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260423.3</title>
+<title>MosquitoApp v20260423.4</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1357,24 +1357,27 @@ function App() {
           ilosc:parseInt(p.ilosc)||1
         }))
       :(pozycje&&pozycje.length>0?pozycje:[pustaPoz()]);
-    setForm({
-      data:imp.data,
-      firma:imp.firma,
-      klientImie:imp.klientImie,
-      klientUlica:imp.klientUlica,
-      klientKod:imp.klientKod,
-      klientMiasto:imp.klientMiasto,
-      telefon:imp.telefon,
-      uwagi:[imp.offerNames,imp.buyerMsg].filter(Boolean).join(" | "),
-      pozycje:poz
-    });
-    setAllegroOrderIdForForm(imp.allegroOrderId);
-    setNumerOverride("");
-    setKalNumerForForm(kalData&&kalData.orderNumber?kalData.orderNumber:"");
     setImportModal(null);
     setAllegroImportShow(false);
     setTab("nowe");
-    setSaved(false);
+    // Opóźnienie żeby React zdążył wyrenderować zakładkę przed ustawieniem danych
+    setTimeout(()=>{
+      setForm({
+        data:imp.data,
+        firma:imp.firma,
+        klientImie:imp.klientImie,
+        klientUlica:imp.klientUlica,
+        klientKod:imp.klientKod,
+        klientMiasto:imp.klientMiasto,
+        telefon:imp.telefon,
+        uwagi:[imp.offerNames,imp.buyerMsg].filter(Boolean).join(" | "),
+        pozycje:poz
+      });
+      setAllegroOrderIdForForm(imp.allegroOrderId);
+      setNumerOverride("");
+      setKalNumerForForm(kalData&&kalData.orderNumber?kalData.orderNumber:"");
+      setSaved(false);
+    }, 50);
     // Zmień status na W REALIZACJI w Allegro
     if(imp.allegroOrderId && imp.kontoId){
       try{
