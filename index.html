@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260423.18</title>
+<title>MosquitoApp v20260423.19</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1566,7 +1566,7 @@ function App() {
         body:JSON.stringify(createBody)
       });
       const d1=await r1.json();
-      if(!r1.ok||!d1.shipmentId) throw new Error(d1.error+(d1.details?"\n"+JSON.stringify(d1.details):"")||JSON.stringify(d1));
+      if(!r1.ok||!d1.shipmentId) throw new Error(d1.error+(d1.details?"\n"+JSON.stringify(d1.details):"")+(d1.lastStatus?"\n"+JSON.stringify(d1.lastStatus):"")||JSON.stringify(d1));
       // Krok 2: pobierz etykietę PDF
       const r2=await fetch(AUTORESPONDER_URL+"/shipment/label?kontoId="+imp.kontoId,{
         method:"POST",
