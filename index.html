@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260423.2</title>
+<title>MosquitoApp v20260423.3</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1346,6 +1346,7 @@ function App() {
 
   async function doImportOrder(modal){
     const {imp,pozycje,kalData}=modal;
+    console.log("doImportOrder imp:", JSON.stringify({klientImie:imp.klientImie,klientUlica:imp.klientUlica,klientKod:imp.klientKod,klientMiasto:imp.klientMiasto,telefon:imp.telefon}));
     const poz=(kalData&&kalData.pozycje&&kalData.pozycje.length>0)
       ?kalData.pozycje.map(p=>({
           szerokosc:String(p.szerokosc||""),
