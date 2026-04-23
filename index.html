@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260423.37</title>
+<title>MosquitoApp v20260423.40</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1253,7 +1253,7 @@ function App() {
       }));
       // Sortuj: nowe pierwsze
       allResults.sort((a,b)=>{
-        if(a.alreadyExists!==b.alreadyExists) return a.alreadyExists?1:-1;
+        if(a.boughtAt&&b.boughtAt) return new Date(b.boughtAt)-new Date(a.boughtAt);
         return new Date(b.data)-new Date(a.data);
       });
       setAllegroImportResults(allResults);
@@ -1337,10 +1337,11 @@ function App() {
     let parsedPoz=parseDimsFromOfferName(firstOffer);
     let parsedPozycje=parsedPoz?[parsedPoz]:null;
     // Jeśli brak wymiarów w nazwie oferty — spróbuj z buyerMsg (wielopozycyjnie)
-    if(!parsedPozycje && imp.buyerMsg){
+    if((!parsedPozycje||parsedPozycje.length===0) && imp.buyerMsg){
       parsedPozycje=parseMultiDimsFromMsg(imp.buyerMsg);
-      if(!parsedPozycje) parsedPozycje=[parseDimsFromOfferName(imp.buyerMsg)].filter(Boolean);
+      if(!parsedPozycje||parsedPozycje.length===0) parsedPozycje=[parseDimsFromOfferName(imp.buyerMsg)].filter(Boolean);
     }
+    if(parsedPozycje&&parsedPozycje.length===0) parsedPozycje=null;
     // Wykryj kolory z buyerMsg (priorytet) lub offerNames i nadpisz wszystkie pozycje
     const colorSrc=((imp.buyerMsg||"")+" "+(imp.offerNames||"")).toLowerCase();
     const KOLORY_RAMKI_MAP=[
@@ -1672,7 +1673,18 @@ function App() {
             const refreshToks=JSON.parse(localStorage.getItem('allegro_refreshes')||'{}');
             const workerToks={};
             Object.keys(accessToks).forEach(function(k){if(accessToks[k]) workerToks[k]={access:accessToks[k],refresh:refreshToks[k]||''};});
-            fetch(AUTORESPONDER_URL+'/sync',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},body:JSON.stringify({tokens:workerToks})}).catch(()=>{});
+            fetch(AUTORESPONDER_URL+'/sync',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},body:JSON.stringify({tokens:workerToks})})
+              .then(()=>{
+                // Weryfikacja — sprawdź czy token zgadza się z kontoId
+                return fetch(AUTORESPONDER_URL+'/debug/me?kontoId='+kontaId,{headers:{'x-api-key':AUTORESPONDER_KEY}});
+              })
+              .then(r=>r.json())
+              .then(me=>{
+                if(me.ok && me.allegroLogin && me.allegroLogin.toLowerCase()!==kontaId.toLowerCase()){
+                  alert('⚠️ UWAGA: Zalogowano na konto "'+me.allegroLogin+'" zamiast "'+kontaId+'"!\n\nWyloguj się z Allegro, zaloguj jako '+kontaId+' i kliknij Odśwież ponownie.');
+                }
+              })
+              .catch(()=>{});
             setTab('allegro');
           }
         }).catch(e=>console.log('token error',e));
@@ -1699,7 +1711,17 @@ function App() {
         })
       });
       const d=await r.json();
-      if(!d.ok){alert('❌ Błąd DPD: '+(d.error||JSON.stringify(d)));setDpdLoading(false);return;}
+      if(!d.ok){
+        // Wyciągnij czytelny błąd z XML DPD
+        let errMsg=d.error||'Błąd DPD';
+        if(d.xml){
+          const faultMatch=d.xml.match(/<faultstring>([^<]+)<\/faultstring>/)||d.xml.match(/<message>([^<]+)<\/message>/);
+          if(faultMatch) errMsg+=': '+faultMatch[1];
+        }
+        alert('❌ '+errMsg);
+        setDpdLoading(false);
+        return;
+      }
       // Otwórz PDF etykiety
       const pdfBlob=new Blob([Uint8Array.from(atob(d.pdf),c=>c.charCodeAt(0))],{type:'application/pdf'});
       const url=URL.createObjectURL(pdfBlob);
@@ -2766,15 +2788,9 @@ function App() {
                               {(()=>{
                                 const isMosk=(imp.offerNames||"").toLowerCase().includes("moskitiera");
                                 const allegroLink="https://allegro.pl/orders/"+imp.allegroOrderId;
-                                if(imp.alreadyExists) return (
-                                  <div style={{display:"flex",gap:5,alignItems:"center"}}>
-                                    <span style={{fontSize:14,color:"#3a5a3a",fontStyle:"italic"}}>✓ w zleceniach</span>
-                                    <a href={allegroLink} target="_blank" rel="noreferrer"
-                                      style={{fontSize:14,padding:"2px 8px",background:"#1a2a1a",border:"1px solid #2a5a2a",borderRadius:4,color:"#5a9a5a",textDecoration:"none"}}>🔗 Allegro</a>
-                                  </div>
-                                );
                                 return (
-                                  <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+                                  <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
+                                    {imp.alreadyExists&&<span style={{fontSize:11,color:"#3a5a3a",fontStyle:"italic",whiteSpace:"nowrap"}}>✓ zlec.</span>}
                                     {isMosk&&(
                                       <button onClick={()=>importAllegroOrder(imp)}
                                         style={{padding:"5px 12px",fontSize:14,background:"#1a4a2a",border:"1px solid #3a8a4a",borderRadius:5,color:"#afffaf",cursor:"pointer",fontWeight:700,whiteSpace:"nowrap"}}>
@@ -3544,7 +3560,16 @@ function App() {
                         {token
                           ?<div style={{display:"flex",gap:5,alignItems:"center"}}>
                               <span style={{fontSize:13,color:"#4a8a4a"}}>✅</span>
-                              <button className="btn-sm" onClick={()=>allegroLogin(k.id)} style={{fontSize:12,padding:"2px 7px"}}>🔄 Odśwież</button>
+                              <button className="btn-sm" onClick={async()=>{
+                                // Weryfikuj aktualny token przed odświeżeniem
+                                try{
+                                  const me=await fetch(AUTORESPONDER_URL+'/debug/me?kontoId='+k.id,{headers:{'x-api-key':AUTORESPONDER_KEY}}).then(r=>r.json());
+                                  if(me.ok && me.allegroLogin && me.allegroLogin.toLowerCase()!==k.id.toLowerCase()){
+                                    if(!window.confirm('⚠️ Token "'+k.id+'" jest przypisany do konta "'+me.allegroLogin+'"!\n\nPrzed odświeżeniem wyloguj się z Allegro i zaloguj jako '+k.id+'.\n\nCzy mimo to odświeżyć?')) return;
+                                  }
+                                }catch(e){}
+                                allegroLogin(k.id);
+                              }} style={{fontSize:12,padding:"2px 7px"}}>🔄 Odśwież</button>
                               <button className="btn-del" style={{padding:"2px 7px",fontSize:12}} onClick={()=>{
                                 const t={...allegroTokens};delete t[k.id];
                                 const rr=JSON.parse(localStorage.getItem('allegro_refreshes')||'{}');
