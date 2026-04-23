@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260423.40</title>
+<title>MosquitoApp v20260423.41</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -414,7 +414,7 @@ function drukujPDF(order) {
   const rows = [...pozycjeRows, ...emptyRows].join("");
 
   const html=`<!DOCTYPE html><html lang="pl"><head><meta charset="utf-8">
-<title>${order.numerZlecenia||""} ${order.klientImie||""} ${order.klientMiasto||""}</title>
+<title>${order.numerZlecenia||""} ${order.klientImie||""} ${order.klientMiasto||""} L</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Arial,sans-serif;font-size:11px;padding:10px 14px;color:#000;background:#fff;width:210mm}
@@ -1495,6 +1495,7 @@ function App() {
     const MOSK_REGEX=/moskitiera\s*(okienna|drzwiowa|okna|drzwi|ramkowa|na okno|na drzwi)/i;
     const MATA_REGEX=/mata|podkładka|ochronna/i;
     const isMata=MATA_REGEX.test(imp.offerNames||"");
+    const isMoskitiera=(imp.offerNames||"").toLowerCase().includes("moskitiera");
     const offerLower=(imp.offerNames||"").toLowerCase();
     // Duża mata: 125cm szerokość (BS), mała: ss
     const duza=isMata&&(offerLower.includes("205")||offerLower.includes("duż"));
@@ -1507,12 +1508,14 @@ function App() {
       autoDesc=nrZlec;
     }
     setShipmentDescription(autoDesc);
-    if(isMata) setShipmentCustomSize(duza?{length:130,width:10,height:10,weight:4}:{length:110,width:10,height:10,weight:2});
+    if(isMoskitiera) setShipmentCustomSize({length:150,width:10,height:10,weight:5});
+    else if(isMata) setShipmentCustomSize(duza?{length:130,width:10,height:10,weight:4}:{length:110,width:10,height:10,weight:2});
+    if(!isMata&&!isMoskitiera) setShipmentCustomSize({length:64,width:38,height:15,weight:5});
     setShipmentModal({imp, services:[]});
     setShipmentLoading(true);
     setShipmentError("");
     setShipmentSize("A");
-    if(!isMata) setShipmentCustomSize({length:64,width:38,height:15,weight:5});
+    if(!isMata&&!isMoskitiera) setShipmentCustomSize({length:64,width:38,height:15,weight:5});
     try{
       const r=await fetch(AUTORESPONDER_URL+"/shipment/services?kontoId="+imp.kontoId+"&orderId="+imp.allegroOrderId,{
         headers:{"x-api-key":AUTORESPONDER_KEY}
