@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260422.14</title>
+<title>MosquitoApp v20260423.1</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1305,8 +1305,11 @@ function App() {
     ];
     const KOLORY_SIATKI_MAP=[["szara","Szara"],["szar","Szara"],["czarna","Czarna"],["czarn","Czarna"]];
     if(parsedPoz){
-      for(const [pat,val] of KOLORY_RAMKI_MAP){ if(colorSrc.includes(pat)){parsedPoz.kolorRamki=val;break;} }
+      console.log("parsedPoz przed nadpisaniem:", JSON.stringify(parsedPoz));
+      console.log("colorSrc:", colorSrc);
+      for(const [pat,val] of KOLORY_RAMKI_MAP){ if(colorSrc.includes(pat)){parsedPoz.kolorRamki=val;console.log("kolor ramki trafił:",pat,"→",val);break;} }
       for(const [pat,val] of KOLORY_SIATKI_MAP){ if(colorSrc.includes(pat)){parsedPoz.kolorSiatki=val;break;} }
+      console.log("parsedPoz po nadpisaniu:", JSON.stringify(parsedPoz));
     }
     setImportModal({
       imp,
