@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260423.6</title>
+<title>MosquitoApp v20260423.7</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1294,16 +1294,28 @@ function App() {
     let kolorRamki="Antracyt", kolorSiatki="Czarna";
     for(const [pat,val] of KOLORY_RAMKI){ if(lower.includes(pat)){kolorRamki=val;break;} }
     for(const [pat,val] of KOLORY_SIATKI){ if(lower.includes(pat)){kolorSiatki=val;break;} }
-    // Szukaj wzorców: 84x215 - 2 szt, 79x215 1szt, 84x215, itp.
-    const dimRe=/(\d{2,3}[,.]?\d*)\s*[xX\u00d7\u0445]\s*(\d{2,3}[,.]?\d*)\s*[-–]?\s*(\d+)?\s*(?:szt|sztuk)?/gi;
     const pozycje=[];
+    // Format 1: 84x215 - 2 szt / 84x215 2szt / 84x215
+    const dimRe1=/(\d{2,3}[,.]?\d*)\s*[xX\u00d7\u0445]\s*(\d{2,3}[,.]?\d*)\s*[-–]?\s*[xX]?\s*(\d+)?\s*(?:szt(?:uk[ia]?)?)?/gi;
+    // Format 2: 878mm/996mm x2 sztuki / 878mm/996mm
+    const dimRe2=/(\d{3,4})\s*mm\s*[\/\\]\s*(\d{3,4})\s*mm\s*[xX]?\s*(\d+)?\s*(?:szt(?:uk[ia]?)?)?/gi;
     let m;
-    while((m=dimRe.exec(msg))!==null){
-      let s=parseFloat(m[1].replace(",",".")),
-          w=parseFloat(m[2].replace(",","."));
+    // Próbuj format mm najpierw
+    let found=false;
+    while((m=dimRe2.exec(msg))!==null){
+      let s=Math.round(parseFloat(m[1])/10), w=Math.round(parseFloat(m[2])/10);
       if(s>w&&w>0){const tmp=s;s=w;w=tmp;}
       const ilosc=parseInt(m[3])||1;
-      pozycje.push({szerokosc:String(s),wysokosc:String(w),glebokosc:String(DOMYSLNA_GLEBOKOS),kolorRamki,kolorSiatki,ilosc});
+      if(s>10&&w>10) { pozycje.push({szerokosc:String(s),wysokosc:String(w),glebokosc:String(DOMYSLNA_GLEBOKOS),kolorRamki,kolorSiatki,ilosc}); found=true; }
+    }
+    // Jeśli nie znaleziono formatu mm — próbuj cm
+    if(!found){
+      while((m=dimRe1.exec(msg))!==null){
+        let s=parseFloat(m[1].replace(",",".")), w=parseFloat(m[2].replace(",","."));
+        if(s>w&&w>0){const tmp=s;s=w;w=tmp;}
+        const ilosc=parseInt(m[3])||1;
+        if(s>10&&w>10) pozycje.push({szerokosc:String(s),wysokosc:String(w),glebokosc:String(DOMYSLNA_GLEBOKOS),kolorRamki,kolorSiatki,ilosc});
+      }
     }
     return pozycje.length>0?pozycje:null;
   }
