@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260423.25</title>
+<title>MosquitoApp v20260423.26</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1505,7 +1505,7 @@ function App() {
     setShipmentLoading(true);
     setShipmentError("");
     setShipmentSize("A");
-      setShipmentCustomSize({length:64,width:38,height:15,weight:5});
+    if(!isMata) setShipmentCustomSize({length:64,width:38,height:15,weight:5});
     try{
       const r=await fetch(AUTORESPONDER_URL+"/shipment/services?kontoId="+imp.kontoId+"&orderId="+imp.allegroOrderId,{
         headers:{"x-api-key":AUTORESPONDER_KEY}
