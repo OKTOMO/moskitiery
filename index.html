@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260423.4</title>
+<title>MosquitoApp v20260423.6</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1279,11 +1279,33 @@ function App() {
     let kolorRamki="Antracyt", kolorSiatki="Czarna";
     const lower=name.toLowerCase();
     for(const [pat,val] of KOLORY_RAMKI){ if(lower.includes(pat)){kolorRamki=val;break;} }
-    // kolor siatki = drugie wystąpienie koloru
     const parts=lower.split(/\d+\s*[xX\u00d7]\s*\d+/);
     const afterDims=parts[1]||"";
     for(const [pat,val] of KOLORY_SIATKI){ if(afterDims.includes(pat)){kolorSiatki=val;break;} }
     return {szerokosc:String(s),wysokosc:String(w),glebokosc:String(DOMYSLNA_GLEBOKOS),kolorRamki,kolorSiatki,ilosc:1};
+  }
+
+  // Parser wielopozycyjny z buyerMsg — wykrywa wiele wymiarów i ilości
+  function parseMultiDimsFromMsg(msg){
+    if(!msg) return null;
+    const lower=msg.toLowerCase();
+    const KOLORY_RAMKI=[["winchester","Winchester"],["bia\u0142","Bia\u0142y"],["antracyt","Antracyt"],["br\u0105z","Br\u0105z"],["czarny","Czarny"],["orzech","Orzech"],["turner","Turner Oak"],["z\u0142oty d\u0105b","Z\u0142oty D\u0105b"],["ciemny d\u0105b","Ciemny D\u0105b"],["z\u0142ot","Z\u0142oty D\u0105b"],["ciemny","Ciemny D\u0105b"]];
+    const KOLORY_SIATKI=[["czarna","Czarna"],["czar","Czarna"],["szara","Szara"],["szar","Szara"]];
+    let kolorRamki="Antracyt", kolorSiatki="Czarna";
+    for(const [pat,val] of KOLORY_RAMKI){ if(lower.includes(pat)){kolorRamki=val;break;} }
+    for(const [pat,val] of KOLORY_SIATKI){ if(lower.includes(pat)){kolorSiatki=val;break;} }
+    // Szukaj wzorców: 84x215 - 2 szt, 79x215 1szt, 84x215, itp.
+    const dimRe=/(\d{2,3}[,.]?\d*)\s*[xX\u00d7\u0445]\s*(\d{2,3}[,.]?\d*)\s*[-–]?\s*(\d+)?\s*(?:szt|sztuk)?/gi;
+    const pozycje=[];
+    let m;
+    while((m=dimRe.exec(msg))!==null){
+      let s=parseFloat(m[1].replace(",",".")),
+          w=parseFloat(m[2].replace(",","."));
+      if(s>w&&w>0){const tmp=s;s=w;w=tmp;}
+      const ilosc=parseInt(m[3])||1;
+      pozycje.push({szerokosc:String(s),wysokosc:String(w),glebokosc:String(DOMYSLNA_GLEBOKOS),kolorRamki,kolorSiatki,ilosc});
+    }
+    return pozycje.length>0?pozycje:null;
   }
 
   function importAllegroOrder(imp){
@@ -1293,8 +1315,13 @@ function App() {
     const kalNum=kalMatch?kalMatch[0].toUpperCase():"";
     const firstOffer=(imp.offerNames||"").split(", ")[0];
     let parsedPoz=parseDimsFromOfferName(firstOffer);
-    if(!parsedPoz && imp.buyerMsg) parsedPoz=parseDimsFromOfferName(imp.buyerMsg);
-    // Wykryj kolory z buyerMsg (priorytet) lub offerNames
+    let parsedPozycje=parsedPoz?[parsedPoz]:null;
+    // Jeśli brak wymiarów w nazwie oferty — spróbuj z buyerMsg (wielopozycyjnie)
+    if(!parsedPozycje && imp.buyerMsg){
+      parsedPozycje=parseMultiDimsFromMsg(imp.buyerMsg);
+      if(!parsedPozycje) parsedPozycje=[parseDimsFromOfferName(imp.buyerMsg)].filter(Boolean);
+    }
+    // Wykryj kolory z buyerMsg (priorytet) lub offerNames i nadpisz wszystkie pozycje
     const colorSrc=((imp.buyerMsg||"")+" "+(imp.offerNames||"")).toLowerCase();
     const KOLORY_RAMKI_MAP=[
       ["winchester","Winchester"],["biały","Biały"],["bial","Biały"],
@@ -1304,21 +1331,25 @@ function App() {
       ["ciemny dąb","Ciemny Dąb"],["ciemny dab","Ciemny Dąb"]
     ];
     const KOLORY_SIATKI_MAP=[["szara","Szara"],["szar","Szara"],["czarna","Czarna"],["czarn","Czarna"]];
-    if(parsedPoz){
-      console.log("parsedPoz przed nadpisaniem:", JSON.stringify(parsedPoz));
+    if(parsedPozycje){
+      console.log("parsedPozycje przed nadpisaniem:", JSON.stringify(parsedPozycje));
       console.log("colorSrc:", colorSrc);
-      for(const [pat,val] of KOLORY_RAMKI_MAP){ if(colorSrc.includes(pat)){parsedPoz.kolorRamki=val;console.log("kolor ramki trafił:",pat,"→",val);break;} }
-      for(const [pat,val] of KOLORY_SIATKI_MAP){ if(colorSrc.includes(pat)){parsedPoz.kolorSiatki=val;break;} }
-      console.log("parsedPoz po nadpisaniu:", JSON.stringify(parsedPoz));
+      parsedPozycje=parsedPozycje.map(p=>{
+        const np={...p};
+        for(const [pat,val] of KOLORY_RAMKI_MAP){ if(colorSrc.includes(pat)){np.kolorRamki=val;break;} }
+        for(const [pat,val] of KOLORY_SIATKI_MAP){ if(colorSrc.includes(pat)){np.kolorSiatki=val;break;} }
+        return np;
+      });
+      console.log("parsedPozycje po nadpisaniu:", JSON.stringify(parsedPozycje));
     }
     setImportModal({
       imp,
-      mode:kalNum?"kal":(parsedPoz?"parse":"manual"),
+      mode:kalNum?"kal":(parsedPozycje?"parse":"manual"),
       kalNum,
       kalLoading:false,
       kalError:"",
       kalData:null,
-      pozycje:parsedPoz?[parsedPoz]:[pustaPoz()]
+      pozycje:parsedPozycje||[pustaPoz()]
     });
   }
 
@@ -2575,8 +2606,10 @@ function App() {
                           "albama_eu":["#4a3a1a","#dfaf5a"],"pedroshop_pl_365":["#3a2a1a","#cf8a4a"]
                         };
                         const [kBg,kCol]=KONTO_COLORS[imp.kontoId]||["#2a2a2a","#9a9a9a"];
+                        const as=appStatuses[imp.allegroOrderId]||"";
+                        const isObrobione=as==="W realizacji"||as==="Wysłano";
                         return (
-                          <tr key={idx} style={{borderBottom:"1px solid #0f1f2f",background:imp.alreadyExists?"transparent":"#0a1420",opacity:imp.alreadyExists?0.4:1,transition:"opacity .15s"}}>
+                          <tr key={idx} style={{borderBottom:"1px solid #0f1f2f",background:isObrobione?"#0a1a0a":imp.alreadyExists?"transparent":"#0a1420",opacity:imp.alreadyExists?0.4:isObrobione?0.6:1,transition:"opacity .15s"}}>
                             <td style={{padding:"8px 12px"}}>
                               <div style={{display:"flex",flexDirection:"column",gap:3}}>
                                 <span style={{fontSize:14,padding:"2px 7px",borderRadius:8,background:kBg,color:kCol,fontFamily:"monospace",fontWeight:700,display:"inline-block",width:"fit-content"}}>{imp.kontoId}</span>
@@ -2585,7 +2618,10 @@ function App() {
                             </td>
                             <td style={{padding:"8px 12px",color:"#7a9abf",whiteSpace:"nowrap"}}>{imp.data}</td>
                             <td style={{padding:"8px 12px"}}>
-                              <div style={{fontWeight:imp.alreadyExists?400:600,color:"#a0cfdf"}}>{imp.klientImie||"—"}</div>
+                              <div style={{fontWeight:imp.alreadyExists?400:600,color:isObrobione?"#5a8a5a":"#a0cfdf",display:"flex",alignItems:"center",gap:5}}>
+                                {isObrobione&&<span style={{fontSize:16}}>✅</span>}
+                                {imp.klientImie||"—"}
+                              </div>
                               {imp.klientLogin&&<div style={{fontSize:14,color:"#3a6a8a",fontFamily:"monospace"}}>{imp.klientLogin}</div>}
                               {(()=>{const kal=findKalForAllegro(imp.klientImie);return kal?(
                                 <div style={{marginTop:4,display:"flex",alignItems:"center",gap:5,background:"#1a3a1a",border:"1px solid #3a7a3a",borderRadius:5,padding:"2px 7px",width:"fit-content"}}>
