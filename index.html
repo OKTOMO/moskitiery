@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.43</title>
+<title>MosquitoApp v20260424.44</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260424.43';
+  window.__MOSK_VERSION='20260424.44';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -1315,11 +1315,15 @@ function App() {
     let s=parseFloat(dimMatch[1].replace(",",".")),
         w=parseFloat(dimMatch[2].replace(",","."));
     if(s>w&&w>0){const tmp=s;s=w;w=tmp;}
-    const KOLORY_RAMKI=[["winchester","Winchester"],["bia\u0142","Bia\u0142y"],["antracyt","Antracyt"],["br\u0105z","Br\u0105z"],["czarny","Czarny"],["orzech","Orzech"],["turner","Turner Oak"],["z\u0142oty d\u0105b","Z\u0142oty D\u0105b"],["ciemny d\u0105b","Ciemny D\u0105b"],["z\u0142ot","Z\u0142oty D\u0105b"],["ciemny","Ciemny D\u0105b"]];
-    const KOLORY_SIATKI=[["czar","Czarna"],["szar","Szara"],["bia\u0142","Bia\u0142a"],["antracyt","Antracyt"]];
+    const KOLOR_NR={"1":"Biały","2":"Brąz","3":"Antracyt","4":"Czarny","5":"Złoty Dąb","6":"Ciemny Dąb","7":"Turner Oak","8":"Orzech","9":"Winchester","10":"Mahoń"};
+    const KOLORY_RAMKI=[["winchester","Winchester"],["biał","Biały"],["antracyt","Antracyt"],["brąz","Brąz"],["czarny","Czarny"],["orzech","Orzech"],["turner","Turner Oak"],["złoty dąb","Złoty Dąb"],["ciemny dąb","Ciemny Dąb"],["złot","Złoty Dąb"],["ciemny","Ciemny Dąb"],["mahon","Mahoń"],["maho\u0144","Maho\u0144"]];
+    const KOLORY_SIATKI=[["czar","Czarna"],["szar","Szara"],["biał","Biała"],["antracyt","Antracyt"]];
     let kolorRamki="Antracyt", kolorSiatki="Czarna";
     const lower=name.toLowerCase();
-    for(const [pat,val] of KOLORY_RAMKI){ if(lower.includes(pat)){kolorRamki=val;break;} }
+    // Najpierw sprawdź kod numeryczny np. "kolor 9" lub "kol 9"
+    const nrMatch=lower.match(/(?:kolor|kol\.?)\s*(\d{1,2})/);
+    if(nrMatch && KOLOR_NR[nrMatch[1]]) kolorRamki=KOLOR_NR[nrMatch[1]];
+    else { for(const [pat,val] of KOLORY_RAMKI){ if(lower.includes(pat)){kolorRamki=val;break;} } }
     const parts=lower.split(/\d+\s*[xX\u00d7]\s*\d+/);
     const afterDims=parts[1]||"";
     for(const [pat,val] of KOLORY_SIATKI){ if(afterDims.includes(pat)){kolorSiatki=val;break;} }
@@ -1330,10 +1334,14 @@ function App() {
   function parseMultiDimsFromMsg(msg){
     if(!msg) return null;
     const lower=msg.toLowerCase();
-    const KOLORY_RAMKI=[["winchester","Winchester"],["bia\u0142","Bia\u0142y"],["antracyt","Antracyt"],["br\u0105z","Br\u0105z"],["czarny","Czarny"],["orzech","Orzech"],["turner","Turner Oak"],["z\u0142oty d\u0105b","Z\u0142oty D\u0105b"],["ciemny d\u0105b","Ciemny D\u0105b"],["z\u0142ot","Z\u0142oty D\u0105b"],["ciemny","Ciemny D\u0105b"]];
+    const KOLOR_NR={"1":"Biały","2":"Brąz","3":"Antracyt","4":"Czarny","5":"Złoty Dąb","6":"Ciemny Dąb","7":"Turner Oak","8":"Orzech","9":"Winchester","10":"Mahoń"};
+    const KOLORY_RAMKI=[["winchester","Winchester"],["biał","Biały"],["antracyt","Antracyt"],["brąz","Brąz"],["czarny","Czarny"],["orzech","Orzech"],["turner","Turner Oak"],["złoty dąb","Złoty Dąb"],["ciemny dąb","Ciemny Dąb"],["złot","Złoty Dąb"],["ciemny","Ciemny Dąb"],["mahon","Mahoń"]];
     const KOLORY_SIATKI=[["czarna","Czarna"],["czar","Czarna"],["szara","Szara"],["szar","Szara"]];
     let kolorRamki="Antracyt", kolorSiatki="Czarna";
-    for(const [pat,val] of KOLORY_RAMKI){ if(lower.includes(pat)){kolorRamki=val;break;} }
+    // Najpierw kod numeryczny
+    const nrMatch=lower.match(/(?:kolor|kol\.?)\s*(\d{1,2})/);
+    if(nrMatch && KOLOR_NR[nrMatch[1]]) kolorRamki=KOLOR_NR[nrMatch[1]];
+    else { for(const [pat,val] of KOLORY_RAMKI){ if(lower.includes(pat)){kolorRamki=val;break;} } }
     for(const [pat,val] of KOLORY_SIATKI){ if(lower.includes(pat)){kolorSiatki=val;break;} }
     const pozycje=[];
     // Format 1: 84x215 - 2 szt / 84x215 2szt / 84x215
