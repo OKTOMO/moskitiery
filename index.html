@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.47</title>
+<title>MosquitoApp v20260424.48</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260424.47';
+  window.__MOSK_VERSION='20260424.48';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -1426,7 +1426,7 @@ function App() {
       });
     }
     // Jeśli brak wymiarów — użyj pustaPoz() ale z wykrytymi kolorami
-    const defaultPoz=()=>({...pustaPoz(),...(detectedKolorRamki?{kolorRamki:detectedKolorRamki}:{}),(detectedKolorSiatki?{kolorSiatki:detectedKolorSiatki}:{})});
+    const defaultPoz=()=>{const p=pustaPoz();if(detectedKolorRamki)p.kolorRamki=detectedKolorRamki;if(detectedKolorSiatki)p.kolorSiatki=detectedKolorSiatki;return p;};
     setImportModal({
       imp,
       mode:kalNum?"kal":(parsedPozycje?"parse":"manual"),
