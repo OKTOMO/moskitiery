@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.9</title>
+<title>MosquitoApp v20260424.10</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1546,24 +1546,36 @@ function App() {
     setMailPreview(null);
     setMailSending(prev=>({...prev,[imp.allegroOrderId]:true}));
     try{
+      if(typeof window.html2pdf!=='function') throw new Error('html2pdf.js nie załadowany — odśwież stronę (Ctrl+Shift+R)');
       const attachments=[];
       // Zlecenie PDF — wygeneruj z HTML przez html2pdf.js
       const pdfHtml=generateOrderHtml(order);
-      // Kontener poza viewportem (żeby nie mignął userowi)
+      // Kontener w widocznym obszarze, ale z opacity 0 i z-index -1 (html2canvas ignoruje fixed poza viewportem)
       const holder=document.createElement('div');
-      holder.style.cssText='position:fixed;left:-10000px;top:0;width:210mm;';
-      holder.innerHTML=pdfHtml.replace(/^[\s\S]*?<body[^>]*>/i,'').replace(/<\/body>[\s\S]*$/i,'');
+      holder.style.cssText='position:absolute;left:0;top:0;width:210mm;opacity:0;z-index:-1;pointer-events:none;background:#fff;';
+      const bodyMatch=pdfHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+      holder.innerHTML=bodyMatch?bodyMatch[1]:pdfHtml;
       document.body.appendChild(holder);
-      const pdfBlob=await window.html2pdf().set({
-        margin:[6,8,6,8],
-        filename:`${subject} L.pdf`,
-        image:{type:'jpeg',quality:0.95},
-        html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},
-        jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
-      }).from(holder).outputPdf('blob');
-      document.body.removeChild(holder);
+      // Poczekaj frame na render
+      await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,50)));
+      console.log('[PDF] holder size:',holder.offsetWidth,'x',holder.offsetHeight);
+      let pdfBlob;
+      try{
+        pdfBlob=await window.html2pdf().set({
+          margin:[6,8,6,8],
+          filename:`${subject} L.pdf`,
+          image:{type:'jpeg',quality:0.95},
+          html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false},
+          jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
+        }).from(holder).outputPdf('blob');
+      }finally{
+        if(holder.parentNode) document.body.removeChild(holder);
+      }
+      console.log('[PDF] blob size:',pdfBlob?.size,'bytes');
+      if(!pdfBlob||pdfBlob.size<1000) throw new Error('PDF pusty/uszkodzony (size='+(pdfBlob?.size||0)+'B)');
       const pdfB64=await new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.readAsDataURL(pdfBlob);});
       attachments.push({name:`${subject} L.pdf`,content:pdfB64,mimeType:'application/pdf'});
+      console.log('[PDF] base64 length:',pdfB64.length);
       // Etykieta PDF
       const sh=allegroShipments[imp.allegroOrderId];
       if(sh){
@@ -1573,22 +1585,30 @@ function App() {
             body:JSON.stringify({shipmentIds:[sh.shipmentId],pageSize:"A6"})
           });
           const ld=await lr.json();
-          if(ld.pdf) attachments.push({name:`${subject} etykieta.pdf`,content:ld.pdf,mimeType:'application/pdf'});
-        }catch(e){}
+          if(ld.pdf){
+            attachments.push({name:`${subject} etykieta.pdf`,content:ld.pdf,mimeType:'application/pdf'});
+            console.log('[LABEL] base64 length:',ld.pdf.length);
+          } else {
+            console.warn('[LABEL] brak pdf w response:',ld);
+          }
+        }catch(e){ console.warn('[LABEL] błąd pobrania:',e); }
       }
+      console.log('[MAIL] wysyłka: '+attachments.length+' załącznik(ów)');
       const r=await fetch(AUTORESPONDER_URL+'/email/send',{
         method:'POST',
         headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},
         body:JSON.stringify({to,subject,content:'',attachments})
       });
       const d=await r.json();
+      console.log('[MAIL] worker response:',d);
       if(d.ok){
-        alert(`✅ Mail wysłany do ${to}\nTemat: ${subject}`);
-        // Odśwież listę ostatnich adresów (worker sam dopisał)
+        const attCount=d.attachmentsUploaded!==undefined?d.attachmentsUploaded:attachments.length;
+        alert(`✅ Mail wysłany do ${to}\nTemat: ${subject}\nZałączniki: ${attCount}/${attachments.length}`);
         loadRecentEmails();
       }
       else throw new Error(JSON.stringify(d));
     }catch(e){
+      console.error('[MAIL] błąd:',e);
       alert('❌ Błąd wysyłki: '+e.message);
     }
     setMailSending(prev=>({...prev,[imp.allegroOrderId]:false}));
