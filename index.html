@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.37</title>
+<title>MosquitoApp v20260424.38</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260424.37';
+  window.__MOSK_VERSION='20260424.38';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -5471,7 +5471,11 @@ function App() {
                 ))}
               </div>
             )}
-            <div style={{marginBottom:6,fontSize:13}}><span style={{color:"#4a7a9a"}}>Temat:</span> <strong style={{color:"#cfdfaf"}}>{mailPreview.subject}</strong></div>
+            <div style={{marginBottom:6,display:"flex",alignItems:"center",gap:8}}>
+              <span style={{color:"#4a7a9a",fontSize:13,whiteSpace:"nowrap"}}>Temat:</span>
+              <input value={mailPreview.subject} onChange={e=>setMailPreview(p=>({...p,subject:e.target.value}))}
+                style={{flex:1,background:"#0a140a",border:"1px solid #2a4a2a",borderRadius:4,color:"#cfdfaf",padding:"4px 8px",fontSize:13,fontFamily:"monospace"}}/>
+            </div>
             <div style={{fontSize:12,marginBottom:12}}>
               <div style={{color:"#7acf7a"}}>📄 {mailPreview.subject} L.pdf</div>
               {mailPreview.hasEtykieta?<div style={{color:"#7acf7a"}}>📦 etykieta.pdf</div>:<div style={{color:"#cf9a4a"}}>⚠️ Brak etykiety</div>}
