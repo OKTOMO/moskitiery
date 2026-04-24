@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.30</title>
+<title>MosquitoApp v20260424.31</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260424.30';
+  window.__MOSK_VERSION='20260424.31';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -663,7 +663,7 @@ table.main td.kolor{font-size:14px;font-weight:700}
 // ─── APP ─────────────────────────────────────────────────────────────────────
 function App() {
   const [activeProfile,setActiveProfile]=useState(()=>localStorage.getItem('active_profile')||"");
-  const [tab,setTab]=useState(()=>new URLSearchParams(window.location.search).has("code")?"allegro":"nowe");
+  const [tab,setTab]=useState(()=>new URLSearchParams(window.location.search).has("code")?"allegro":"zamowienia");
   async function fetchInvoiceFromAllegro(orderId, firma){
     const kontaMap={"F":"favo5","AR":"arlis_pl","AP":"albama_eu","E":"everis_pl"};
     const kontoId=kontaMap[firma]||"favo5"; // fallback, używany tylko dla faktur
@@ -5514,146 +5514,139 @@ function App() {
         )}
 
       </div>
-    </div>
 
-    {/* ── GLOBALNE MODAŁY — działają z każdej zakładki ── */}
-    {shipmentModal&&(
-      <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.75)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center"}}
-        onClick={e=>{if(e.target===e.currentTarget){setShipmentModal(null);setShipmentError("");}}}>
-        <div style={{background:"#0c1a0c",border:"1px solid #3a7a3a",borderRadius:12,padding:24,width:420,maxWidth:"95vw",maxHeight:"90vh",overflowY:"auto"}}>
-          <div style={{fontWeight:700,fontSize:15,color:"#afdf7f",marginBottom:16}}>📦 Generuj etykietę</div>
-          <div style={{marginBottom:12,fontSize:14,color:"#7a9a7a"}}>
-            <div style={{fontWeight:700,color:"#a0cfdf"}}>{shipmentModal.imp.klientImie}</div>
-            <div>{shipmentModal.imp.klientUlica}</div>
-            <div>{shipmentModal.imp.klientKod} {shipmentModal.imp.klientMiasto}</div>
-            <div style={{marginTop:4,fontSize:12,color:"#4a7a9a",fontFamily:"monospace"}}>{shipmentModal.imp.allegroOrderId}</div>
-          </div>
-          {shipmentLoading&&<div style={{color:"#4a7a9a",marginBottom:8}}>⟳ Ładowanie usług...</div>}
-          {shipmentError&&<div style={{color:"#cf4a4a",marginBottom:8,fontSize:13}}>❌ {shipmentError}</div>}
-          {!shipmentLoading&&!shipmentError&&(
-            <div>
-              <div style={{marginBottom:10}}>
-                <label style={{fontSize:12,color:"#4a7a4a",display:"block",marginBottom:4}}>USŁUGA KURIERSKA</label>
-                <select value={shipmentServiceId} onChange={e=>setShipmentServiceId(e.target.value)}
-                  style={{width:"100%",padding:"6px 8px",fontSize:13,background:"#0a1a0a",border:"1px solid #2a4a2a",borderRadius:4,color:"#9fcf9f"}}>
-                  <option value="">Wybierz...</option>
-                  {shipmentModal.services.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </div>
-              <div style={{marginBottom:10}}>
-                <label style={{fontSize:12,color:"#4a7a4a",display:"block",marginBottom:4}}>OPIS PRZESYŁKI</label>
-                <input value={shipmentDescription} onChange={e=>setShipmentDescription(e.target.value)}
-                  style={{width:"100%",padding:"6px 8px",fontSize:13,background:"#0a1a0a",border:"1px solid #2a4a2a",borderRadius:4,color:"#9fcf9f"}}/>
-              </div>
-              <div style={{display:"flex",gap:8,marginBottom:12}}>
-                {["A","B","C","custom"].map(sz=>(
-                  <button key={sz} onClick={()=>setShipmentSize(sz)}
-                    style={{padding:"4px 10px",fontSize:12,borderRadius:4,cursor:"pointer",
-                      background:shipmentSize===sz?"#2a5a2a":"#1a2a1a",
-                      border:`1px solid ${shipmentSize===sz?"#5a9a5a":"#2a4a2a"}`,color:"#9fcf9f"}}>
-                    {sz==="custom"?"Własny":sz}
+      {/* ── GLOBALNE MODAŁY — działają z każdej zakładki ── */}
+      {shipmentModal&&(
+        <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.75)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center"}}
+          onClick={e=>{if(e.target===e.currentTarget){setShipmentModal(null);setShipmentError("");}}}>
+          <div style={{background:"#0c1a0c",border:"1px solid #3a7a3a",borderRadius:12,padding:24,width:420,maxWidth:"95vw",maxHeight:"90vh",overflowY:"auto"}}>
+            <div style={{fontWeight:700,fontSize:15,color:"#afdf7f",marginBottom:16}}>📦 Generuj etykietę</div>
+            <div style={{marginBottom:12,fontSize:14,color:"#7a9a7a"}}>
+              <div style={{fontWeight:700,color:"#a0cfdf"}}>{shipmentModal.imp.klientImie}</div>
+              <div>{shipmentModal.imp.klientUlica}</div>
+              <div>{shipmentModal.imp.klientKod} {shipmentModal.imp.klientMiasto}</div>
+              <div style={{marginTop:4,fontSize:12,color:"#4a7a9a",fontFamily:"monospace"}}>{shipmentModal.imp.allegroOrderId}</div>
+            </div>
+            {shipmentLoading&&<div style={{color:"#4a7a9a",marginBottom:8}}>⟳ Ładowanie usług...</div>}
+            {shipmentError&&<div style={{color:"#cf4a4a",marginBottom:8,fontSize:13}}>❌ {shipmentError}</div>}
+            {!shipmentLoading&&!shipmentError&&(
+              <div>
+                <div style={{marginBottom:10}}>
+                  <label style={{fontSize:12,color:"#4a7a4a",display:"block",marginBottom:4}}>USŁUGA KURIERSKA</label>
+                  <select value={shipmentServiceId} onChange={e=>setShipmentServiceId(e.target.value)}
+                    style={{width:"100%",padding:"6px 8px",fontSize:13,background:"#0a1a0a",border:"1px solid #2a4a2a",borderRadius:4,color:"#9fcf9f"}}>
+                    <option value="">Wybierz...</option>
+                    {shipmentModal.services.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                  </select>
+                </div>
+                <div style={{marginBottom:10}}>
+                  <label style={{fontSize:12,color:"#4a7a4a",display:"block",marginBottom:4}}>OPIS PRZESYŁKI</label>
+                  <input value={shipmentDescription} onChange={e=>setShipmentDescription(e.target.value)}
+                    style={{width:"100%",padding:"6px 8px",fontSize:13,background:"#0a1a0a",border:"1px solid #2a4a2a",borderRadius:4,color:"#9fcf9f"}}/>
+                </div>
+                <div style={{display:"flex",gap:8,marginBottom:12}}>
+                  {["A","B","C","custom"].map(sz=>(
+                    <button key={sz} onClick={()=>setShipmentSize(sz)}
+                      style={{padding:"4px 10px",fontSize:12,borderRadius:4,cursor:"pointer",
+                        background:shipmentSize===sz?"#2a5a2a":"#1a2a1a",
+                        border:`1px solid ${shipmentSize===sz?"#5a9a5a":"#2a4a2a"}`,color:"#9fcf9f"}}>
+                      {sz==="custom"?"Własny":sz}
+                    </button>
+                  ))}
+                </div>
+                {shipmentSize==="custom"&&(
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
+                    {["length","width","height","weight"].map(f=>(
+                      <div key={f}>
+                        <label style={{fontSize:11,color:"#4a7a4a",display:"block"}}>{f==="weight"?"Waga (kg)":f==="length"?"Dł (cm)":f==="width"?"Szer (cm)":"Wys (cm)"}</label>
+                        <input type="number" value={shipmentCustomSize[f]} onChange={e=>setShipmentCustomSize(p=>({...p,[f]:parseFloat(e.target.value)||0}))}
+                          style={{width:"100%",padding:"4px 6px",fontSize:13,background:"#0a1a0a",border:"1px solid #2a4a2a",borderRadius:4,color:"#9fcf9f"}}/>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={()=>{setShipmentModal(null);setShipmentError("");}}
+                    style={{flex:1,padding:"8px",fontSize:14,borderRadius:6,cursor:"pointer",background:"#1a2a1a",border:"1px solid #2a4a2a",color:"#5a8a5a"}}>
+                    Anuluj
                   </button>
-                ))}
+                  <button disabled={shipmentCreating||!shipmentServiceId}
+                    onClick={async()=>{
+                      if(!shipmentServiceId){alert("Wybierz usługę");return;}
+                      setShipmentCreating(true);
+                      try{
+                        const imp=shipmentModal.imp;
+                        const body={kontoId:imp.kontoId,orderId:imp.allegroOrderId,serviceId:shipmentServiceId,description:shipmentDescription,size:shipmentSize==="custom"?shipmentCustomSize:shipmentSize};
+                        const r=await fetch(AUTORESPONDER_URL+"/shipment/create",{method:"POST",headers:{"x-api-key":AUTORESPONDER_KEY,"Content-Type":"application/json"},body:JSON.stringify(body)});
+                        const d=await r.json();
+                        if(!d.ok) throw new Error(d.error||JSON.stringify(d));
+                        const sh={shipmentId:d.shipmentId,waybill:d.waybill,kontoId:imp.kontoId,serviceId:shipmentServiceId};
+                        setAllegroShipments(prev=>{const n={...prev,[imp.allegroOrderId]:sh};localStorage.setItem("allegro_shipments",JSON.stringify(n));return n;});
+                        setOrderAppStatus(imp.allegroOrderId,"W realizacji");
+                        setShipmentModal(null);setShipmentError("");
+                        const r2=await fetch(AUTORESPONDER_URL+"/shipment/label?kontoId="+imp.kontoId,{method:"POST",headers:{"x-api-key":AUTORESPONDER_KEY,"Content-Type":"application/json"},body:JSON.stringify({shipmentIds:[d.shipmentId],pageSize:"A6"})});
+                        const d2=await r2.json();
+                        if(!r2.ok||!d2.pdf) throw new Error(d2.error||"Brak PDF");
+                        const w=window.open();w.document.write(`<html><body style="margin:0"><iframe src="data:application/pdf;base64,${d2.pdf}" width="100%" height="100%" style="border:0"></iframe></body></html>`);
+                      }catch(e){setShipmentError(e.message);}
+                      setShipmentCreating(false);
+                    }}
+                    style={{flex:2,padding:"8px",fontSize:14,fontWeight:700,borderRadius:6,cursor:shipmentCreating?"not-allowed":"pointer",
+                      background:shipmentCreating?"#1a2a1a":"#2a5a1a",border:"1px solid #3a8a2a",color:"#afffaf"}}>
+                    {shipmentCreating?"⟳ Tworzę...":"📦 Utwórz etykietę"}
+                  </button>
+                </div>
               </div>
-              {shipmentSize==="custom"&&(
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
-                  {["length","width","height","weight"].map(f=>(
-                    <div key={f}>
-                      <label style={{fontSize:11,color:"#4a7a4a",display:"block"}}>{f==="weight"?"Waga (kg)":f==="length"?"Dł (cm)":f==="width"?"Szer (cm)":"Wys (cm)"}</label>
-                      <input type="number" value={shipmentCustomSize[f]} onChange={e=>setShipmentCustomSize(p=>({...p,[f]:parseFloat(e.target.value)||0}))}
-                        style={{width:"100%",padding:"4px 6px",fontSize:13,background:"#0a1a0a",border:"1px solid #2a4a2a",borderRadius:4,color:"#9fcf9f"}}/>
-                    </div>
+            )}
+          </div>
+        </div>
+      )}
+      {mailPreview&&(
+        <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.75)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center"}}
+          onClick={e=>{if(e.target===e.currentTarget)setMailPreview(null);}}>
+          <div style={{background:"#0c1a0c",border:"1px solid #3a5a7a",borderRadius:12,padding:24,width:460,maxWidth:"95vw"}}>
+            <div style={{fontWeight:700,fontSize:15,color:"#af9adf",marginBottom:16}}>✉️ Wyślij na produkcję</div>
+            <div style={{marginBottom:12,fontSize:13,color:"#7a9a7a"}}>
+              <div style={{marginBottom:8,display:"flex",alignItems:"center",gap:8}}>
+                <span style={{color:"#4a7a9a",whiteSpace:"nowrap"}}>Do:</span>
+                <input value={mailPreview.to} onChange={e=>setMailPreview(p=>({...p,to:e.target.value}))}
+                  list="recent-emails-list-g" autoComplete="off"
+                  style={{flex:1,background:"#0a140a",border:"1px solid #2a4a2a",borderRadius:4,color:"#a0cfdf",padding:"4px 8px",fontSize:13,fontFamily:"monospace"}}/>
+                <datalist id="recent-emails-list-g">
+                  {recentEmails.map((em,i)=><option key={i} value={em}/>)}
+                </datalist>
+              </div>
+              {recentEmails.length>0&&(
+                <div style={{marginBottom:8,display:"flex",flexWrap:"wrap",gap:4,paddingLeft:32}}>
+                  {recentEmails.slice(0,6).map((em,i)=>(
+                    <button key={i} type="button" onClick={()=>setMailPreview(p=>({...p,to:em}))}
+                      style={{padding:"2px 8px",fontSize:11,borderRadius:3,border:"1px solid #2a4a4a",background:mailPreview.to===em?"#1a3a4a":"#0a1a1a",color:"#7acfdf",cursor:"pointer",fontFamily:"monospace"}}>
+                      {em}
+                    </button>
                   ))}
                 </div>
               )}
-              <div style={{display:"flex",gap:8}}>
-                <button onClick={()=>{setShipmentModal(null);setShipmentError("");}}
-                  style={{flex:1,padding:"8px",fontSize:14,borderRadius:6,cursor:"pointer",background:"#1a2a1a",border:"1px solid #2a4a2a",color:"#5a8a5a"}}>
-                  Anuluj
-                </button>
-                <button disabled={shipmentCreating||!shipmentServiceId}
-                  onClick={async()=>{
-                    if(!shipmentServiceId){alert("Wybierz usługę");return;}
-                    setShipmentCreating(true);
-                    try{
-                      const imp=shipmentModal.imp;
-                      const body={
-                        kontoId:imp.kontoId,orderId:imp.allegroOrderId,
-                        serviceId:shipmentServiceId,description:shipmentDescription,
-                        size:shipmentSize==="custom"?shipmentCustomSize:shipmentSize
-                      };
-                      const r=await fetch(AUTORESPONDER_URL+"/shipment/create",{method:"POST",headers:{"x-api-key":AUTORESPONDER_KEY,"Content-Type":"application/json"},body:JSON.stringify(body)});
-                      const d=await r.json();
-                      if(!d.ok) throw new Error(d.error||JSON.stringify(d));
-                      const sh={shipmentId:d.shipmentId,waybill:d.waybill,kontoId:imp.kontoId,serviceId:shipmentServiceId};
-                      setAllegroShipments(prev=>{const n={...prev,[imp.allegroOrderId]:sh};localStorage.setItem("allegro_shipments",JSON.stringify(n));return n;});
-                      setOrderAppStatus(imp.allegroOrderId,"W realizacji");
-                      setShipmentModal(null);setShipmentError("");
-                      // Drukuj etykietę
-                      const r2=await fetch(AUTORESPONDER_URL+"/shipment/label?kontoId="+imp.kontoId,{method:"POST",headers:{"x-api-key":AUTORESPONDER_KEY,"Content-Type":"application/json"},body:JSON.stringify({shipmentIds:[d.shipmentId],pageSize:"A6"})});
-                      const d2=await r2.json();
-                      if(!r2.ok||!d2.pdf) throw new Error(d2.error||"Brak PDF");
-                      const w=window.open();w.document.write(`<html><body style="margin:0"><iframe src="data:application/pdf;base64,${d2.pdf}" width="100%" height="100%" style="border:0"></iframe></body></html>`);
-                    }catch(e){setShipmentError(e.message);}
-                    setShipmentCreating(false);
-                  }}
-                  style={{flex:2,padding:"8px",fontSize:14,fontWeight:700,borderRadius:6,cursor:shipmentCreating?"not-allowed":"pointer",
-                    background:shipmentCreating?"#1a2a1a":"#2a5a1a",border:"1px solid #3a8a2a",color:"#afffaf"}}>
-                  {shipmentCreating?"⟳ Tworzę...":"📦 Utwórz etykietę"}
-                </button>
+              <div style={{marginBottom:6}}><span style={{color:"#4a7a9a"}}>Temat:</span> <strong style={{color:"#cfdfaf"}}>{mailPreview.subject}</strong></div>
+              <div style={{fontSize:12}}>
+                <div style={{color:"#7acf7a"}}>📄 {mailPreview.subject} L.pdf</div>
+                {mailPreview.hasEtykieta&&<div style={{color:"#7acf7a"}}>📦 etykieta.pdf</div>}
+                {!mailPreview.hasEtykieta&&<div style={{color:"#cf9a4a"}}>⚠️ Brak etykiety</div>}
               </div>
             </div>
-          )}
-        </div>
-      </div>
-    )}
-
-    {/* ── GLOBALNY MODAL MAIL ── */}
-    {mailPreview&&(
-      <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.75)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center"}}
-        onClick={e=>{if(e.target===e.currentTarget)setMailPreview(null);}}>
-        <div style={{background:"#0c1a0c",border:"1px solid #3a5a7a",borderRadius:12,padding:24,width:460,maxWidth:"95vw"}}>
-          <div style={{fontWeight:700,fontSize:15,color:"#af9adf",marginBottom:16}}>✉️ Wyślij na produkcję</div>
-          <div style={{marginBottom:12,fontSize:13,color:"#7a9a7a"}}>
-            <div style={{marginBottom:8,display:"flex",alignItems:"center",gap:8}}>
-              <span style={{color:"#4a7a9a",whiteSpace:"nowrap"}}>Do:</span>
-              <input value={mailPreview.to} onChange={e=>setMailPreview(p=>({...p,to:e.target.value}))}
-                list="recent-emails-list" autoComplete="off"
-                style={{flex:1,background:"#0a140a",border:"1px solid #2a4a2a",borderRadius:4,color:"#a0cfdf",padding:"4px 8px",fontSize:13,fontFamily:"monospace"}}/>
-              <datalist id="recent-emails-list">
-                {recentEmails.map((em,i)=><option key={i} value={em}/>)}
-              </datalist>
-            </div>
-            {recentEmails.length>0&&(
-              <div style={{marginBottom:8,display:"flex",flexWrap:"wrap",gap:4,paddingLeft:32}}>
-                {recentEmails.slice(0,6).map((em,i)=>(
-                  <button key={i} type="button" onClick={()=>setMailPreview(p=>({...p,to:em}))}
-                    style={{padding:"2px 8px",fontSize:11,borderRadius:3,border:"1px solid #2a4a4a",background:mailPreview.to===em?"#1a3a4a":"#0a1a1a",color:"#7acfdf",cursor:"pointer",fontFamily:"monospace"}}>
-                    {em}
-                  </button>
-                ))}
-              </div>
-            )}
-            <div style={{marginBottom:6}}><span style={{color:"#4a7a9a"}}>Temat:</span> <strong style={{color:"#cfdfaf"}}>{mailPreview.subject}</strong></div>
-            <div style={{fontSize:12}}>
-              <div style={{color:"#7acf7a"}}>📄 {mailPreview.subject} L.pdf</div>
-              {mailPreview.hasEtykieta&&<div style={{color:"#7acf7a"}}>📦 etykieta.pdf</div>}
-              {!mailPreview.hasEtykieta&&<div style={{color:"#cf9a4a"}}>⚠️ Brak etykiety</div>}
+            <div style={{display:"flex",gap:8,marginTop:12}}>
+              <button onClick={()=>setMailPreview(null)}
+                style={{flex:1,padding:"8px",fontSize:14,borderRadius:6,cursor:"pointer",background:"#1a2a1a",border:"1px solid #2a4a2a",color:"#5a8a5a"}}>
+                Anuluj
+              </button>
+              <button onClick={sendMailConfirmed}
+                style={{flex:2,padding:"8px",fontSize:14,fontWeight:700,borderRadius:6,cursor:"pointer",background:"#1a2a4a",border:"1px solid #2a4a8a",color:"#9aafdf"}}>
+                ✉️ Wyślij
+              </button>
             </div>
           </div>
-          <div style={{display:"flex",gap:8,marginTop:12}}>
-            <button onClick={()=>setMailPreview(null)}
-              style={{flex:1,padding:"8px",fontSize:14,borderRadius:6,cursor:"pointer",background:"#1a2a1a",border:"1px solid #2a4a2a",color:"#5a8a5a"}}>
-              Anuluj
-            </button>
-            <button onClick={sendMailConfirmed}
-              style={{flex:2,padding:"8px",fontSize:14,fontWeight:700,borderRadius:6,cursor:"pointer",background:"#1a2a4a",border:"1px solid #2a4a8a",color:"#9aafdf"}}>
-              ✉️ Wyślij
-            </button>
-          </div>
         </div>
-      </div>
-    )}
+      )}
+    </div>
   );
 }
 
