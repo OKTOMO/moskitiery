@@ -3,13 +3,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.13</title>
+<title>MosquitoApp v20260424.14</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260424.13';
+  window.__MOSK_VERSION='20260424.14';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
   console.log('html2pdf:',typeof window.html2pdf);
 </script>
@@ -1555,27 +1555,29 @@ function App() {
       if(typeof window.html2pdf!=='function') throw new Error('html2pdf.js nie załadowany — odśwież stronę (Ctrl+Shift+R)');
       const attachments=[];
       // Zlecenie PDF — wygeneruj z HTML przez html2pdf.js
+      // generateOrderHtml zwraca kompletny dokument z <head><style>, więc używamy iframe
+      // żeby style zostały zachowane (gdybyśmy wrzucili tylko <body> do diva, divy byłyby nie-sformatowane)
       const pdfHtml=generateOrderHtml(order);
-      // Kontener w widocznym obszarze, ale z opacity 0 i z-index -1 (html2canvas ignoruje fixed poza viewportem)
-      const holder=document.createElement('div');
-      holder.style.cssText='position:absolute;left:0;top:0;width:210mm;opacity:0;z-index:-1;pointer-events:none;background:#fff;';
-      const bodyMatch=pdfHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-      holder.innerHTML=bodyMatch?bodyMatch[1]:pdfHtml;
-      document.body.appendChild(holder);
-      // Poczekaj frame na render
-      await new Promise(r=>requestAnimationFrame(()=>setTimeout(r,50)));
-      console.log('[PDF] holder size:',holder.offsetWidth,'x',holder.offsetHeight);
+      const iframe=document.createElement('iframe');
+      iframe.style.cssText='position:absolute;left:-99999px;top:0;width:210mm;height:297mm;border:0;';
+      document.body.appendChild(iframe);
+      const doc=iframe.contentDocument||iframe.contentWindow.document;
+      doc.open();doc.write(pdfHtml);doc.close();
+      // Poczekaj na render iframe (style, fonty)
+      await new Promise(r=>setTimeout(r,300));
+      const renderTarget=doc.body;
+      console.log('[PDF] iframe body size:',renderTarget.offsetWidth,'x',renderTarget.offsetHeight);
       let pdfBlob;
       try{
         pdfBlob=await window.html2pdf().set({
           margin:[6,8,6,8],
           filename:`${subject} L.pdf`,
           image:{type:'jpeg',quality:0.95},
-          html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false},
+          html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,windowWidth:renderTarget.scrollWidth,windowHeight:renderTarget.scrollHeight},
           jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
-        }).from(holder).outputPdf('blob');
+        }).from(renderTarget).outputPdf('blob');
       }finally{
-        if(holder.parentNode) document.body.removeChild(holder);
+        if(iframe.parentNode) document.body.removeChild(iframe);
       }
       console.log('[PDF] blob size:',pdfBlob?.size,'bytes');
       if(!pdfBlob||pdfBlob.size<1000) throw new Error('PDF pusty/uszkodzony (size='+(pdfBlob?.size||0)+'B)');
