@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.3</title>
+<title>MosquitoApp v20260424.5</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -501,19 +501,22 @@ function generateOrderHtml(order) {
   const MIN_ROWS = 8;
   const pozycjeRows = order.pozycje.map((p,i)=>{
     const s=parseFloat(p.szerokosc)||0, w=parseFloat(p.wysokosc)||0;
-    const d=parseFloat(p.glebokosc)||20;
-    return `<tr><td>${i+1}</td><td>${p.kolorRamki||""}</td><td>${p.kolorSiatki||""}</td><td>${s}</td><td>${w}</td><td>${d}</td><td>${p.ilosc||1}</td></tr>`;
+    const gl=normalizujGlebokosc(p.glebokosc);
+    const il=parseFloat(p.ilosc)||1;
+    const jedn=obliczJedn(s,w,il);
+    const blaszRoz=obliczRozmiarBlaszki(gl);
+    return `<tr><td>${i+1}</td><td>MOS. PCV.</td><td class="jedn">${jedn||""}</td><td class="wymiar">${s||""}</td><td class="wymiar">${w||""}</td><td class="kolor">${p.kolorRamki||""}</td><td class="kolor">${p.kolorSiatki||""}</td><td class="wymiar">${blaszRoz}</td><td class="wymiar">${il}</td></tr>`;
   });
-  while(pozycjeRows.length<MIN_ROWS) pozycjeRows.push('<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>');
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${order.numerZlecenia||""} ${order.klientImie||""} ${order.klientMiasto||""} L</title>
-<style>body{font-family:Arial,sans-serif;font-size:13px;margin:20px}table{width:100%;border-collapse:collapse}td,th{border:1px solid #000;padding:4px 6px}th{background:#eee}</style>
-</head><body>
-<h2>${firmaNazwa} — Zlecenie ${order.numerZlecenia||""}</h2>
-<p><b>Klient:</b> ${order.klientImie||""} | ${order.klientUlica||""}, ${order.klientKod||""} ${order.klientMiasto||""} | Tel: ${order.telefon||""}</p>
-<p><b>Data:</b> ${order.data||""} | <b>Uwagi:</b> ${order.uwagi||""}</p>
-<table><thead><tr><th>#</th><th>Kolor ramki</th><th>Kolor siatki</th><th>Szer B</th><th>Wys A</th><th>Głęb C</th><th>Szt</th></tr></thead>
-<tbody>${pozycjeRows.join("")}</tbody></table>
-<p><b>Razem:</b> ${totalMosk} szt. | Linka: ${totalLinka} mb | Blaszki: ${totalBlaszki} szt.</p>
+  const emptyRows=Array.from({length:Math.max(0,MIN_ROWS-order.pozycje.length)},(_,i)=>`<tr><td>${order.pozycje.length+i+1}</td><td>MOS. PCV.</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`);
+  const rows=[...pozycjeRows,...emptyRows].join("");
+  return `<!DOCTYPE html><html lang="pl"><head><meta charset="utf-8">
+<title>${order.numerZlecenia||""} ${order.klientImie||""} ${order.klientMiasto||""} L</title>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:11px;padding:10px 14px;color:#000;background:#fff;width:210mm}.header{display:flex;margin-bottom:8px;border:1px solid #000}.big-litera{font-size:60px;font-weight:900;line-height:1;color:#000;display:flex;align-items:center;justify-content:center;border-right:1px solid #000;padding:6px 12px;min-width:80px}.info-grid{display:grid;grid-template-columns:80px 1fr;flex:1}.info-grid .lbl{background:#f0e8c0;border-bottom:1px solid #ccc;border-right:1px solid #ccc;padding:3px 6px;font-weight:700;font-size:9px;color:#555;display:flex;align-items:center}.info-grid .val{border-bottom:1px solid #ccc;padding:3px 7px;font-size:12px;font-weight:700;display:flex;align-items:center}.info-grid .val.nr{font-size:20px;font-weight:900;color:#cc0000}table.main{width:100%;border-collapse:collapse;margin-bottom:6px}table.main th{background:#222;color:#fff;padding:5px 3px;text-align:center;border:1px solid #555;font-size:8px;line-height:1.3}table.main td{padding:1px 3px;text-align:center;border:1px solid #bbb;height:24px;font-size:11px}table.main td.wymiar{font-size:15px;font-weight:900}table.main td.kolor{font-size:11px;font-weight:700}table.main td.jedn{font-size:9px}table.main tr:nth-child(even) td{background:#f5f5f5}.uwagi-label{font-weight:700;font-size:11px;margin:4px 0 2px}.uwagi-line{border-bottom:1px solid #aaa;min-height:14px;margin-bottom:3px}.bottom{margin-top:8px;display:flex;gap:20px;align-items:center;font-size:11px}.bottom-val{border:2px solid #000;padding:2px 14px;font-size:15px;font-weight:900;display:inline-block;min-width:52px;text-align:center}.razem{font-size:11px;font-weight:700;margin-top:6px}@media print{body{padding:6px 10px}}</style></head><body>
+<div class="header"><div class="big-litera">${firma}</div><div class="info-grid"><div class="lbl">KLIENT</div><div class="val">${order.klientImie||"—"}</div><div class="lbl">ADRES</div><div class="val">${order.klientUlica||""} ${order.klientKod?"· "+order.klientKod:""} ${order.klientMiasto||"—"}</div><div class="lbl">TEL</div><div class="val">${order.telefon||"—"}</div><div class="lbl">DATA</div><div class="val">${formatDate(order.data)}</div><div class="lbl">NR ZAM.</div><div class="val nr">${order.numerZlecenia||"—"}</div></div></div>
+<table class="main"><thead><tr><th style="width:26px">LP</th><th>SYSTEM</th><th style="width:44px">JEDN (mb)</th><th style="width:64px">SZEROKOŚĆ (cm)</th><th style="width:64px">WYSOKOŚĆ (cm)</th><th>KOLOR RAMKI</th><th>KOLOR SIATKI</th><th style="width:54px">BLASZKA (mm)</th><th style="width:34px">SZT.</th></tr></thead><tbody>${rows}</tbody></table>
+<div class="uwagi-label">UWAGI${order.uwagi?" — "+order.uwagi:""}</div><div class="uwagi-line"></div><div class="uwagi-line"></div>
+<div class="razem">Ilość moskitier RAZEM: ${totalMosk}</div>
+<div class="bottom"><span>LINKA/USZCZELKA ilość metrów bieżących:</span><span class="bottom-val">${totalLinka}</span><span style="margin-left:16px">Ilość BLASZEK:</span><span class="bottom-val">${totalBlaszki}</span></div>
 </body></html>`;
 }
 
