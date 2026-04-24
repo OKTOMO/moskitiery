@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.19</title>
+<title>MosquitoApp v20260424.21</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260424.19';
+  window.__MOSK_VERSION='20260424.21';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -1365,10 +1365,12 @@ function App() {
   }
 
   function importAllegroOrder(imp){
-    const allText=(imp.offerNames||"")+" "+(imp.uwagi||"");
+    // Numer zapytania kalkulatora (np. FAV-260424-4185) może być w offerNames, uwagi lub buyerMsg
+    const allText=(imp.offerNames||"")+" "+(imp.uwagi||"")+" "+(imp.buyerMsg||"");
     console.log("importAllegroOrder buyerMsg:", JSON.stringify(imp.buyerMsg));
     const kalMatch=allText.match(/(?:FAV|STR|ARL|ALB|EVR|KAL)-\d{6}-\d{4}/i);
     const kalNum=kalMatch?kalMatch[0].toUpperCase():"";
+    if(kalNum) console.log("[KAL] wykryto numer zapytania:",kalNum);
     const firstOffer=(imp.offerNames||"").split(", ")[0];
     let parsedPoz=parseDimsFromOfferName(firstOffer);
     let parsedPozycje=parsedPoz?[parsedPoz]:null;
@@ -1403,11 +1405,27 @@ function App() {
       imp,
       mode:kalNum?"kal":(parsedPozycje?"parse":"manual"),
       kalNum,
-      kalLoading:false,
+      kalLoading:!!kalNum,
       kalError:"",
       kalData:null,
       pozycje:parsedPozycje||[pustaPoz()]
     });
+    // Auto-fetch danych kalkulatora jeśli numer został wykryty
+    if(kalNum){
+      fetch(AUTORESPONDER_URL+"/kalkulator/order/"+encodeURIComponent(kalNum))
+        .then(r=>r.json())
+        .then(d=>{
+          if(d.error||!d.orderNumber){
+            setImportModal(prev=>prev?{...prev,kalLoading:false,kalError:"Nie znaleziono: "+kalNum}:prev);
+          } else {
+            setImportModal(prev=>prev?{...prev,kalLoading:false,kalData:d,kalError:""}:prev);
+            console.log("[KAL] auto-załadowano dane dla",kalNum,"-",(d.pozycje||[]).length,"pozycji");
+          }
+        })
+        .catch(e=>{
+          setImportModal(prev=>prev?{...prev,kalLoading:false,kalError:e.message||"Błąd pobierania"}:prev);
+        });
+    }
   }
 
   // Mapowanie nazw RAL z kalkulatora do krótkich nazw w MosquitoApp
@@ -1435,11 +1453,18 @@ function App() {
   async function doImportOrder(modal){
     const {imp,pozycje,kalData}=modal;
     console.log("doImportOrder imp:", JSON.stringify({klientImie:imp.klientImie,klientUlica:imp.klientUlica,klientKod:imp.klientKod,klientMiasto:imp.klientMiasto,telefon:imp.telefon}));
+    // Kalkulator zapisuje wymiary w mm. Aplikacja zleceń oczekuje cm — konwertuj na wejściu.
+    const mm2cm = v => {
+      const n = parseFloat(String(v||"").replace(",","."));
+      if(!n || isNaN(n)) return "";
+      // Jeśli wartość > 300 to mm; inaczej to już cm (legacy)
+      return n > 300 ? String(Math.round(n/10*10)/10) : String(v);
+    };
     const poz=(kalData&&kalData.pozycje&&kalData.pozycje.length>0)
       ?kalData.pozycje.map(p=>({
-          szerokosc:String(p.szerokosc||""),
-          wysokosc:String(p.wysokosc||""),
-          glebokosc:String(p.felc||DOMYSLNA_GLEBOKOS),
+          szerokosc:mm2cm(p.szerokosc),
+          wysokosc:mm2cm(p.wysokosc),
+          glebokosc:p.felc?mm2cm(p.felc):String(DOMYSLNA_GLEBOKOS),
           kolorRamki:mapKolorProfilu(p.kolorProfilu),
           kolorSiatki:mapKolorSiatki(p.kolorSiatki),
           ilosc:parseInt(p.ilosc)||1
@@ -1540,6 +1565,59 @@ function App() {
         console.log('[ALLEGRO] tokens synced from KV:',Object.keys(remoteAccess).length,'kont');
       }
     }catch(e){ console.warn('[ALLEGRO] tokens load fail:',e); }
+  }
+
+  // Pobierz ustawienia klienta (email produkcji, DPD) z KV — zapewnia spójność desktop ↔ telefon
+  async function loadSettingsFromKV(){
+    if(!AUTORESPONDER_KEY) return;
+    try{
+      const r=await fetch(AUTORESPONDER_URL+'/settings',{headers:{'x-api-key':AUTORESPONDER_KEY}});
+      const d=await r.json();
+      if(!d.ok) return;
+      const changed=[];
+      // Email config
+      if(d.email){
+        const localEmail=JSON.parse(localStorage.getItem('email_produkcji_config')||'{}');
+        const remoteEmail={
+          emailProdukcji:d.email.emailProdukcji||localEmail.emailProdukcji||'',
+          emailNadawca:d.email.emailNadawca||localEmail.emailNadawca||'',
+          emailNazwaNadawcy:d.email.emailNazwaNadawcy||localEmail.emailNazwaNadawcy||'',
+          emailPodpis:d.email.emailPodpis||localEmail.emailPodpis||''
+        };
+        const hasAny=Object.values(remoteEmail).some(v=>v);
+        if(hasAny && JSON.stringify(localEmail)!==JSON.stringify(remoteEmail)){
+          localStorage.setItem('email_produkcji_config',JSON.stringify(remoteEmail));
+          changed.push('email');
+        }
+      }
+      // DPD config
+      if(d.dpd && (d.dpd.login||d.dpd.fid)){
+        const localDpd=JSON.parse(localStorage.getItem('dpd_config')||'{}');
+        const remoteDpd={
+          login:d.dpd.login||localDpd.login||'',
+          fid:d.dpd.fid||localDpd.fid||'',
+          password:d.dpd.password||localDpd.password||''
+        };
+        if(JSON.stringify(localDpd)!==JSON.stringify(remoteDpd)){
+          localStorage.setItem('dpd_config',JSON.stringify(remoteDpd));
+          changed.push('DPD');
+        }
+      }
+      if(changed.length) console.log('[SETTINGS] synced from KV:',changed.join(', '));
+    }catch(e){ console.warn('[SETTINGS] load fail:',e); }
+  }
+
+  // Kalkulator zapisuje wymiary w mm (toMM). Aplikacja oczekuje cm.
+  // Heurystyka: jeśli wartość > 300 → to mm (dziel przez 10); inaczej to już cm (legacy).
+  function kalDim(v){
+    const n = parseFloat(String(v||"").replace(",","."));
+    if(!n || isNaN(n)) return "";
+    if(n > 300) {
+      const cm = n / 10;
+      // format: 76.7 → "76,7", 767 → "76,7", 760 → "76"
+      return (Math.round(cm*10)/10).toString().replace(".",",");
+    }
+    return String(v).replace(".",",");
   }
 
   async function fetchKalOrders(){
@@ -1818,6 +1896,8 @@ function App() {
   useEffect(()=>{
     // Najpierw tokeny Allegro z KV (żeby aplikacja wystartowała z aktualnymi tokenami)
     loadAllegroTokensFromKV();
+    // Ustawienia klienta (email produkcji, DPD) — synchronizacja desktop ↔ telefon
+    loadSettingsFromKV();
     cloudLoad().then(d=>{setOrders(d);setLoading(false);});
     // Synchronizacja statusów z KV na starcie + co 30 sek (desktop ↔ mobile)
     loadAppStatusesFromKV();
@@ -3209,7 +3289,7 @@ function App() {
                           {(kalData.positions||[]).map((p,i)=>(
                             <div key={i} style={{display:"flex",gap:8,alignItems:"center",padding:"4px 0",borderBottom:"1px solid #1a3a1a"}}>
                               <span style={{color:"#5a9a7a",fontFamily:"monospace",minWidth:20}}>{i+1}.</span>
-                              <span style={{color:"#a0dfaf",fontWeight:700}}>{p.width||p.szerokosc}×{p.height||p.wysokosc}</span>
+                              <span style={{color:"#a0dfaf",fontWeight:700}}>{kalDim(p.width||p.szerokosc)}×{kalDim(p.height||p.wysokosc)} cm</span>
                               <span style={{color:"#4a8a6a"}}>{p.profile||p.kolorRamki} / {p.mesh||p.kolorSiatki}</span>
                               <span style={{color:"#afffaf",marginLeft:"auto"}}>×{p.qty||p.ilosc||1}</span>
                             </div>
@@ -3529,7 +3609,7 @@ function App() {
                             <td style={{padding:"8px 12px"}}>
                               {pozycje.map((p,i)=>(
                                 <div key={i} style={{fontSize:14,color:"#5a9a6a",whiteSpace:"nowrap"}}>
-                                  {p.szerokosc}×{p.wysokosc} cm{p.felc?` felc:${p.felc}`:""}
+                                  {kalDim(p.szerokosc)}×{kalDim(p.wysokosc)} cm{p.felc?` felc:${kalDim(p.felc)}`:""}
                                   <span style={{color:"#3a7a5a",marginLeft:4}}>{(p.kolorProfilu||"").replace(/ RAL \d+/,"")}/{p.kolorSiatki}</span>
                                   {p.ilosc>1&&<span style={{color:"#afffaf",marginLeft:4}}>×{p.ilosc}</span>}
                                 </div>
