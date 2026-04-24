@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.15</title>
+<title>MosquitoApp v20260424.18</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260424.15';
+  window.__MOSK_VERSION='20260424.18';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -1484,8 +1484,39 @@ function App() {
       if(status) next[allegroOrderId]=status;
       else delete next[allegroOrderId];
       localStorage.setItem('app_statuses',JSON.stringify(next));
+      // Synchronizuj do KV workera w tle — desktop ↔ mobile
+      syncAppStatusesToKV(next);
       return next;
     });
+  }
+
+  // Zapis statusów do KV workera (w tle, fire-and-forget)
+  function syncAppStatusesToKV(statuses){
+    if(!AUTORESPONDER_KEY) return;
+    fetch(AUTORESPONDER_URL+'/app-statuses',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},
+      body:JSON.stringify({statuses})
+    }).catch(e=>console.warn('[STATUSES] sync fail:',e));
+  }
+
+  // Pobierz statusy z KV i zmerguj z lokalnymi
+  async function loadAppStatusesFromKV(){
+    if(!AUTORESPONDER_KEY) return;
+    try{
+      const r=await fetch(AUTORESPONDER_URL+'/app-statuses',{headers:{'x-api-key':AUTORESPONDER_KEY}});
+      const d=await r.json();
+      if(!d.ok) return;
+      const remote=d.statuses||{};
+      // Porównaj z lokalnym: jeśli remote różni się od lokalnego — użyj remote
+      const localStr=localStorage.getItem('app_statuses')||'{}';
+      const remoteStr=JSON.stringify(remote);
+      if(localStr!==remoteStr){
+        localStorage.setItem('app_statuses',remoteStr);
+        setAppStatuses(remote);
+        console.log('[STATUSES] synced from KV:',Object.keys(remote).length,'statusów');
+      }
+    }catch(e){ console.warn('[STATUSES] load fail:',e); }
   }
 
   async function fetchKalOrders(){
@@ -1763,6 +1794,10 @@ function App() {
 
   useEffect(()=>{
     cloudLoad().then(d=>{setOrders(d);setLoading(false);});
+    // Synchronizacja statusów z KV na starcie + co 30 sek (desktop ↔ mobile)
+    loadAppStatusesFromKV();
+    const statusInterval=setInterval(loadAppStatusesFromKV,30000);
+    window.__statusSyncInterval=statusInterval;
     // Handle OAuth callback
     const params=new URLSearchParams(window.location.search);
     const code=params.get('code');
