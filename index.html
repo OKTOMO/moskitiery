@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.6</title>
+<title>MosquitoApp v20260424.7</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -2944,7 +2944,11 @@ function App() {
               <div style={{background:"#0c1a0c",border:"1px solid #3a5a7a",borderRadius:12,padding:24,width:460,maxWidth:"95vw"}}>
                 <div style={{fontWeight:700,fontSize:15,color:"#af9adf",marginBottom:16}}>✉️ Wyślij zlecenie na produkcję</div>
                 <div style={{marginBottom:12,fontSize:13,color:"#7a9a7a"}}>
-                  <div style={{marginBottom:6}}><span style={{color:"#4a7a9a"}}>Do:</span> <strong style={{color:"#a0cfdf"}}>{mailPreview.to}</strong></div>
+                  <div style={{marginBottom:8,display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{color:"#4a7a9a",whiteSpace:"nowrap"}}>Do:</span>
+                    <input value={mailPreview.to} onChange={e=>setMailPreview(p=>({...p,to:e.target.value}))}
+                      style={{flex:1,background:"#0a140a",border:"1px solid #2a4a2a",borderRadius:4,color:"#a0cfdf",padding:"4px 8px",fontSize:13,fontFamily:"monospace"}}/>
+                  </div>
                   <div style={{marginBottom:6}}><span style={{color:"#4a7a9a"}}>Temat:</span> <strong style={{color:"#cfdfaf"}}>{mailPreview.subject}</strong></div>
                   <div style={{marginBottom:6}}><span style={{color:"#4a7a9a"}}>Załączniki:</span>
                     <div style={{marginTop:4,fontSize:12}}>
