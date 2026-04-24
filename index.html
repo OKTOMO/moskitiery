@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.7</title>
+<title>MosquitoApp v20260424.8</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1532,14 +1532,31 @@ function App() {
   async function sendMailConfirmed(){
     if(!mailPreview) return;
     const {imp, order, to, subject} = mailPreview;
-    const emailCfg=JSON.parse(localStorage.getItem('email_produkcji_config')||'{}');
     setMailPreview(null);
     setMailSending(prev=>({...prev,[imp.allegroOrderId]:true}));
     try{
+      const attachments=[];
+      // Zlecenie HTML
+      const pdfHtml=generateOrderHtml(order);
+      const htmlBlob=new Blob([pdfHtml],{type:'text/html'});
+      const htmlB64=await new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.readAsDataURL(htmlBlob);});
+      attachments.push({name:`${subject} L.html`,content:htmlB64,mimeType:'text/html'});
+      // Etykieta PDF
+      const sh=allegroShipments[imp.allegroOrderId];
+      if(sh){
+        try{
+          const lr=await fetch(AUTORESPONDER_URL+"/shipment/label?kontoId="+sh.kontoId,{
+            method:"POST",headers:{"x-api-key":AUTORESPONDER_KEY,"Content-Type":"application/json"},
+            body:JSON.stringify({shipmentIds:[sh.shipmentId],pageSize:"A6"})
+          });
+          const ld=await lr.json();
+          if(ld.pdf) attachments.push({name:`${subject} etykieta.pdf`,content:ld.pdf,mimeType:'application/pdf'});
+        }catch(e){}
+      }
       const r=await fetch(AUTORESPONDER_URL+'/email/send',{
         method:'POST',
         headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},
-        body:JSON.stringify({to, subject, content:''})
+        body:JSON.stringify({to,subject,content:'',attachments})
       });
       const d=await r.json();
       if(d.ok) alert(`✅ Mail wysłany do ${to}\nTemat: ${subject}`);
@@ -4854,6 +4871,7 @@ function App() {
               </div>
               {[["emailProdukcji","Email produkcji (odbiorca)","text","biuro@superis.pl"],
                 ["emailNadawca","Email nadawcy (Zoho)","text","biuro@oktomo.pl"],
+                ["emailNazwaNadawcy","Nazwa nadawcy","text","Zamówienia"],
                 ["emailPodpis","Podpis (imię i telefon)","text","Piotr Rudnicki\n605 361 191"]].map(([key,label,type,ph])=>(
                 <div key={key} style={{marginBottom:10}}>
                   <span className="lbl">{label}</span>
@@ -4867,7 +4885,7 @@ function App() {
                 const c=JSON.parse(localStorage.getItem('email_produkcji_config')||'{}');
                 const r=await fetch(AUTORESPONDER_URL+'/sync',{method:'POST',
                   headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},
-                  body:JSON.stringify({config:{zohoFromEmail:c.emailNadawca||'biuro@oktomo.pl',emailProdukcji:c.emailProdukcji||'',emailPodpis:c.emailPodpis||''}})});
+                  body:JSON.stringify({config:{zohoFromEmail:c.emailNadawca||'biuro@oktomo.pl',zohoFromName:c.emailNazwaNadawcy||'Zamówienia',emailProdukcji:c.emailProdukcji||'',emailPodpis:c.emailPodpis||''}})});
                 const d=await r.json();
                 if(d.ok) alert('✅ Zapisano konfigurację emaila');
                 else alert('❌ '+JSON.stringify(d));
