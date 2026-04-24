@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.21</title>
+<title>MosquitoApp v20260424.22</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260424.21';
+  window.__MOSK_VERSION='20260424.22';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -1412,7 +1412,7 @@ function App() {
     });
     // Auto-fetch danych kalkulatora jeśli numer został wykryty
     if(kalNum){
-      fetch(AUTORESPONDER_URL+"/kalkulator/order/"+encodeURIComponent(kalNum))
+      fetch(AUTORESPONDER_URL+"/kalkulator/order/"+encodeURIComponent(kalNum.toLowerCase()))
         .then(r=>r.json())
         .then(d=>{
           if(d.error||!d.orderNumber){
@@ -3189,7 +3189,7 @@ function App() {
               if(!n)return;
               setIM({kalLoading:true,kalError:"",kalData:null});
               try{
-                const r=await fetch(AUTORESPONDER_URL+"/kalkulator/order/"+encodeURIComponent(n));
+                const r=await fetch(AUTORESPONDER_URL+"/kalkulator/order/"+encodeURIComponent(n.toLowerCase()));
                 const d=await r.json();
                 if(d.error||!d.orderNumber) throw new Error("Nie znaleziono: "+n);
                 setIM({kalLoading:false,kalData:d,kalError:""});
@@ -4353,9 +4353,9 @@ function App() {
               <div style={{color:'var(--accent)',fontWeight:'bold',marginBottom:'10px',fontSize:'13px'}}>WYSZUKAJ WYCENĘ</div>
               <div style={{display:'flex',gap:'8px'}}>
                 <input type="text" placeholder="FAV-260304-0001 / ARL-… / EVR-…" value={kalSearch} onChange={e=>setKalSearch(e.target.value)}
-                  onKeyDown={e=>{if(e.key==='Enter'){const n=kalSearch.trim();if(!n)return;setKalResult(null);setKalError('');fetch(AUTORESPONDER_URL+'/kalkulator/order/'+encodeURIComponent(n)).then(r=>r.json()).then(d=>{if(d.error)setKalError('Nie znaleziono: '+n);else setKalResult(d);}).catch(()=>setKalError('Blad'));}}}
+                  onKeyDown={e=>{if(e.key==='Enter'){const n=kalSearch.trim();if(!n)return;setKalResult(null);setKalError('');fetch(AUTORESPONDER_URL+'/kalkulator/order/'+encodeURIComponent(n.toLowerCase())).then(r=>r.json()).then(d=>{if(d.error)setKalError('Nie znaleziono: '+n);else setKalResult(d);}).catch(()=>setKalError('Blad'));}}}
                   style={{flex:1,padding:'8px 12px',borderRadius:6,border:'1px solid var(--border)',background:'var(--bg)',color:'var(--text)',fontSize:14}}/>
-                <button onClick={()=>{const n=kalSearch.trim();if(!n)return;setKalResult(null);setKalError('');fetch(AUTORESPONDER_URL+'/kalkulator/order/'+encodeURIComponent(n)).then(r=>r.json()).then(d=>{if(d.error)setKalError('Nie znaleziono: '+n);else setKalResult(d);}).catch(()=>setKalError('Blad'));}}
+                <button onClick={()=>{const n=kalSearch.trim();if(!n)return;setKalResult(null);setKalError('');fetch(AUTORESPONDER_URL+'/kalkulator/order/'+encodeURIComponent(n.toLowerCase())).then(r=>r.json()).then(d=>{if(d.error)setKalError('Nie znaleziono: '+n);else setKalResult(d);}).catch(()=>setKalError('Blad'));}}
                   style={{padding:'8px 16px',background:'var(--accent)',color:'#000',borderRadius:6,border:'none',cursor:'pointer',fontWeight:'bold'}}>Szukaj</button>
               </div>
               {kalError&&<div style={{color:'#ef4444',marginTop:'8px',fontSize:'13px'}}>{kalError}</div>}
