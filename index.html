@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.46</title>
+<title>MosquitoApp v20260424.47</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260424.46';
+  window.__MOSK_VERSION='20260424.47';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -1373,6 +1373,16 @@ function App() {
       if(s>w&&w>0){const tmp=s;s=w;w=tmp;}
       if(s>10&&w>10) { pozycje.push({szerokosc:String(s),wysokosc:String(w),glebokosc:String(DOMYSLNA_GLEBOKOS),kolorRamki,kolorSiatki,ilosc:1}); found=true; }
     }
+    // Format 4: yws X i szerokość Y gdziekolwiek w wiadomości (kolejność dowolna)
+    if(!found){
+      const szerM=msg.match(/szer[^\s,]*\s*[:\-]?\s*(\d{2,3}[,.]?\d*)/i);
+      const wysM=msg.match(/(?:yws|wys[^\s,]*)\s*[:\-]?\s*(\d{2,3}[,.]?\d*)/i);
+      if(szerM&&wysM){
+        let s2=parseFloat(szerM[1].replace(",",".")), w2=parseFloat(wysM[1].replace(",","."));
+        if(s2>w2&&w2>0){const tmp=s2;s2=w2;w2=tmp;}
+        if(s2>10&&w2>10) { pozycje.push({szerokosc:String(s2),wysokosc:String(w2),glebokosc:String(DOMYSLNA_GLEBOKOS),kolorRamki,kolorSiatki,ilosc:1}); found=true; }
+      }
+    }
     return pozycje.length>0?pozycje:null;
   }
 
@@ -1403,17 +1413,20 @@ function App() {
       ["ciemny dąb","Ciemny Dąb"],["ciemny dab","Ciemny Dąb"],["mahoń","Mahoń"],["mahon","Mahoń"]
     ];
     const KOLORY_SIATKI_MAP=[["szara","Szara"],["szar","Szara"],["czarna","Czarna"],["czarn","Czarna"]];
+    // Wyciągnij kolory z buyerMsg/offerNames (niezależnie od tego czy mamy wymiary)
+    const nrMatch=colorSrc.match(/(?:kolor|kol\.?)\s*(\d{1,2})/);
+    const detectedKolorRamki=nrMatch&&KOLOR_NR_MAP[nrMatch[1]]?KOLOR_NR_MAP[nrMatch[1]]:(()=>{for(const [pat,val] of KOLORY_RAMKI_MAP){if(colorSrc.includes(pat))return val;}return null;})();
+    const detectedKolorSiatki=(()=>{for(const [pat,val] of KOLORY_SIATKI_MAP){if(colorSrc.includes(pat))return val;}return null;})();
     if(parsedPozycje){
       parsedPozycje=parsedPozycje.map(p=>{
         const np={...p};
-        // Najpierw sprawdź kod numeryczny np. "kolor 9"
-        const nrMatch=colorSrc.match(/(?:kolor|kol\.?)\s*(\d{1,2})/);
-        if(nrMatch && KOLOR_NR_MAP[nrMatch[1]]) np.kolorRamki=KOLOR_NR_MAP[nrMatch[1]];
-        else { for(const [pat,val] of KOLORY_RAMKI_MAP){ if(colorSrc.includes(pat)){np.kolorRamki=val;break;} } }
-        for(const [pat,val] of KOLORY_SIATKI_MAP){ if(colorSrc.includes(pat)){np.kolorSiatki=val;break;} }
+        if(detectedKolorRamki) np.kolorRamki=detectedKolorRamki;
+        if(detectedKolorSiatki) np.kolorSiatki=detectedKolorSiatki;
         return np;
       });
     }
+    // Jeśli brak wymiarów — użyj pustaPoz() ale z wykrytymi kolorami
+    const defaultPoz=()=>({...pustaPoz(),...(detectedKolorRamki?{kolorRamki:detectedKolorRamki}:{}),(detectedKolorSiatki?{kolorSiatki:detectedKolorSiatki}:{})});
     setImportModal({
       imp,
       mode:kalNum?"kal":(parsedPozycje?"parse":"manual"),
@@ -1421,7 +1434,7 @@ function App() {
       kalLoading:!!kalNum,
       kalError:"",
       kalData:null,
-      pozycje:parsedPozycje||[pustaPoz()]
+      pozycje:parsedPozycje||[defaultPoz()]
     });
     // Auto-fetch danych kalkulatora jeśli numer został wykryty
     if(kalNum){
