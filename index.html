@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.44</title>
+<title>MosquitoApp v20260424.45</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260424.44';
+  window.__MOSK_VERSION='20260424.45';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -1394,24 +1394,25 @@ function App() {
     if(parsedPozycje&&parsedPozycje.length===0) parsedPozycje=null;
     // Wykryj kolory z buyerMsg (priorytet) lub offerNames i nadpisz wszystkie pozycje
     const colorSrc=((imp.buyerMsg||"")+" "+(imp.offerNames||"")).toLowerCase();
+    const KOLOR_NR_MAP={"1":"Biały","2":"Brąz","3":"Antracyt","4":"Czarny","5":"Złoty Dąb","6":"Ciemny Dąb","7":"Turner Oak","8":"Orzech","9":"Winchester","10":"Mahoń"};
     const KOLORY_RAMKI_MAP=[
       ["winchester","Winchester"],["biały","Biały"],["bial","Biały"],
       ["antracyt","Antracyt"],["brąz","Brąz"],["braz","Brąz"],
       ["czarny","Czarny"],["orzech","Orzech"],
       ["turner","Turner Oak"],["złoty dąb","Złoty Dąb"],["zloty dab","Złoty Dąb"],
-      ["ciemny dąb","Ciemny Dąb"],["ciemny dab","Ciemny Dąb"]
+      ["ciemny dąb","Ciemny Dąb"],["ciemny dab","Ciemny Dąb"],["mahoń","Mahoń"],["mahon","Mahoń"]
     ];
     const KOLORY_SIATKI_MAP=[["szara","Szara"],["szar","Szara"],["czarna","Czarna"],["czarn","Czarna"]];
     if(parsedPozycje){
-      console.log("parsedPozycje przed nadpisaniem:", JSON.stringify(parsedPozycje));
-      console.log("colorSrc:", colorSrc);
       parsedPozycje=parsedPozycje.map(p=>{
         const np={...p};
-        for(const [pat,val] of KOLORY_RAMKI_MAP){ if(colorSrc.includes(pat)){np.kolorRamki=val;break;} }
+        // Najpierw sprawdź kod numeryczny np. "kolor 9"
+        const nrMatch=colorSrc.match(/(?:kolor|kol\.?)\s*(\d{1,2})/);
+        if(nrMatch && KOLOR_NR_MAP[nrMatch[1]]) np.kolorRamki=KOLOR_NR_MAP[nrMatch[1]];
+        else { for(const [pat,val] of KOLORY_RAMKI_MAP){ if(colorSrc.includes(pat)){np.kolorRamki=val;break;} } }
         for(const [pat,val] of KOLORY_SIATKI_MAP){ if(colorSrc.includes(pat)){np.kolorSiatki=val;break;} }
         return np;
       });
-      console.log("parsedPozycje po nadpisaniu:", JSON.stringify(parsedPozycje));
     }
     setImportModal({
       imp,
