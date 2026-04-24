@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.26</title>
+<title>MosquitoApp v20260424.29</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260424.26';
+  window.__MOSK_VERSION='20260424.29';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -741,6 +741,7 @@ function App() {
   const [zamOpenBox,setZamOpenBox]=useState({}); // {allegroOrderId: 'zlecenie'|'etykieta'|'mail'|'wiadomosc'|null}
   const [zamSearch,setZamSearch]=useState('');
   const [zamKonto,setZamKonto]=useState('');
+  const [zamTab,setZamTab]=useState('moskitiery'); // 'moskitiery'|'pozostale'
 
   const [fvAllegroStatus,setFvAllegroStatus]=useState(""); // "loading"|"ok"|"error"|""
   function saveFaktury(f){setFaktury(f);localStorage.setItem("faktury",JSON.stringify(f));}
@@ -2891,7 +2892,7 @@ function App() {
         {/* ══ ZAMÓWIENIA ══ */}
         {tab==="zamowienia" && (()=>{
           // ── Słowa kluczowe dla podziału ──
-          const MOSK_KEYS=['moskitiera','siatka','rama','ramka','drzwi','roleta'];
+          const MOSK_KEYS=['moskitiera','siatka przeciw','siatka na owady','siatka owad','rama moskitier','ramka moskitier','roleta moskitier','drzwi moskitier','mosquito'];
           const isMosk=imp=>{
             const t=((imp.offerNames||'')+(imp.buyerMsg||'')).toLowerCase();
             return MOSK_KEYS.some(k=>t.includes(k));
@@ -2931,7 +2932,7 @@ function App() {
           };
 
           // Render jednego wiersza zamówienia
-          const renderRow=(imp,idx)=>{
+          const renderRow=(imp,idx,isMoskitiera=true)=>{
             const [kBg,kCol]=KONTO_COLORS[imp.kontoId]||['#2a2a2a','#9a9a9a'];
             const as=appStatuses[imp.allegroOrderId]||'';
             const sh=allegroShipments[imp.allegroOrderId];
@@ -2974,14 +2975,14 @@ function App() {
                   </div>
                   {/* Boxy akcji */}
                   <div style={{display:'flex',gap:6,flexWrap:'wrap',alignItems:'center'}}>
-                    {/* Zlecenie */}
-                    <button onClick={()=>toggleBox(imp.allegroOrderId,'zlecenie')}
+                    {/* Zlecenie — tylko dla moskitier */}
+                    {isMoskitiera&&<button onClick={()=>toggleBox(imp.allegroOrderId,'zlecenie')}
                       style={{padding:'5px 10px',fontSize:13,borderRadius:6,cursor:'pointer',fontWeight:700,
                         background:openBox==='zlecenie'?'#2a4a2a':hasZlecenie?'#1a3a1a':'#1a2a1a',
                         border:`1px solid ${openBox==='zlecenie'?'#5a9a5a':hasZlecenie?'#3a7a3a':'#2a4a2a'}`,
                         color:hasZlecenie?'#7acf7a':'#4a7a4a'}}>
                       📋 {hasZlecenie?'Zlecenie ✅':'Zlecenie'}
-                    </button>
+                    </button>}
                     {/* Etykieta */}
                     <button onClick={()=>toggleBox(imp.allegroOrderId,'etykieta')}
                       style={{padding:'5px 10px',fontSize:13,borderRadius:6,cursor:'pointer',fontWeight:700,
@@ -3087,13 +3088,30 @@ function App() {
                   {[...new Set(allegroImportResults.map(i=>i.kontoId))].map(k=><option key={k} value={k}>{k}</option>)}
                 </select>
                 <span style={{fontSize:13,color:'#3a6a3a'}}>
-                  🦟 {moskitiery.length} moskitier / 📦 {reszta.length} pozostałych
+                  🦟 {moskitiery.length} / 📦 {reszta.length}
                 </span>
-                {/* + Dodaj ręcznie */}
                 <button onClick={()=>setTab('nowe')}
                   style={{padding:'6px 14px',fontSize:13,fontWeight:700,borderRadius:6,cursor:'pointer',
                     background:'#1a3a1a',border:'1px solid #3a7a3a',color:'#afffaf',marginLeft:'auto'}}>
                   ➕ Dodaj ręcznie
+                </button>
+              </div>
+
+              {/* ── Zakładki Moskitiery / Pozostałe ── */}
+              <div style={{display:'flex',gap:0,borderBottom:'2px solid #1a2a1a',marginBottom:0}}>
+                <button onClick={()=>setZamTab('moskitiery')}
+                  style={{padding:'8px 20px',fontSize:14,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',
+                    background:zamTab==='moskitiery'?'#1a3a1a':'#0a1a0a',
+                    color:zamTab==='moskitiery'?'#afffaf':'#3a6a3a',
+                    borderBottom:zamTab==='moskitiery'?'2px solid #3acf6a':'2px solid transparent'}}>
+                  🦟 Moskitiery ({moskitiery.length})
+                </button>
+                <button onClick={()=>setZamTab('pozostale')}
+                  style={{padding:'8px 20px',fontSize:14,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',
+                    background:zamTab==='pozostale'?'#1a2a3a':'#0a1420',
+                    color:zamTab==='pozostale'?'#7acfdf':'#2a4a6a',
+                    borderBottom:zamTab==='pozostale'?'2px solid #3a8acf':'2px solid transparent'}}>
+                  📦 Pozostałe ({reszta.length})
                 </button>
               </div>
 
@@ -3103,29 +3121,18 @@ function App() {
                 </div>
               )}
 
-              {/* ── SEKCJA: MOSKITIERY ── */}
-              {moskitiery.length>0&&(
-                <div style={{marginBottom:16}}>
-                  <div style={{padding:'6px 12px',background:'#0a1a0a',borderBottom:'2px solid #2a6a2a',fontSize:13,fontWeight:700,color:'#5acf7a',letterSpacing:'.1em',textTransform:'uppercase'}}>
-                    🦟 Moskitiery — priorytet ({moskitiery.length})
+              {/* ── Lista aktywnej zakładki ── */}
+              {(()=>{
+                const activeList=zamTab==='moskitiery'?moskitiery:reszta;
+                if(activeList.length===0&&allegroImportResults.length>0) return (
+                  <div style={{textAlign:'center',color:'#3a5a3a',padding:'40px 0',fontSize:14}}>Brak zamówień w tej kategorii</div>
+                );
+                return (
+                  <div style={{border:'1px solid #1a2a1a',borderTop:'none',borderRadius:'0 0 6px 6px',overflow:'hidden'}}>
+                    {activeList.map((imp,idx)=>renderRow(imp,idx,zamTab==='moskitiery'))}
                   </div>
-                  <div style={{border:'1px solid #1a3a1a',borderTop:'none',borderRadius:'0 0 6px 6px',overflow:'hidden'}}>
-                    {moskitiery.map((imp,idx)=>renderRow(imp,idx))}
-                  </div>
-                </div>
-              )}
-
-              {/* ── SEKCJA: RESZTA ── */}
-              {reszta.length>0&&(
-                <div>
-                  <div style={{padding:'6px 12px',background:'#0a1420',borderBottom:'2px solid #1a3a5a',fontSize:13,fontWeight:700,color:'#5a8abf',letterSpacing:'.1em',textTransform:'uppercase'}}>
-                    📦 Pozostałe zamówienia ({reszta.length})
-                  </div>
-                  <div style={{border:'1px solid #1a2a3a',borderTop:'none',borderRadius:'0 0 6px 6px',overflow:'hidden'}}>
-                    {reszta.map((imp,idx)=>renderRow(imp,idx))}
-                  </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
           );
         })()}
