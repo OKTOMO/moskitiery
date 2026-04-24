@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.5</title>
+<title>MosquitoApp v20260424.6</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -719,6 +719,7 @@ function App() {
   const [appStatuses,setAppStatuses]=useState(()=>{try{return JSON.parse(localStorage.getItem('app_statuses')||'{}');}catch{return {};}});
   const [allegroShipments,setAllegroShipments]=useState(()=>{try{return JSON.parse(localStorage.getItem('allegro_shipments')||'{}');}catch{return {};}});
   const [mailSending,setMailSending]=useState({});
+  const [mailPreview,setMailPreview]=useState(null); // {imp, to, subject, content}
   const [allegroImportShow,setAllegroImportShow]=useState(false);
   const [allegroImportError,setAllegroImportError]=useState("");
   const [shipmentModal,setShipmentModal]=useState(null);
@@ -1518,39 +1519,27 @@ function App() {
     })||null;
   }
 
-  async function sendMailProdukcja(imp){
+  function prepareMailPreview(imp){
     const order=orders.find(o=>o.allegroOrderId===imp.allegroOrderId);
     if(!order){alert('❌ Najpierw zaimportuj zamówienie do zleceń (➕ Zlecenie)');return;}
     const emailCfg=JSON.parse(localStorage.getItem('email_produkcji_config')||'{}');
     const to=emailCfg.emailProdukcji||'biuro@superis.pl';
-    const podpis=emailCfg.emailPodpis||'';
+    const subject=`${order.numerZlecenia||''} ${order.klientImie||''} ${order.klientMiasto||''}`.trim();
+    const sh=allegroShipments[imp.allegroOrderId];
+    setMailPreview({imp, order, to, subject, hasEtykieta:!!sh});
+  }
+
+  async function sendMailConfirmed(){
+    if(!mailPreview) return;
+    const {imp, order, to, subject} = mailPreview;
+    const emailCfg=JSON.parse(localStorage.getItem('email_produkcji_config')||'{}');
+    setMailPreview(null);
     setMailSending(prev=>({...prev,[imp.allegroOrderId]:true}));
     try{
-      // Wygeneruj PDF zlecenia jako base64
-      const pdfHtml=generateOrderHtml(order);
-      // Wyślij przez Worker
-      const subject=`${order.numerZlecenia||''} ${order.klientImie||''} ${order.klientMiasto||''}`.trim();
-      const content=`--\nZ poważaniem\n${podpis}`;
-      // Pobierz PDF etykiety jeśli jest
-      const sh=allegroShipments[imp.allegroOrderId];
-      let attachments=[];
-      // Attach zlecenia PDF (jako HTML base64)
-      const blob=new Blob([pdfHtml],{type:'text/html'});
-      const b64=await new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.readAsDataURL(blob);});
-      attachments.push({name:`${subject} L.html`,content:b64,mimeType:'text/html'});
-      if(sh){
-        // Pobierz etykietę DPD/InPost
-        const lr=await fetch(AUTORESPONDER_URL+"/shipment/label?kontoId="+sh.kontoId,{
-          method:"POST",headers:{"x-api-key":AUTORESPONDER_KEY,"Content-Type":"application/json"},
-          body:JSON.stringify({shipmentIds:[sh.shipmentId],pageSize:"A6"})
-        });
-        const ld=await lr.json();
-        if(ld.pdf) attachments.push({name:`${subject} etykieta.pdf`,content:ld.pdf,mimeType:'application/pdf'});
-      }
       const r=await fetch(AUTORESPONDER_URL+'/email/send',{
         method:'POST',
         headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},
-        body:JSON.stringify({to,subject,content,attachments})
+        body:JSON.stringify({to, subject, content:''})
       });
       const d=await r.json();
       if(d.ok) alert(`✅ Mail wysłany do ${to}\nTemat: ${subject}`);
@@ -2930,7 +2919,7 @@ function App() {
                                       🔗 Allegro
                                     </a>
                                     {orders.find(o=>o.allegroOrderId===imp.allegroOrderId)&&(
-                                      <button onClick={()=>sendMailProdukcja(imp)} disabled={!!mailSending[imp.allegroOrderId]}
+                                      <button onClick={()=>prepareMailPreview(imp)} disabled={!!mailSending[imp.allegroOrderId]}
                                         title="Wyślij zlecenie na produkcję"
                                         style={{padding:"5px 10px",fontSize:14,background:"#2a1a3a",border:"1px solid #5a2a7a",borderRadius:5,color:"#af7adf",cursor:"pointer",whiteSpace:"nowrap"}}>
                                         {mailSending[imp.allegroOrderId]?"⟳":"✉️"}
@@ -2948,6 +2937,36 @@ function App() {
                 </div>
               </div>
             )}
+          {/* ── MODAL PODGLĄD MAILA ── */}
+          {mailPreview&&(
+            <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.75)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center"}}
+              onClick={e=>{if(e.target===e.currentTarget)setMailPreview(null);}}>
+              <div style={{background:"#0c1a0c",border:"1px solid #3a5a7a",borderRadius:12,padding:24,width:460,maxWidth:"95vw"}}>
+                <div style={{fontWeight:700,fontSize:15,color:"#af9adf",marginBottom:16}}>✉️ Wyślij zlecenie na produkcję</div>
+                <div style={{marginBottom:12,fontSize:13,color:"#7a9a7a"}}>
+                  <div style={{marginBottom:6}}><span style={{color:"#4a7a9a"}}>Do:</span> <strong style={{color:"#a0cfdf"}}>{mailPreview.to}</strong></div>
+                  <div style={{marginBottom:6}}><span style={{color:"#4a7a9a"}}>Temat:</span> <strong style={{color:"#cfdfaf"}}>{mailPreview.subject}</strong></div>
+                  <div style={{marginBottom:6}}><span style={{color:"#4a7a9a"}}>Załączniki:</span>
+                    <div style={{marginTop:4,fontSize:12}}>
+                      <div style={{color:"#7acf7a"}}>📄 {mailPreview.subject} L.html — zlecenie</div>
+                      {mailPreview.hasEtykieta&&<div style={{color:"#7acf7a"}}>📦 {mailPreview.subject} etykieta.pdf — etykieta</div>}
+                      {!mailPreview.hasEtykieta&&<div style={{color:"#cf9a4a"}}>⚠️ Brak etykiety — nie wygenerowano jeszcze</div>}
+                    </div>
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
+                  <button onClick={()=>setMailPreview(null)}
+                    style={{padding:"8px 18px",borderRadius:6,border:"1px solid #2a3a4a",background:"none",color:"#5a7a8a",cursor:"pointer"}}>
+                    Anuluj
+                  </button>
+                  <button onClick={sendMailConfirmed}
+                    style={{padding:"8px 22px",borderRadius:6,border:"1px solid #5a3a8a",background:"#2a1a4a",color:"#cf9adf",cursor:"pointer",fontWeight:700,fontSize:14}}>
+                    ✉️ Wyślij
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
           {/* ── MODAL IMPORT ZLECENIA ── */}
           {importModal&&(()=>{
             const {imp,mode,kalNum,kalLoading,kalError,kalData,pozycje}=importModal;
