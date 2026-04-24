@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.2</title>
+<title>MosquitoApp v20260424.3</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1557,6 +1557,8 @@ function App() {
     }
     setMailSending(prev=>({...prev,[imp.allegroOrderId]:false}));
   }
+
+  async function openShipmentModal(imp){
     // Znajdź powiązane zlecenie po allegroOrderId
     const linkedOrder=orders.find(o=>o.allegroOrderId===imp.allegroOrderId);
     const nrZlec=linkedOrder?linkedOrder.numerZlecenia:"";
