@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.41</title>
+<title>MosquitoApp v20260424.42</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260424.41';
+  window.__MOSK_VERSION='20260424.42';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -1798,6 +1798,7 @@ function App() {
     const isPickupPoint=isInPost||isDPDPickup;
     const isCOD=(service?.name||'').toLowerCase().includes('pobranie')||(service?.name||'').toLowerCase().includes('cod');
     const codAmount=isCOD?(parseFloat(imp.kwotaBrutto)||0):0;
+    console.log('[SHIPMENT] isCOD:',isCOD,'codAmount:',codAmount,'serviceName:',service?.name);
     const SIZES={"A":{length:64,width:38,height:8,weight:25},"B":{length:64,width:38,height:19,weight:25},"C":{length:64,width:38,height:41,weight:25}};
     // Auto-kalkulator paczek
     const desc=(shipmentDescription||"").toLowerCase();
@@ -1856,7 +1857,7 @@ function App() {
           },
           packages,
           ...(isPickupPoint?{additionalServices:["sendingAtPoint"]}:{}),
-          ...(isCOD && codAmount>0 ? {cod:{amount:{value:codAmount,currency:"PLN"}}} : {})
+          ...(isCOD && codAmount>0 ? {cod:{amount:String(codAmount.toFixed(2)),currency:"PLN"}} : {})
         }
       };
       console.log("createBody:", JSON.stringify(createBody, null, 2));
