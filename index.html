@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.24</title>
+<title>MosquitoApp v20260424.26</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260424.24';
+  window.__MOSK_VERSION='20260424.26';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -737,6 +737,10 @@ function App() {
   const [shipmentServiceId,setShipmentServiceId]=useState("");
   // ── Import modal state ──
   const [importModal,setImportModal]=useState(null); // {imp, mode, kalNum, kalLoading, kalError, kalData, pozycje}
+  // ── Nowa zakładka Zamówienia — rozwinięte boxy ──
+  const [zamOpenBox,setZamOpenBox]=useState({}); // {allegroOrderId: 'zlecenie'|'etykieta'|'mail'|'wiadomosc'|null}
+  const [zamSearch,setZamSearch]=useState('');
+  const [zamKonto,setZamKonto]=useState('');
 
   const [fvAllegroStatus,setFvAllegroStatus]=useState(""); // "loading"|"ok"|"error"|""
   function saveFaktury(f){setFaktury(f);localStorage.setItem("faktury",JSON.stringify(f));}
@@ -2539,7 +2543,7 @@ function App() {
       </div>
 
       <div style={{display:"flex",borderBottom:"1px solid #1e2a1e",paddingLeft:16,background:"#0e1420",flexWrap:"wrap"}}>
-        {[["nowe","➕ Dodaj zamówienie"],["al_zam","🛒 Allegro"],["baza","📋 Zlecenia"],["zapytania","📨 Zapytania KAL"],["stat","📊 Stat"],["produkcja","🏭 Produkcja"],["kalk","🧮 Kalkulator"],["faktury","🧾 Faktury"],["wiadomosci","💬 Wiadomości"]].map(([id,l])=>(
+        {[["zamowienia","📦 Zamówienia"],["nowe","➕ Dodaj"],["al_zam","🛒 Allegro"],["baza","📋 Zlecenia"],["zapytania","📨 KAL"],["stat","📊 Stat"],["produkcja","🏭 Produkcja"],["kalk","🧮 Kalkulator"],["faktury","🧾 Faktury"],["wiadomosci","💬 Wiadomości"]].map(([id,l])=>(
           <button key={id} className={`tab ${tab===id?"on":""}`} onClick={()=>setTab(id)}>{l}</button>
         ))}
         <button className={`tab ${(tab==="allegro"||tab==="ustawienia"||tab==="historia")?"on":""}`} onClick={()=>{
@@ -2885,6 +2889,247 @@ function App() {
         )}
 
         {/* ══ ZAMÓWIENIA ══ */}
+        {tab==="zamowienia" && (()=>{
+          // ── Słowa kluczowe dla podziału ──
+          const MOSK_KEYS=['moskitiera','siatka','rama','ramka','drzwi','roleta'];
+          const isMosk=imp=>{
+            const t=((imp.offerNames||'')+(imp.buyerMsg||'')).toLowerCase();
+            return MOSK_KEYS.some(k=>t.includes(k));
+          };
+          const filteredAll=allegroImportResults.filter(imp=>{
+            if(zamKonto && imp.kontoId!==zamKonto) return false;
+            if(zamSearch){
+              const q=zamSearch.toLowerCase();
+              return (imp.klientImie||'').toLowerCase().includes(q)||
+                (imp.klientLogin||'').toLowerCase().includes(q)||
+                (imp.klientMiasto||'').toLowerCase().includes(q)||
+                (imp.allegroOrderId||'').includes(q)||
+                (imp.offerNames||'').toLowerCase().includes(q);
+            }
+            return true;
+          });
+          const moskitiery=filteredAll.filter(isMosk);
+          const reszta=filteredAll.filter(imp=>!isMosk(imp));
+
+          const KONTO_COLORS={
+            "favo5":["#2a5a3a","#7fcf7f"],"staroleska_pl":["#2a4a2a","#5abf7a"],
+            "sinlook_pl":["#1a4a3a","#4abf9a"],"arlis_pl":["#2a3a5a","#7abfdf"],
+            "everis_pl":["#3a2a5a","#af8fdf"],"albama_eu":["#4a3a1a","#dfaf5a"],
+            "pedroshop_pl_365":["#3a2a1a","#cf8a4a"]
+          };
+
+          // Pomocnik — format daty + godziny
+          const fmtDT=iso=>{
+            if(!iso) return '—';
+            const d=new Date(iso);
+            return d.toLocaleDateString('pl-PL')+' '+d.toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});
+          };
+
+          // Pomocnik — toggle box
+          const toggleBox=(orderId,box)=>{
+            setZamOpenBox(prev=>({...prev,[orderId]:prev[orderId]===box?null:box}));
+          };
+
+          // Render jednego wiersza zamówienia
+          const renderRow=(imp,idx)=>{
+            const [kBg,kCol]=KONTO_COLORS[imp.kontoId]||['#2a2a2a','#9a9a9a'];
+            const as=appStatuses[imp.allegroOrderId]||'';
+            const sh=allegroShipments[imp.allegroOrderId];
+            const hasZlecenie=!!orders.find(o=>o.allegroOrderId===imp.allegroOrderId);
+            const hasEtykieta=!!sh;
+            const isRealizacja=as==='W realizacji'||as==='Wysłano';
+            const openBox=zamOpenBox[imp.allegroOrderId];
+
+            // Kolory statusu wiersza
+            const rowBg=isRealizacja?'#0a1a0a':as?'#0a1520':'#0a1020';
+            const rowOpacity=as==='Wysłano'?0.5:1;
+
+            return (
+              <div key={idx} style={{borderBottom:'1px solid #0f1f2f',background:rowBg,opacity:rowOpacity,transition:'all .15s'}}>
+                {/* ── Główny wiersz ── */}
+                <div style={{display:'flex',alignItems:'center',gap:10,padding:'10px 12px',flexWrap:'wrap'}}>
+                  {/* Konto */}
+                  <div style={{minWidth:80}}>
+                    <span style={{fontSize:12,padding:'2px 6px',borderRadius:6,background:kBg,color:kCol,fontFamily:'monospace',fontWeight:700,display:'inline-block'}}>{imp.kontoId}</span>
+                    <div style={{fontSize:11,color:'#3a6a4a',marginTop:2}}>{imp.firma==='F'?'Favour':imp.firma==='AR'?'Arlis':imp.firma==='E'?'Everis':'Albama'}</div>
+                  </div>
+                  {/* Data + godzina */}
+                  <div style={{minWidth:110,fontSize:12,color:'#5a8abf'}}>
+                    {imp.boughtAt?fmtDT(imp.boughtAt):imp.data||'—'}
+                  </div>
+                  {/* Klient */}
+                  <div style={{flex:1,minWidth:120}}>
+                    <div style={{fontWeight:600,color:isRealizacja?'#5a9a5a':'#a0cfdf',fontSize:14}}>
+                      {isRealizacja&&<span style={{marginRight:4}}>✅</span>}
+                      {imp.klientImie||'—'}
+                    </div>
+                    {imp.klientLogin&&<div style={{fontSize:11,color:'#3a6a8a',fontFamily:'monospace'}}>{imp.klientLogin}</div>}
+                    {imp.klientMiasto&&<div style={{fontSize:11,color:'#4a7a6a'}}>{imp.klientMiasto}</div>}
+                  </div>
+                  {/* Produkt + kwota */}
+                  <div style={{flex:2,minWidth:160}}>
+                    <div style={{fontSize:13,color:'#5a8a9a',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{imp.offerNames||'—'}</div>
+                    {imp.buyerMsg&&<div style={{fontSize:11,color:'#cfaf6f',fontStyle:'italic',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>💬 {imp.buyerMsg}</div>}
+                    {imp.kwotaBrutto&&<div style={{fontSize:12,color:'#afdf7f',fontWeight:700,marginTop:2}}>💰 {parseFloat(imp.kwotaBrutto).toFixed(2)} zł</div>}
+                  </div>
+                  {/* Boxy akcji */}
+                  <div style={{display:'flex',gap:6,flexWrap:'wrap',alignItems:'center'}}>
+                    {/* Zlecenie */}
+                    <button onClick={()=>toggleBox(imp.allegroOrderId,'zlecenie')}
+                      style={{padding:'5px 10px',fontSize:13,borderRadius:6,cursor:'pointer',fontWeight:700,
+                        background:openBox==='zlecenie'?'#2a4a2a':hasZlecenie?'#1a3a1a':'#1a2a1a',
+                        border:`1px solid ${openBox==='zlecenie'?'#5a9a5a':hasZlecenie?'#3a7a3a':'#2a4a2a'}`,
+                        color:hasZlecenie?'#7acf7a':'#4a7a4a'}}>
+                      📋 {hasZlecenie?'Zlecenie ✅':'Zlecenie'}
+                    </button>
+                    {/* Etykieta */}
+                    <button onClick={()=>toggleBox(imp.allegroOrderId,'etykieta')}
+                      style={{padding:'5px 10px',fontSize:13,borderRadius:6,cursor:'pointer',fontWeight:700,
+                        background:openBox==='etykieta'?'#2a3a1a':hasEtykieta?'#1a3a1a':'#1a2a1a',
+                        border:`1px solid ${openBox==='etykieta'?'#7a9a3a':hasEtykieta?'#5a7a2a':'#2a4a2a'}`,
+                        color:hasEtykieta?'#afdf7f':'#6a8a4a'}}>
+                      📦 {hasEtykieta?'Etykieta ✅':'Etykieta'}
+                    </button>
+                    {/* Mail */}
+                    <button onClick={()=>{
+                        const emailCfg=JSON.parse(localStorage.getItem('email_produkcji_config')||'{}');
+                        const to=emailCfg.emailProdukcji||'';
+                        if(!to){alert('Brak adresu email produkcji — ustaw w Ustawieniach');return;}
+                        const order=orders.find(o=>o.allegroOrderId===imp.allegroOrderId)||imp;
+                        const subject=`${order.numerZlecenia||imp.allegroOrderId||''} ${imp.klientImie||''} ${imp.klientMiasto||''}`.trim();
+                        setMailPreview({imp, order, to, subject, hasEtykieta:!!sh});
+                        loadRecentEmails();
+                      }}
+                      style={{padding:'5px 10px',fontSize:13,borderRadius:6,cursor:'pointer',fontWeight:700,
+                        background:'#1a1a3a',border:'1px solid #3a3a7a',color:'#9a9adf'}}>
+                      ✉️ Mail
+                    </button>
+                    {/* Wiadomości */}
+                    <button onClick={()=>{setSelectedOrderId(imp.allegroOrderId);setSelectedKontoId(imp.kontoId);setTab('wiadomosci');}}
+                      style={{padding:'5px 10px',fontSize:13,borderRadius:6,cursor:'pointer',fontWeight:700,
+                        background:'#1a2a2a',border:'1px solid #2a5a5a',color:'#5abfbf'}}>
+                      💬
+                    </button>
+                    {/* Allegro link */}
+                    <a href={`https://allegro.pl/transakcja/${imp.allegroOrderId}`} target="_blank" rel="noreferrer"
+                      style={{padding:'5px 8px',fontSize:13,borderRadius:6,fontWeight:700,
+                        background:'#1a2a3a',border:'1px solid #2a5a7a',color:'#7abfdf',textDecoration:'none',display:'inline-block'}}>
+                      🔗
+                    </a>
+                  </div>
+                </div>
+
+                {/* ── Panel Zlecenie ── */}
+                {openBox==='zlecenie'&&(
+                  <div style={{background:'#070f07',borderTop:'1px solid #1a3a1a',padding:'12px 16px'}}>
+                    <button onClick={()=>{setImportModal({imp,mode:'ai',kalNum:'',kalLoading:false,kalError:'',kalData:null,pozycje:[]});toggleBox(imp.allegroOrderId,null);}}
+                      style={{padding:'7px 16px',fontSize:14,fontWeight:700,borderRadius:6,cursor:'pointer',background:'#1a3a1a',border:'1px solid #3a7a3a',color:'#afffaf',marginRight:8}}>
+                      📋 Otwórz formularz zlecenia
+                    </button>
+                    {hasZlecenie&&(()=>{
+                      const o=orders.find(ord=>ord.allegroOrderId===imp.allegroOrderId);
+                      return <span style={{fontSize:13,color:'#5a9a5a'}}>✅ {o?.numerZlecenia} — {o?.klientImie}</span>;
+                    })()}
+                  </div>
+                )}
+
+                {/* ── Panel Etykieta ── */}
+                {openBox==='etykieta'&&(
+                  <div style={{background:'#070f07',borderTop:'1px solid #1a3a1a',padding:'12px 16px'}}>
+                    <div style={{fontSize:13,color:'#4a7a4a',marginBottom:10,fontWeight:700}}>Wybierz metodę wysyłki:</div>
+                    <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                      {/* Allegro — InPost/DPD */}
+                      <button onClick={()=>{openShipmentModal(imp);toggleBox(imp.allegroOrderId,null);}}
+                        style={{padding:'7px 14px',fontSize:13,fontWeight:700,borderRadius:6,cursor:'pointer',background:'#1a2a3a',border:'1px solid #3a6a9a',color:'#7abfdf'}}>
+                        📦 Allegro (InPost/DPD)
+                      </button>
+                      {/* DPD API bezpośrednie */}
+                      <button onClick={()=>{setDpdModal(orders.find(o=>o.allegroOrderId===imp.allegroOrderId)||{klientImie:imp.klientImie,klientUlica:imp.klientUlica,klientKod:imp.klientKod,klientMiasto:imp.klientMiasto,telefon:imp.telefon,allegroOrderId:imp.allegroOrderId});setDpdWaga('5');toggleBox(imp.allegroOrderId,null);}}
+                        style={{padding:'7px 14px',fontSize:13,fontWeight:700,borderRadius:6,cursor:'pointer',background:'#2a1a1a',border:'1px solid #7a3a1a',color:'#dfaf7a'}}>
+                        🚚 DPD API
+                      </button>
+                    </div>
+                    {hasEtykieta&&sh&&(
+                      <div style={{marginTop:8,fontSize:12,color:'#5a8a5a'}}>
+                        ✅ Etykieta: {sh.waybill||sh.shipmentId}
+                        <button onClick={async()=>{
+                          try{
+                            const r=await fetch(AUTORESPONDER_URL+'/shipment/label?kontoId='+sh.kontoId,{method:'POST',headers:{'x-api-key':AUTORESPONDER_KEY,'Content-Type':'application/json'},body:JSON.stringify({shipmentIds:[sh.shipmentId],pageSize:'A6'})});
+                            const d=await r.json();
+                            if(d.pdf){const w=window.open();w.document.write(`<iframe src="data:application/pdf;base64,${d.pdf}" width="100%" height="100%"></iframe>`);}
+                          }catch(e){alert('❌ '+e.message);}
+                        }} style={{marginLeft:8,padding:'2px 8px',fontSize:11,borderRadius:4,cursor:'pointer',background:'#1a2a1a',border:'1px solid #3a5a3a',color:'#7acf7a'}}>
+                          🖨️ Drukuj
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          };
+
+          return (
+            <div>
+              {/* ── Nagłówek ── */}
+              <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:12,flexWrap:'wrap',padding:'0 4px'}}>
+                <button onClick={fetchAllegroOrders} disabled={allegroImportLoading}
+                  style={{padding:'6px 18px',fontSize:14,fontWeight:700,cursor:allegroImportLoading?'not-allowed':'pointer',
+                    background:allegroImportLoading?'#1a2a2a':'#1a3a4a',border:'1px solid #2a6a8a',borderRadius:6,color:'#7acfdf'}}>
+                  {allegroImportLoading?'⟳ Pobieranie...':'📥 Pobierz zamówienia'}
+                </button>
+                <input value={zamSearch} onChange={e=>setZamSearch(e.target.value)}
+                  placeholder="Szukaj klienta, miasta, produktu..." 
+                  style={{padding:'6px 12px',fontSize:13,background:'#0a1a0a',border:'1px solid #1a3a1a',borderRadius:6,color:'#7acf9f',width:220}}/>
+                <select value={zamKonto} onChange={e=>setZamKonto(e.target.value)}
+                  style={{padding:'6px 10px',fontSize:13,background:'#0a1420',border:'1px solid #1a3a5a',borderRadius:6,color:'#7abfdf'}}>
+                  <option value="">Wszystkie konta</option>
+                  {[...new Set(allegroImportResults.map(i=>i.kontoId))].map(k=><option key={k} value={k}>{k}</option>)}
+                </select>
+                <span style={{fontSize:13,color:'#3a6a3a'}}>
+                  🦟 {moskitiery.length} moskitier / 📦 {reszta.length} pozostałych
+                </span>
+                {/* + Dodaj ręcznie */}
+                <button onClick={()=>setTab('nowe')}
+                  style={{padding:'6px 14px',fontSize:13,fontWeight:700,borderRadius:6,cursor:'pointer',
+                    background:'#1a3a1a',border:'1px solid #3a7a3a',color:'#afffaf',marginLeft:'auto'}}>
+                  ➕ Dodaj ręcznie
+                </button>
+              </div>
+
+              {allegroImportResults.length===0&&(
+                <div style={{textAlign:'center',color:'#2a5a3a',padding:'40px 0',fontSize:14}}>
+                  Kliknij "Pobierz zamówienia" żeby załadować listę z Allegro
+                </div>
+              )}
+
+              {/* ── SEKCJA: MOSKITIERY ── */}
+              {moskitiery.length>0&&(
+                <div style={{marginBottom:16}}>
+                  <div style={{padding:'6px 12px',background:'#0a1a0a',borderBottom:'2px solid #2a6a2a',fontSize:13,fontWeight:700,color:'#5acf7a',letterSpacing:'.1em',textTransform:'uppercase'}}>
+                    🦟 Moskitiery — priorytet ({moskitiery.length})
+                  </div>
+                  <div style={{border:'1px solid #1a3a1a',borderTop:'none',borderRadius:'0 0 6px 6px',overflow:'hidden'}}>
+                    {moskitiery.map((imp,idx)=>renderRow(imp,idx))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── SEKCJA: RESZTA ── */}
+              {reszta.length>0&&(
+                <div>
+                  <div style={{padding:'6px 12px',background:'#0a1420',borderBottom:'2px solid #1a3a5a',fontSize:13,fontWeight:700,color:'#5a8abf',letterSpacing:'.1em',textTransform:'uppercase'}}>
+                    📦 Pozostałe zamówienia ({reszta.length})
+                  </div>
+                  <div style={{border:'1px solid #1a2a3a',borderTop:'none',borderRadius:'0 0 6px 6px',overflow:'hidden'}}>
+                    {reszta.map((imp,idx)=>renderRow(imp,idx))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
         {tab==="al_zam" && (
           <div>
             {/* Nagłówek + przycisk pobierz */}
