@@ -3,10 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.8</title>
+<title>MosquitoApp v20260424.9</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.2/html2pdf.bundle.min.js"></script>
 </head><body>
 <div id="root"></div>
 <script>
@@ -720,6 +721,7 @@ function App() {
   const [allegroShipments,setAllegroShipments]=useState(()=>{try{return JSON.parse(localStorage.getItem('allegro_shipments')||'{}');}catch{return {};}});
   const [mailSending,setMailSending]=useState({});
   const [mailPreview,setMailPreview]=useState(null); // {imp, to, subject, content}
+  const [recentEmails,setRecentEmails]=useState([]); // ostatnio użyte adresy (z KV)
   const [allegroImportShow,setAllegroImportShow]=useState(false);
   const [allegroImportError,setAllegroImportError]=useState("");
   const [shipmentModal,setShipmentModal]=useState(null);
@@ -1519,6 +1521,14 @@ function App() {
     })||null;
   }
 
+  async function loadRecentEmails(){
+    try{
+      const r=await fetch(AUTORESPONDER_URL+'/email/recent',{headers:{'x-api-key':AUTORESPONDER_KEY}});
+      const d=await r.json();
+      if(d.ok && Array.isArray(d.emails)) setRecentEmails(d.emails);
+    }catch(e){ /* silent */ }
+  }
+
   function prepareMailPreview(imp){
     const order=orders.find(o=>o.allegroOrderId===imp.allegroOrderId);
     if(!order){alert('❌ Najpierw zaimportuj zamówienie do zleceń (➕ Zlecenie)');return;}
@@ -1527,6 +1537,7 @@ function App() {
     const subject=`${order.numerZlecenia||''} ${order.klientImie||''} ${order.klientMiasto||''}`.trim();
     const sh=allegroShipments[imp.allegroOrderId];
     setMailPreview({imp, order, to, subject, hasEtykieta:!!sh});
+    loadRecentEmails();
   }
 
   async function sendMailConfirmed(){
@@ -1536,11 +1547,23 @@ function App() {
     setMailSending(prev=>({...prev,[imp.allegroOrderId]:true}));
     try{
       const attachments=[];
-      // Zlecenie HTML
+      // Zlecenie PDF — wygeneruj z HTML przez html2pdf.js
       const pdfHtml=generateOrderHtml(order);
-      const htmlBlob=new Blob([pdfHtml],{type:'text/html'});
-      const htmlB64=await new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.readAsDataURL(htmlBlob);});
-      attachments.push({name:`${subject} L.html`,content:htmlB64,mimeType:'text/html'});
+      // Kontener poza viewportem (żeby nie mignął userowi)
+      const holder=document.createElement('div');
+      holder.style.cssText='position:fixed;left:-10000px;top:0;width:210mm;';
+      holder.innerHTML=pdfHtml.replace(/^[\s\S]*?<body[^>]*>/i,'').replace(/<\/body>[\s\S]*$/i,'');
+      document.body.appendChild(holder);
+      const pdfBlob=await window.html2pdf().set({
+        margin:[6,8,6,8],
+        filename:`${subject} L.pdf`,
+        image:{type:'jpeg',quality:0.95},
+        html2canvas:{scale:2,useCORS:true,backgroundColor:'#ffffff'},
+        jsPDF:{unit:'mm',format:'a4',orientation:'portrait'}
+      }).from(holder).outputPdf('blob');
+      document.body.removeChild(holder);
+      const pdfB64=await new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.readAsDataURL(pdfBlob);});
+      attachments.push({name:`${subject} L.pdf`,content:pdfB64,mimeType:'application/pdf'});
       // Etykieta PDF
       const sh=allegroShipments[imp.allegroOrderId];
       if(sh){
@@ -1559,7 +1582,11 @@ function App() {
         body:JSON.stringify({to,subject,content:'',attachments})
       });
       const d=await r.json();
-      if(d.ok) alert(`✅ Mail wysłany do ${to}\nTemat: ${subject}`);
+      if(d.ok){
+        alert(`✅ Mail wysłany do ${to}\nTemat: ${subject}`);
+        // Odśwież listę ostatnich adresów (worker sam dopisał)
+        loadRecentEmails();
+      }
       else throw new Error(JSON.stringify(d));
     }catch(e){
       alert('❌ Błąd wysyłki: '+e.message);
@@ -2964,12 +2991,26 @@ function App() {
                   <div style={{marginBottom:8,display:"flex",alignItems:"center",gap:8}}>
                     <span style={{color:"#4a7a9a",whiteSpace:"nowrap"}}>Do:</span>
                     <input value={mailPreview.to} onChange={e=>setMailPreview(p=>({...p,to:e.target.value}))}
+                      list="recent-emails-list" autoComplete="off"
                       style={{flex:1,background:"#0a140a",border:"1px solid #2a4a2a",borderRadius:4,color:"#a0cfdf",padding:"4px 8px",fontSize:13,fontFamily:"monospace"}}/>
+                    <datalist id="recent-emails-list">
+                      {recentEmails.map((em,i)=><option key={i} value={em}/>)}
+                    </datalist>
                   </div>
+                  {recentEmails.length>0 && (
+                    <div style={{marginBottom:8,display:"flex",flexWrap:"wrap",gap:4,paddingLeft:32}}>
+                      {recentEmails.slice(0,6).map((em,i)=>(
+                        <button key={i} type="button" onClick={()=>setMailPreview(p=>({...p,to:em}))}
+                          style={{padding:"2px 8px",fontSize:11,borderRadius:3,border:"1px solid #2a4a4a",background:mailPreview.to===em?"#1a3a4a":"#0a1a1a",color:"#7acfdf",cursor:"pointer",fontFamily:"monospace"}}>
+                          {em}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <div style={{marginBottom:6}}><span style={{color:"#4a7a9a"}}>Temat:</span> <strong style={{color:"#cfdfaf"}}>{mailPreview.subject}</strong></div>
                   <div style={{marginBottom:6}}><span style={{color:"#4a7a9a"}}>Załączniki:</span>
                     <div style={{marginTop:4,fontSize:12}}>
-                      <div style={{color:"#7acf7a"}}>📄 {mailPreview.subject} L.html — zlecenie</div>
+                      <div style={{color:"#7acf7a"}}>📄 {mailPreview.subject} L.pdf — zlecenie</div>
                       {mailPreview.hasEtykieta&&<div style={{color:"#7acf7a"}}>📦 {mailPreview.subject} etykieta.pdf — etykieta</div>}
                       {!mailPreview.hasEtykieta&&<div style={{color:"#cf9a4a"}}>⚠️ Brak etykiety — nie wygenerowano jeszcze</div>}
                     </div>
