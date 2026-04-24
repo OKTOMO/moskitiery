@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.38</title>
+<title>MosquitoApp v20260424.39</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260424.38';
+  window.__MOSK_VERSION='20260424.39';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -5385,6 +5385,206 @@ function App() {
         )}
 
       </div>
+
+          {/* ── MODAL IMPORT ZLECENIA ── */}
+          {importModal&&(()=>{
+            const {imp,mode,kalNum,kalLoading,kalError,kalData,pozycje}=importModal;
+            const setIM=fn=>setImportModal(prev=>({...prev,...(typeof fn==="function"?fn(prev):fn)}));
+
+            const loadKal=async()=>{
+              const n=(importModal.kalNum||"").trim();
+              if(!n)return;
+              setIM({kalLoading:true,kalError:"",kalData:null});
+              try{
+                const r=await fetch(AUTORESPONDER_URL+"/kalkulator/order/"+encodeURIComponent(n.toLowerCase()));
+                const d=await r.json();
+                if(d.error||!d.orderNumber) throw new Error("Nie znaleziono: "+n);
+                setIM({kalLoading:false,kalData:d,kalError:""});
+              }catch(e){
+                setIM({kalLoading:false,kalError:e.message,kalData:null});
+              }
+            };
+
+            const updatePoz=(i,field,val)=>{
+              setIM(prev=>{
+                const p=[...prev.pozycje];
+                p[i]={...p[i],[field]:val};
+                return {pozycje:p};
+              });
+            };
+            const addPoz=()=>setIM(prev=>({pozycje:[...prev.pozycje,pustaPoz()]}));
+            const delPoz=(i)=>setIM(prev=>({pozycje:prev.pozycje.filter((_,j)=>j!==i)}));
+
+            const KOLOR_RAMKI_OPTS=["Antracyt","Biała","Brąz","Czarna","Szara","Srebrna","Złota","Dąb"];
+            const KOLOR_SIATKI_OPTS=["Czarna","Szara","Biała","Antracyt"];
+
+            return (
+              <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.82)",zIndex:1100,display:"flex",alignItems:"center",justifyContent:"center",padding:12}}
+                onClick={e=>{if(e.target===e.currentTarget)setImportModal(null);}}>
+                <div style={{background:"#0b1a0b",border:"1px solid #2a6a3a",borderRadius:12,padding:24,width:600,maxWidth:"98vw",maxHeight:"90vh",overflowY:"auto"}}>
+
+                  {/* Nagłówek */}
+                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+                    <span style={{fontSize:15,fontWeight:700,color:"#afffaf"}}>➕ Import zlecenia</span>
+                    <span style={{marginLeft:"auto",cursor:"pointer",color:"#5a7a5a",fontSize:18}} onClick={()=>setImportModal(null)}>✕</span>
+                  </div>
+
+                  {/* Dane klienta */}
+                  <div style={{background:"#0e1e0e",border:"1px solid #1a4a2a",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:14}}>
+                    <div style={{fontWeight:700,color:"#a0cfdf",marginBottom:4}}>{imp.klientImie}</div>
+                    <div style={{color:"#5a8a7a"}}>{imp.klientUlica}, {imp.klientKod} {imp.klientMiasto}</div>
+                    {imp.telefon&&<div style={{color:"#5a8a7a"}}>{imp.telefon}</div>}
+                    <div style={{marginTop:6,fontSize:14,color:"#3a6a5a",fontStyle:"italic"}} title={imp.offerNames}>{imp.offerNames||"—"}</div>
+                  </div>
+
+                  {/* Zakładki trybu */}
+                  <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
+                    {[["kal","🧮 Z kalkulatora"],["parse","📐 Z nazwy oferty"],["manual","✏️ Ręcznie"]].map(([m,l])=>(
+                      <button key={m} onClick={()=>setIM({mode:m})}
+                        style={{padding:"5px 12px",fontSize:14,borderRadius:6,cursor:"pointer",fontWeight:700,
+                          background:mode===m?"#1a4a2a":"#0e1e0e",
+                          border:"1px solid "+(mode===m?"#3a8a4a":"#1a3a2a"),
+                          color:mode===m?"#7fcf7f":"#3a6a4a"}}>{l}</button>
+                    ))}
+                    {imp.buyerMsg&&(
+                      <button onClick={async()=>{
+                        setIM({kalLoading:true,kalError:""});
+                        try{
+                          const r=await fetch(AUTORESPONDER_URL+"/order/parse",{
+                            method:"POST",
+                            headers:{"Content-Type":"application/json","x-api-key":AUTORESPONDER_KEY},
+                            body:JSON.stringify({msg:imp.buyerMsg})
+                          });
+                          const d=await r.json();
+                          if(!d.ok||!d.pozycje||d.pozycje.length===0) throw new Error(d.error||"AI nie znalazło wymiarów");
+                          setIM({pozycje:d.pozycje,mode:"parse",kalLoading:false,kalError:""});
+                        }catch(e){
+                          setIM({kalLoading:false,kalError:"🤖 "+e.message});
+                        }
+                      }}
+                        style={{padding:"5px 12px",fontSize:14,borderRadius:6,cursor:"pointer",fontWeight:700,
+                          background:"#1a1a3a",border:"1px solid #3a3a8a",color:"#9a9adf"}}>
+                        🤖 Parsuj z AI
+                      </button>
+                    )}
+                  </div>
+
+                  {/* buyerMsg podgląd */}
+                  {imp.buyerMsg&&(
+                    <div style={{background:"#0a0e1a",border:"1px solid #1a2a4a",borderRadius:6,padding:"6px 10px",marginBottom:12,fontSize:12,color:"#6a8abf",fontStyle:"italic"}}>
+                      💬 {imp.buyerMsg}
+                    </div>
+                  )}
+                  {importModal.kalError&&<div style={{color:"#df7a7a",fontSize:13,marginBottom:8}}>❌ {importModal.kalError}</div>}
+                  {importModal.kalLoading&&<div style={{color:"#7abfdf",fontSize:13,marginBottom:8}}>🤖 AI analizuje wiadomość...</div>}
+                  {mode==="kal"&&(
+                    <div>
+                      <div style={{display:"flex",gap:8,marginBottom:8}}>
+                        <input value={kalNum} onChange={e=>setIM({kalNum:e.target.value.toUpperCase()})}
+                          onKeyDown={e=>{if(e.key==="Enter")loadKal();}}
+                          placeholder="KAL-260304-0001"
+                          style={{flex:1,padding:"7px 10px",borderRadius:6,border:"1px solid #2a5a3a",background:"#0a140a",color:"#a0dfaf",fontFamily:"monospace",fontSize:14}}/>
+                        <button onClick={loadKal} disabled={kalLoading}
+                          style={{padding:"7px 16px",borderRadius:6,border:"1px solid #3a8a4a",background:kalLoading?"#1a2a1a":"#1a4a2a",color:"#afffaf",cursor:kalLoading?"not-allowed":"pointer",fontWeight:700}}>
+                          {kalLoading?"⟳":"🔍"} Załaduj
+                        </button>
+                      </div>
+                      {kalError&&<div style={{color:"#df7a7a",fontSize:14,marginBottom:8}}>❌ {kalError}</div>}
+                      {kalData&&(
+                        <div style={{background:"#0a1a0a",border:"1px solid #2a5a2a",borderRadius:8,padding:"10px 14px",fontSize:14}}>
+                          <div style={{color:"#afffaf",fontWeight:700,marginBottom:6}}>{kalData.orderNumber} — {kalData.clientName}</div>
+                          {(kalData.positions||[]).map((p,i)=>(
+                            <div key={i} style={{display:"flex",gap:8,alignItems:"center",padding:"4px 0",borderBottom:"1px solid #1a3a1a"}}>
+                              <span style={{color:"#5a9a7a",fontFamily:"monospace",minWidth:20}}>{i+1}.</span>
+                              <span style={{color:"#a0dfaf",fontWeight:700}}>{kalDim(p.width||p.szerokosc)}×{kalDim(p.height||p.wysokosc)} cm</span>
+                              <span style={{color:"#4a8a6a"}}>{p.profile||p.kolorRamki} / {p.mesh||p.kolorSiatki}</span>
+                              <span style={{color:"#afffaf",marginLeft:"auto"}}>×{p.qty||p.ilosc||1}</span>
+                            </div>
+                          ))}
+                          {kalData.totalPrice&&<div style={{color:"#afffaf",textAlign:"right",marginTop:6,fontWeight:700}}>Suma: {kalData.totalPrice} zł</div>}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ── PARSE tryb ── */}
+                  {mode==="parse"&&(
+                    <div style={{fontSize:14,color:"#5a8a6a",marginBottom:8}}>
+                      Wymiary sparsowane z nazwy produktu. Sprawdź i popraw jeśli potrzeba:
+                    </div>
+                  )}
+
+                  {/* ── Edytor pozycji (parse + manual) ── */}
+                  {(mode==="parse"||mode==="manual")&&(
+                    <div>
+                      {pozycje.map((p,i)=>(
+                        <div key={i} style={{background:"#0e1e0e",border:"1px solid #1a3a2a",borderRadius:8,padding:"10px 12px",marginBottom:8}}>
+                          <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
+                            <span style={{color:"#4a7a5a",fontWeight:700,fontSize:14}}>#{i+1}</span>
+                            {pozycje.length>1&&<button onClick={()=>delPoz(i)} style={{marginLeft:"auto",background:"none",border:"none",color:"#7a3a3a",cursor:"pointer",fontSize:14}}>✕</button>}
+                          </div>
+                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 80px",gap:8,marginBottom:8}}>
+                            <div>
+                              <div style={{fontSize:14,color:"#4a7a5a",marginBottom:3}}>Szerokość (cm)</div>
+                              <input value={p.szerokosc} onChange={e=>updatePoz(i,"szerokosc",e.target.value)}
+                                style={{width:"100%",padding:"5px 8px",borderRadius:5,border:"1px solid #2a4a3a",background:"#0a140a",color:"#a0dfaf",fontSize:14,fontWeight:700}}/>
+                            </div>
+                            <div>
+                              <div style={{fontSize:14,color:"#4a7a5a",marginBottom:3}}>Wysokość (cm)</div>
+                              <input value={p.wysokosc} onChange={e=>updatePoz(i,"wysokosc",e.target.value)}
+                                style={{width:"100%",padding:"5px 8px",borderRadius:5,border:"1px solid #2a4a3a",background:"#0a140a",color:"#a0dfaf",fontSize:14,fontWeight:700}}/>
+                            </div>
+                            <div>
+                              <div style={{fontSize:14,color:"#4a7a5a",marginBottom:3}}>Ilość</div>
+                              <input type="number" min="1" value={p.ilosc} onChange={e=>updatePoz(i,"ilosc",parseInt(e.target.value)||1)}
+                                style={{width:"100%",padding:"5px 8px",borderRadius:5,border:"1px solid #2a4a3a",background:"#0a140a",color:"#a0dfaf",fontSize:14}}/>
+                            </div>
+                          </div>
+                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                            <div>
+                              <div style={{fontSize:14,color:"#4a7a5a",marginBottom:3}}>Kolor ramki</div>
+                              <select value={p.kolorRamki} onChange={e=>updatePoz(i,"kolorRamki",e.target.value)}
+                                style={{width:"100%",padding:"5px 8px",borderRadius:5,border:"1px solid #2a4a3a",background:"#0a140a",color:"#a0dfaf",fontSize:14}}>
+                                {["Antracyt","Biały","Czarny","Brąz","Winchester","Orzech","Turner Oak","Złoty Dąb","Ciemny Dąb","Mahoń"].map(k=><option key={k} value={k}>{k}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <div style={{fontSize:14,color:"#4a7a5a",marginBottom:3}}>Kolor siatki</div>
+                              <select value={p.kolorSiatki} onChange={e=>updatePoz(i,"kolorSiatki",e.target.value)}
+                                style={{width:"100%",padding:"5px 8px",borderRadius:5,border:"1px solid #2a4a3a",background:"#0a140a",color:"#a0dfaf",fontSize:14}}>
+                                {["Czarna","Szara"].map(k=><option key={k} value={k}>{k}</option>)}
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      <button onClick={addPoz}
+                        style={{width:"100%",padding:"7px",borderRadius:6,border:"1px dashed #2a5a3a",background:"none",color:"#3a7a4a",cursor:"pointer",fontSize:14}}>
+                        ＋ Dodaj pozycję
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Przycisk importu */}
+                  <div style={{marginTop:16,display:"flex",gap:8,justifyContent:"flex-end"}}>
+                    <button onClick={()=>setImportModal(null)}
+                      style={{padding:"8px 18px",borderRadius:6,border:"1px solid #2a3a2a",background:"none",color:"#5a7a5a",cursor:"pointer"}}>
+                      Anuluj
+                    </button>
+                    <button onClick={()=>doImportOrder(importModal)}
+                      disabled={mode==="kal"&&!kalData}
+                      style={{padding:"8px 22px",borderRadius:6,border:"1px solid #4a9a5a",
+                        background:(mode==="kal"&&!kalData)?"#1a2a1a":"#1a5a2a",
+                        color:(mode==="kal"&&!kalData)?"#3a5a3a":"#7fcf7f",
+                        cursor:(mode==="kal"&&!kalData)?"not-allowed":"pointer",fontWeight:700,fontSize:14}}>
+                      ➕ Importuj zlecenie
+                    </button>
+                  </div>
+
+                </div>
+              </div>
+            );
+          })()}
 
       {/* ── GLOBALNE MODAŁY (dostępne z każdej zakładki) ── */}
       {shipmentModal&&(
