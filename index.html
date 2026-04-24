@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.49</title>
+<title>MosquitoApp v20260424.50</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260424.49';
+  window.__MOSK_VERSION='20260424.50';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -2195,11 +2195,10 @@ function App() {
 
   const currentProfile = PROFILE.find(p=>p.id===activeProfile)||PROFILE[0];
   const filteredOrders=orders.filter(o=>{
-    if(o.firma && o.firma!==currentProfile.id) return false;
+    if(filterFirma&&o.firma!==filterFirma) return false;
     if(filterMonth&&getMonth(o.data)!==filterMonth) return false;
     if(filterKolor&&!o.pozycje.some(p=>p.kolorRamki?.includes(filterKolor))) return false;
-    if(filterFirma&&o.firma!==filterFirma) return false;
-    if(filterYear&&filterYear!=="wszystkie"&&!( o.data&&o.data.startsWith(filterYear))) return false;
+    if(filterYear&&filterYear!=="wszystkie"&&!(o.data&&o.data.startsWith(filterYear))) return false;
     if(search&&!`${o.numerZlecenia||""} ${o.klientImie} ${o.klientMiasto}`.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
