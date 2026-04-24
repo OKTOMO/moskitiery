@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.1</title>
+<title>MosquitoApp v20260424.2</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -491,6 +491,32 @@ table.main tr:nth-child(even) td{background:#f5f5f5}
   setTimeout(()=>URL.revokeObjectURL(url),10000);
 }
 
+// ─── GENERATE ORDER HTML (zwraca string) ─────────────────────────────────────
+function generateOrderHtml(order) {
+  const firmaNazwa=FIRMY.find(f=>f.kod===order.firma)?.nazwa||order.firma||"";
+  const firma=order.firma||"?";
+  const totalMosk=order.pozycje.reduce((a,p)=>a+(parseFloat(p.ilosc)||1),0);
+  const totalLinka=obliczLinkeLaczna(order.pozycje);
+  const totalBlaszki=order.pozycje.reduce((a,p)=>a+8*(parseFloat(p.ilosc)||1),0);
+  const MIN_ROWS = 8;
+  const pozycjeRows = order.pozycje.map((p,i)=>{
+    const s=parseFloat(p.szerokosc)||0, w=parseFloat(p.wysokosc)||0;
+    const d=parseFloat(p.glebokosc)||20;
+    return `<tr><td>${i+1}</td><td>${p.kolorRamki||""}</td><td>${p.kolorSiatki||""}</td><td>${s}</td><td>${w}</td><td>${d}</td><td>${p.ilosc||1}</td></tr>`;
+  });
+  while(pozycjeRows.length<MIN_ROWS) pozycjeRows.push('<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>');
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${order.numerZlecenia||""} ${order.klientImie||""} ${order.klientMiasto||""} L</title>
+<style>body{font-family:Arial,sans-serif;font-size:13px;margin:20px}table{width:100%;border-collapse:collapse}td,th{border:1px solid #000;padding:4px 6px}th{background:#eee}</style>
+</head><body>
+<h2>${firmaNazwa} — Zlecenie ${order.numerZlecenia||""}</h2>
+<p><b>Klient:</b> ${order.klientImie||""} | ${order.klientUlica||""}, ${order.klientKod||""} ${order.klientMiasto||""} | Tel: ${order.telefon||""}</p>
+<p><b>Data:</b> ${order.data||""} | <b>Uwagi:</b> ${order.uwagi||""}</p>
+<table><thead><tr><th>#</th><th>Kolor ramki</th><th>Kolor siatki</th><th>Szer B</th><th>Wys A</th><th>Głęb C</th><th>Szt</th></tr></thead>
+<tbody>${pozycjeRows.join("")}</tbody></table>
+<p><b>Razem:</b> ${totalMosk} szt. | Linka: ${totalLinka} mb | Blaszki: ${totalBlaszki} szt.</p>
+</body></html>`;
+}
+
 // ─── PDF DRZWI ───────────────────────────────────────────────────────────────
 function drukujPDF_drzwi(order) {
   const firmaNazwa=FIRMY.find(f=>f.kod===order.firma)?.nazwa||order.firma||"";
@@ -689,6 +715,7 @@ function App() {
   const [allegroImportResults,setAllegroImportResults]=useState([]); // lista zamówień z Allegro
   const [appStatuses,setAppStatuses]=useState(()=>{try{return JSON.parse(localStorage.getItem('app_statuses')||'{}');}catch{return {};}});
   const [allegroShipments,setAllegroShipments]=useState(()=>{try{return JSON.parse(localStorage.getItem('allegro_shipments')||'{}');}catch{return {};}});
+  const [mailSending,setMailSending]=useState({});
   const [allegroImportShow,setAllegroImportShow]=useState(false);
   const [allegroImportError,setAllegroImportError]=useState("");
   const [shipmentModal,setShipmentModal]=useState(null);
@@ -1488,7 +1515,48 @@ function App() {
     })||null;
   }
 
-  async function openShipmentModal(imp){
+  async function sendMailProdukcja(imp){
+    const order=orders.find(o=>o.allegroOrderId===imp.allegroOrderId);
+    if(!order){alert('❌ Najpierw zaimportuj zamówienie do zleceń (➕ Zlecenie)');return;}
+    const emailCfg=JSON.parse(localStorage.getItem('email_produkcji_config')||'{}');
+    const to=emailCfg.emailProdukcji||'biuro@superis.pl';
+    const podpis=emailCfg.emailPodpis||'';
+    setMailSending(prev=>({...prev,[imp.allegroOrderId]:true}));
+    try{
+      // Wygeneruj PDF zlecenia jako base64
+      const pdfHtml=generateOrderHtml(order);
+      // Wyślij przez Worker
+      const subject=`${order.numerZlecenia||''} ${order.klientImie||''} ${order.klientMiasto||''}`.trim();
+      const content=`--\nZ poważaniem\n${podpis}`;
+      // Pobierz PDF etykiety jeśli jest
+      const sh=allegroShipments[imp.allegroOrderId];
+      let attachments=[];
+      // Attach zlecenia PDF (jako HTML base64)
+      const blob=new Blob([pdfHtml],{type:'text/html'});
+      const b64=await new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result.split(',')[1]);r.readAsDataURL(blob);});
+      attachments.push({name:`${subject} L.html`,content:b64,mimeType:'text/html'});
+      if(sh){
+        // Pobierz etykietę DPD/InPost
+        const lr=await fetch(AUTORESPONDER_URL+"/shipment/label?kontoId="+sh.kontoId,{
+          method:"POST",headers:{"x-api-key":AUTORESPONDER_KEY,"Content-Type":"application/json"},
+          body:JSON.stringify({shipmentIds:[sh.shipmentId],pageSize:"A6"})
+        });
+        const ld=await lr.json();
+        if(ld.pdf) attachments.push({name:`${subject} etykieta.pdf`,content:ld.pdf,mimeType:'application/pdf'});
+      }
+      const r=await fetch(AUTORESPONDER_URL+'/email/send',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},
+        body:JSON.stringify({to,subject,content,attachments})
+      });
+      const d=await r.json();
+      if(d.ok) alert(`✅ Mail wysłany do ${to}\nTemat: ${subject}`);
+      else throw new Error(JSON.stringify(d));
+    }catch(e){
+      alert('❌ Błąd wysyłki: '+e.message);
+    }
+    setMailSending(prev=>({...prev,[imp.allegroOrderId]:false}));
+  }
     // Znajdź powiązane zlecenie po allegroOrderId
     const linkedOrder=orders.find(o=>o.allegroOrderId===imp.allegroOrderId);
     const nrZlec=linkedOrder?linkedOrder.numerZlecenia:"";
@@ -2856,6 +2924,13 @@ function App() {
                                       style={{padding:"5px 12px",fontSize:14,background:"#1a2a3a",border:"1px solid #2a5a7a",borderRadius:5,color:"#7abfdf",cursor:"pointer",fontWeight:700,whiteSpace:"nowrap",textDecoration:"none",display:"inline-block"}}>
                                       🔗 Allegro
                                     </a>
+                                    {orders.find(o=>o.allegroOrderId===imp.allegroOrderId)&&(
+                                      <button onClick={()=>sendMailProdukcja(imp)} disabled={!!mailSending[imp.allegroOrderId]}
+                                        title="Wyślij zlecenie na produkcję"
+                                        style={{padding:"5px 10px",fontSize:14,background:"#2a1a3a",border:"1px solid #5a2a7a",borderRadius:5,color:"#af7adf",cursor:"pointer",whiteSpace:"nowrap"}}>
+                                        {mailSending[imp.allegroOrderId]?"⟳":"✉️"}
+                                      </button>
+                                    )}
                                   </div>
                                 );
                               })()}
@@ -4741,6 +4816,34 @@ function App() {
               <div style={{fontSize:12,color:"#3a5a3a",marginTop:8}}>
                 Tokeny są przechowywane lokalnie w przeglądarce. Na produkcji zalecamy użycie środowiska testowego najpierw.
               </div>
+            </div>
+
+            {/* ── EMAIL PRODUKCJI ── */}
+            <div className="card" style={{maxWidth:600}}>
+              <div style={{fontFamily:"'Syne',sans-serif",fontSize:16,fontWeight:800,color:"#afffaf",marginBottom:14}}>✉️ Email produkcji</div>
+              <div style={{fontSize:13,color:"#4a7a5a",marginBottom:12}}>
+                Adres na który wysyłane są zlecenia do produkcji (np. biuro@superis.pl).
+              </div>
+              {[["emailProdukcji","Email produkcji (odbiorca)","text","biuro@superis.pl"],
+                ["emailNadawca","Email nadawcy (Zoho)","text","biuro@oktomo.pl"],
+                ["emailPodpis","Podpis (imię i telefon)","text","Piotr Rudnicki\n605 361 191"]].map(([key,label,type,ph])=>(
+                <div key={key} style={{marginBottom:10}}>
+                  <span className="lbl">{label}</span>
+                  <input type={type} value={(()=>{try{return JSON.parse(localStorage.getItem('email_produkcji_config')||'{}')[key]||'';}catch{return '';}})()}
+                    onChange={e=>{try{const c=JSON.parse(localStorage.getItem('email_produkcji_config')||'{}');c[key]=e.target.value;localStorage.setItem('email_produkcji_config',JSON.stringify(c));}catch{}}}
+                    placeholder={ph}
+                    style={{fontFamily:"monospace",fontSize:14}}/>
+                </div>
+              ))}
+              <button className="btn" style={{width:"100%"}} onClick={async()=>{
+                const c=JSON.parse(localStorage.getItem('email_produkcji_config')||'{}');
+                const r=await fetch(AUTORESPONDER_URL+'/sync',{method:'POST',
+                  headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},
+                  body:JSON.stringify({config:{zohoFromEmail:c.emailNadawca||'biuro@oktomo.pl',emailProdukcji:c.emailProdukcji||'',emailPodpis:c.emailPodpis||''}})});
+                const d=await r.json();
+                if(d.ok) alert('✅ Zapisano konfigurację emaila');
+                else alert('❌ '+JSON.stringify(d));
+              }}>💾 Zapisz konfigurację emaila do Workera</button>
             </div>
 
             {/* ── DPD ── */}
