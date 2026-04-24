@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.35</title>
+<title>MosquitoApp v20260424.36</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260424.35';
+  window.__MOSK_VERSION='20260424.36';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -5438,25 +5438,7 @@ function App() {
                 Anuluj
               </button>
               <button disabled={shipmentCreating||!shipmentServiceId}
-                onClick={async()=>{
-                  if(!shipmentServiceId){alert("Wybierz usługę");return;}
-                  setShipmentCreating(true);
-                  try{
-                    const imp=shipmentModal.imp;
-                    const body={orderId:imp.allegroOrderId,serviceId:shipmentServiceId,description:shipmentDescription,size:shipmentSize==="custom"?shipmentCustomSize:shipmentSize};
-                    const r=await fetch(AUTORESPONDER_URL+"/shipment/create?kontoId="+imp.kontoId,{method:"POST",headers:{"x-api-key":AUTORESPONDER_KEY,"Content-Type":"application/json"},body:JSON.stringify(body)});
-                    const d=await r.json();
-                    if(!d.ok) throw new Error(d.error||JSON.stringify(d));
-                    const sh={shipmentId:d.shipmentId,waybill:d.waybill,kontoId:imp.kontoId,serviceId:shipmentServiceId};
-                    setAllegroShipments(prev=>{const n={...prev,[imp.allegroOrderId]:sh};localStorage.setItem("allegro_shipments",JSON.stringify(n));return n;});
-                    setOrderAppStatus(imp.allegroOrderId,"W realizacji");
-                    setShipmentModal(null);setShipmentError("");
-                    const r2=await fetch(AUTORESPONDER_URL+"/shipment/label?kontoId="+imp.kontoId,{method:"POST",headers:{"x-api-key":AUTORESPONDER_KEY,"Content-Type":"application/json"},body:JSON.stringify({shipmentIds:[d.shipmentId],pageSize:"A6"})});
-                    const d2=await r2.json();
-                    if(d2.pdf){const w=window.open();w.document.write(`<html><body style="margin:0"><iframe src="data:application/pdf;base64,${d2.pdf}" width="100%" height="100%" style="border:0"></iframe></body></html>`);}
-                  }catch(e){setShipmentError(e.message);}
-                  setShipmentCreating(false);
-                }}
+                onClick={()=>createShipment()}
                 style={{flex:2,padding:"8px",fontSize:14,fontWeight:700,borderRadius:6,cursor:shipmentCreating?"not-allowed":"pointer",
                   background:shipmentCreating?"#1a2a1a":"#2a5a1a",border:"1px solid #3a8a2a",color:"#afffaf"}}>
                 {shipmentCreating?"⟳ Tworzę...":"📦 Utwórz etykietę"}
