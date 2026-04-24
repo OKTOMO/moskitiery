@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.32</title>
+<title>MosquitoApp v20260424.33</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260424.32';
+  window.__MOSK_VERSION='20260424.33';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -736,8 +736,7 @@ function App() {
   const [shipmentDescription,setShipmentDescription]=useState("");
   const [shipmentServiceId,setShipmentServiceId]=useState("");
   // ── Import modal state ──
-  const [importModal,setImportModal]=useState(null);
-  // ── Zakładka Zamówienia ──
+  const [importModal,setImportModal]=useState(null); // {imp, mode, kalNum, kalLoading, kalError, kalData, pozycje}
   const [zamOpenBox,setZamOpenBox]=useState({});
   const [zamSearch,setZamSearch]=useState('');
   const [zamKonto,setZamKonto]=useState('');
@@ -2889,9 +2888,9 @@ function App() {
           </div>
         )}
 
-        {/* ══ ZAMÓWIENIA ══ */}
+        {/* ══ NOWA ZAKŁADKA ZAMÓWIENIA ══ */}
         {tab==="zamowienia" && (()=>{
-          const MOSK_KEYS=['moskitiera','mosquito','siatka przeciw','siatka na owady','siatka owad','rama moskitier'];
+          const MOSK_KEYS=['moskitiera','mosquito'];
           const isMosk=imp=>{const t=((imp.offerNames||'')+(imp.buyerMsg||'')).toLowerCase();return MOSK_KEYS.some(k=>t.includes(k));};
           const filteredAll=allegroImportResults.filter(imp=>{
             if(zamKonto&&imp.kontoId!==zamKonto) return false;
@@ -2903,7 +2902,7 @@ function App() {
           const KONTO_COLORS={"favo5":["#2a5a3a","#7fcf7f"],"staroleska_pl":["#2a4a2a","#5abf7a"],"sinlook_pl":["#1a4a3a","#4abf9a"],"arlis_pl":["#2a3a5a","#7abfdf"],"everis_pl":["#3a2a5a","#af8fdf"],"albama_eu":["#4a3a1a","#dfaf5a"],"pedroshop_pl_365":["#3a2a1a","#cf8a4a"]};
           const fmtDT=iso=>{if(!iso)return '—';const d=new Date(iso);return d.toLocaleDateString('pl-PL')+' '+d.toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});};
           const toggleBox=(id,box)=>setZamOpenBox(prev=>({...prev,[id]:prev[id]===box?null:box}));
-          const renderRow=(imp,idx,isMoskitiera=true)=>{
+          const renderRow=(imp,idx,isMoskitiera)=>{
             const [kBg,kCol]=KONTO_COLORS[imp.kontoId]||['#2a2a2a','#9a9a9a'];
             const as=appStatuses[imp.allegroOrderId]||'';
             const sh=allegroShipments[imp.allegroOrderId];
@@ -2911,28 +2910,26 @@ function App() {
             const hasEtykieta=!!sh;
             const isRealizacja=as==='W realizacji'||as==='Wysłano';
             const openBox=zamOpenBox[imp.allegroOrderId];
-            const rowBg=isRealizacja?'#0a1a0a':'#0a1020';
-            const rowOpa=as==='Wysłano'?0.5:1;
             return (
-              <div key={idx} style={{borderBottom:'1px solid #0f1f2f',background:rowBg,opacity:rowOpa,transition:'all .15s'}}>
-                <div style={{display:'flex',alignItems:'center',gap:8,padding:'10px 12px',flexWrap:'wrap'}}>
-                  <div style={{minWidth:80}}>
-                    <span style={{fontSize:12,padding:'2px 6px',borderRadius:6,background:kBg,color:kCol,fontFamily:'monospace',fontWeight:700,display:'inline-block'}}>{imp.kontoId}</span>
-                    <div style={{fontSize:11,color:'#3a6a4a',marginTop:2}}>{imp.firma==='F'?'Favour':imp.firma==='AR'||imp.firma==='A'?'Arlis':imp.firma==='E'?'Everis':'Albama'}</div>
+              <div key={idx} style={{borderBottom:'1px solid #0f1f2f',background:isRealizacja?'#0a1a0a':'#0a1020',opacity:as==='Wysłano'?0.55:1}}>
+                <div style={{display:'flex',alignItems:'center',gap:8,padding:'9px 12px',flexWrap:'wrap'}}>
+                  <div style={{minWidth:76}}>
+                    <span style={{fontSize:11,padding:'2px 5px',borderRadius:5,background:kBg,color:kCol,fontFamily:'monospace',fontWeight:700,display:'inline-block'}}>{imp.kontoId}</span>
+                    <div style={{fontSize:10,color:'#3a6a4a',marginTop:1}}>{imp.firma==='F'?'Favour':imp.firma==='AR'||imp.firma==='A'?'Arlis':imp.firma==='E'?'Everis':'Albama'}</div>
                   </div>
-                  <div style={{minWidth:110,fontSize:12,color:'#5a8abf'}}>{imp.boughtAt?fmtDT(imp.boughtAt):imp.data||'—'}</div>
-                  <div style={{flex:1,minWidth:120}}>
-                    <div style={{fontWeight:600,color:isRealizacja?'#5a9a5a':'#a0cfdf',fontSize:14}}>{isRealizacja&&<span style={{marginRight:4}}>✅</span>}{imp.klientImie||'—'}</div>
-                    {imp.klientLogin&&<div style={{fontSize:11,color:'#3a6a8a',fontFamily:'monospace'}}>{imp.klientLogin}</div>}
-                    {imp.klientMiasto&&<div style={{fontSize:11,color:'#4a7a6a'}}>{imp.klientMiasto}</div>}
+                  <div style={{minWidth:100,fontSize:11,color:'#5a8abf'}}>{imp.boughtAt?fmtDT(imp.boughtAt):imp.data||'—'}</div>
+                  <div style={{flex:1,minWidth:110}}>
+                    <div style={{fontWeight:600,color:isRealizacja?'#5a9a5a':'#a0cfdf',fontSize:13}}>{isRealizacja&&'✅ '}{imp.klientImie||'—'}</div>
+                    {imp.klientLogin&&<div style={{fontSize:10,color:'#3a6a8a',fontFamily:'monospace'}}>{imp.klientLogin}</div>}
+                    {imp.klientMiasto&&<div style={{fontSize:10,color:'#4a7a6a'}}>{imp.klientMiasto}</div>}
                   </div>
-                  <div style={{flex:2,minWidth:140}}>
-                    <div style={{fontSize:13,color:'#5a8a9a',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{imp.offerNames||'—'}</div>
-                    {imp.buyerMsg&&<div style={{fontSize:11,color:'#cfaf6f',fontStyle:'italic',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>💬 {imp.buyerMsg}</div>}
-                    {imp.kwotaBrutto&&<div style={{fontSize:12,color:'#afdf7f',fontWeight:700}}>💰 {parseFloat(imp.kwotaBrutto).toFixed(2)} zł</div>}
+                  <div style={{flex:2,minWidth:130}}>
+                    <div style={{fontSize:12,color:'#5a8a9a',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{imp.offerNames||'—'}</div>
+                    {imp.buyerMsg&&<div style={{fontSize:10,color:'#cfaf6f',fontStyle:'italic',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>💬 {imp.buyerMsg}</div>}
+                    {imp.kwotaBrutto&&<div style={{fontSize:11,color:'#afdf7f',fontWeight:700}}>💰 {parseFloat(imp.kwotaBrutto).toFixed(2)} zł</div>}
                   </div>
                   <select value={as} onChange={e=>setOrderAppStatus(imp.allegroOrderId,e.target.value)}
-                    style={{padding:'3px 6px',fontSize:12,borderRadius:4,cursor:'pointer',
+                    style={{padding:'3px 5px',fontSize:11,borderRadius:4,cursor:'pointer',
                       background:as==='Wysłano'?'#0a2a0a':as==='W realizacji'?'#1a2a0a':as==='Nowe'?'#1a1a2a':'#0a1a0a',
                       border:`1px solid ${as==='Wysłano'?'#3a7a3a':as==='W realizacji'?'#5a7a2a':as==='Nowe'?'#3a3a7a':'#2a3a2a'}`,
                       color:as==='Wysłano'?'#7acf7a':as==='W realizacji'?'#afdf6f':as==='Nowe'?'#9a9adf':'#4a6a4a'}}>
@@ -2941,19 +2938,16 @@ function App() {
                     <option value="W realizacji">⚙️ W realizacji</option>
                     <option value="Wysłano">✅ Wysłano</option>
                   </select>
-                  <div style={{display:'flex',gap:5,flexWrap:'wrap',alignItems:'center'}}>
-                    {isMoskitiera&&<button onClick={()=>toggleBox(imp.allegroOrderId,'zlecenie')}
-                      style={{padding:'5px 9px',fontSize:12,borderRadius:5,cursor:'pointer',fontWeight:700,
+                  <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+                    {isMoskitiera&&<button onClick={()=>toggleBox(imp.allegroOrderId,'zlecenie')} title="Zlecenie"
+                      style={{padding:'4px 8px',fontSize:12,borderRadius:5,cursor:'pointer',fontWeight:700,
                         background:openBox==='zlecenie'?'#2a4a2a':hasZlecenie?'#1a3a1a':'#1a2a1a',
-                        border:`1px solid ${openBox==='zlecenie'?'#5a9a5a':hasZlecenie?'#3a7a3a':'#2a4a2a'}`,
-                        color:hasZlecenie?'#7acf7a':'#4a7a4a'}}>
+                        border:`1px solid ${hasZlecenie?'#3a7a3a':'#2a4a2a'}`,color:hasZlecenie?'#7acf7a':'#4a7a4a'}}>
                       📋{hasZlecenie?' ✅':''}
                     </button>}
-                    <button onClick={()=>{openShipmentModal(imp);}}
-                      style={{padding:'5px 9px',fontSize:12,borderRadius:5,cursor:'pointer',fontWeight:700,
-                        background:hasEtykieta?'#1a3a1a':'#1a2a1a',
-                        border:`1px solid ${hasEtykieta?'#5a7a2a':'#2a4a2a'}`,
-                        color:hasEtykieta?'#afdf7f':'#6a8a4a'}}>
+                    <button onClick={()=>openShipmentModal(imp)} title="Etykieta"
+                      style={{padding:'4px 8px',fontSize:12,borderRadius:5,cursor:'pointer',fontWeight:700,
+                        background:hasEtykieta?'#1a3a1a':'#1a2a1a',border:`1px solid ${hasEtykieta?'#5a7a2a':'#2a4a2a'}`,color:hasEtykieta?'#afdf7f':'#6a8a4a'}}>
                       📦{hasEtykieta?' ✅':''}
                     </button>
                     <button onClick={()=>{
@@ -2962,29 +2956,28 @@ function App() {
                         if(!to){alert('Brak adresu email produkcji — ustaw w Ustawieniach');return;}
                         const order=orders.find(o=>o.allegroOrderId===imp.allegroOrderId)||imp;
                         const subject=`${order.numerZlecenia||imp.allegroOrderId||''} ${imp.klientImie||''} ${imp.klientMiasto||''}`.trim();
-                        setMailPreview({imp,order,to,subject,hasEtykieta:!!sh});
-                        loadRecentEmails();
-                      }}
-                      style={{padding:'5px 9px',fontSize:12,borderRadius:5,cursor:'pointer',fontWeight:700,background:'#1a1a3a',border:'1px solid #3a3a7a',color:'#9a9adf'}}>
+                        setMailPreview({imp,order,to,subject,hasEtykieta:!!sh});loadRecentEmails();
+                      }} title="Wyślij mail"
+                      style={{padding:'4px 8px',fontSize:12,borderRadius:5,cursor:'pointer',background:'#1a1a3a',border:'1px solid #3a3a7a',color:'#9a9adf'}}>
                       ✉️
                     </button>
-                    <button onClick={()=>{setSelectedOrderId(imp.allegroOrderId);setSelectedKontoId(imp.kontoId);setTab('wiadomosci');}}
-                      style={{padding:'5px 9px',fontSize:12,borderRadius:5,cursor:'pointer',background:'#1a2a2a',border:'1px solid #2a5a5a',color:'#5abfbf'}}>
+                    <button onClick={()=>{setSelectedOrderId(imp.allegroOrderId);setSelectedKontoId(imp.kontoId);setTab('wiadomosci');}} title="Wiadomości"
+                      style={{padding:'4px 7px',fontSize:12,borderRadius:5,cursor:'pointer',background:'#1a2a2a',border:'1px solid #2a5a5a',color:'#5abfbf'}}>
                       💬
                     </button>
                     <a href={`https://allegro.pl/transakcja/${imp.allegroOrderId}`} target="_blank" rel="noreferrer"
-                      style={{padding:'5px 8px',fontSize:12,borderRadius:5,fontWeight:700,background:'#1a2a3a',border:'1px solid #2a5a7a',color:'#7abfdf',textDecoration:'none',display:'inline-block'}}>
+                      style={{padding:'4px 7px',fontSize:12,borderRadius:5,background:'#1a2a3a',border:'1px solid #2a5a7a',color:'#7abfdf',textDecoration:'none',display:'inline-block'}}>
                       🔗
                     </a>
                   </div>
                 </div>
                 {openBox==='zlecenie'&&(
-                  <div style={{background:'#070f07',borderTop:'1px solid #1a3a1a',padding:'10px 14px',display:'flex',alignItems:'center',gap:10}}>
+                  <div style={{background:'#070f07',borderTop:'1px solid #1a3a1a',padding:'8px 14px',display:'flex',alignItems:'center',gap:10}}>
                     <button onClick={()=>{setImportModal({imp,mode:'ai',kalNum:'',kalLoading:false,kalError:'',kalData:null,pozycje:[]});toggleBox(imp.allegroOrderId,null);}}
-                      style={{padding:'6px 14px',fontSize:13,fontWeight:700,borderRadius:5,cursor:'pointer',background:'#1a3a1a',border:'1px solid #3a7a3a',color:'#afffaf'}}>
+                      style={{padding:'5px 12px',fontSize:13,fontWeight:700,borderRadius:5,cursor:'pointer',background:'#1a3a1a',border:'1px solid #3a7a3a',color:'#afffaf'}}>
                       📋 Otwórz formularz zlecenia
                     </button>
-                    {hasZlecenie&&(()=>{const o=orders.find(ord=>ord.allegroOrderId===imp.allegroOrderId);return <span style={{fontSize:13,color:'#5a9a5a'}}>✅ {o?.numerZlecenia} — {o?.klientImie}</span>;})()}
+                    {hasZlecenie&&(()=>{const o=orders.find(ord=>ord.allegroOrderId===imp.allegroOrderId);return <span style={{fontSize:12,color:'#5a9a5a'}}>✅ {o?.numerZlecenia} — {o?.klientImie}</span>;})()}
                   </div>
                 )}
               </div>
@@ -3008,7 +3001,7 @@ function App() {
                   ➕ Dodaj ręcznie
                 </button>
               </div>
-              <div style={{display:'flex',gap:0,borderBottom:'2px solid #1a2a1a',marginBottom:0}}>
+              <div style={{display:'flex',borderBottom:'2px solid #1a2a1a',marginBottom:0}}>
                 <button onClick={()=>setZamTab('moskitiery')} style={{padding:'7px 18px',fontSize:14,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',background:zamTab==='moskitiery'?'#1a3a1a':'#0a1a0a',color:zamTab==='moskitiery'?'#afffaf':'#3a6a3a',borderBottom:zamTab==='moskitiery'?'2px solid #3acf6a':'2px solid transparent'}}>
                   🦟 Moskitiery ({moskitiery.length})
                 </button>
@@ -3016,16 +3009,17 @@ function App() {
                   📦 Pozostałe ({reszta.length})
                 </button>
               </div>
-              {allegroImportResults.length===0&&<div style={{textAlign:'center',color:'#2a5a3a',padding:'40px 0',fontSize:14}}>Kliknij "Pobierz zamówienia" żeby załadować listę z Allegro</div>}
+              {allegroImportResults.length===0&&<div style={{textAlign:'center',color:'#2a5a3a',padding:'40px 0',fontSize:14}}>Kliknij "Pobierz zamówienia" żeby załadować listę</div>}
               {(()=>{
-                const activeList=zamTab==='moskitiery'?moskitiery:reszta;
-                if(activeList.length===0&&allegroImportResults.length>0) return <div style={{textAlign:'center',color:'#3a5a3a',padding:'40px 0',fontSize:14}}>Brak zamówień w tej kategorii</div>;
-                return <div style={{border:'1px solid #1a2a1a',borderTop:'none',borderRadius:'0 0 6px 6px',overflow:'hidden'}}>{activeList.map((imp,idx)=>renderRow(imp,idx,zamTab==='moskitiery'))}</div>;
+                const active=zamTab==='moskitiery'?moskitiery:reszta;
+                if(active.length===0&&allegroImportResults.length>0) return <div style={{textAlign:'center',color:'#3a5a3a',padding:'40px 0'}}>Brak zamówień</div>;
+                return <div style={{border:'1px solid #1a2a1a',borderTop:'none',borderRadius:'0 0 6px 6px',overflow:'hidden'}}>{active.map((imp,idx)=>renderRow(imp,idx,zamTab==='moskitiery'))}</div>;
               })()}
             </div>
           );
         })()}
 
+        {/* ══ ZAMÓWIENIA ══ */}
         {tab==="al_zam" && (
           <div>
             {/* Nagłówek + przycisk pobierz */}
@@ -3279,6 +3273,527 @@ function App() {
                 </div>
               </div>
             )}
+          {/* ── MODAL PODGLĄD MAILA ── */}
+          {mailPreview&&(
+            <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.75)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center"}}
+              onClick={e=>{if(e.target===e.currentTarget)setMailPreview(null);}}>
+              <div style={{background:"#0c1a0c",border:"1px solid #3a5a7a",borderRadius:12,padding:24,width:460,maxWidth:"95vw"}}>
+                <div style={{fontWeight:700,fontSize:15,color:"#af9adf",marginBottom:16}}>✉️ Wyślij zlecenie na produkcję</div>
+                <div style={{marginBottom:12,fontSize:13,color:"#7a9a7a"}}>
+                  <div style={{marginBottom:8,display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{color:"#4a7a9a",whiteSpace:"nowrap"}}>Do:</span>
+                    <input value={mailPreview.to} onChange={e=>setMailPreview(p=>({...p,to:e.target.value}))}
+                      list="recent-emails-list" autoComplete="off"
+                      style={{flex:1,background:"#0a140a",border:"1px solid #2a4a2a",borderRadius:4,color:"#a0cfdf",padding:"4px 8px",fontSize:13,fontFamily:"monospace"}}/>
+                    <datalist id="recent-emails-list">
+                      {recentEmails.map((em,i)=><option key={i} value={em}/>)}
+                    </datalist>
+                  </div>
+                  {recentEmails.length>0 && (
+                    <div style={{marginBottom:8,display:"flex",flexWrap:"wrap",gap:4,paddingLeft:32}}>
+                      {recentEmails.slice(0,6).map((em,i)=>(
+                        <button key={i} type="button" onClick={()=>setMailPreview(p=>({...p,to:em}))}
+                          style={{padding:"2px 8px",fontSize:11,borderRadius:3,border:"1px solid #2a4a4a",background:mailPreview.to===em?"#1a3a4a":"#0a1a1a",color:"#7acfdf",cursor:"pointer",fontFamily:"monospace"}}>
+                          {em}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{marginBottom:6}}><span style={{color:"#4a7a9a"}}>Temat:</span> <strong style={{color:"#cfdfaf"}}>{mailPreview.subject}</strong></div>
+                  <div style={{marginBottom:6}}><span style={{color:"#4a7a9a"}}>Załączniki:</span>
+                    <div style={{marginTop:4,fontSize:12}}>
+                      <div style={{color:"#7acf7a"}}>📄 {mailPreview.subject} L.pdf — zlecenie</div>
+                      {mailPreview.hasEtykieta&&<div style={{color:"#7acf7a"}}>📦 {mailPreview.subject} etykieta.pdf — etykieta</div>}
+                      {!mailPreview.hasEtykieta&&<div style={{color:"#cf9a4a"}}>⚠️ Brak etykiety — nie wygenerowano jeszcze</div>}
+                    </div>
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
+                  <button onClick={()=>setMailPreview(null)}
+                    style={{padding:"8px 18px",borderRadius:6,border:"1px solid #2a3a4a",background:"none",color:"#5a7a8a",cursor:"pointer"}}>
+                    Anuluj
+                  </button>
+                  <button onClick={sendMailConfirmed}
+                    style={{padding:"8px 22px",borderRadius:6,border:"1px solid #5a3a8a",background:"#2a1a4a",color:"#cf9adf",cursor:"pointer",fontWeight:700,fontSize:14}}>
+                    ✉️ Wyślij
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          {/* ── MODAL IMPORT ZLECENIA ── */}
+          {importModal&&(()=>{
+            const {imp,mode,kalNum,kalLoading,kalError,kalData,pozycje}=importModal;
+            const setIM=fn=>setImportModal(prev=>({...prev,...(typeof fn==="function"?fn(prev):fn)}));
+
+            const loadKal=async()=>{
+              const n=(importModal.kalNum||"").trim();
+              if(!n)return;
+              setIM({kalLoading:true,kalError:"",kalData:null});
+              try{
+                const r=await fetch(AUTORESPONDER_URL+"/kalkulator/order/"+encodeURIComponent(n.toLowerCase()));
+                const d=await r.json();
+                if(d.error||!d.orderNumber) throw new Error("Nie znaleziono: "+n);
+                setIM({kalLoading:false,kalData:d,kalError:""});
+              }catch(e){
+                setIM({kalLoading:false,kalError:e.message,kalData:null});
+              }
+            };
+
+            const updatePoz=(i,field,val)=>{
+              setIM(prev=>{
+                const p=[...prev.pozycje];
+                p[i]={...p[i],[field]:val};
+                return {pozycje:p};
+              });
+            };
+            const addPoz=()=>setIM(prev=>({pozycje:[...prev.pozycje,pustaPoz()]}));
+            const delPoz=(i)=>setIM(prev=>({pozycje:prev.pozycje.filter((_,j)=>j!==i)}));
+
+            const KOLOR_RAMKI_OPTS=["Antracyt","Biała","Brąz","Czarna","Szara","Srebrna","Złota","Dąb"];
+            const KOLOR_SIATKI_OPTS=["Czarna","Szara","Biała","Antracyt"];
+
+            return (
+              <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.82)",zIndex:1100,display:"flex",alignItems:"center",justifyContent:"center",padding:12}}
+                onClick={e=>{if(e.target===e.currentTarget)setImportModal(null);}}>
+                <div style={{background:"#0b1a0b",border:"1px solid #2a6a3a",borderRadius:12,padding:24,width:600,maxWidth:"98vw",maxHeight:"90vh",overflowY:"auto"}}>
+
+                  {/* Nagłówek */}
+                  <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
+                    <span style={{fontSize:15,fontWeight:700,color:"#afffaf"}}>➕ Import zlecenia</span>
+                    <span style={{marginLeft:"auto",cursor:"pointer",color:"#5a7a5a",fontSize:18}} onClick={()=>setImportModal(null)}>✕</span>
+                  </div>
+
+                  {/* Dane klienta */}
+                  <div style={{background:"#0e1e0e",border:"1px solid #1a4a2a",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:14}}>
+                    <div style={{fontWeight:700,color:"#a0cfdf",marginBottom:4}}>{imp.klientImie}</div>
+                    <div style={{color:"#5a8a7a"}}>{imp.klientUlica}, {imp.klientKod} {imp.klientMiasto}</div>
+                    {imp.telefon&&<div style={{color:"#5a8a7a"}}>{imp.telefon}</div>}
+                    <div style={{marginTop:6,fontSize:14,color:"#3a6a5a",fontStyle:"italic"}} title={imp.offerNames}>{imp.offerNames||"—"}</div>
+                  </div>
+
+                  {/* Zakładki trybu */}
+                  <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
+                    {[["kal","🧮 Z kalkulatora"],["parse","📐 Z nazwy oferty"],["manual","✏️ Ręcznie"]].map(([m,l])=>(
+                      <button key={m} onClick={()=>setIM({mode:m})}
+                        style={{padding:"5px 12px",fontSize:14,borderRadius:6,cursor:"pointer",fontWeight:700,
+                          background:mode===m?"#1a4a2a":"#0e1e0e",
+                          border:"1px solid "+(mode===m?"#3a8a4a":"#1a3a2a"),
+                          color:mode===m?"#7fcf7f":"#3a6a4a"}}>{l}</button>
+                    ))}
+                    {imp.buyerMsg&&(
+                      <button onClick={async()=>{
+                        setIM({kalLoading:true,kalError:""});
+                        try{
+                          const r=await fetch(AUTORESPONDER_URL+"/order/parse",{
+                            method:"POST",
+                            headers:{"Content-Type":"application/json","x-api-key":AUTORESPONDER_KEY},
+                            body:JSON.stringify({msg:imp.buyerMsg})
+                          });
+                          const d=await r.json();
+                          if(!d.ok||!d.pozycje||d.pozycje.length===0) throw new Error(d.error||"AI nie znalazło wymiarów");
+                          setIM({pozycje:d.pozycje,mode:"parse",kalLoading:false,kalError:""});
+                        }catch(e){
+                          setIM({kalLoading:false,kalError:"🤖 "+e.message});
+                        }
+                      }}
+                        style={{padding:"5px 12px",fontSize:14,borderRadius:6,cursor:"pointer",fontWeight:700,
+                          background:"#1a1a3a",border:"1px solid #3a3a8a",color:"#9a9adf"}}>
+                        🤖 Parsuj z AI
+                      </button>
+                    )}
+                  </div>
+
+                  {/* buyerMsg podgląd */}
+                  {imp.buyerMsg&&(
+                    <div style={{background:"#0a0e1a",border:"1px solid #1a2a4a",borderRadius:6,padding:"6px 10px",marginBottom:12,fontSize:12,color:"#6a8abf",fontStyle:"italic"}}>
+                      💬 {imp.buyerMsg}
+                    </div>
+                  )}
+                  {importModal.kalError&&<div style={{color:"#df7a7a",fontSize:13,marginBottom:8}}>❌ {importModal.kalError}</div>}
+                  {importModal.kalLoading&&<div style={{color:"#7abfdf",fontSize:13,marginBottom:8}}>🤖 AI analizuje wiadomość...</div>}
+                  {mode==="kal"&&(
+                    <div>
+                      <div style={{display:"flex",gap:8,marginBottom:8}}>
+                        <input value={kalNum} onChange={e=>setIM({kalNum:e.target.value.toUpperCase()})}
+                          onKeyDown={e=>{if(e.key==="Enter")loadKal();}}
+                          placeholder="KAL-260304-0001"
+                          style={{flex:1,padding:"7px 10px",borderRadius:6,border:"1px solid #2a5a3a",background:"#0a140a",color:"#a0dfaf",fontFamily:"monospace",fontSize:14}}/>
+                        <button onClick={loadKal} disabled={kalLoading}
+                          style={{padding:"7px 16px",borderRadius:6,border:"1px solid #3a8a4a",background:kalLoading?"#1a2a1a":"#1a4a2a",color:"#afffaf",cursor:kalLoading?"not-allowed":"pointer",fontWeight:700}}>
+                          {kalLoading?"⟳":"🔍"} Załaduj
+                        </button>
+                      </div>
+                      {kalError&&<div style={{color:"#df7a7a",fontSize:14,marginBottom:8}}>❌ {kalError}</div>}
+                      {kalData&&(
+                        <div style={{background:"#0a1a0a",border:"1px solid #2a5a2a",borderRadius:8,padding:"10px 14px",fontSize:14}}>
+                          <div style={{color:"#afffaf",fontWeight:700,marginBottom:6}}>{kalData.orderNumber} — {kalData.clientName}</div>
+                          {(kalData.positions||[]).map((p,i)=>(
+                            <div key={i} style={{display:"flex",gap:8,alignItems:"center",padding:"4px 0",borderBottom:"1px solid #1a3a1a"}}>
+                              <span style={{color:"#5a9a7a",fontFamily:"monospace",minWidth:20}}>{i+1}.</span>
+                              <span style={{color:"#a0dfaf",fontWeight:700}}>{kalDim(p.width||p.szerokosc)}×{kalDim(p.height||p.wysokosc)} cm</span>
+                              <span style={{color:"#4a8a6a"}}>{p.profile||p.kolorRamki} / {p.mesh||p.kolorSiatki}</span>
+                              <span style={{color:"#afffaf",marginLeft:"auto"}}>×{p.qty||p.ilosc||1}</span>
+                            </div>
+                          ))}
+                          {kalData.totalPrice&&<div style={{color:"#afffaf",textAlign:"right",marginTop:6,fontWeight:700}}>Suma: {kalData.totalPrice} zł</div>}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ── PARSE tryb ── */}
+                  {mode==="parse"&&(
+                    <div style={{fontSize:14,color:"#5a8a6a",marginBottom:8}}>
+                      Wymiary sparsowane z nazwy produktu. Sprawdź i popraw jeśli potrzeba:
+                    </div>
+                  )}
+
+                  {/* ── Edytor pozycji (parse + manual) ── */}
+                  {(mode==="parse"||mode==="manual")&&(
+                    <div>
+                      {pozycje.map((p,i)=>(
+                        <div key={i} style={{background:"#0e1e0e",border:"1px solid #1a3a2a",borderRadius:8,padding:"10px 12px",marginBottom:8}}>
+                          <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
+                            <span style={{color:"#4a7a5a",fontWeight:700,fontSize:14}}>#{i+1}</span>
+                            {pozycje.length>1&&<button onClick={()=>delPoz(i)} style={{marginLeft:"auto",background:"none",border:"none",color:"#7a3a3a",cursor:"pointer",fontSize:14}}>✕</button>}
+                          </div>
+                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 80px",gap:8,marginBottom:8}}>
+                            <div>
+                              <div style={{fontSize:14,color:"#4a7a5a",marginBottom:3}}>Szerokość (cm)</div>
+                              <input value={p.szerokosc} onChange={e=>updatePoz(i,"szerokosc",e.target.value)}
+                                style={{width:"100%",padding:"5px 8px",borderRadius:5,border:"1px solid #2a4a3a",background:"#0a140a",color:"#a0dfaf",fontSize:14,fontWeight:700}}/>
+                            </div>
+                            <div>
+                              <div style={{fontSize:14,color:"#4a7a5a",marginBottom:3}}>Wysokość (cm)</div>
+                              <input value={p.wysokosc} onChange={e=>updatePoz(i,"wysokosc",e.target.value)}
+                                style={{width:"100%",padding:"5px 8px",borderRadius:5,border:"1px solid #2a4a3a",background:"#0a140a",color:"#a0dfaf",fontSize:14,fontWeight:700}}/>
+                            </div>
+                            <div>
+                              <div style={{fontSize:14,color:"#4a7a5a",marginBottom:3}}>Ilość</div>
+                              <input type="number" min="1" value={p.ilosc} onChange={e=>updatePoz(i,"ilosc",parseInt(e.target.value)||1)}
+                                style={{width:"100%",padding:"5px 8px",borderRadius:5,border:"1px solid #2a4a3a",background:"#0a140a",color:"#a0dfaf",fontSize:14}}/>
+                            </div>
+                          </div>
+                          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                            <div>
+                              <div style={{fontSize:14,color:"#4a7a5a",marginBottom:3}}>Kolor ramki</div>
+                              <select value={p.kolorRamki} onChange={e=>updatePoz(i,"kolorRamki",e.target.value)}
+                                style={{width:"100%",padding:"5px 8px",borderRadius:5,border:"1px solid #2a4a3a",background:"#0a140a",color:"#a0dfaf",fontSize:14}}>
+                                {["Antracyt","Biały","Czarny","Brąz","Winchester","Orzech","Turner Oak","Złoty Dąb","Ciemny Dąb","Mahoń"].map(k=><option key={k} value={k}>{k}</option>)}
+                              </select>
+                            </div>
+                            <div>
+                              <div style={{fontSize:14,color:"#4a7a5a",marginBottom:3}}>Kolor siatki</div>
+                              <select value={p.kolorSiatki} onChange={e=>updatePoz(i,"kolorSiatki",e.target.value)}
+                                style={{width:"100%",padding:"5px 8px",borderRadius:5,border:"1px solid #2a4a3a",background:"#0a140a",color:"#a0dfaf",fontSize:14}}>
+                                {["Czarna","Szara"].map(k=><option key={k} value={k}>{k}</option>)}
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      <button onClick={addPoz}
+                        style={{width:"100%",padding:"7px",borderRadius:6,border:"1px dashed #2a5a3a",background:"none",color:"#3a7a4a",cursor:"pointer",fontSize:14}}>
+                        ＋ Dodaj pozycję
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Przycisk importu */}
+                  <div style={{marginTop:16,display:"flex",gap:8,justifyContent:"flex-end"}}>
+                    <button onClick={()=>setImportModal(null)}
+                      style={{padding:"8px 18px",borderRadius:6,border:"1px solid #2a3a2a",background:"none",color:"#5a7a5a",cursor:"pointer"}}>
+                      Anuluj
+                    </button>
+                    <button onClick={()=>doImportOrder(importModal)}
+                      disabled={mode==="kal"&&!kalData}
+                      style={{padding:"8px 22px",borderRadius:6,border:"1px solid #4a9a5a",
+                        background:(mode==="kal"&&!kalData)?"#1a2a1a":"#1a5a2a",
+                        color:(mode==="kal"&&!kalData)?"#3a5a3a":"#7fcf7f",
+                        cursor:(mode==="kal"&&!kalData)?"not-allowed":"pointer",fontWeight:700,fontSize:14}}>
+                      ➕ Importuj zlecenie
+                    </button>
+                  </div>
+
+                </div>
+              </div>
+            );
+          })()}
+          {/* ── MODAL DPD ── */}
+          {dpdModal&&(
+            <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.75)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center"}}
+              onClick={e=>{if(e.target===e.currentTarget){setDpdModal(null);}}}>
+              <div style={{background:"#0c1a0c",border:"1px solid #3a7a3a",borderRadius:12,padding:24,width:360,maxWidth:"95vw"}}>
+                <div style={{fontWeight:700,fontSize:15,color:"#afdf7f",marginBottom:16}}>📦 Nadaj przesyłkę DPD</div>
+                <div style={{marginBottom:12,fontSize:14,color:"#7a9a7a"}}>
+                  <div style={{fontWeight:700,color:"#a0cfdf"}}>{dpdModal.klientImie}</div>
+                  <div>{dpdModal.klientUlica}</div>
+                  <div>{dpdModal.klientKod} {dpdModal.klientMiasto}</div>
+                  <div style={{fontSize:12,color:"#4a7a9a",marginTop:4}}>{dpdModal.numerZlecenia}</div>
+                </div>
+                <div style={{marginBottom:14}}>
+                  <div style={{fontSize:13,color:"#4a7a5a",marginBottom:6}}>Waga paczki (kg)</div>
+                  <input type="number" min="0.1" step="0.1" value={dpdWaga}
+                    onChange={e=>setDpdWaga(e.target.value)}
+                    style={{width:"100%",padding:"8px 10px",borderRadius:6,border:"1px solid #2a5a3a",background:"#0a140a",color:"#a0dfaf",fontSize:16,fontWeight:700}}/>
+                </div>
+                {dpdLoading&&<div style={{color:"#7abfdf",fontSize:14,marginBottom:12}}>⟳ Generuję etykietę...</div>}
+                <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+                  <button onClick={()=>setDpdModal(null)}
+                    style={{padding:"8px 18px",borderRadius:6,border:"1px solid #2a3a2a",background:"none",color:"#5a7a5a",cursor:"pointer"}}>
+                    Anuluj
+                  </button>
+                  <button onClick={dpdNadaj} disabled={dpdLoading}
+                    style={{padding:"8px 22px",borderRadius:6,border:"1px solid #4a9a5a",background:"#1a5a2a",color:"#7fcf7f",cursor:"pointer",fontWeight:700,fontSize:14}}>
+                    📦 Generuj etykietę DPD
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          {/* ── MODAL ETYKIETA ── */}
+          {shipmentModal&&(
+            <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.75)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center"}}
+              onClick={e=>{if(e.target===e.currentTarget){setShipmentModal(null);setShipmentError("");}}}>
+              <div style={{background:"#0c1a0c",border:"1px solid #3a7a3a",borderRadius:12,padding:24,width:420,maxWidth:"95vw"}}>
+                <div style={{fontWeight:700,fontSize:15,color:"#afdf7f",marginBottom:16}}>📦 Generuj etykietę</div>
+                <div style={{marginBottom:12,fontSize:14,color:"#7a9a7a"}}>
+                  <div style={{fontWeight:700,color:"#a0cfdf"}}>{shipmentModal.imp.klientImie}</div>
+                  <div>{shipmentModal.imp.klientUlica}</div>
+                  <div>{shipmentModal.imp.klientKod} {shipmentModal.imp.klientMiasto}</div>
+                  <div style={{marginTop:4,fontSize:12,color:"#4a7a9a",fontFamily:"monospace"}}>{shipmentModal.imp.allegroOrderId}</div>
+                  {/* Pozycje zamówienia */}
+                  <div style={{marginTop:8,background:"#0a140a",border:"1px solid #1a3a1a",borderRadius:5,padding:"6px 10px"}}>
+                    {(shipmentModal.imp.offerNames||"").split(", ").map((name,i)=>(
+                      <div key={i} style={{fontSize:12,color:"#5a9a7a",padding:"2px 0",borderBottom:i<(shipmentModal.imp.offerNames||"").split(", ").length-1?"1px solid #1a2a1a":"none"}}>
+                        • {name}
+                      </div>
+                    ))}
+                    {shipmentModal.imp.pozycje&&shipmentModal.imp.pozycje.length>1&&(
+                      <div style={{fontSize:11,color:"#3a6a4a",marginTop:4}}>
+                        {shipmentModal.imp.pozycje.reduce((a,p)=>a+(parseInt(p.ilosc)||1),0)} szt. łącznie
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {shipmentLoading&&<div style={{color:"#7abfdf",fontSize:14,marginBottom:12}}>⟳ Pobieranie usług dostawy...</div>}
+                {!shipmentLoading&&shipmentModal.services.length>0&&(
+                  <div style={{marginBottom:14}}>
+                    <div style={{fontSize:14,color:"#6aaa6a",marginBottom:6}}>Usługa dostawy:</div>
+                    <select value={shipmentServiceId} onChange={e=>setShipmentServiceId(e.target.value)}
+                      style={{width:"100%",background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:5,color:"#afffaf",padding:"6px 10px",fontSize:14}}>
+                      {shipmentModal.services.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
+                  </div>
+                )}
+                <div style={{marginBottom:14}}>
+                  <div style={{fontSize:14,color:"#6aaa6a",marginBottom:6}}>Zawartość paczki:</div>
+                  <input value={shipmentDescription} onChange={e=>setShipmentDescription(e.target.value)}
+                    placeholder="np. akcesoria do moskitiery"
+                    style={{width:"100%",boxSizing:"border-box",background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:5,color:"#c0e0c0",padding:"6px 10px",fontSize:14,fontFamily:"monospace"}}/>
+                </div>
+                {(()=>{
+                const _svcName=(shipmentModal?.services?.find(s=>s.id===shipmentServiceId)?.name||'').toLowerCase();
+                const _isInPost=_svcName.includes('inpost')||_svcName.includes('paczkomat');
+                if(_isInPost) return (
+                  <div style={{marginBottom:16}}>
+                    <div style={{fontSize:14,color:"#6aaa6a",marginBottom:6}}>Rozmiar paczki (InPost):</div>
+                    <div style={{display:"flex",gap:8}}>
+                      {[["A","8cm"],["B","19cm"],["C","41cm"]].map(([s,h])=>(
+                        <button key={s} onClick={()=>setShipmentSize(s)}
+                          style={{flex:1,padding:"8px 0",fontSize:14,fontWeight:700,cursor:"pointer",borderRadius:6,
+                            background:shipmentSize===s?"#2a5a2a":"#1a2a1a",
+                            border:"1px solid "+(shipmentSize===s?"#4a9a4a":"#2a4a2a"),
+                            color:shipmentSize===s?"#7fcf7f":"#4a8a4a"}}>
+                          {s}<div style={{fontSize:9,fontWeight:400,marginTop:2,color:shipmentSize===s?"#5a9a5a":"#2a4a2a"}}>{h}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+                return (
+                  <div style={{marginBottom:16}}>
+                    <div style={{fontSize:14,color:"#6aaa6a",marginBottom:8}}>Wymiary i waga:</div>
+                    {(()=>{
+                      // Auto-kalkulator paczki na podstawie opisu
+                      const desc=(shipmentDescription||"").toLowerCase();
+                      const ssMatch=desc.match(/(\d+)\s*ss/);
+                      const bsMatch=desc.match(/(\d+)\s*bs/);
+                      const ssCount=ssMatch?parseInt(ssMatch[1]):0;
+                      const bsCount=bsMatch?parseInt(bsMatch[1]):0;
+                      if(ssCount>0||bsCount>0){
+                        const pkgs=[];
+                        if(ssCount>0){
+                          const batches=Math.ceil(ssCount/4);
+                          for(let b=0;b<batches;b++){
+                            const n=Math.min(4,ssCount-b*4);
+                            pkgs.push({l:110,w:n*10,h:10,wt:n*2,label:`${n} ss`});
+                          }
+                        }
+                        if(bsCount>0){
+                          const batches=Math.ceil(bsCount/2);
+                          for(let b=0;b<batches;b++){
+                            const n=Math.min(2,bsCount-b*2);
+                            pkgs.push({l:130,w:n*10,h:10,wt:n*4,label:`${n} BS`});
+                          }
+                        }
+                        return <div style={{background:"#0a1a0a",border:"1px solid #1a3a1a",borderRadius:6,padding:"8px 10px",fontSize:13,color:"#5a9a5a"}}>
+                          🤖 Auto: {pkgs.map((p,i)=>`Paczka ${i+1}: ${p.l}×${p.w}×${p.h}cm, ${p.wt}kg (${p.label})`).join(" | ")}
+                          <div style={{fontSize:12,color:"#3a6a3a",marginTop:4}}>Wymiary i etykiety wyliczone automatycznie</div>
+                        </div>;
+                      }
+                      return null;
+                    })()}
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,marginTop:8}}>
+                      {[["Dług.",shipmentCustomSize?.length||64,"length"],["Szer.",shipmentCustomSize?.width||38,"width"],["Wys.",shipmentCustomSize?.height||15,"height"],["Waga kg",shipmentCustomSize?.weight||5,"weight"]].map(([lbl,val,key])=>(
+                        <div key={key}>
+                          <div style={{fontSize:14,color:"#6aaa6a",marginBottom:3}}>{lbl}</div>
+                          <input type="number" min="1" value={val}
+                            onChange={e=>setShipmentCustomSize(prev=>({...prev,[key]:parseFloat(e.target.value)||1}))}
+                            style={{width:"100%",background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:5,color:"#c0e0c0",padding:"6px 4px",fontSize:14,textAlign:"center",boxSizing:"border-box"}}/>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{fontSize:12,color:"#3a5a3a",marginTop:6}}>
+                      Wpisz w opisie "2 ss" lub "1 BS" aby auto-wyliczyć wymiary i wagę
+                    </div>
+                  </div>
+                );
+              })()}
+                {shipmentError&&<div style={{marginBottom:10,color:"#df8080",fontSize:14}}>{shipmentError}</div>}
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={createShipment} disabled={shipmentCreating||shipmentLoading||shipmentModal.services.length===0}
+                    style={{flex:1,padding:"10px 0",fontSize:14,fontWeight:700,cursor:shipmentCreating||shipmentLoading?"not-allowed":"pointer",borderRadius:6,
+                      background:shipmentCreating?"#1a2a1a":"#2a5a1a",border:"1px solid #4a9a2a",color:"#9fdf7f"}}>
+                    {shipmentCreating?"⟳ Tworzę przesyłkę...":"📦 Generuj etykietę"}
+                  </button>
+                  <button onClick={()=>{setShipmentModal(null);setShipmentError("");}}
+                    style={{padding:"10px 16px",fontSize:14,cursor:"pointer",borderRadius:6,background:"#1a1a1a",border:"1px solid #2a2a2a",color:"#5a5a5a"}}>
+                    Anuluj
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          </div>
+        )}
+
+        {tab==="zapytania" && (
+          <div>
+            <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}>
+              <span style={{fontSize:14,color:"#7fcf9f",letterSpacing:".12em",textTransform:"uppercase",fontWeight:700}}>📨 Zapytania z kalkulatora</span>
+              <button onClick={fetchKalOrders} disabled={kalOrdersLoading}
+                style={{padding:"6px 18px",fontSize:14,fontWeight:700,cursor:kalOrdersLoading?"not-allowed":"pointer",
+                  background:kalOrdersLoading?"#1a2a1a":"#1a3a2a",border:"1px solid #3a7a4a",borderRadius:6,color:"#afffaf"}}>
+                {kalOrdersLoading?"⟳ Pobieranie...":"🔄 Odśwież"}
+              </button>
+              <input value={kalOrdersSearch} onChange={e=>setKalOrdersSearch(e.target.value)}
+                placeholder="Szukaj po imieniu, numerze KAL..."
+                style={{padding:"5px 10px",fontSize:14,background:"#0e1e0e",border:"1px solid #2a5a3a",borderRadius:6,color:"#a0dfaf",width:240}}/>
+              <span style={{marginLeft:"auto",fontSize:14,color:"#3a7a4a"}}>
+                {kalOrders.filter(o=>o.status!=="zrealizowane").length} otwartych / {kalOrders.length} łącznie
+              </span>
+            </div>
+
+            {kalOrdersError&&<div style={{marginBottom:12,padding:"8px 14px",background:"#2a1a1a",border:"1px solid #5a2a2a",borderRadius:6,color:"#df8080",fontSize:14}}>{kalOrdersError}</div>}
+
+            {!kalOrdersFetched&&!kalOrdersLoading&&(
+              <div style={{textAlign:"center",padding:"60px 0",color:"#2a5a3a",fontSize:14}}>
+                Kliknij "🔄 Odśwież" aby pobrać zapytania z kalkulatora
+              </div>
+            )}
+
+            {kalOrdersFetched&&(()=>{
+              const filtered=kalOrders.filter(o=>{
+                if(!kalOrdersSearch) return true;
+                const q=kalOrdersSearch.toLowerCase();
+                return (o.orderNumber||"").toLowerCase().includes(q)||
+                       (o.klient?.name||"").toLowerCase().includes(q);
+              });
+              if(filtered.length===0) return (
+                <div style={{textAlign:"center",padding:"40px 0",color:"#3a6a4a",fontSize:14}}>
+                  {kalOrders.length===0?"Brak zapytań w bazie":"Brak wyników dla: "+kalOrdersSearch}
+                </div>
+              );
+              return (
+                <div style={{background:"#0a1a0a",border:"1px solid #1a4a2a",borderRadius:8,overflow:"hidden"}}>
+                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:14}}>
+                    <thead>
+                      <tr style={{background:"#0c1c0c",borderBottom:"1px solid #1a4a2a"}}>
+                        {["Nr KAL","Data","Klient","Pozycje","Koszt","Status",""].map((h,i)=>(
+                          <th key={i} style={{padding:"8px 12px",textAlign:"left",fontSize:14,color:"#3a7a4a",letterSpacing:".08em",textTransform:"uppercase",fontWeight:700,whiteSpace:"nowrap"}}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||"")).map((o,idx)=>{
+                        const done=o.status==="zrealizowane";
+                        const pozycje=o.pozycje||[];
+                        const allegroMatch=allegroImportResults.find(imp=>{
+                          const n=(imp.klientImie||"").toLowerCase().trim();
+                          const k=(o.klient?.name||"").toLowerCase().trim();
+                          return k&&n&&(k===n||k.includes(n)||n.includes(k));
+                        });
+                        return (
+                          <tr key={idx} style={{borderBottom:"1px solid #0f1f0f",background:done?"#0a120a":"#0c1a0c",opacity:done?0.5:1}}>
+                            <td style={{padding:"8px 12px"}}>
+                              <span style={{fontFamily:"monospace",fontWeight:700,color:done?"#3a7a4a":"#7fcf7f",fontSize:14}}>{o.orderNumber}</span>
+                              {allegroMatch&&<div style={{marginTop:3,fontSize:9,color:"#ffcf6f",fontWeight:700}}>🛒 zamówił na Allegro</div>}
+                            </td>
+                            <td style={{padding:"8px 12px",color:"#5a8a6a",whiteSpace:"nowrap",fontSize:14}}>
+                              {o.createdAt?new Date(o.createdAt).toLocaleDateString("pl-PL"):"—"}
+                            </td>
+                            <td style={{padding:"8px 12px"}}>
+                              <div style={{fontWeight:600,color:"#a0dfaf"}}>{o.klient?.name||"—"}</div>
+                              {o.klient?.phone&&<div style={{fontSize:14,color:"#3a7a5a"}}>{o.klient.phone}</div>}
+                            </td>
+                            <td style={{padding:"8px 12px"}}>
+                              {pozycje.map((p,i)=>(
+                                <div key={i} style={{fontSize:14,color:"#5a9a6a",whiteSpace:"nowrap"}}>
+                                  {kalDim(p.szerokosc)}×{kalDim(p.wysokosc)} cm{p.felc?` felc:${kalDim(p.felc)}`:""}
+                                  <span style={{color:"#3a7a5a",marginLeft:4}}>{(p.kolorProfilu||"").replace(/ RAL \d+/,"")}/{p.kolorSiatki}</span>
+                                  {p.ilosc>1&&<span style={{color:"#afffaf",marginLeft:4}}>×{p.ilosc}</span>}
+                                </div>
+                              ))}
+                            </td>
+                            <td style={{padding:"8px 12px",color:"#afffaf",fontWeight:700,fontFamily:"monospace",whiteSpace:"nowrap"}}>
+                              {o.podsumowanie?.cost!=null?o.podsumowanie.cost.toFixed(2)+" zł":"—"}
+                            </td>
+                            <td style={{padding:"8px 12px"}}>
+                              {done?(
+                                <span style={{fontSize:14,padding:"2px 8px",background:"#1a3a1a",border:"1px solid #2a6a2a",borderRadius:10,color:"#5a9a5a"}}>✅ zrealizowane</span>
+                              ):(
+                                <span style={{fontSize:14,padding:"2px 8px",background:"#2a2a1a",border:"1px solid #5a5a2a",borderRadius:10,color:"#cfcf5a"}}>⏳ otwarte</span>
+                              )}
+                            </td>
+                            <td style={{padding:"8px 12px",whiteSpace:"nowrap"}}>
+                              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                                {!done&&(
+                                  <button onClick={()=>markKalOrderDone(o.orderNumber)}
+                                    style={{padding:"4px 10px",fontSize:14,background:"#1a3a1a",border:"1px solid #3a7a3a",borderRadius:4,color:"#afffaf",cursor:"pointer",fontWeight:700}}>
+                                    ✅ Zrealizowane
+                                  </button>
+                                )}
+                                <button onClick={()=>doImportOrder({
+                                  imp:{klientImie:o.klient?.name||"",klientUlica:"",klientKod:"",klientMiasto:o.klient?.city||"",telefon:o.klient?.phone||"",allegroOrderId:"",kontoId:"",firma:"F",offerNames:"",data:o.createdAt?o.createdAt.slice(0,10):""},
+                                  kalData:o,
+                                  pozycje:[]
+                                })}
+                                  style={{padding:"4px 10px",fontSize:14,background:"#1a2a3a",border:"1px solid #2a5a7a",borderRadius:4,color:"#7abfdf",cursor:"pointer",fontWeight:700}}>
+                                  ➕ Zlecenie
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })()}
+          </div>
         )}
 
         {tab==="baza" && (
@@ -3353,15 +3868,7 @@ function App() {
                           {o.pozycje.some(p=>!p.isDrzwi)&&<button className="btn-pdf" onClick={()=>drukujPDF(o)} title="Drukuj PDF — okna">🪟 PDF</button>}
                           {o.pozycje.some(p=>p.isDrzwi)&&<button className="btn-pdf" style={{background:"#1a2a4a"}} onClick={()=>drukujPDF_drzwi(o)} title="Drukuj PDF — drzwi">🚪 PDF</button>}
                           <button className="btn-pdf" style={{background:o.dpdWaybill?"#0a2a1a":"#1a1a2a",borderColor:o.dpdWaybill?"#2a6a4a":"#3a3a5a",color:o.dpdWaybill?"#6acf9a":"#8a8abf",fontSize:12}} onClick={()=>{setDpdModal(o);setDpdWaga("5");}} title={o.dpdWaybill?"DPD: "+o.dpdWaybill:"Nadeślij DPD"}>{o.dpdWaybill?"📦 "+o.dpdWaybill.slice(-6):"📦 DPD"}</button>
-                          {(()=>{
-                            const emailCfg=JSON.parse(localStorage.getItem('email_produkcji_config')||'{}');
-                            const to=emailCfg.emailProdukcji||'';
-                            if(!to) return null;
-                            const subject=`${o.numerZlecenia||''} ${o.klientImie||''} ${o.klientMiasto||''}`.trim();
-                            const sh=allegroShipments[o.allegroOrderId||''];
-                            return <button className="btn-pdf" style={{background:"#1a1a3a",borderColor:"#3a3a7a",color:"#9a9adf"}} title="Wyślij na produkcję"
-                              onClick={()=>{setMailPreview({imp:o,order:o,to,subject,hasEtykieta:!!sh});loadRecentEmails();}}>✉️</button>;
-                          })()}
+                          {(()=>{const emailCfg=JSON.parse(localStorage.getItem('email_produkcji_config')||'{}');const to=emailCfg.emailProdukcji||'';if(!to) return null;const subject=`${o.numerZlecenia||''} ${o.klientImie||''} ${o.klientMiasto||''}`.trim();const sh=allegroShipments[o.allegroOrderId||''];return <button className="btn-pdf" style={{background:"#1a1a3a",borderColor:"#3a3a7a",color:"#9a9adf"}} title="Wyślij na produkcję" onClick={()=>{setMailPreview({imp:o,order:o,to,subject,hasEtykieta:!!sh});loadRecentEmails();}}>✉️</button>;})()}
                         </td>
                         <td style={{padding:"10px 10px"}}><button className="btn-pdf" style={{background:"#2a4a6a"}} onClick={()=>{setForm({data:o.data,firma:o.firma,klientImie:o.klientImie,klientUlica:o.klientUlica||"",klientKod:o.klientKod||"",klientMiasto:o.klientMiasto,telefon:o.telefon,uwagi:o.uwagi,pozycje:o.pozycje.map(p=>({...p}))});setNumerOverride(o.numerZlecenia);setEditingId(o.id);setTab("nowe");setSaved(false);}} title="Edytuj zamówienie">✏️</button></td>
                         <td style={{padding:"10px 10px"}}>
@@ -4865,528 +5372,6 @@ function App() {
               </div>
             </div>
           </div>
-        )}
-
-      {/* ── MODAL PODGLĄD MAILA ── */}
-      {mailPreview&&(
-        <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.75)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center"}}
-          onClick={e=>{if(e.target===e.currentTarget)setMailPreview(null);}}>
-          <div style={{background:"#0c1a0c",border:"1px solid #3a5a7a",borderRadius:12,padding:24,width:460,maxWidth:"95vw"}}>
-            <div style={{fontWeight:700,fontSize:15,color:"#af9adf",marginBottom:16}}>✉️ Wyślij zlecenie na produkcję</div>
-            <div style={{marginBottom:12,fontSize:13,color:"#7a9a7a"}}>
-              <div style={{marginBottom:8,display:"flex",alignItems:"center",gap:8}}>
-                <span style={{color:"#4a7a9a",whiteSpace:"nowrap"}}>Do:</span>
-                <input value={mailPreview.to} onChange={e=>setMailPreview(p=>({...p,to:e.target.value}))}
-                  list="recent-emails-list" autoComplete="off"
-                  style={{flex:1,background:"#0a140a",border:"1px solid #2a4a2a",borderRadius:4,color:"#a0cfdf",padding:"4px 8px",fontSize:13,fontFamily:"monospace"}}/>
-                <datalist id="recent-emails-list">
-                  {recentEmails.map((em,i)=><option key={i} value={em}/>)}
-                </datalist>
-              </div>
-              {recentEmails.length>0 && (
-                <div style={{marginBottom:8,display:"flex",flexWrap:"wrap",gap:4,paddingLeft:32}}>
-                  {recentEmails.slice(0,6).map((em,i)=>(
-                    <button key={i} type="button" onClick={()=>setMailPreview(p=>({...p,to:em}))}
-                      style={{padding:"2px 8px",fontSize:11,borderRadius:3,border:"1px solid #2a4a4a",background:mailPreview.to===em?"#1a3a4a":"#0a1a1a",color:"#7acfdf",cursor:"pointer",fontFamily:"monospace"}}>
-                      {em}
-                    </button>
-                  ))}
-                </div>
-              )}
-              <div style={{marginBottom:6}}><span style={{color:"#4a7a9a"}}>Temat:</span> <strong style={{color:"#cfdfaf"}}>{mailPreview.subject}</strong></div>
-              <div style={{marginBottom:6}}><span style={{color:"#4a7a9a"}}>Załączniki:</span>
-                <div style={{marginTop:4,fontSize:12}}>
-                  <div style={{color:"#7acf7a"}}>📄 {mailPreview.subject} L.pdf — zlecenie</div>
-                  {mailPreview.hasEtykieta&&<div style={{color:"#7acf7a"}}>📦 {mailPreview.subject} etykieta.pdf — etykieta</div>}
-                  {!mailPreview.hasEtykieta&&<div style={{color:"#cf9a4a"}}>⚠️ Brak etykiety — nie wygenerowano jeszcze</div>}
-                </div>
-              </div>
-            </div>
-            <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
-              <button onClick={()=>setMailPreview(null)}
-                style={{padding:"8px 18px",borderRadius:6,border:"1px solid #2a3a4a",background:"none",color:"#5a7a8a",cursor:"pointer"}}>
-                Anuluj
-              </button>
-              <button onClick={sendMailConfirmed}
-                style={{padding:"8px 22px",borderRadius:6,border:"1px solid #5a3a8a",background:"#2a1a4a",color:"#cf9adf",cursor:"pointer",fontWeight:700,fontSize:14}}>
-                ✉️ Wyślij
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* ── MODAL IMPORT ZLECENIA ── */}
-      {importModal&&(()=>{
-        const {imp,mode,kalNum,kalLoading,kalError,kalData,pozycje}=importModal;
-        const setIM=fn=>setImportModal(prev=>({...prev,...(typeof fn==="function"?fn(prev):fn)}));
-
-        const loadKal=async()=>{
-          const n=(importModal.kalNum||"").trim();
-          if(!n)return;
-          setIM({kalLoading:true,kalError:"",kalData:null});
-          try{
-            const r=await fetch(AUTORESPONDER_URL+"/kalkulator/order/"+encodeURIComponent(n.toLowerCase()));
-            const d=await r.json();
-            if(d.error||!d.orderNumber) throw new Error("Nie znaleziono: "+n);
-            setIM({kalLoading:false,kalData:d,kalError:""});
-          }catch(e){
-            setIM({kalLoading:false,kalError:e.message,kalData:null});
-          }
-        };
-
-        const updatePoz=(i,field,val)=>{
-          setIM(prev=>{
-            const p=[...prev.pozycje];
-            p[i]={...p[i],[field]:val};
-            return {pozycje:p};
-          });
-        };
-        const addPoz=()=>setIM(prev=>({pozycje:[...prev.pozycje,pustaPoz()]}));
-        const delPoz=(i)=>setIM(prev=>({pozycje:prev.pozycje.filter((_,j)=>j!==i)}));
-
-        const KOLOR_RAMKI_OPTS=["Antracyt","Biała","Brąz","Czarna","Szara","Srebrna","Złota","Dąb"];
-        const KOLOR_SIATKI_OPTS=["Czarna","Szara","Biała","Antracyt"];
-
-        return (
-          <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.82)",zIndex:1100,display:"flex",alignItems:"center",justifyContent:"center",padding:12}}
-            onClick={e=>{if(e.target===e.currentTarget)setImportModal(null);}}>
-            <div style={{background:"#0b1a0b",border:"1px solid #2a6a3a",borderRadius:12,padding:24,width:600,maxWidth:"98vw",maxHeight:"90vh",overflowY:"auto"}}>
-
-              {/* Nagłówek */}
-              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16}}>
-                <span style={{fontSize:15,fontWeight:700,color:"#afffaf"}}>➕ Import zlecenia</span>
-                <span style={{marginLeft:"auto",cursor:"pointer",color:"#5a7a5a",fontSize:18}} onClick={()=>setImportModal(null)}>✕</span>
-              </div>
-
-              {/* Dane klienta */}
-              <div style={{background:"#0e1e0e",border:"1px solid #1a4a2a",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:14}}>
-                <div style={{fontWeight:700,color:"#a0cfdf",marginBottom:4}}>{imp.klientImie}</div>
-                <div style={{color:"#5a8a7a"}}>{imp.klientUlica}, {imp.klientKod} {imp.klientMiasto}</div>
-                {imp.telefon&&<div style={{color:"#5a8a7a"}}>{imp.telefon}</div>}
-                <div style={{marginTop:6,fontSize:14,color:"#3a6a5a",fontStyle:"italic"}} title={imp.offerNames}>{imp.offerNames||"—"}</div>
-              </div>
-
-              {/* Zakładki trybu */}
-              <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
-                {[["kal","🧮 Z kalkulatora"],["parse","📐 Z nazwy oferty"],["manual","✏️ Ręcznie"]].map(([m,l])=>(
-                  <button key={m} onClick={()=>setIM({mode:m})}
-                    style={{padding:"5px 12px",fontSize:14,borderRadius:6,cursor:"pointer",fontWeight:700,
-                      background:mode===m?"#1a4a2a":"#0e1e0e",
-                      border:"1px solid "+(mode===m?"#3a8a4a":"#1a3a2a"),
-                      color:mode===m?"#7fcf7f":"#3a6a4a"}}>{l}</button>
-                ))}
-                {imp.buyerMsg&&(
-                  <button onClick={async()=>{
-                    setIM({kalLoading:true,kalError:""});
-                    try{
-                      const r=await fetch(AUTORESPONDER_URL+"/order/parse",{
-                        method:"POST",
-                        headers:{"Content-Type":"application/json","x-api-key":AUTORESPONDER_KEY},
-                        body:JSON.stringify({msg:imp.buyerMsg})
-                      });
-                      const d=await r.json();
-                      if(!d.ok||!d.pozycje||d.pozycje.length===0) throw new Error(d.error||"AI nie znalazło wymiarów");
-                      setIM({pozycje:d.pozycje,mode:"parse",kalLoading:false,kalError:""});
-                    }catch(e){
-                      setIM({kalLoading:false,kalError:"🤖 "+e.message});
-                    }
-                  }}
-                    style={{padding:"5px 12px",fontSize:14,borderRadius:6,cursor:"pointer",fontWeight:700,
-                      background:"#1a1a3a",border:"1px solid #3a3a8a",color:"#9a9adf"}}>
-                    🤖 Parsuj z AI
-                  </button>
-                )}
-              </div>
-
-              {/* buyerMsg podgląd */}
-              {imp.buyerMsg&&(
-                <div style={{background:"#0a0e1a",border:"1px solid #1a2a4a",borderRadius:6,padding:"6px 10px",marginBottom:12,fontSize:12,color:"#6a8abf",fontStyle:"italic"}}>
-                  💬 {imp.buyerMsg}
-                </div>
-              )}
-              {importModal.kalError&&<div style={{color:"#df7a7a",fontSize:13,marginBottom:8}}>❌ {importModal.kalError}</div>}
-              {importModal.kalLoading&&<div style={{color:"#7abfdf",fontSize:13,marginBottom:8}}>🤖 AI analizuje wiadomość...</div>}
-              {mode==="kal"&&(
-                <div>
-                  <div style={{display:"flex",gap:8,marginBottom:8}}>
-                    <input value={kalNum} onChange={e=>setIM({kalNum:e.target.value.toUpperCase()})}
-                      onKeyDown={e=>{if(e.key==="Enter")loadKal();}}
-                      placeholder="KAL-260304-0001"
-                      style={{flex:1,padding:"7px 10px",borderRadius:6,border:"1px solid #2a5a3a",background:"#0a140a",color:"#a0dfaf",fontFamily:"monospace",fontSize:14}}/>
-                    <button onClick={loadKal} disabled={kalLoading}
-                      style={{padding:"7px 16px",borderRadius:6,border:"1px solid #3a8a4a",background:kalLoading?"#1a2a1a":"#1a4a2a",color:"#afffaf",cursor:kalLoading?"not-allowed":"pointer",fontWeight:700}}>
-                      {kalLoading?"⟳":"🔍"} Załaduj
-                    </button>
-                  </div>
-                  {kalError&&<div style={{color:"#df7a7a",fontSize:14,marginBottom:8}}>❌ {kalError}</div>}
-                  {kalData&&(
-                    <div style={{background:"#0a1a0a",border:"1px solid #2a5a2a",borderRadius:8,padding:"10px 14px",fontSize:14}}>
-                      <div style={{color:"#afffaf",fontWeight:700,marginBottom:6}}>{kalData.orderNumber} — {kalData.clientName}</div>
-                      {(kalData.positions||[]).map((p,i)=>(
-                        <div key={i} style={{display:"flex",gap:8,alignItems:"center",padding:"4px 0",borderBottom:"1px solid #1a3a1a"}}>
-                          <span style={{color:"#5a9a7a",fontFamily:"monospace",minWidth:20}}>{i+1}.</span>
-                          <span style={{color:"#a0dfaf",fontWeight:700}}>{kalDim(p.width||p.szerokosc)}×{kalDim(p.height||p.wysokosc)} cm</span>
-                          <span style={{color:"#4a8a6a"}}>{p.profile||p.kolorRamki} / {p.mesh||p.kolorSiatki}</span>
-                          <span style={{color:"#afffaf",marginLeft:"auto"}}>×{p.qty||p.ilosc||1}</span>
-                        </div>
-                      ))}
-                      {kalData.totalPrice&&<div style={{color:"#afffaf",textAlign:"right",marginTop:6,fontWeight:700}}>Suma: {kalData.totalPrice} zł</div>}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* ── PARSE tryb ── */}
-              {mode==="parse"&&(
-                <div style={{fontSize:14,color:"#5a8a6a",marginBottom:8}}>
-                  Wymiary sparsowane z nazwy produktu. Sprawdź i popraw jeśli potrzeba:
-                </div>
-              )}
-
-              {/* ── Edytor pozycji (parse + manual) ── */}
-              {(mode==="parse"||mode==="manual")&&(
-                <div>
-                  {pozycje.map((p,i)=>(
-                    <div key={i} style={{background:"#0e1e0e",border:"1px solid #1a3a2a",borderRadius:8,padding:"10px 12px",marginBottom:8}}>
-                      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
-                        <span style={{color:"#4a7a5a",fontWeight:700,fontSize:14}}>#{i+1}</span>
-                        {pozycje.length>1&&<button onClick={()=>delPoz(i)} style={{marginLeft:"auto",background:"none",border:"none",color:"#7a3a3a",cursor:"pointer",fontSize:14}}>✕</button>}
-                      </div>
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 80px",gap:8,marginBottom:8}}>
-                        <div>
-                          <div style={{fontSize:14,color:"#4a7a5a",marginBottom:3}}>Szerokość (cm)</div>
-                          <input value={p.szerokosc} onChange={e=>updatePoz(i,"szerokosc",e.target.value)}
-                            style={{width:"100%",padding:"5px 8px",borderRadius:5,border:"1px solid #2a4a3a",background:"#0a140a",color:"#a0dfaf",fontSize:14,fontWeight:700}}/>
-                        </div>
-                        <div>
-                          <div style={{fontSize:14,color:"#4a7a5a",marginBottom:3}}>Wysokość (cm)</div>
-                          <input value={p.wysokosc} onChange={e=>updatePoz(i,"wysokosc",e.target.value)}
-                            style={{width:"100%",padding:"5px 8px",borderRadius:5,border:"1px solid #2a4a3a",background:"#0a140a",color:"#a0dfaf",fontSize:14,fontWeight:700}}/>
-                        </div>
-                        <div>
-                          <div style={{fontSize:14,color:"#4a7a5a",marginBottom:3}}>Ilość</div>
-                          <input type="number" min="1" value={p.ilosc} onChange={e=>updatePoz(i,"ilosc",parseInt(e.target.value)||1)}
-                            style={{width:"100%",padding:"5px 8px",borderRadius:5,border:"1px solid #2a4a3a",background:"#0a140a",color:"#a0dfaf",fontSize:14}}/>
-                        </div>
-                      </div>
-                      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                        <div>
-                          <div style={{fontSize:14,color:"#4a7a5a",marginBottom:3}}>Kolor ramki</div>
-                          <select value={p.kolorRamki} onChange={e=>updatePoz(i,"kolorRamki",e.target.value)}
-                            style={{width:"100%",padding:"5px 8px",borderRadius:5,border:"1px solid #2a4a3a",background:"#0a140a",color:"#a0dfaf",fontSize:14}}>
-                            {["Antracyt","Biały","Czarny","Brąz","Winchester","Orzech","Turner Oak","Złoty Dąb","Ciemny Dąb","Mahoń"].map(k=><option key={k} value={k}>{k}</option>)}
-                          </select>
-                        </div>
-                        <div>
-                          <div style={{fontSize:14,color:"#4a7a5a",marginBottom:3}}>Kolor siatki</div>
-                          <select value={p.kolorSiatki} onChange={e=>updatePoz(i,"kolorSiatki",e.target.value)}
-                            style={{width:"100%",padding:"5px 8px",borderRadius:5,border:"1px solid #2a4a3a",background:"#0a140a",color:"#a0dfaf",fontSize:14}}>
-                            {["Czarna","Szara"].map(k=><option key={k} value={k}>{k}</option>)}
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  <button onClick={addPoz}
-                    style={{width:"100%",padding:"7px",borderRadius:6,border:"1px dashed #2a5a3a",background:"none",color:"#3a7a4a",cursor:"pointer",fontSize:14}}>
-                    ＋ Dodaj pozycję
-                  </button>
-                </div>
-              )}
-
-              {/* Przycisk importu */}
-              <div style={{marginTop:16,display:"flex",gap:8,justifyContent:"flex-end"}}>
-                <button onClick={()=>setImportModal(null)}
-                  style={{padding:"8px 18px",borderRadius:6,border:"1px solid #2a3a2a",background:"none",color:"#5a7a5a",cursor:"pointer"}}>
-                  Anuluj
-                </button>
-                <button onClick={()=>doImportOrder(importModal)}
-                  disabled={mode==="kal"&&!kalData}
-                  style={{padding:"8px 22px",borderRadius:6,border:"1px solid #4a9a5a",
-                    background:(mode==="kal"&&!kalData)?"#1a2a1a":"#1a5a2a",
-                    color:(mode==="kal"&&!kalData)?"#3a5a3a":"#7fcf7f",
-                    cursor:(mode==="kal"&&!kalData)?"not-allowed":"pointer",fontWeight:700,fontSize:14}}>
-                  ➕ Importuj zlecenie
-                </button>
-              </div>
-
-            </div>
-          </div>
-        );
-      })()}
-      {/* ── MODAL DPD ── */}
-      {dpdModal&&(
-        <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.75)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center"}}
-          onClick={e=>{if(e.target===e.currentTarget){setDpdModal(null);}}}>
-          <div style={{background:"#0c1a0c",border:"1px solid #3a7a3a",borderRadius:12,padding:24,width:360,maxWidth:"95vw"}}>
-            <div style={{fontWeight:700,fontSize:15,color:"#afdf7f",marginBottom:16}}>📦 Nadaj przesyłkę DPD</div>
-            <div style={{marginBottom:12,fontSize:14,color:"#7a9a7a"}}>
-              <div style={{fontWeight:700,color:"#a0cfdf"}}>{dpdModal.klientImie}</div>
-              <div>{dpdModal.klientUlica}</div>
-              <div>{dpdModal.klientKod} {dpdModal.klientMiasto}</div>
-              <div style={{fontSize:12,color:"#4a7a9a",marginTop:4}}>{dpdModal.numerZlecenia}</div>
-            </div>
-            <div style={{marginBottom:14}}>
-              <div style={{fontSize:13,color:"#4a7a5a",marginBottom:6}}>Waga paczki (kg)</div>
-              <input type="number" min="0.1" step="0.1" value={dpdWaga}
-                onChange={e=>setDpdWaga(e.target.value)}
-                style={{width:"100%",padding:"8px 10px",borderRadius:6,border:"1px solid #2a5a3a",background:"#0a140a",color:"#a0dfaf",fontSize:16,fontWeight:700}}/>
-            </div>
-            {dpdLoading&&<div style={{color:"#7abfdf",fontSize:14,marginBottom:12}}>⟳ Generuję etykietę...</div>}
-            <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-              <button onClick={()=>setDpdModal(null)}
-                style={{padding:"8px 18px",borderRadius:6,border:"1px solid #2a3a2a",background:"none",color:"#5a7a5a",cursor:"pointer"}}>
-                Anuluj
-              </button>
-              <button onClick={dpdNadaj} disabled={dpdLoading}
-                style={{padding:"8px 22px",borderRadius:6,border:"1px solid #4a9a5a",background:"#1a5a2a",color:"#7fcf7f",cursor:"pointer",fontWeight:700,fontSize:14}}>
-                📦 Generuj etykietę DPD
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* ── MODAL ETYKIETA ── */}
-      {shipmentModal&&(
-        <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.75)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center"}}
-          onClick={e=>{if(e.target===e.currentTarget){setShipmentModal(null);setShipmentError("");}}}>
-          <div style={{background:"#0c1a0c",border:"1px solid #3a7a3a",borderRadius:12,padding:24,width:420,maxWidth:"95vw"}}>
-            <div style={{fontWeight:700,fontSize:15,color:"#afdf7f",marginBottom:16}}>📦 Generuj etykietę</div>
-            <div style={{marginBottom:12,fontSize:14,color:"#7a9a7a"}}>
-              <div style={{fontWeight:700,color:"#a0cfdf"}}>{shipmentModal.imp.klientImie}</div>
-              <div>{shipmentModal.imp.klientUlica}</div>
-              <div>{shipmentModal.imp.klientKod} {shipmentModal.imp.klientMiasto}</div>
-              <div style={{marginTop:4,fontSize:12,color:"#4a7a9a",fontFamily:"monospace"}}>{shipmentModal.imp.allegroOrderId}</div>
-              {/* Pozycje zamówienia */}
-              <div style={{marginTop:8,background:"#0a140a",border:"1px solid #1a3a1a",borderRadius:5,padding:"6px 10px"}}>
-                {(shipmentModal.imp.offerNames||"").split(", ").map((name,i)=>(
-                  <div key={i} style={{fontSize:12,color:"#5a9a7a",padding:"2px 0",borderBottom:i<(shipmentModal.imp.offerNames||"").split(", ").length-1?"1px solid #1a2a1a":"none"}}>
-                    • {name}
-                  </div>
-                ))}
-                {shipmentModal.imp.pozycje&&shipmentModal.imp.pozycje.length>1&&(
-                  <div style={{fontSize:11,color:"#3a6a4a",marginTop:4}}>
-                    {shipmentModal.imp.pozycje.reduce((a,p)=>a+(parseInt(p.ilosc)||1),0)} szt. łącznie
-                  </div>
-                )}
-              </div>
-            </div>
-            {shipmentLoading&&<div style={{color:"#7abfdf",fontSize:14,marginBottom:12}}>⟳ Pobieranie usług dostawy...</div>}
-            {!shipmentLoading&&shipmentModal.services.length>0&&(
-              <div style={{marginBottom:14}}>
-                <div style={{fontSize:14,color:"#6aaa6a",marginBottom:6}}>Usługa dostawy:</div>
-                <select value={shipmentServiceId} onChange={e=>setShipmentServiceId(e.target.value)}
-                  style={{width:"100%",background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:5,color:"#afffaf",padding:"6px 10px",fontSize:14}}>
-                  {shipmentModal.services.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </div>
-            )}
-            <div style={{marginBottom:14}}>
-              <div style={{fontSize:14,color:"#6aaa6a",marginBottom:6}}>Zawartość paczki:</div>
-              <input value={shipmentDescription} onChange={e=>setShipmentDescription(e.target.value)}
-                placeholder="np. akcesoria do moskitiery"
-                style={{width:"100%",boxSizing:"border-box",background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:5,color:"#c0e0c0",padding:"6px 10px",fontSize:14,fontFamily:"monospace"}}/>
-            </div>
-            {(()=>{
-            const _svcName=(shipmentModal?.services?.find(s=>s.id===shipmentServiceId)?.name||'').toLowerCase();
-            const _isInPost=_svcName.includes('inpost')||_svcName.includes('paczkomat');
-            if(_isInPost) return (
-              <div style={{marginBottom:16}}>
-                <div style={{fontSize:14,color:"#6aaa6a",marginBottom:6}}>Rozmiar paczki (InPost):</div>
-                <div style={{display:"flex",gap:8}}>
-                  {[["A","8cm"],["B","19cm"],["C","41cm"]].map(([s,h])=>(
-                    <button key={s} onClick={()=>setShipmentSize(s)}
-                      style={{flex:1,padding:"8px 0",fontSize:14,fontWeight:700,cursor:"pointer",borderRadius:6,
-                        background:shipmentSize===s?"#2a5a2a":"#1a2a1a",
-                        border:"1px solid "+(shipmentSize===s?"#4a9a4a":"#2a4a2a"),
-                        color:shipmentSize===s?"#7fcf7f":"#4a8a4a"}}>
-                      {s}<div style={{fontSize:9,fontWeight:400,marginTop:2,color:shipmentSize===s?"#5a9a5a":"#2a4a2a"}}>{h}</div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            );
-            return (
-              <div style={{marginBottom:16}}>
-                <div style={{fontSize:14,color:"#6aaa6a",marginBottom:8}}>Wymiary i waga:</div>
-                {(()=>{
-                  // Auto-kalkulator paczki na podstawie opisu
-                  const desc=(shipmentDescription||"").toLowerCase();
-                  const ssMatch=desc.match(/(\d+)\s*ss/);
-                  const bsMatch=desc.match(/(\d+)\s*bs/);
-                  const ssCount=ssMatch?parseInt(ssMatch[1]):0;
-                  const bsCount=bsMatch?parseInt(bsMatch[1]):0;
-                  if(ssCount>0||bsCount>0){
-                    const pkgs=[];
-                    if(ssCount>0){
-                      const batches=Math.ceil(ssCount/4);
-                      for(let b=0;b<batches;b++){
-                        const n=Math.min(4,ssCount-b*4);
-                        pkgs.push({l:110,w:n*10,h:10,wt:n*2,label:`${n} ss`});
-                      }
-                    }
-                    if(bsCount>0){
-                      const batches=Math.ceil(bsCount/2);
-                      for(let b=0;b<batches;b++){
-                        const n=Math.min(2,bsCount-b*2);
-                        pkgs.push({l:130,w:n*10,h:10,wt:n*4,label:`${n} BS`});
-                      }
-                    }
-                    return <div style={{background:"#0a1a0a",border:"1px solid #1a3a1a",borderRadius:6,padding:"8px 10px",fontSize:13,color:"#5a9a5a"}}>
-                      🤖 Auto: {pkgs.map((p,i)=>`Paczka ${i+1}: ${p.l}×${p.w}×${p.h}cm, ${p.wt}kg (${p.label})`).join(" | ")}
-                      <div style={{fontSize:12,color:"#3a6a3a",marginTop:4}}>Wymiary i etykiety wyliczone automatycznie</div>
-                    </div>;
-                  }
-                  return null;
-                })()}
-                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8,marginTop:8}}>
-                  {[["Dług.",shipmentCustomSize?.length||64,"length"],["Szer.",shipmentCustomSize?.width||38,"width"],["Wys.",shipmentCustomSize?.height||15,"height"],["Waga kg",shipmentCustomSize?.weight||5,"weight"]].map(([lbl,val,key])=>(
-                    <div key={key}>
-                      <div style={{fontSize:14,color:"#6aaa6a",marginBottom:3}}>{lbl}</div>
-                      <input type="number" min="1" value={val}
-                        onChange={e=>setShipmentCustomSize(prev=>({...prev,[key]:parseFloat(e.target.value)||1}))}
-                        style={{width:"100%",background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:5,color:"#c0e0c0",padding:"6px 4px",fontSize:14,textAlign:"center",boxSizing:"border-box"}}/>
-                    </div>
-                  ))}
-                </div>
-                <div style={{fontSize:12,color:"#3a5a3a",marginTop:6}}>
-                  Wpisz w opisie "2 ss" lub "1 BS" aby auto-wyliczyć wymiary i wagę
-                </div>
-              </div>
-            );
-          })()}
-            {shipmentError&&<div style={{marginBottom:10,color:"#df8080",fontSize:14}}>{shipmentError}</div>}
-            <div style={{display:"flex",gap:8}}>
-              <button onClick={createShipment} disabled={shipmentCreating||shipmentLoading||shipmentModal.services.length===0}
-                style={{flex:1,padding:"10px 0",fontSize:14,fontWeight:700,cursor:shipmentCreating||shipmentLoading?"not-allowed":"pointer",borderRadius:6,
-                  background:shipmentCreating?"#1a2a1a":"#2a5a1a",border:"1px solid #4a9a2a",color:"#9fdf7f"}}>
-                {shipmentCreating?"⟳ Tworzę przesyłkę...":"📦 Generuj etykietę"}
-              </button>
-              <button onClick={()=>{setShipmentModal(null);setShipmentError("");}}
-                style={{padding:"10px 16px",fontSize:14,cursor:"pointer",borderRadius:6,background:"#1a1a1a",border:"1px solid #2a2a2a",color:"#5a5a5a"}}>
-                Anuluj
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-    {tab==="zapytania" && (
-      <div>
-        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}>
-          <span style={{fontSize:14,color:"#7fcf9f",letterSpacing:".12em",textTransform:"uppercase",fontWeight:700}}>📨 Zapytania z kalkulatora</span>
-          <button onClick={fetchKalOrders} disabled={kalOrdersLoading}
-            style={{padding:"6px 18px",fontSize:14,fontWeight:700,cursor:kalOrdersLoading?"not-allowed":"pointer",
-              background:kalOrdersLoading?"#1a2a1a":"#1a3a2a",border:"1px solid #3a7a4a",borderRadius:6,color:"#afffaf"}}>
-            {kalOrdersLoading?"⟳ Pobieranie...":"🔄 Odśwież"}
-          </button>
-          <input value={kalOrdersSearch} onChange={e=>setKalOrdersSearch(e.target.value)}
-            placeholder="Szukaj po imieniu, numerze KAL..."
-            style={{padding:"5px 10px",fontSize:14,background:"#0e1e0e",border:"1px solid #2a5a3a",borderRadius:6,color:"#a0dfaf",width:240}}/>
-          <span style={{marginLeft:"auto",fontSize:14,color:"#3a7a4a"}}>
-            {kalOrders.filter(o=>o.status!=="zrealizowane").length} otwartych / {kalOrders.length} łącznie
-          </span>
-        </div>
-
-        {kalOrdersError&&<div style={{marginBottom:12,padding:"8px 14px",background:"#2a1a1a",border:"1px solid #5a2a2a",borderRadius:6,color:"#df8080",fontSize:14}}>{kalOrdersError}</div>}
-
-        {!kalOrdersFetched&&!kalOrdersLoading&&(
-          <div style={{textAlign:"center",padding:"60px 0",color:"#2a5a3a",fontSize:14}}>
-            Kliknij "🔄 Odśwież" aby pobrać zapytania z kalkulatora
-          </div>
-        )}
-
-        {kalOrdersFetched&&(()=>{
-          const filtered=kalOrders.filter(o=>{
-            if(!kalOrdersSearch) return true;
-            const q=kalOrdersSearch.toLowerCase();
-            return (o.orderNumber||"").toLowerCase().includes(q)||
-                   (o.klient?.name||"").toLowerCase().includes(q);
-          });
-          if(filtered.length===0) return (
-            <div style={{textAlign:"center",padding:"40px 0",color:"#3a6a4a",fontSize:14}}>
-              {kalOrders.length===0?"Brak zapytań w bazie":"Brak wyników dla: "+kalOrdersSearch}
-            </div>
-          );
-          return (
-            <div style={{background:"#0a1a0a",border:"1px solid #1a4a2a",borderRadius:8,overflow:"hidden"}}>
-              <table style={{width:"100%",borderCollapse:"collapse",fontSize:14}}>
-                <thead>
-                  <tr style={{background:"#0c1c0c",borderBottom:"1px solid #1a4a2a"}}>
-                    {["Nr KAL","Data","Klient","Pozycje","Koszt","Status",""].map((h,i)=>(
-                      <th key={i} style={{padding:"8px 12px",textAlign:"left",fontSize:14,color:"#3a7a4a",letterSpacing:".08em",textTransform:"uppercase",fontWeight:700,whiteSpace:"nowrap"}}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.sort((a,b)=>(b.createdAt||"").localeCompare(a.createdAt||"")).map((o,idx)=>{
-                    const done=o.status==="zrealizowane";
-                    const pozycje=o.pozycje||[];
-                    const allegroMatch=allegroImportResults.find(imp=>{
-                      const n=(imp.klientImie||"").toLowerCase().trim();
-                      const k=(o.klient?.name||"").toLowerCase().trim();
-                      return k&&n&&(k===n||k.includes(n)||n.includes(k));
-                    });
-                    return (
-                      <tr key={idx} style={{borderBottom:"1px solid #0f1f0f",background:done?"#0a120a":"#0c1a0c",opacity:done?0.5:1}}>
-                        <td style={{padding:"8px 12px"}}>
-                          <span style={{fontFamily:"monospace",fontWeight:700,color:done?"#3a7a4a":"#7fcf7f",fontSize:14}}>{o.orderNumber}</span>
-                          {allegroMatch&&<div style={{marginTop:3,fontSize:9,color:"#ffcf6f",fontWeight:700}}>🛒 zamówił na Allegro</div>}
-                        </td>
-                        <td style={{padding:"8px 12px",color:"#5a8a6a",whiteSpace:"nowrap",fontSize:14}}>
-                          {o.createdAt?new Date(o.createdAt).toLocaleDateString("pl-PL"):"—"}
-                        </td>
-                        <td style={{padding:"8px 12px"}}>
-                          <div style={{fontWeight:600,color:"#a0dfaf"}}>{o.klient?.name||"—"}</div>
-                          {o.klient?.phone&&<div style={{fontSize:14,color:"#3a7a5a"}}>{o.klient.phone}</div>}
-                        </td>
-                        <td style={{padding:"8px 12px"}}>
-                          {pozycje.map((p,i)=>(
-                            <div key={i} style={{fontSize:14,color:"#5a9a6a",whiteSpace:"nowrap"}}>
-                              {kalDim(p.szerokosc)}×{kalDim(p.wysokosc)} cm{p.felc?` felc:${kalDim(p.felc)}`:""}
-                              <span style={{color:"#3a7a5a",marginLeft:4}}>{(p.kolorProfilu||"").replace(/ RAL \d+/,"")}/{p.kolorSiatki}</span>
-                              {p.ilosc>1&&<span style={{color:"#afffaf",marginLeft:4}}>×{p.ilosc}</span>}
-                            </div>
-                          ))}
-                        </td>
-                        <td style={{padding:"8px 12px",color:"#afffaf",fontWeight:700,fontFamily:"monospace",whiteSpace:"nowrap"}}>
-                          {o.podsumowanie?.cost!=null?o.podsumowanie.cost.toFixed(2)+" zł":"—"}
-                        </td>
-                        <td style={{padding:"8px 12px"}}>
-                          {done?(
-                            <span style={{fontSize:14,padding:"2px 8px",background:"#1a3a1a",border:"1px solid #2a6a2a",borderRadius:10,color:"#5a9a5a"}}>✅ zrealizowane</span>
-                          ):(
-                            <span style={{fontSize:14,padding:"2px 8px",background:"#2a2a1a",border:"1px solid #5a5a2a",borderRadius:10,color:"#cfcf5a"}}>⏳ otwarte</span>
-                          )}
-                        </td>
-                        <td style={{padding:"8px 12px",whiteSpace:"nowrap"}}>
-                          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                            {!done&&(
-                              <button onClick={()=>markKalOrderDone(o.orderNumber)}
-                                style={{padding:"4px 10px",fontSize:14,background:"#1a3a1a",border:"1px solid #3a7a3a",borderRadius:4,color:"#afffaf",cursor:"pointer",fontWeight:700}}>
-                                ✅ Zrealizowane
-                              </button>
-                            )}
-                            <button onClick={()=>doImportOrder({
-                              imp:{klientImie:o.klient?.name||"",klientUlica:"",klientKod:"",klientMiasto:o.klient?.city||"",telefon:o.klient?.phone||"",allegroOrderId:"",kontoId:"",firma:"F",offerNames:"",data:o.createdAt?o.createdAt.slice(0,10):""},
-                              kalData:o,
-                              pozycje:[]
-                            })}
-                              style={{padding:"4px 10px",fontSize:14,background:"#1a2a3a",border:"1px solid #2a5a7a",borderRadius:4,color:"#7abfdf",cursor:"pointer",fontWeight:700}}>
-                              ➕ Zlecenie
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          );
-        })()}
-      </div>
-
         )}
 
       </div>
