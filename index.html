@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.34</title>
+<title>MosquitoApp v20260424.35</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260424.34';
+  window.__MOSK_VERSION='20260424.35';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -2945,7 +2945,15 @@ function App() {
                         border:`1px solid ${hasZlecenie?'#3a7a3a':'#2a4a2a'}`,color:hasZlecenie?'#7acf7a':'#4a7a4a'}}>
                       📋{hasZlecenie?' ✅':''}
                     </button>}
-                    <button onClick={()=>openShipmentModal(imp)} title="Etykieta"
+                    <button onClick={()=>{
+                        if(imp.kontoId){
+                          openShipmentModal(imp);
+                        } else {
+                          // Brak kontoId = zamówienie telefoniczne → DPD API
+                          const orderForDpd=orders.find(o=>o.allegroOrderId===imp.allegroOrderId)||{klientImie:imp.klientImie,klientUlica:imp.klientUlica,klientKod:imp.klientKod,klientMiasto:imp.klientMiasto,telefon:imp.telefon};
+                          setDpdModal(orderForDpd);setDpdWaga('5');
+                        }
+                      }} title={imp.kontoId?"Etykieta Allegro":"Etykieta DPD API"}
                       style={{padding:'4px 8px',fontSize:12,borderRadius:5,cursor:'pointer',fontWeight:700,
                         background:hasEtykieta?'#1a3a1a':'#1a2a1a',border:`1px solid ${hasEtykieta?'#5a7a2a':'#2a4a2a'}`,color:hasEtykieta?'#afdf7f':'#6a8a4a'}}>
                       📦{hasEtykieta?' ✅':''}
@@ -5435,8 +5443,8 @@ function App() {
                   setShipmentCreating(true);
                   try{
                     const imp=shipmentModal.imp;
-                    const body={kontoId:imp.kontoId,orderId:imp.allegroOrderId,serviceId:shipmentServiceId,description:shipmentDescription,size:shipmentSize==="custom"?shipmentCustomSize:shipmentSize};
-                    const r=await fetch(AUTORESPONDER_URL+"/shipment/create",{method:"POST",headers:{"x-api-key":AUTORESPONDER_KEY,"Content-Type":"application/json"},body:JSON.stringify(body)});
+                    const body={orderId:imp.allegroOrderId,serviceId:shipmentServiceId,description:shipmentDescription,size:shipmentSize==="custom"?shipmentCustomSize:shipmentSize};
+                    const r=await fetch(AUTORESPONDER_URL+"/shipment/create?kontoId="+imp.kontoId,{method:"POST",headers:{"x-api-key":AUTORESPONDER_KEY,"Content-Type":"application/json"},body:JSON.stringify(body)});
                     const d=await r.json();
                     if(!d.ok) throw new Error(d.error||JSON.stringify(d));
                     const sh={shipmentId:d.shipmentId,waybill:d.waybill,kontoId:imp.kontoId,serviceId:shipmentServiceId};
