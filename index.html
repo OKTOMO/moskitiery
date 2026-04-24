@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.18</title>
+<title>MosquitoApp v20260424.19</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260424.18';
+  window.__MOSK_VERSION='20260424.19';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -1519,6 +1519,29 @@ function App() {
     }catch(e){ console.warn('[STATUSES] load fail:',e); }
   }
 
+  // Pobierz tokeny Allegro z KV (desktop ↔ mobile sync)
+  async function loadAllegroTokensFromKV(){
+    if(!AUTORESPONDER_KEY) return;
+    try{
+      const r=await fetch(AUTORESPONDER_URL+'/allegro/tokens',{headers:{'x-api-key':AUTORESPONDER_KEY}});
+      const d=await r.json();
+      if(!d.ok) return;
+      const remoteAccess=d.tokens||{};
+      const remoteRefresh=d.refreshes||{};
+      const localAccess=JSON.parse(localStorage.getItem('allegro_tokens')||'{}');
+      const localRefresh=JSON.parse(localStorage.getItem('allegro_refreshes')||'{}');
+      // Strategia: jeśli remote ma więcej kont lub różni się — użyj remote (KV to single source of truth)
+      const remoteStr=JSON.stringify(remoteAccess)+JSON.stringify(remoteRefresh);
+      const localStr=JSON.stringify(localAccess)+JSON.stringify(localRefresh);
+      if(remoteStr!==localStr && Object.keys(remoteAccess).length>0){
+        localStorage.setItem('allegro_tokens',JSON.stringify(remoteAccess));
+        localStorage.setItem('allegro_refreshes',JSON.stringify(remoteRefresh));
+        setAllegroTokens(remoteAccess);
+        console.log('[ALLEGRO] tokens synced from KV:',Object.keys(remoteAccess).length,'kont');
+      }
+    }catch(e){ console.warn('[ALLEGRO] tokens load fail:',e); }
+  }
+
   async function fetchKalOrders(){
     setKalOrdersLoading(true);
     setKalOrdersError('');
@@ -1793,11 +1816,16 @@ function App() {
 
 
   useEffect(()=>{
+    // Najpierw tokeny Allegro z KV (żeby aplikacja wystartowała z aktualnymi tokenami)
+    loadAllegroTokensFromKV();
     cloudLoad().then(d=>{setOrders(d);setLoading(false);});
     // Synchronizacja statusów z KV na starcie + co 30 sek (desktop ↔ mobile)
     loadAppStatusesFromKV();
     const statusInterval=setInterval(loadAppStatusesFromKV,30000);
+    // Synchronizacja tokenów Allegro z KV co 60 sek (na wypadek refreshu na innym urządzeniu)
+    const tokenInterval=setInterval(loadAllegroTokensFromKV,60000);
     window.__statusSyncInterval=statusInterval;
+    window.__tokenSyncInterval=tokenInterval;
     // Handle OAuth callback
     const params=new URLSearchParams(window.location.search);
     const code=params.get('code');
