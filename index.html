@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.40</title>
+<title>MosquitoApp v20260424.41</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260424.40';
+  window.__MOSK_VERSION='20260424.41';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -1796,6 +1796,8 @@ function App() {
     const isInPost=(service?.name||'').toLowerCase().includes('inpost')||(service?.name||'').toLowerCase().includes('paczkomat')||(service?.carrierId||'').toLowerCase().includes('inpost');
     const isDPDPickup=(service?.name||'').toLowerCase().includes('pickup')||(service?.name||'').toLowerCase().includes('odbiór w punkcie dpd')||(service?.name||'').toLowerCase().includes('ad)');
     const isPickupPoint=isInPost||isDPDPickup;
+    const isCOD=(service?.name||'').toLowerCase().includes('pobranie')||(service?.name||'').toLowerCase().includes('cod');
+    const codAmount=isCOD?(parseFloat(imp.kwotaBrutto)||0):0;
     const SIZES={"A":{length:64,width:38,height:8,weight:25},"B":{length:64,width:38,height:19,weight:25},"C":{length:64,width:38,height:41,weight:25}};
     // Auto-kalkulator paczek
     const desc=(shipmentDescription||"").toLowerCase();
@@ -1853,7 +1855,8 @@ function App() {
             ...(isPickupPoint && imp.pickupPointId ? {point:imp.pickupPointId} : {})
           },
           packages,
-          ...(isPickupPoint?{additionalServices:["sendingAtPoint"]}:{})
+          ...(isPickupPoint?{additionalServices:["sendingAtPoint"]}:{}),
+          ...(isCOD && codAmount>0 ? {cod:{amount:{value:codAmount,currency:"PLN"}}} : {})
         }
       };
       console.log("createBody:", JSON.stringify(createBody, null, 2));
