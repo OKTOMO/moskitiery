@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260425.52</title>
+<title>MosquitoApp v20260425.54</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260425.52';
+  window.__MOSK_VERSION='20260425.54';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -2037,10 +2037,10 @@ function App() {
             })(),
             phone:imp.telefon||"",
             email:imp.klientEmail||"",
-            ...(isPickupPoint && imp.pickupPointId ? {point:imp.pickupPointId} : {})
+            ...(isPickupPoint && imp.pickupPointId && !isInternational ? {point:imp.pickupPointId} : {})
           },
           packages,
-          ...(isPickupPoint?{additionalServices:["sendingAtPoint"]}:{}),
+          ...(isPickupPoint && !isInternational?{additionalServices:["sendingAtPoint"]}:{}),
           ...(()=>{
             // Mapa walut i kursów dla krajów obsługiwanych przez Allegro
             const KRAJ_CFG={
@@ -2054,7 +2054,9 @@ function App() {
               HR:{currency:"EUR",rate:4.25},
               RO:{currency:"RON",rate:0.22},
             };
-            const kraj=(imp.klientKraj||'PL').toUpperCase();
+            const _kod=(imp.klientKod||'').replace(/\s/g,'');
+            const _kf=!imp.klientKraj?(/^\d{4}$/.test(_kod)?'HU':/^[A-Z]{2}\d/.test(_kod)?'GB':'PL'):imp.klientKraj;
+            const kraj=(_kf||'PL').toUpperCase();
             const cfg=KRAJ_CFG[kraj];
             const insAmt=cfg
               ? String(Math.max(cfg.rate*12, (parseFloat(imp.kwotaBrutto)||50)*cfg.rate/4.25).toFixed(0))
