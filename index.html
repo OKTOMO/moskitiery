@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260425.4</title>
+<title>MosquitoApp v20260425.5</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260425.4';
+  window.__MOSK_VERSION='20260425.5';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -734,6 +734,11 @@ function App() {
   const [shipmentCustomSize,setShipmentCustomSize]=useState({length:64,width:38,height:15,weight:5});
   const [shipmentCreating,setShipmentCreating]=useState(false);
   const [shipmentDescription,setShipmentDescription]=useState("");
+  const [pickupProposals,setPickupProposals]=useState([]); // dostępne sloty odbioru
+  const [pickupDate,setPickupDate]=useState('');           // wybrana data odbioru
+  const [pickupTime,setPickupTime]=useState(null);         // wybrany slot {date,minTime,maxTime}
+  const [pickupLoading,setPickupLoading]=useState(false);
+  const [pickupResult,setPickupResult]=useState(null);     // {ok, commandId, error}
   const [shipmentServiceId,setShipmentServiceId]=useState("");
   // ── Import modal state ──
   const [importModal,setImportModal]=useState(null); // {imp, mode, kalNum, kalLoading, kalError, kalData, pozycje}
@@ -1786,6 +1791,10 @@ function App() {
     setShipmentLoading(true);
     setShipmentError("");
     setShipmentSize("A");
+    setPickupProposals([]);
+    setPickupDate('');
+    setPickupTime(null);
+    setPickupResult(null);
     if(!isMata&&!isMoskitiera) setShipmentCustomSize({length:64,width:38,height:15,weight:5});
     try{
       const r=await fetch(AUTORESPONDER_URL+"/shipment/services?kontoId="+imp.kontoId+"&orderId="+imp.allegroOrderId,{
@@ -1807,6 +1816,61 @@ function App() {
       setShipmentError("❌ "+e.message);
     }
     setShipmentLoading(false);
+  }
+
+  async function fetchPickupProposals(shipmentId, kontoId, address){
+    setPickupLoading(true);
+    setPickupProposals([]);
+    setPickupResult(null);
+    try{
+      const today=new Date().toISOString().slice(0,10);
+      const r=await fetch(AUTORESPONDER_URL+'/shipment/pickup-proposals?kontoId='+kontoId,{
+        method:'POST',
+        headers:{'x-api-key':AUTORESPONDER_KEY,'Content-Type':'application/json'},
+        body:JSON.stringify({shipmentIds:[shipmentId],readyDate:today,address})
+      });
+      const d=await r.json();
+      if(d.ok && d.data && d.data.pickupTimes){
+        setPickupProposals(d.data.pickupTimes);
+        if(d.data.pickupTimes.length>0) setPickupTime(d.data.pickupTimes[0]);
+      } else {
+        // Brak propozycji — ustaw datę jutrzejszą jako fallback
+        const tomorrow=new Date();
+        tomorrow.setDate(tomorrow.getDate()+1);
+        setPickupDate(tomorrow.toISOString().slice(0,10));
+      }
+    }catch(e){console.warn('pickup proposals error:',e);}
+    setPickupLoading(false);
+  }
+
+  async function orderPickup(shipmentId, kontoId, address, pickupTimeData, firma){
+    setPickupLoading(true);
+    setPickupResult(null);
+    try{
+      const pickupTimeBody=pickupTimeData?{
+        date:pickupTimeData.date,
+        ...(pickupTimeData.minTime?{minTime:pickupTimeData.minTime,maxTime:pickupTimeData.maxTime}:{})
+      }:{date:pickupDate||new Date().toISOString().slice(0,10)};
+      const r=await fetch(AUTORESPONDER_URL+'/shipment/pickup-create?kontoId='+kontoId,{
+        method:'POST',
+        headers:{'x-api-key':AUTORESPONDER_KEY,'Content-Type':'application/json'},
+        body:JSON.stringify({
+          shipmentIds:[shipmentId],
+          pickupTime:pickupTimeBody,
+          address:{
+            name:firma.nazwa,
+            street:firma.adres,
+            postalCode:firma.kod,
+            city:firma.miasto,
+            countryCode:'PL',
+            ...address
+          }
+        })
+      });
+      const d=await r.json();
+      setPickupResult(d);
+    }catch(e){setPickupResult({ok:false,error:e.message});}
+    setPickupLoading(false);
   }
 
   async function createShipment(){
@@ -1931,7 +1995,12 @@ function App() {
         });
         setOrderAppStatus(shipmentModal.imp.allegroOrderId,"W realizacji");
       }
-      setShipmentModal(null);
+      // Zostaw modal otwarty z sekcją zamówienia odbioru
+      setShipmentModal(prev=>({...prev, createdShipmentId:d1.shipmentId, createdCarrierId:d1.carrierId}));
+      // Auto-pobierz propozycje odbioru
+      const firma=FIRMY_DANE[imp.firma]||FIRMY_DANE["F"];
+      const pickupAddr={name:firma.nazwa,street:firma.adres,postalCode:firma.kod,city:firma.miasto,countryCode:'PL'};
+      fetchPickupProposals(d1.shipmentId, imp.kontoId, pickupAddr);
     }catch(e){
       setShipmentError("❌ "+e.message);
     }
@@ -5724,6 +5793,52 @@ function App() {
                 {shipmentCreating?"⟳ Tworzę...":"📦 Utwórz etykietę"}
               </button>
             </div>
+            {/* ── Sekcja zamówienia odbioru ── */}
+            {shipmentModal.createdShipmentId&&(
+              <div style={{marginTop:16,padding:14,background:'#0a1a0a',border:'1px solid #2a5a2a',borderRadius:8}}>
+                <div style={{fontWeight:700,fontSize:14,color:'#afdf7f',marginBottom:10}}>📞 Zamów odbiór przez kuriera</div>
+                {pickupLoading&&<div style={{color:'#7abfdf',fontSize:13}}>⟳ Pobieranie terminów...</div>}
+                {pickupResult&&pickupResult.ok&&<div style={{color:'#7acf7a',fontSize:13}}>✅ Odbiór zamówiony!</div>}
+                {pickupResult&&!pickupResult.ok&&<div style={{color:'#cf4a4a',fontSize:12}}>❌ Błąd zamawiania odbioru</div>}
+                {!pickupLoading&&!pickupResult&&(
+                  <div>
+                    <div style={{fontSize:12,color:'#5a8a5a',marginBottom:8}}>
+                      Adres: {(FIRMY_DANE[shipmentModal.imp.firma]||FIRMY_DANE["F"]).adres}
+                    </div>
+                    {pickupProposals.length>0&&(
+                      <div style={{marginBottom:10}}>
+                        {pickupProposals.slice(0,4).map((p,i)=>(
+                          <label key={i} style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',padding:'3px 6px',borderRadius:4,background:pickupTime===p?'#1a3a1a':'transparent',marginBottom:3}}>
+                            <input type="radio" name="pickup_time" checked={pickupTime===p} onChange={()=>setPickupTime(p)} style={{accentColor:'#4acf4a'}}/>
+                            <span style={{fontSize:12,color:'#9acf9a'}}>{p.date}{p.minTime?' '+p.minTime+'-'+p.maxTime:''}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                    {pickupProposals.length===0&&(
+                      <div style={{marginBottom:10}}>
+                        <input type="date" value={pickupDate} onChange={e=>setPickupDate(e.target.value)}
+                          min={new Date().toISOString().slice(0,10)}
+                          style={{width:'100%',padding:'5px 8px',fontSize:13,background:'#0e1a0e',border:'1px solid #2a4a2a',borderRadius:4,color:'#afffaf'}}/>
+                      </div>
+                    )}
+                    <button onClick={()=>{
+                        const imp=shipmentModal.imp;
+                        const firma=FIRMY_DANE[imp.firma]||FIRMY_DANE["F"];
+                        const addr={name:firma.nazwa,street:firma.adres,postalCode:firma.kod,city:firma.miasto,countryCode:'PL'};
+                        orderPickup(shipmentModal.createdShipmentId,imp.kontoId,addr,pickupTime,firma);
+                      }}
+                      style={{width:'100%',padding:'8px',fontSize:13,fontWeight:700,borderRadius:6,cursor:'pointer',background:'#1a4a2a',border:'1px solid #3a8a4a',color:'#afffaf'}}>
+                      📞 Zamów odbiór
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+            <button onClick={()=>{setShipmentModal(null);setShipmentError("");}}
+              style={{width:'100%',marginTop:8,padding:'6px',fontSize:13,borderRadius:6,cursor:'pointer',background:'transparent',border:'1px solid #2a4a2a',color:'#5a8a5a'}}>
+              {shipmentModal.createdShipmentId?'Zamknij':'Anuluj'}
+            </button>
           </div>
         </div>
       )}
