@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260425.10</title>
+<title>MosquitoApp v20260425.12</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260425.10';
+  window.__MOSK_VERSION='20260425.12';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -386,6 +386,48 @@ function obliczDrzwi(pozycje){
 }
 function pustyForm(firma="F"){ return {data:new Date().toISOString().slice(0,10),firma,klientImie:"",klientUlica:"",klientKod:"",klientMiasto:"",telefon:"",uwagi:"",pozycje:[pustaPoz()]}; }
 
+// ─── NASTĘPNY DZIEŃ ROBOCZY ───────────────────────────────────────────────────
+function swietaPolskie(rok) {
+  // Wielkanoc — algorytm Gaussowski
+  const a=rok%19, b=Math.floor(rok/100), c=rok%100;
+  const d=Math.floor(b/4), e=b%4, f=Math.floor((b+8)/25);
+  const g=Math.floor((b-f+1)/3), h=(19*a+b-d-g+15)%30;
+  const i=Math.floor(c/4), k=c%4, l=(32+2*e+2*i-h-k)%7;
+  const m=Math.floor((a+11*h+22*l)/451);
+  const miesiac=Math.floor((h+l-7*m+114)/31);
+  const dzien=((h+l-7*m+114)%31)+1;
+  const wiel=new Date(rok,miesiac-1,dzien); // Niedziela Wielkanocna
+  const fmt=d=>d.toISOString().slice(0,10);
+  const add=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x;};
+  return new Set([
+    `${rok}-01-01`, // Nowy Rok
+    `${rok}-01-06`, // Trzech Króli
+    fmt(wiel),      // Wielkanoc
+    fmt(add(wiel,1)),// Poniedziałek Wielkanocny
+    `${rok}-05-01`, // Święto Pracy
+    `${rok}-05-03`, // Konstytucja 3 Maja
+    fmt(add(wiel,49)),// Zesłanie Ducha Świętego
+    fmt(add(wiel,60)),// Boże Ciało
+    `${rok}-08-15`, // Wniebowzięcie NMP
+    `${rok}-11-01`, // Wszystkich Świętych
+    `${rok}-11-11`, // Niepodległości
+    `${rok}-12-25`, // Boże Narodzenie
+    `${rok}-12-26`, // Drugi dzień BN
+  ]);
+}
+function nastepnyDzienRoboczy(od=new Date()) {
+  const d=new Date(od);
+  d.setDate(d.getDate()+1); // zawsze minimum jutro
+  for(let i=0;i<14;i++){
+    const iso=d.toISOString().slice(0,10);
+    const dow=d.getDay(); // 0=niedz, 6=sob
+    const swieta=swietaPolskie(d.getFullYear());
+    if(dow!==0&&dow!==6&&!swieta.has(iso)) return iso;
+    d.setDate(d.getDate()+1);
+  }
+  return d.toISOString().slice(0,10); // fallback
+}
+
 // ─── PDF ──────────────────────────────────────────────────────────────────────
 function drukujPDF(order) {
   const firmaNazwa=FIRMY.find(f=>f.kod===order.firma)?.nazwa||order.firma||"";
@@ -739,6 +781,7 @@ function App() {
   const [pickupTime,setPickupTime]=useState(null);         // wybrany slot {date,minTime,maxTime}
   const [pickupLoading,setPickupLoading]=useState(false);
   const [pickupResult,setPickupResult]=useState(null);     // {ok, commandId, error}
+  const [pickupAddress,setPickupAddress]=useState(null);   // edytowalny adres podjazdu
   const [shipmentServiceId,setShipmentServiceId]=useState("");
   // ── Import modal state ──
   const [importModal,setImportModal]=useState(null); // {imp, mode, kalNum, kalLoading, kalError, kalData, pozycje}
@@ -1835,9 +1878,7 @@ function App() {
         if(d.data.pickupTimes.length>0) setPickupTime(d.data.pickupTimes[0]);
       } else {
         // Brak propozycji — ustaw datę jutrzejszą jako fallback
-        const tomorrow=new Date();
-        tomorrow.setDate(tomorrow.getDate()+1);
-        setPickupDate(tomorrow.toISOString().slice(0,10));
+        setPickupDate(nastepnyDzienRoboczy());
       }
     }catch(e){console.warn('pickup proposals error:',e);}
     setPickupLoading(false);
@@ -1850,7 +1891,7 @@ function App() {
       const pickupTimeBody=pickupTimeData?{
         date:pickupTimeData.date,
         ...(pickupTimeData.minTime?{minTime:pickupTimeData.minTime,maxTime:pickupTimeData.maxTime}:{})
-      }:{date:pickupDate||new Date().toISOString().slice(0,10)};
+      }:{date:pickupDate||nastepnyDzienRoboczy()};
       const r=await fetch(AUTORESPONDER_URL+'/shipment/pickup-create?kontoId='+kontoId,{
         method:'POST',
         headers:{'x-api-key':AUTORESPONDER_KEY,'Content-Type':'application/json'},
@@ -1860,7 +1901,7 @@ function App() {
           address:{
             name:firma.nazwa,
             street:firma.adres,
-            zipCode:firma.kod,
+            postalCode:firma.kod,
             city:firma.miasto,
             countryCode:'PL'
           }
@@ -2003,7 +2044,8 @@ function App() {
         if(linkedOrdForPdf.pozycje.some(p=>p.isDrzwi)) drukujPDF_drzwi(linkedOrdForPdf);
       }
       // Auto-pobierz propozycje odbioru (firma już zadeklarowana wyżej w try{})
-      const pickupAddr={name:firma.nazwa,street:firma.adres,zipCode:firma.kod,city:firma.miasto,countryCode:'PL'};
+      const pickupAddr={name:firma.nazwa,street:firma.adres,postalCode:firma.kod,city:firma.miasto,countryCode:'PL'};
+      setPickupAddress(pickupAddr);
       fetchPickupProposals(d1.shipmentId, imp.kontoId, pickupAddr);
     }catch(e){
       setShipmentError("❌ "+e.message);
@@ -3096,8 +3138,9 @@ function App() {
                     {hasEtykieta&&sh&&<button title="Zamów odbiór kuriera"
                       onClick={()=>{
                         const firma=FIRMY_DANE[imp.firma]||FIRMY_DANE["F"];
-                        const pickupAddr={name:firma.nazwa,street:firma.adres,zipCode:firma.kod,city:firma.miasto,countryCode:'PL'};
+                        const pickupAddr={name:firma.nazwa,street:firma.adres,postalCode:firma.kod,city:firma.miasto,countryCode:'PL'};
                         setPickupProposals([]);setPickupDate('');setPickupTime(null);setPickupResult(null);
+                        setPickupAddress(pickupAddr);
                         setShipmentModal({imp,services:[],createdShipmentId:sh.shipmentId,createdCarrierId:sh.carrierId||null});
                         fetchPickupProposals(sh.shipmentId,sh.kontoId,pickupAddr);
                       }}
@@ -5818,12 +5861,21 @@ function App() {
                 <div style={{fontWeight:700,fontSize:14,color:'#afdf7f',marginBottom:10}}>📞 Zamów odbiór przez kuriera</div>
                 {pickupLoading&&<div style={{color:'#7abfdf',fontSize:13}}>⟳ Pobieranie terminów...</div>}
                 {pickupResult&&pickupResult.ok&&<div style={{color:'#7acf7a',fontSize:13}}>✅ Odbiór zamówiony!</div>}
-                {pickupResult&&!pickupResult.ok&&<div style={{color:'#cf4a4a',fontSize:12}}>❌ Błąd zamawiania odbioru</div>}
+                {pickupResult&&!pickupResult.ok&&<div style={{color:'#cf4a4a',fontSize:12,wordBreak:'break-all'}}>❌ {pickupResult.error||JSON.stringify(pickupResult)}</div>}
                 {!pickupLoading&&!pickupResult&&(
                   <div>
-                    <div style={{fontSize:12,color:'#5a8a5a',marginBottom:8}}>
-                      Adres: {(FIRMY_DANE[shipmentModal.imp.firma]||FIRMY_DANE["F"]).adres}
-                    </div>
+                    {/* Edytowalny adres podjazdu */}
+                    <div style={{marginBottom:8,fontSize:12,color:'#5a8a5a'}}>Adres podjazdu:</div>
+                    {pickupAddress&&(
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:4,marginBottom:10}}>
+                        <input value={pickupAddress.street||''} onChange={e=>setPickupAddress(p=>({...p,street:e.target.value}))}
+                          placeholder="Ulica i numer" style={{gridColumn:'1/-1',padding:'4px 7px',fontSize:12,background:'#0e1a0e',border:'1px solid #2a4a2a',borderRadius:4,color:'#afffaf'}}/>
+                        <input value={pickupAddress.postalCode||''} onChange={e=>setPickupAddress(p=>({...p,postalCode:e.target.value}))}
+                          placeholder="Kod pocztowy" style={{padding:'4px 7px',fontSize:12,background:'#0e1a0e',border:'1px solid #2a4a2a',borderRadius:4,color:'#afffaf'}}/>
+                        <input value={pickupAddress.city||''} onChange={e=>setPickupAddress(p=>({...p,city:e.target.value}))}
+                          placeholder="Miasto" style={{padding:'4px 7px',fontSize:12,background:'#0e1a0e',border:'1px solid #2a4a2a',borderRadius:4,color:'#afffaf'}}/>
+                      </div>
+                    )}
                     {pickupProposals.length>0&&(
                       <div style={{marginBottom:10}}>
                         {pickupProposals.slice(0,4).map((p,i)=>(
@@ -5836,15 +5888,22 @@ function App() {
                     )}
                     {pickupProposals.length===0&&(
                       <div style={{marginBottom:10}}>
-                        <input type="date" value={pickupDate} onChange={e=>setPickupDate(e.target.value)}
-                          min={new Date().toISOString().slice(0,10)}
+                        <input type="date" value={pickupDate} onChange={e=>{
+                            const v=e.target.value;
+                            const d=new Date(v+'T12:00:00');
+                            const dow=d.getDay();
+                            const sw=swietaPolskie(d.getFullYear());
+                            if(dow===0||dow===6||sw.has(v)) setPickupDate(nastepnyDzienRoboczy(d));
+                            else setPickupDate(v);
+                          }}
+                          min={nastepnyDzienRoboczy()}
                           style={{width:'100%',padding:'5px 8px',fontSize:13,background:'#0e1a0e',border:'1px solid #2a4a2a',borderRadius:4,color:'#afffaf'}}/>
                       </div>
                     )}
                     <button onClick={()=>{
                         const imp=shipmentModal.imp;
                         const firma=FIRMY_DANE[imp.firma]||FIRMY_DANE["F"];
-                        const addr={name:firma.nazwa,street:firma.adres,zipCode:firma.kod,city:firma.miasto,countryCode:'PL'};
+                        const addr=pickupAddress||{name:firma.nazwa,street:firma.adres,postalCode:firma.kod,city:firma.miasto,countryCode:'PL'};
                         orderPickup(shipmentModal.createdShipmentId,imp.kontoId,addr,pickupTime,firma);
                       }}
                       style={{width:'100%',padding:'8px',fontSize:13,fontWeight:700,borderRadius:6,cursor:'pointer',background:'#1a4a2a',border:'1px solid #3a8a4a',color:'#afffaf'}}>
