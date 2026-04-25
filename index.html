@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260425.41</title>
+<title>MosquitoApp v20260425.43</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260425.41';
+  window.__MOSK_VERSION='20260425.43';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -785,12 +785,8 @@ function App() {
   const [savedPickupAddresses,setSavedPickupAddresses]=useState(()=>{
     try{return JSON.parse(localStorage.getItem('pickup_addresses')||'[]');}catch{return [];}
   }); // max 5 zapisanych adresów [{label,name,street,zipCode,city,countryCode}]
-  const [dpdModal,setDpdModal]=useState(null); // {order} — modal etykiety DPD
-  const [dpdWaga,setDpdWaga]=useState('5');
-  const [dpdCod,setDpdCod]=useState(false);
   const [dpdCodAmount,setDpdCodAmount]=useState('');
-  const [dpdLoading,setDpdLoading]=useState(false);
-  const [dpdError,setDpdError]=useState('');
+  const [dpdCod,setDpdCod]=useState(false);
   const [shipmentServiceId,setShipmentServiceId]=useState("");
   // ── Import modal state ──
   const [importModal,setImportModal]=useState(null); // {imp, mode, kalNum, kalLoading, kalError, kalData, pozycje}
@@ -1188,6 +1184,9 @@ function App() {
   const [nadajDPD, setNadajDPD] = React.useState(false);
   const [kvMasterKey, setKvMasterKey] = React.useState(()=>localStorage.getItem('mosk_worker_key')||'');
   const [dpdWaga, setDpdWaga] = React.useState('5');
+  const [dpdCod, setDpdCod] = React.useState(false);
+  const [dpdCodAmount, setDpdCodAmount] = React.useState('');
+  const [dpdError, setDpdError] = React.useState('');
   const [dpdLoading, setDpdLoading] = React.useState(false);
   const [dpdConfig, setDpdConfig] = React.useState(()=>JSON.parse(localStorage.getItem('dpd_config')||'{}'));
   const [wiadomoscDrzwi, setWiadomoscDrzwi] = React.useState('');
@@ -1982,6 +1981,16 @@ function App() {
       });
       const d=await r.json();
       setPickupResult(d);
+      // Zapisz flagę zamówionego odbioru — blokuje ponowne zamówienie
+      if(d.ok){
+        setAllegroShipments(prev=>{
+          const next={...prev};
+          const key=shipmentModal?.imp?.allegroOrderId;
+          if(key&&next[key]) next[key]={...next[key],pickupOrdered:true,pickupOrderedAt:new Date().toISOString()};
+          localStorage.setItem('allegro_shipments',JSON.stringify(next));
+          return next;
+        });
+      }
     }catch(e){setPickupResult({ok:false,error:e.message});}
     setPickupLoading(false);
   }
@@ -3220,7 +3229,12 @@ function App() {
                       style={{padding:'4px 8px',fontSize:12,borderRadius:5,cursor:'pointer',background:'#1a2a1a',border:'1px solid #3a5a2a',color:'#7acf7a'}}>
                       🖨️
                     </button>}
-                    {hasEtykieta&&sh&&<button title="Zamów odbiór kuriera"
+                    {hasEtykieta&&sh&&(sh.pickupOrdered
+                      ? <button title={`Odbiór zamówiony ${sh.pickupOrderedAt?new Date(sh.pickupOrderedAt).toLocaleDateString('pl-PL'):''}`}
+                          disabled style={{padding:'4px 8px',fontSize:12,borderRadius:5,cursor:'not-allowed',background:'#0a1a0a',border:'1px solid #2a4a2a',color:'#3a6a3a',opacity:0.6}}>
+                          ✅📞
+                        </button>
+                      : <button title="Zamów odbiór kuriera"
                       onClick={()=>{
                         const firma=FIRMY_DANE[imp.firma]||FIRMY_DANE["F"];
                         const pickupAddr={
@@ -3242,7 +3256,7 @@ function App() {
                         fetchPickupProposals(sh.shipmentId,sh.kontoId,pickupAddr);
                       }}
                       style={{padding:'4px 8px',fontSize:12,borderRadius:5,cursor:'pointer',background:'#1a2a3a',border:'1px solid #3a5a7a',color:'#7abfdf'}}>                      📞
-                    </button>}
+                    </button>)}
                     <button onClick={()=>{
                         const emailCfg=JSON.parse(localStorage.getItem('email_produkcji_config')||'{}');
                         const to=emailCfg.emailProdukcji||'';
