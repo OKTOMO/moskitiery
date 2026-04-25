@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260425.1</title>
+<title>MosquitoApp v20260425.3</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260425.1';
+  window.__MOSK_VERSION='20260425.3';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -1821,7 +1821,9 @@ function App() {
     const isCOD=(service?.name||'').toLowerCase().includes('pobranie')||(service?.name||'').toLowerCase().includes('cod');
     const codAmount=isCOD?(parseFloat(imp.kwotaBrutto)||0):0;
     console.log('[SHIPMENT] isCOD:',isCOD,'codAmount:',codAmount,'serviceName:',service?.name);
-    const SIZES={"A":{length:64,width:38,height:8,weight:25},"B":{length:64,width:38,height:19,weight:25},"C":{length:64,width:38,height:41,weight:25}};
+    const isInternational=(imp.klientKraj&&imp.klientKraj!=='PL')||(service?.name||'').toLowerCase().includes('international');
+    const maxWeight=isInternational?15:25;
+    const SIZES={"A":{length:64,width:38,height:8,weight:5},"B":{length:64,width:38,height:19,weight:5},"C":{length:64,width:38,height:41,weight:5}};
     // Auto-kalkulator paczek
     const desc=(shipmentDescription||"").toLowerCase();
     const ssMatch=desc.match(/(\d+)\s*ss/);
@@ -2940,7 +2942,8 @@ function App() {
             if(zamSearch){const q=zamSearch.toLowerCase();return (imp.klientImie||'').toLowerCase().includes(q)||(imp.klientLogin||'').toLowerCase().includes(q)||(imp.klientMiasto||'').toLowerCase().includes(q)||(imp.offerNames||'').toLowerCase().includes(q);}
             return true;
           });
-          const noweList=filteredAll.filter(imp=>{const s=getEffectiveStatus(imp);return s!=='Wysłano';});
+          const noweList=filteredAll.filter(imp=>getEffectiveStatus(imp)==='Nowe');
+          const realizacjaList=filteredAll.filter(imp=>getEffectiveStatus(imp)==='W realizacji');
           const zrealizowaneList=filteredAll.filter(imp=>getEffectiveStatus(imp)==='Wysłano');
           const KONTO_COLORS={"favo5":["#2a5a3a","#7fcf7f"],"staroleska_pl":["#2a4a2a","#5abf7a"],"sinlook_pl":["#1a4a3a","#4abf9a"],"arlis_pl":["#2a3a5a","#7abfdf"],"everis_pl":["#3a2a5a","#af8fdf"],"albama_eu":["#4a3a1a","#dfaf5a"],"pedroshop_pl_365":["#3a2a1a","#cf8a4a"]};
           const fmtDT=iso=>{if(!iso)return '—';const d=new Date(iso);return d.toLocaleDateString('pl-PL')+' '+d.toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});};
@@ -3061,17 +3064,20 @@ function App() {
                 </button>
               </div>
               <div style={{display:'flex',borderBottom:'2px solid #1a2a1a',marginBottom:0}}>
-                <button onClick={()=>setZamTab('nowe')} style={{padding:'7px 18px',fontSize:14,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',background:zamTab==='nowe'?'#1a3a1a':'#0a1a0a',color:zamTab==='nowe'?'#afffaf':'#3a6a3a',borderBottom:zamTab==='nowe'?'2px solid #3acf6a':'2px solid transparent'}}>
-                  🆕 Do obrobienia ({noweList.length})
+                <button onClick={()=>setZamTab('nowe')} style={{padding:'7px 16px',fontSize:13,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',background:zamTab==='nowe'?'#1a3a1a':'#0a1a0a',color:zamTab==='nowe'?'#afffaf':'#3a6a3a',borderBottom:zamTab==='nowe'?'2px solid #3acf6a':'2px solid transparent'}}>
+                  🆕 Nowe ({noweList.length})
                 </button>
-                <button onClick={()=>setZamTab('pozostale')} style={{padding:'7px 18px',fontSize:14,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',background:zamTab==='pozostale'?'#1a2a3a':'#0a1420',color:zamTab==='pozostale'?'#7acfdf':'#2a4a6a',borderBottom:zamTab==='pozostale'?'2px solid #3a8acf':'2px solid transparent'}}>
+                <button onClick={()=>setZamTab('realizacja')} style={{padding:'7px 16px',fontSize:13,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',background:zamTab==='realizacja'?'#1a2a0a':'#0a1a0a',color:zamTab==='realizacja'?'#afdf6f':'#4a6a2a',borderBottom:zamTab==='realizacja'?'2px solid #8acf3a':'2px solid transparent'}}>
+                  ⚙️ W realizacji ({realizacjaList.length})
+                </button>
+                <button onClick={()=>setZamTab('pozostale')} style={{padding:'7px 16px',fontSize:13,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',background:zamTab==='pozostale'?'#1a2a3a':'#0a1420',color:zamTab==='pozostale'?'#7acfdf':'#2a4a6a',borderBottom:zamTab==='pozostale'?'2px solid #3a8acf':'2px solid transparent'}}>
                   ✅ Zrealizowane ({zrealizowaneList.length})
                 </button>
               </div>
               {allegroImportResults.length===0&&<div style={{textAlign:'center',color:'#2a5a3a',padding:'40px 0',fontSize:14}}>Kliknij "Pobierz zamówienia" żeby załadować listę</div>}
               {(()=>{
-                const active=zamTab==='nowe'?noweList:zrealizowaneList;
-                if(active.length===0&&allegroImportResults.length>0) return <div style={{textAlign:'center',color:'#3a5a3a',padding:'40px 0'}}>{zamTab==='nowe'?'🎉 Wszystkie zrealizowane!':'Brak zrealizowanych'}</div>;
+                const active=zamTab==='nowe'?noweList:zamTab==='realizacja'?realizacjaList:zrealizowaneList;
+                if(active.length===0&&allegroImportResults.length>0) return <div style={{textAlign:'center',color:'#3a5a3a',padding:'40px 0'}}>{zamTab==='nowe'?'🎉 Brak nowych zamówień!':zamTab==='realizacja'?'Brak zamówień w realizacji':'Brak zrealizowanych'}</div>;
                 return <div style={{border:'1px solid #1a2a1a',borderTop:'none',borderRadius:'0 0 6px 6px',overflow:'hidden'}}>{active.map((imp,idx)=>renderRow(imp,idx))}</div>;
               })()}
             </div>
