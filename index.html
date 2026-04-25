@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260425.18</title>
+<title>MosquitoApp v20260425.19</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260425.18';
+  window.__MOSK_VERSION='20260425.19';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -1876,9 +1876,19 @@ function App() {
         body:JSON.stringify({shipmentIds:[shipmentId],readyDate:today,address})
       });
       const d=await r.json();
-      if(d.ok && d.data && d.data.pickupTimes){
-        setPickupProposals(d.data.pickupTimes);
-        if(d.data.pickupTimes.length>0) setPickupTime(d.data.pickupTimes[0]);
+      if(d.ok && d.data){
+        // Allegro zwraca tablicę [{proposals:[...], pickupTimes:[...]}]
+        const firstEntry=Array.isArray(d.data)?d.data[0]:d.data;
+        const times=firstEntry?.pickupTimes||[];
+        if(times.length>0){
+          // Wzbogać pickupTimes o proposalId z proposalItems
+          const items=firstEntry?.proposals?.[0]?.proposalItems||[];
+          const enriched=times.map((t,i)=>({...t,id:items[i]?.id||null}));
+          setPickupProposals(enriched);
+          setPickupTime(enriched[0]);
+        } else {
+          setPickupDate(nastepnyDzienRoboczy());
+        }
       } else {
         // Brak propozycji — ustaw datę jutrzejszą jako fallback
         setPickupDate(nastepnyDzienRoboczy());
@@ -1901,12 +1911,15 @@ function App() {
         body:JSON.stringify({
           shipmentIds:[shipmentId],
           pickupTime:pickupTimeBody,
+          ...(pickupTimeData?.id?{proposalId:pickupTimeData.id}:{}),
           address:{
             name:address.name||firma.nazwa,
             street:address.street||firma.adres,
             zipCode:address.zipCode||firma.kod,
             city:address.city||firma.miasto,
-            countryCode:address.countryCode||'PL'
+            countryCode:address.countryCode||'PL',
+            email:address.email||firma.email||'',
+            phone:address.phone||firma.telefon||'+48605361191'
           }
         })
       });
