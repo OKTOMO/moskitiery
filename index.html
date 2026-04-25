@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260425.40</title>
+<title>MosquitoApp v20260425.41</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260425.40';
+  window.__MOSK_VERSION='20260425.41';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -785,6 +785,12 @@ function App() {
   const [savedPickupAddresses,setSavedPickupAddresses]=useState(()=>{
     try{return JSON.parse(localStorage.getItem('pickup_addresses')||'[]');}catch{return [];}
   }); // max 5 zapisanych adresów [{label,name,street,zipCode,city,countryCode}]
+  const [dpdModal,setDpdModal]=useState(null); // {order} — modal etykiety DPD
+  const [dpdWaga,setDpdWaga]=useState('5');
+  const [dpdCod,setDpdCod]=useState(false);
+  const [dpdCodAmount,setDpdCodAmount]=useState('');
+  const [dpdLoading,setDpdLoading]=useState(false);
+  const [dpdError,setDpdError]=useState('');
   const [shipmentServiceId,setShipmentServiceId]=useState("");
   // ── Import modal state ──
   const [importModal,setImportModal]=useState(null); // {imp, mode, kalNum, kalLoading, kalError, kalData, pozycje}
@@ -1910,6 +1916,40 @@ function App() {
       }
     }catch(e){console.warn('pickup proposals error:',e);}
     setPickupLoading(false);
+  }
+
+  async function generujEtykieteDPD(order, waga, cod, codAmount){
+    setDpdLoading(true); setDpdError('');
+    try{
+      const body={
+        odbiorca:{
+          imie:order.klientImie||'',
+          ulica:order.klientUlica||'',
+          kod:order.klientKod||'',
+          miasto:order.klientMiasto||''
+        },
+        waga:parseFloat(waga)||5,
+        telefon:order.telefon||'',
+        referencja:order.numerZlecenia||'',
+        ...(cod&&codAmount?{cod:true,codAmount:parseFloat(codAmount)}:{})
+      };
+      const r=await fetch(AUTORESPONDER_URL+'/dpd/label',{
+        method:'POST',
+        headers:{'x-api-key':AUTORESPONDER_KEY,'Content-Type':'application/json'},
+        body:JSON.stringify(body)
+      });
+      const d=await r.json();
+      if(!d.ok) throw new Error(d.error||JSON.stringify(d));
+      // Otwórz PDF
+      const byteCharacters=atob(d.pdf);
+      const byteArray=new Uint8Array(byteCharacters.length);
+      for(let i=0;i<byteCharacters.length;i++) byteArray[i]=byteCharacters.charCodeAt(i);
+      const blob=new Blob([byteArray],{type:'application/pdf'});
+      const url=URL.createObjectURL(blob);
+      window.open(url,'_blank');
+      setDpdModal(null);
+    }catch(e){setDpdError('❌ '+e.message);}
+    setDpdLoading(false);
   }
 
   async function orderPickup(shipmentId, kontoId, address, pickupTimeData, firma){
@@ -4145,6 +4185,11 @@ function App() {
                             setMailPreview({imp:o,order:o,to,subject,hasEtykieta:!!sh});
                             loadRecentEmails();
                           }}>✉️</button>
+                          <button className="btn-pdf" title="Generuj etykietę DPD"
+                            style={{background:'#2a1a0a',borderColor:'#7a3a0a',color:'#dfaf4a'}}
+                            onClick={()=>{setDpdModal({order:o});setDpdWaga('5');setDpdCod(false);setDpdCodAmount('');setDpdError('');}}>
+                            📦
+                          </button>
                         </td>
                         <td style={{padding:"10px 10px"}}><button className="btn-pdf" style={{background:"#2a4a6a"}} onClick={()=>{setForm({data:o.data,firma:o.firma,klientImie:o.klientImie,klientUlica:o.klientUlica||"",klientKod:o.klientKod||"",klientMiasto:o.klientMiasto,telefon:o.telefon,uwagi:o.uwagi,pozycje:o.pozycje.map(p=>({...p}))});setNumerOverride(o.numerZlecenia);setEditingId(o.id);setTab("nowe");setSaved(false);}} title="Edytuj zamówienie">✏️</button></td>
                         <td style={{padding:"10px 10px"}}>
@@ -6002,6 +6047,48 @@ function App() {
               style={{width:'100%',marginTop:8,padding:'6px',fontSize:13,borderRadius:6,cursor:'pointer',background:'transparent',border:'1px solid #2a4a2a',color:'#5a8a5a'}}>
               {shipmentModal.createdShipmentId?'Zamknij':'Anuluj'}
             </button>
+          </div>
+        </div>
+      )}
+      {dpdModal&&(
+        <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.75)',zIndex:2000,display:'flex',alignItems:'center',justifyContent:'center'}}
+          onClick={e=>{if(e.target===e.currentTarget)setDpdModal(null);}}>
+          <div style={{background:'#0e1a0e',border:'1px solid #5a3a0a',borderRadius:12,padding:24,width:320,maxWidth:'95vw'}}>
+            <div style={{fontWeight:700,fontSize:16,color:'#dfaf4a',marginBottom:12}}>📦 Etykieta DPD</div>
+            <div style={{fontSize:13,color:'#9acf9a',marginBottom:12}}>
+              <b>{dpdModal.order.klientImie}</b><br/>
+              {dpdModal.order.klientUlica}<br/>
+              {dpdModal.order.klientKod} {dpdModal.order.klientMiasto}<br/>
+              {dpdModal.order.telefon}
+            </div>
+            <div style={{marginBottom:10}}>
+              <label style={{fontSize:12,color:'#5a8a5a'}}>Waga paczki (kg):</label>
+              <input type="number" value={dpdWaga} onChange={e=>setDpdWaga(e.target.value)} min="1" max="31" step="0.5"
+                style={{width:'100%',padding:'6px 8px',fontSize:14,background:'#0e1a0e',border:'1px solid #3a5a3a',borderRadius:4,color:'#afffaf',marginTop:4}}/>
+            </div>
+            <div style={{marginBottom:10}}>
+              <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:13,color:'#9acf9a'}}>
+                <input type="checkbox" checked={dpdCod} onChange={e=>setDpdCod(e.target.checked)} style={{accentColor:'#dfaf4a'}}/>
+                Pobranie (COD)
+              </label>
+              {dpdCod&&(
+                <input type="number" value={dpdCodAmount} onChange={e=>setDpdCodAmount(e.target.value)}
+                  placeholder="Kwota pobrania (PLN)" min="1" step="0.01"
+                  style={{width:'100%',padding:'6px 8px',fontSize:14,background:'#0e1a0e',border:'1px solid #7a5a0a',borderRadius:4,color:'#dfaf4a',marginTop:6}}/>
+              )}
+            </div>
+            {dpdError&&<div style={{color:'#cf4a4a',fontSize:12,marginBottom:8,wordBreak:'break-all'}}>{dpdError}</div>}
+            <div style={{display:'flex',gap:8}}>
+              <button onClick={()=>setDpdModal(null)}
+                style={{flex:1,padding:'8px',borderRadius:6,cursor:'pointer',background:'transparent',border:'1px solid #3a5a3a',color:'#5a8a5a',fontSize:13}}>
+                Anuluj
+              </button>
+              <button onClick={()=>generujEtykieteDPD(dpdModal.order,dpdWaga,dpdCod,dpdCodAmount)}
+                disabled={dpdLoading||(dpdCod&&!dpdCodAmount)}
+                style={{flex:2,padding:'8px',borderRadius:6,cursor:'pointer',background:dpdLoading?'#2a2a0a':'#3a2a0a',border:'1px solid #7a5a0a',color:'#dfaf4a',fontSize:13,fontWeight:700}}>
+                {dpdLoading?'⟳ Generuję...':'📦 Generuj etykietę DPD'}
+              </button>
+            </div>
           </div>
         </div>
       )}
