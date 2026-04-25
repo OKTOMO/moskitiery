@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260425.43</title>
+<title>MosquitoApp v20260425.44</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260425.43';
+  window.__MOSK_VERSION='20260425.44';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -785,8 +785,7 @@ function App() {
   const [savedPickupAddresses,setSavedPickupAddresses]=useState(()=>{
     try{return JSON.parse(localStorage.getItem('pickup_addresses')||'[]');}catch{return [];}
   }); // max 5 zapisanych adresów [{label,name,street,zipCode,city,countryCode}]
-  const [dpdCodAmount,setDpdCodAmount]=useState('');
-  const [dpdCod,setDpdCod]=useState(false);
+
   const [shipmentServiceId,setShipmentServiceId]=useState("");
   // ── Import modal state ──
   const [importModal,setImportModal]=useState(null); // {imp, mode, kalNum, kalLoading, kalError, kalData, pozycje}
