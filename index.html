@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260425.33</title>
+<title>MosquitoApp v20260425.34</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260425.33';
+  window.__MOSK_VERSION='20260425.34';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -1877,23 +1877,24 @@ function App() {
       });
       console.log('📞 proposals sent:',JSON.stringify({shipmentIds:[shipmentId],readyDate:today,address}));
       const d=await r.json();
-      console.log('📞 proposals response:',JSON.stringify(d).slice(0,500));
-      if(d.ok && d.data){
-        // Allegro zwraca tablicę [{proposals:[...], pickupTimes:[...]}]
-        const firstEntry=Array.isArray(d.data)?d.data[0]:d.data;
-        const times=firstEntry?.pickupTimes||[];
-        if(times.length>0){
-          // Wzbogać pickupTimes o proposalId z proposalItems
-          const items=firstEntry?.proposals?.[0]?.proposalItems||[];
-          const enriched=times.map((t,i)=>({...t,id:items[i]?.id||null}));
-          console.log('📞 setting proposals:',enriched.length,'items');
-          setPickupProposals(enriched);
-          setPickupTime(enriched[0]);
-        } else {
-          setPickupDate(nastepnyDzienRoboczy());
-        }
+      console.log('📞 proposals response ok:',d.ok,'data type:',typeof d.data,'isArray:',Array.isArray(d.data));
+      // Parser defensywny — obsługuje różne formaty odpowiedzi
+      const rawData=d.data||d;
+      const dataArr=Array.isArray(rawData)?rawData:[rawData];
+      const allTimes=[];
+      const allItems=[];
+      for(const entry of dataArr){
+        const times=entry?.pickupTimes||[];
+        const items=entry?.proposals?.[0]?.proposalItems||[];
+        allTimes.push(...times);
+        allItems.push(...items);
+      }
+      console.log('📞 found times:',allTimes.length);
+      if(allTimes.length>0){
+        const enriched=allTimes.map((t,i)=>({...t,id:allItems[i]?.id||null}));
+        setPickupProposals(enriched);
+        setPickupTime(enriched[0]);
       } else {
-        // Brak propozycji — ustaw datę jutrzejszą jako fallback
         setPickupDate(nastepnyDzienRoboczy());
       }
     }catch(e){console.warn('pickup proposals error:',e);}
