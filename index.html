@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260425.57</title>
+<title>MosquitoApp v20260425.58</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260425.57';
+  window.__MOSK_VERSION='20260425.58';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -2041,10 +2041,21 @@ function App() {
           },
           packages,
           ...(isPickupPoint && !isInternational?{additionalServices:["sendingAtPoint"]}:{}),
-          ...(isCOD && codAmount>0 ? {
-            cashOnDelivery:{amount:String(codAmount.toFixed(2)),currency:"PLN"},
-            insurance:{amount:String(codAmount.toFixed(2)),currency:"PLN"}
-          } : {})
+          ...(()=>{
+            // Waluta ubezpieczenia zależna od kraju odbiorcy
+            const _INS={HU:{c:"HUF",r:390},CZ:{c:"CZK",r:24},SK:{c:"EUR",r:4.25},RO:{c:"RON",r:4.25}};
+            const _kraj=(imp.klientKraj||'PL').toUpperCase();
+            const _ins=_INS[_kraj];
+            const _kwota=parseFloat(imp.kwotaBrutto)||100;
+            if(isCOD && codAmount>0) return {
+              cashOnDelivery:{amount:String(codAmount.toFixed(2)),currency:"PLN"},
+              insurance:{amount:String(codAmount.toFixed(2)),currency:"PLN"}
+            };
+            if(_ins) return {
+              insurance:{amount:String(Math.round(_kwota*_ins.r)).toString(),currency:_ins.c}
+            };
+            return {};
+          })()
         }
       };
       console.log("createBody:", JSON.stringify(createBody, null, 2));
