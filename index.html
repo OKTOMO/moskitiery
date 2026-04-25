@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260425.24</title>
+<title>MosquitoApp v20260425.25</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260425.24';
+  window.__MOSK_VERSION='20260425.25';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -1916,7 +1916,7 @@ function App() {
           address:{
             name:address.name||firma.nazwa,
             street:address.street||firma.adres,
-            postalCode:(address.postalCode||address.zipCode||firma.kod).replace('-',''),
+            postCode:(address.postCode||address.postalCode||address.zipCode||firma.kod),
             city:address.city||firma.miasto,
             countryCode:address.countryCode||'PL',
             email:address.email||firma.email||'',
@@ -2061,7 +2061,7 @@ function App() {
         if(linkedOrdForPdf.pozycje.some(p=>p.isDrzwi)) drukujPDF_drzwi(linkedOrdForPdf);
       }
       // Auto-pobierz propozycje odbioru (firma już zadeklarowana wyżej w try{})
-      const pickupAddr={name:firma.nazwa,street:firma.adres,postalCode:firma.kod.replace('-',''),city:firma.miasto,countryCode:'PL',email:firma.email||'',phone:firma.telefon||'+48605361191'};
+      const pickupAddr={name:firma.nazwa,street:firma.adres,postCode:firma.kod,city:firma.miasto,countryCode:'PL',email:firma.email||'',phone:firma.telefon||'+48605361191'};
       setPickupAddress(pickupAddr);
       fetchPickupProposals(d1.shipmentId, imp.kontoId, pickupAddr);
     }catch(e){
@@ -3155,7 +3155,7 @@ function App() {
                     {hasEtykieta&&sh&&<button title="Zamów odbiór kuriera"
                       onClick={()=>{
                         const firma=FIRMY_DANE[imp.firma]||FIRMY_DANE["F"];
-                        const pickupAddr={name:firma.nazwa,street:firma.adres,postalCode:firma.kod.replace('-',''),city:firma.miasto,countryCode:'PL',email:firma.email||'',phone:firma.telefon||'+48605361191'};
+                        const pickupAddr={name:firma.nazwa,street:firma.adres,postCode:firma.kod,city:firma.miasto,countryCode:'PL',email:firma.email||'',phone:firma.telefon||'+48605361191'};
                         setPickupProposals([]);setPickupDate('');setPickupTime(null);setPickupResult(null);
                         setPickupAddress(pickupAddr);
                         setShipmentModal({imp,services:[],createdShipmentId:sh.shipmentId,createdCarrierId:sh.carrierId||null});
@@ -5903,7 +5903,7 @@ function App() {
                             placeholder="Nazwa (np. Magazyn)" style={{gridColumn:'1/-1',padding:'4px 7px',fontSize:11,background:'#0e1a0e',border:'1px solid #1a3a1a',borderRadius:4,color:'#6a9a6a'}}/>
                           <input value={pickupAddress.street||''} onChange={e=>setPickupAddress(p=>({...p,street:e.target.value}))}
                             placeholder="Ulica i numer" style={{gridColumn:'1/-1',padding:'4px 7px',fontSize:12,background:'#0e1a0e',border:'1px solid #2a4a2a',borderRadius:4,color:'#afffaf'}}/>
-                          <input value={pickupAddress.postalCode||''} onChange={e=>setPickupAddress(p=>({...p,postalCode:e.target.value}))}
+                          <input value={pickupAddress.postCode||''} onChange={e=>setPickupAddress(p=>({...p,postCode:e.target.value}))}
                             placeholder="Kod pocztowy" style={{padding:'4px 7px',fontSize:12,background:'#0e1a0e',border:'1px solid #2a4a2a',borderRadius:4,color:'#afffaf'}}/>
                           <input value={pickupAddress.city||''} onChange={e=>setPickupAddress(p=>({...p,city:e.target.value}))}
                             placeholder="Miasto" style={{padding:'4px 7px',fontSize:12,background:'#0e1a0e',border:'1px solid #2a4a2a',borderRadius:4,color:'#afffaf'}}/>
