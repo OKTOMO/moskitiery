@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260425.54</title>
+<title>MosquitoApp v20260425.56</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260425.54';
+  window.__MOSK_VERSION='20260425.56';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -2041,35 +2041,10 @@ function App() {
           },
           packages,
           ...(isPickupPoint && !isInternational?{additionalServices:["sendingAtPoint"]}:{}),
-          ...(()=>{
-            // Mapa walut i kursów dla krajów obsługiwanych przez Allegro
-            const KRAJ_CFG={
-              HU:{currency:"HUF",rate:390},
-              CZ:{currency:"CZK",rate:24},
-              SK:{currency:"EUR",rate:4.25},
-              DE:{currency:"EUR",rate:4.25},
-              AT:{currency:"EUR",rate:4.25},
-              FR:{currency:"EUR",rate:4.25},
-              IT:{currency:"EUR",rate:4.25},
-              HR:{currency:"EUR",rate:4.25},
-              RO:{currency:"RON",rate:0.22},
-            };
-            const _kod=(imp.klientKod||'').replace(/\s/g,'');
-            const _kf=!imp.klientKraj?(/^\d{4}$/.test(_kod)?'HU':/^[A-Z]{2}\d/.test(_kod)?'GB':'PL'):imp.klientKraj;
-            const kraj=(_kf||'PL').toUpperCase();
-            const cfg=KRAJ_CFG[kraj];
-            const insAmt=cfg
-              ? String(Math.max(cfg.rate*12, (parseFloat(imp.kwotaBrutto)||50)*cfg.rate/4.25).toFixed(0))
-              : null;
-            if(isCOD && codAmount>0) return {
-              cashOnDelivery:{amount:String(codAmount.toFixed(2)),currency:"PLN"},
-              insurance:{amount:String(codAmount.toFixed(2)),currency:"PLN"}
-            };
-            if(cfg) return {
-              insurance:{amount:insAmt,currency:cfg.currency}
-            };
-            return {};
-          })()
+          ...(isCOD && codAmount>0 ? {
+            cashOnDelivery:{amount:String(codAmount.toFixed(2)),currency:"PLN"},
+            insurance:{amount:String(codAmount.toFixed(2)),currency:"PLN"}
+          } : {})
         }
       };
       console.log("createBody:", JSON.stringify(createBody, null, 2));
@@ -2079,7 +2054,7 @@ function App() {
         body:JSON.stringify(createBody)
       });
       const d1=await r1.json();
-      if(!r1.ok||!d1.shipmentId) throw new Error(d1.error+(d1.details?"\n"+JSON.stringify(d1.details):"")+(d1.lastStatus?"\n"+JSON.stringify(d1.lastStatus):"")||JSON.stringify(d1));
+      if(!r1.ok||!d1.shipmentId) throw new Error(d1.error?d1.error+(d1.details?"\n"+JSON.stringify(d1.details):"")+(d1.lastStatus?"\n"+JSON.stringify(d1.lastStatus):""):JSON.stringify(d1,null,2));
       // Krok 2: pobierz etykietę PDF
       const r2=await fetch(AUTORESPONDER_URL+"/shipment/label?kontoId="+imp.kontoId,{
         method:"POST",
