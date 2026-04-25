@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260425.5</title>
+<title>MosquitoApp v20260425.6</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260425.5';
+  window.__MOSK_VERSION='20260425.6';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -1997,8 +1997,13 @@ function App() {
       }
       // Zostaw modal otwarty z sekcją zamówienia odbioru
       setShipmentModal(prev=>({...prev, createdShipmentId:d1.shipmentId, createdCarrierId:d1.carrierId}));
-      // Auto-pobierz propozycje odbioru
-      const firma=FIRMY_DANE[imp.firma]||FIRMY_DANE["F"];
+      // Drukuj PDF "L" powiązanego zlecenia (jeśli istnieje)
+      const linkedOrdForPdf=orders.find(o=>o.allegroOrderId===imp.allegroOrderId);
+      if(linkedOrdForPdf){
+        if(linkedOrdForPdf.pozycje.some(p=>!p.isDrzwi)) drukujPDF(linkedOrdForPdf);
+        if(linkedOrdForPdf.pozycje.some(p=>p.isDrzwi)) drukujPDF_drzwi(linkedOrdForPdf);
+      }
+      // Auto-pobierz propozycje odbioru (firma już zadeklarowana wyżej w try{})
       const pickupAddr={name:firma.nazwa,street:firma.adres,postalCode:firma.kod,city:firma.miasto,countryCode:'PL'};
       fetchPickupProposals(d1.shipmentId, imp.kontoId, pickupAddr);
     }catch(e){
@@ -2253,10 +2258,7 @@ function App() {
     if(nadajDPD && order.klientUlica && order.klientKod){
       setDpdModal(order); setDpdWaga('5');
     }
-    const hasDrzwiPos=order.pozycje.some(p=>p.isDrzwi);
-    const hasOknaPos=order.pozycje.some(p=>!p.isDrzwi);
-    if(hasOknaPos) drukujPDF(order);
-    if(hasDrzwiPos) drukujPDF_drzwi(order);
+    // PDF "L" nie jest drukowany automatycznie przy zapisie — drukuje się przy tworzeniu etykiety lub wysyłce maila
   }
 
   function getStats(ords){
@@ -4025,7 +4027,15 @@ function App() {
                           {o.pozycje.some(p=>!p.isDrzwi)&&<button className="btn-pdf" onClick={()=>drukujPDF(o)} title="Drukuj PDF — okna">🪟 PDF</button>}
                           {o.pozycje.some(p=>p.isDrzwi)&&<button className="btn-pdf" style={{background:"#1a2a4a"}} onClick={()=>drukujPDF_drzwi(o)} title="Drukuj PDF — drzwi">🚪 PDF</button>}
                           <button className="btn-pdf" style={{background:o.dpdWaybill?"#0a2a1a":"#1a1a2a",borderColor:o.dpdWaybill?"#2a6a4a":"#3a3a5a",color:o.dpdWaybill?"#6acf9a":"#8a8abf",fontSize:12}} onClick={()=>{setDpdModal(o);setDpdWaga("5");}} title={o.dpdWaybill?"DPD: "+o.dpdWaybill:"Nadeślij DPD"}>{o.dpdWaybill?"📦 "+o.dpdWaybill.slice(-6):"📦 DPD"}</button>
-                          {(()=>{const emailCfg=JSON.parse(localStorage.getItem('email_produkcji_config')||'{}');const to=emailCfg.emailProdukcji||'';if(!to) return null;const subject=`${o.numerZlecenia||''} ${o.klientImie||''} ${o.klientMiasto||''}`.trim();const sh=allegroShipments[o.allegroOrderId||''];return <button className="btn-pdf" style={{background:"#1a1a3a",borderColor:"#3a3a7a",color:"#9a9adf"}} title="Wyślij na produkcję" onClick={()=>{setMailPreview({imp:o,order:o,to,subject,hasEtykieta:!!sh});loadRecentEmails();}}>✉️</button>;})()}
+                          <button className="btn-pdf" style={{background:"#1a1a3a",borderColor:"#3a3a7a",color:"#9a9adf"}} title="Wyślij na produkcję" onClick={()=>{
+                            const emailCfg=JSON.parse(localStorage.getItem('email_produkcji_config')||'{}');
+                            const to=emailCfg.emailProdukcji||'';
+                            if(!to){alert('Brak adresu email produkcji — ustaw w Ustawieniach');return;}
+                            const subject=`${o.numerZlecenia||''} ${o.klientImie||''} ${o.klientMiasto||''}`.trim();
+                            const sh=allegroShipments[o.allegroOrderId||''];
+                            setMailPreview({imp:o,order:o,to,subject,hasEtykieta:!!sh});
+                            loadRecentEmails();
+                          }}>✉️</button>
                         </td>
                         <td style={{padding:"10px 10px"}}><button className="btn-pdf" style={{background:"#2a4a6a"}} onClick={()=>{setForm({data:o.data,firma:o.firma,klientImie:o.klientImie,klientUlica:o.klientUlica||"",klientKod:o.klientKod||"",klientMiasto:o.klientMiasto,telefon:o.telefon,uwagi:o.uwagi,pozycje:o.pozycje.map(p=>({...p}))});setNumerOverride(o.numerZlecenia);setEditingId(o.id);setTab("nowe");setSaved(false);}} title="Edytuj zamówienie">✏️</button></td>
                         <td style={{padding:"10px 10px"}}>
