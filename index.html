@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260425.17</title>
+<title>MosquitoApp v20260425.18</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260425.17';
+  window.__MOSK_VERSION='20260425.18';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -99,7 +99,7 @@ const FIRMY = [{kod:"F",nazwa:"Favour"},{kod:"AR",nazwa:"Arlis"},{kod:"E",nazwa:
 const AUTORESPONDER_URL = "https://allegro-autoresponder.favour-biuro.workers.dev";
 const AUTORESPONDER_KEY = "Kuke&300219";
 const FIRMY_DANE = {
-  "F":  {nazwa:"Favour Magdalena Rudnicka",adres:"ul. Obrońców Westerplatte 27a",kod:"08-110",miasto:"Siedlce",nip:"522-23-17-450",konto:"12 1020 1055 0000 9602 0022 0616",bank:"PKO BP",email:"favour.biuro@gmail.com",kontakt:"Magdalena Rudnicka"},
+  "F":  {nazwa:"Favour Magdalena Rudnicka",adres:"ul. Obrońców Westerplatte 27a",kod:"08-110",miasto:"Siedlce",nip:"522-23-17-450",konto:"12 1020 1055 0000 9602 0022 0616",bank:"PKO BP",email:"favour.biuro@gmail.com",kontakt:"Magdalena Rudnicka",telefon:"+48605361191"},
   "AR": {nazwa:"Arlis Piotr Rudnicki",adres:"ul. Obrońców Westerplatte 27a",kod:"08-110",miasto:"Siedlce",nip:"821-127-83-28",konto:"38 1050 1894 1000 0090 8457 6751",bank:"ING",email:"arlis.biuro@gmail.com",kontakt:"Piotr Rudnicki"},
   "AP": {nazwa:"Albama Sp. z o.o.",adres:"ul. Obrońców Westerplatte 27a",kod:"08-110",miasto:"Siedlce",nip:"525-30-30-838",konto:"41 1050 1025 1000 0090 8461 2630",bank:"ING",email:"albama.biuro@gmail.com",kontakt:"Piotr Rudnicki"},
   "E":  {nazwa:"Everis Sp. z o.o.",adres:"ul. Sosnowa 6",kod:"05-300",miasto:"Mińsk Mazowiecki",nip:"822-24-04-506",konto:"43 1140 2004 0000 3902 8434 0486",bank:"mBank",email:"everis.biuro@gmail.com",kontakt:"Piotr Rudnicki"},
@@ -2047,7 +2047,7 @@ function App() {
         if(linkedOrdForPdf.pozycje.some(p=>p.isDrzwi)) drukujPDF_drzwi(linkedOrdForPdf);
       }
       // Auto-pobierz propozycje odbioru (firma już zadeklarowana wyżej w try{})
-      const pickupAddr={name:firma.nazwa,street:firma.adres,zipCode:firma.kod,city:firma.miasto,countryCode:'PL'};
+      const pickupAddr={name:firma.nazwa,street:firma.adres,zipCode:firma.kod,city:firma.miasto,countryCode:'PL',email:firma.email||'',phone:firma.telefon||'+48605361191'};
       setPickupAddress(pickupAddr);
       fetchPickupProposals(d1.shipmentId, imp.kontoId, pickupAddr);
     }catch(e){
@@ -3141,7 +3141,7 @@ function App() {
                     {hasEtykieta&&sh&&<button title="Zamów odbiór kuriera"
                       onClick={()=>{
                         const firma=FIRMY_DANE[imp.firma]||FIRMY_DANE["F"];
-                        const pickupAddr={name:firma.nazwa,street:firma.adres,zipCode:firma.kod,city:firma.miasto,countryCode:'PL'};
+                        const pickupAddr={name:firma.nazwa,street:firma.adres,zipCode:firma.kod,city:firma.miasto,countryCode:'PL',email:firma.email||'',phone:firma.telefon||'+48605361191'};
                         setPickupProposals([]);setPickupDate('');setPickupTime(null);setPickupResult(null);
                         setPickupAddress(pickupAddr);
                         setShipmentModal({imp,services:[],createdShipmentId:sh.shipmentId,createdCarrierId:sh.carrierId||null});
@@ -5893,6 +5893,8 @@ function App() {
                             placeholder="Kod pocztowy" style={{padding:'4px 7px',fontSize:12,background:'#0e1a0e',border:'1px solid #2a4a2a',borderRadius:4,color:'#afffaf'}}/>
                           <input value={pickupAddress.city||''} onChange={e=>setPickupAddress(p=>({...p,city:e.target.value}))}
                             placeholder="Miasto" style={{padding:'4px 7px',fontSize:12,background:'#0e1a0e',border:'1px solid #2a4a2a',borderRadius:4,color:'#afffaf'}}/>
+                          <input value={pickupAddress.phone||''} onChange={e=>setPickupAddress(p=>({...p,phone:e.target.value}))}
+                            placeholder="Telefon kontaktowy" style={{gridColumn:'1/-1',padding:'4px 7px',fontSize:12,background:'#0e1a0e',border:'1px solid #2a4a2a',borderRadius:4,color:'#afffaf'}}/>
                         </div>
                         <button onClick={()=>{
                             if(!pickupAddress.label){alert('Wpisz nazwę adresu');return;}
