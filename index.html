@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260424.50</title>
+<title>MosquitoApp v20260425.1</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260424.50';
+  window.__MOSK_VERSION='20260425.1';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -740,7 +740,7 @@ function App() {
   const [zamOpenBox,setZamOpenBox]=useState({});
   const [zamSearch,setZamSearch]=useState('');
   const [zamKonto,setZamKonto]=useState('');
-  const [zamTab,setZamTab]=useState('moskitiery');
+  const [zamTab,setZamTab]=useState('nowe');
 
   const [fvAllegroStatus,setFvAllegroStatus]=useState(""); // "loading"|"ok"|"error"|""
   function saveFaktury(f){setFaktury(f);localStorage.setItem("faktury",JSON.stringify(f));}
@@ -1872,7 +1872,16 @@ function App() {
             street:imp.klientUlica||"",
             postalCode:imp.klientKod||"",
             city:imp.klientMiasto||"",
-            countryCode:"PL",
+            countryCode:(()=>{
+              // Użyj klientKraj jeśli jest, inaczej wykryj z kodu pocztowego
+              if(imp.klientKraj) return imp.klientKraj;
+              const kod=(imp.klientKod||"").replace(/\s/g,"");
+              if(/^\d{5}$/.test(kod)) return "PL"; // 12345 - PL
+              if(/^\d{3}\d{2}$/.test(kod)) return "CZ"; // 76502 - CZ
+              if(/^[A-Z]{1,2}\d/.test(kod)) return "GB"; // UK
+              if(/^\d{4}$/.test(kod)) return "SK"; // SK/AT
+              return imp.klientKraj||"PL";
+            })(),
             phone:imp.telefon||"",
             email:imp.klientEmail||"",
             ...(isPickupPoint && imp.pickupPointId ? {point:imp.pickupPointId} : {})
@@ -2920,28 +2929,35 @@ function App() {
 
         {/* ══ NOWA ZAKŁADKA ZAMÓWIENIA ══ */}
         {tab==="zamowienia" && (()=>{
-          const MOSK_KEYS=['moskitiera','mosquito'];
-          const isMosk=imp=>{const t=((imp.offerNames||'')+(imp.buyerMsg||'')).toLowerCase();return MOSK_KEYS.some(k=>t.includes(k));};
+          const ALLEGRO_STATUS_MAP={'SENT':'Wysłano','DELIVERED':'Wysłano','PROCESSING':'W realizacji','READY_FOR_SHIPMENT':'W realizacji','CANCELLED':'Wysłano','NEW':'Nowe'};
+          const getEffectiveStatus=imp=>{
+            const manual=appStatuses[imp.allegroOrderId]||'';
+            if(manual) return manual;
+            return ALLEGRO_STATUS_MAP[imp.fulfillmentStatus||'']||'Nowe';
+          };
           const filteredAll=allegroImportResults.filter(imp=>{
             if(zamKonto&&imp.kontoId!==zamKonto) return false;
             if(zamSearch){const q=zamSearch.toLowerCase();return (imp.klientImie||'').toLowerCase().includes(q)||(imp.klientLogin||'').toLowerCase().includes(q)||(imp.klientMiasto||'').toLowerCase().includes(q)||(imp.offerNames||'').toLowerCase().includes(q);}
             return true;
           });
-          const moskitiery=filteredAll.filter(isMosk);
-          const reszta=filteredAll.filter(imp=>!isMosk(imp));
+          const noweList=filteredAll.filter(imp=>{const s=getEffectiveStatus(imp);return s!=='Wysłano';});
+          const zrealizowaneList=filteredAll.filter(imp=>getEffectiveStatus(imp)==='Wysłano');
           const KONTO_COLORS={"favo5":["#2a5a3a","#7fcf7f"],"staroleska_pl":["#2a4a2a","#5abf7a"],"sinlook_pl":["#1a4a3a","#4abf9a"],"arlis_pl":["#2a3a5a","#7abfdf"],"everis_pl":["#3a2a5a","#af8fdf"],"albama_eu":["#4a3a1a","#dfaf5a"],"pedroshop_pl_365":["#3a2a1a","#cf8a4a"]};
           const fmtDT=iso=>{if(!iso)return '—';const d=new Date(iso);return d.toLocaleDateString('pl-PL')+' '+d.toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});};
           const toggleBox=(id,box)=>setZamOpenBox(prev=>({...prev,[id]:prev[id]===box?null:box}));
-          const renderRow=(imp,idx,isMoskitiera)=>{
+          const renderRow=(imp,idx)=>{
             const [kBg,kCol]=KONTO_COLORS[imp.kontoId]||['#2a2a2a','#9a9a9a'];
+            const effStatus=getEffectiveStatus(imp);
             const as=appStatuses[imp.allegroOrderId]||'';
             const sh=allegroShipments[imp.allegroOrderId];
             const hasZlecenie=!!orders.find(o=>o.allegroOrderId===imp.allegroOrderId);
             const hasEtykieta=!!sh;
-            const isRealizacja=as==='W realizacji'||as==='Wysłano';
+            const isRealizacja=effStatus==='W realizacji';
+            const isWyslano=effStatus==='Wysłano';
             const openBox=zamOpenBox[imp.allegroOrderId];
+            const isMosk=(()=>{const t=((imp.offerNames||'')+(imp.buyerMsg||'')).toLowerCase();return t.includes('moskitiera')||t.includes('mosquito');})();
             return (
-              <div key={idx} style={{borderBottom:'1px solid #0f1f2f',background:isRealizacja?'#0a1a0a':'#0a1020',opacity:as==='Wysłano'?0.55:1}}>
+              <div key={idx} style={{borderBottom:'1px solid #0f1f2f',background:isWyslano?'#050d05':isRealizacja?'#0a1a0a':'#0a1020',opacity:isWyslano?0.6:1}}>
                 <div style={{display:'flex',alignItems:'center',gap:8,padding:'9px 12px',flexWrap:'wrap'}}>
                   <div style={{minWidth:76}}>
                     <span style={{fontSize:11,padding:'2px 5px',borderRadius:5,background:kBg,color:kCol,fontFamily:'monospace',fontWeight:700,display:'inline-block'}}>{imp.kontoId}</span>
@@ -2949,41 +2965,34 @@ function App() {
                   </div>
                   <div style={{minWidth:100,fontSize:11,color:'#5a8abf'}}>{imp.boughtAt?fmtDT(imp.boughtAt):imp.data||'—'}</div>
                   <div style={{flex:1,minWidth:110}}>
-                    <div style={{fontWeight:600,color:isRealizacja?'#5a9a5a':'#a0cfdf',fontSize:13}}>{isRealizacja&&'✅ '}{imp.klientImie||'—'}</div>
+                    <div style={{fontWeight:600,color:isWyslano?'#3a7a3a':isRealizacja?'#7abf7a':'#a0cfdf',fontSize:13}}>
+                      {isWyslano?'✅ ':isRealizacja?'⚙️ ':''}{imp.klientImie||'—'}
+                    </div>
                     {imp.klientLogin&&<div style={{fontSize:10,color:'#3a6a8a',fontFamily:'monospace'}}>{imp.klientLogin}</div>}
-                    {imp.klientMiasto&&<div style={{fontSize:10,color:'#4a7a6a'}}>{imp.klientMiasto}</div>}
+                    {imp.klientMiasto&&<div style={{fontSize:10,color:'#4a7a6a'}}>{imp.klientMiasto}{imp.klientKraj&&imp.klientKraj!=='PL'&&<span style={{color:'#cf9a4a',marginLeft:4}}>🌍 {imp.klientKraj}</span>}</div>}
                   </div>
                   <div style={{flex:2,minWidth:130}}>
                     <div style={{fontSize:12,color:'#5a8a9a',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{imp.offerNames||'—'}</div>
                     {imp.buyerMsg&&<div style={{fontSize:10,color:'#cfaf6f',fontStyle:'italic',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>💬 {imp.buyerMsg}</div>}
                     {imp.kwotaBrutto&&<div style={{fontSize:11,color:'#afdf7f',fontWeight:700}}>💰 {parseFloat(imp.kwotaBrutto).toFixed(2)} zł</div>}
                   </div>
-                  <select value={as} onChange={e=>setOrderAppStatus(imp.allegroOrderId,e.target.value)}
+                  <select value={as||effStatus} onChange={e=>setOrderAppStatus(imp.allegroOrderId,e.target.value)}
                     style={{padding:'3px 5px',fontSize:11,borderRadius:4,cursor:'pointer',
-                      background:as==='Wysłano'?'#0a2a0a':as==='W realizacji'?'#1a2a0a':as==='Nowe'?'#1a1a2a':'#0a1a0a',
-                      border:`1px solid ${as==='Wysłano'?'#3a7a3a':as==='W realizacji'?'#5a7a2a':as==='Nowe'?'#3a3a7a':'#2a3a2a'}`,
-                      color:as==='Wysłano'?'#7acf7a':as==='W realizacji'?'#afdf6f':as==='Nowe'?'#9a9adf':'#4a6a4a'}}>
-                    <option value="">— status —</option>
+                      background:isWyslano?'#0a2a0a':isRealizacja?'#1a2a0a':'#0a1a0a',
+                      border:`1px solid ${isWyslano?'#3a7a3a':isRealizacja?'#5a7a2a':'#2a3a2a'}`,
+                      color:isWyslano?'#7acf7a':isRealizacja?'#afdf6f':'#4a6a4a'}}>
                     <option value="Nowe">🆕 Nowe</option>
                     <option value="W realizacji">⚙️ W realizacji</option>
                     <option value="Wysłano">✅ Wysłano</option>
                   </select>
                   <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
-                    {isMoskitiera&&<button onClick={()=>toggleBox(imp.allegroOrderId,'zlecenie')} title="Zlecenie"
+                    {isMosk&&<button onClick={()=>toggleBox(imp.allegroOrderId,'zlecenie')} title="Zlecenie"
                       style={{padding:'4px 8px',fontSize:12,borderRadius:5,cursor:'pointer',fontWeight:700,
                         background:openBox==='zlecenie'?'#2a4a2a':hasZlecenie?'#1a3a1a':'#1a2a1a',
                         border:`1px solid ${hasZlecenie?'#3a7a3a':'#2a4a2a'}`,color:hasZlecenie?'#7acf7a':'#4a7a4a'}}>
                       📋{hasZlecenie?' ✅':''}
                     </button>}
-                    <button onClick={()=>{
-                        if(imp.kontoId){
-                          openShipmentModal(imp);
-                        } else {
-                          // Brak kontoId = zamówienie telefoniczne → DPD API
-                          const orderForDpd=orders.find(o=>o.allegroOrderId===imp.allegroOrderId)||{klientImie:imp.klientImie,klientUlica:imp.klientUlica,klientKod:imp.klientKod,klientMiasto:imp.klientMiasto,telefon:imp.telefon};
-                          setDpdModal(orderForDpd);setDpdWaga('5');
-                        }
-                      }} title={imp.kontoId?"Etykieta Allegro":"Etykieta DPD API"}
+                    <button onClick={()=>openShipmentModal(imp)} title="Etykieta"
                       style={{padding:'4px 8px',fontSize:12,borderRadius:5,cursor:'pointer',fontWeight:700,
                         background:hasEtykieta?'#1a3a1a':'#1a2a1a',border:`1px solid ${hasEtykieta?'#5a7a2a':'#2a4a2a'}`,color:hasEtykieta?'#afdf7f':'#6a8a4a'}}>
                       📦{hasEtykieta?' ✅':''}
@@ -2999,6 +3008,11 @@ function App() {
                       style={{padding:'4px 8px',fontSize:12,borderRadius:5,cursor:'pointer',background:'#1a1a3a',border:'1px solid #3a3a7a',color:'#9a9adf'}}>
                       ✉️
                     </button>
+                    {imp.invoiceRequired&&<button onClick={()=>toggleBox(imp.allegroOrderId,'faktura')} title="Faktura"
+                      style={{padding:'4px 8px',fontSize:12,borderRadius:5,cursor:'pointer',
+                        background:openBox==='faktura'?'#3a2a1a':'#2a1a0a',border:'1px solid #7a5a2a',color:'#dfaf5a'}}>
+                      🧾
+                    </button>}
                     <button onClick={()=>{setSelectedOrderId(imp.allegroOrderId);setSelectedKontoId(imp.kontoId);setTab('wiadomosci');}} title="Wiadomości"
                       style={{padding:'4px 7px',fontSize:12,borderRadius:5,cursor:'pointer',background:'#1a2a2a',border:'1px solid #2a5a5a',color:'#5abfbf'}}>
                       💬
@@ -3016,6 +3030,13 @@ function App() {
                       📋 Otwórz formularz zlecenia
                     </button>
                     {hasZlecenie&&(()=>{const o=orders.find(ord=>ord.allegroOrderId===imp.allegroOrderId);return <span style={{fontSize:12,color:'#5a9a5a'}}>✅ {o?.numerZlecenia} — {o?.klientImie}</span>;})()}
+                  </div>
+                )}
+                {openBox==='faktura'&&(
+                  <div style={{background:'#0f0a00',borderTop:'1px solid #5a3a00',padding:'8px 14px',fontSize:12,color:'#dfaf5a'}}>
+                    🧾 <strong>{imp.nabywcaNazwa||imp.klientImie}</strong>
+                    {imp.nabywcaNip&&<span style={{marginLeft:8,fontFamily:'monospace'}}>NIP: {imp.nabywcaNip}</span>}
+                    <div style={{marginTop:4,color:'#9a7a3a'}}>{imp.nabywcaUlica} {imp.nabywcaKod} {imp.nabywcaMiasto}</div>
                   </div>
                 )}
               </div>
@@ -3040,18 +3061,18 @@ function App() {
                 </button>
               </div>
               <div style={{display:'flex',borderBottom:'2px solid #1a2a1a',marginBottom:0}}>
-                <button onClick={()=>setZamTab('moskitiery')} style={{padding:'7px 18px',fontSize:14,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',background:zamTab==='moskitiery'?'#1a3a1a':'#0a1a0a',color:zamTab==='moskitiery'?'#afffaf':'#3a6a3a',borderBottom:zamTab==='moskitiery'?'2px solid #3acf6a':'2px solid transparent'}}>
-                  🦟 Moskitiery ({moskitiery.length})
+                <button onClick={()=>setZamTab('nowe')} style={{padding:'7px 18px',fontSize:14,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',background:zamTab==='nowe'?'#1a3a1a':'#0a1a0a',color:zamTab==='nowe'?'#afffaf':'#3a6a3a',borderBottom:zamTab==='nowe'?'2px solid #3acf6a':'2px solid transparent'}}>
+                  🆕 Do obrobienia ({noweList.length})
                 </button>
                 <button onClick={()=>setZamTab('pozostale')} style={{padding:'7px 18px',fontSize:14,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',background:zamTab==='pozostale'?'#1a2a3a':'#0a1420',color:zamTab==='pozostale'?'#7acfdf':'#2a4a6a',borderBottom:zamTab==='pozostale'?'2px solid #3a8acf':'2px solid transparent'}}>
-                  📦 Pozostałe ({reszta.length})
+                  ✅ Zrealizowane ({zrealizowaneList.length})
                 </button>
               </div>
               {allegroImportResults.length===0&&<div style={{textAlign:'center',color:'#2a5a3a',padding:'40px 0',fontSize:14}}>Kliknij "Pobierz zamówienia" żeby załadować listę</div>}
               {(()=>{
-                const active=zamTab==='moskitiery'?moskitiery:reszta;
-                if(active.length===0&&allegroImportResults.length>0) return <div style={{textAlign:'center',color:'#3a5a3a',padding:'40px 0'}}>Brak zamówień</div>;
-                return <div style={{border:'1px solid #1a2a1a',borderTop:'none',borderRadius:'0 0 6px 6px',overflow:'hidden'}}>{active.map((imp,idx)=>renderRow(imp,idx,zamTab==='moskitiery'))}</div>;
+                const active=zamTab==='nowe'?noweList:zrealizowaneList;
+                if(active.length===0&&allegroImportResults.length>0) return <div style={{textAlign:'center',color:'#3a5a3a',padding:'40px 0'}}>{zamTab==='nowe'?'🎉 Wszystkie zrealizowane!':'Brak zrealizowanych'}</div>;
+                return <div style={{border:'1px solid #1a2a1a',borderTop:'none',borderRadius:'0 0 6px 6px',overflow:'hidden'}}>{active.map((imp,idx)=>renderRow(imp,idx))}</div>;
               })()}
             </div>
           );
