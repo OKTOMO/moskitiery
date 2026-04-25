@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260425.30</title>
+<title>MosquitoApp v20260425.31</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260425.30';
+  window.__MOSK_VERSION='20260425.31';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -2063,7 +2063,11 @@ function App() {
       // Auto-pobierz propozycje odbioru (firma już zadeklarowana wyżej w try{})
       const pickupAddr={
         name:firma.nazwa,
-        street:(firma.adres||'').replace(/^ul\.\s*/i,'').replace(/^ul\s+/i,''),
+        street:(firma.adres||'').replace(/^ul\.\s*/i,'').replace(/^ul\s+/i,'')
+          .replace(/ą/g,'a').replace(/ć/g,'c').replace(/ę/g,'e').replace(/ł/g,'l')
+          .replace(/ń/g,'n').replace(/ó/g,'o').replace(/ś/g,'s').replace(/ź/g,'z').replace(/ż/g,'z')
+          .replace(/Ą/g,'A').replace(/Ć/g,'C').replace(/Ę/g,'E').replace(/Ł/g,'L')
+          .replace(/Ń/g,'N').replace(/Ó/g,'O').replace(/Ś/g,'S').replace(/Ź/g,'Z').replace(/Ż/g,'Z'),
         postalCode:firma.kod,
         city:firma.miasto,
         countryCode:'PL',
@@ -3165,7 +3169,11 @@ function App() {
                         const firma=FIRMY_DANE[imp.firma]||FIRMY_DANE["F"];
                         const pickupAddr={
         name:firma.nazwa,
-        street:(firma.adres||'').replace(/^ul\.\s*/i,'').replace(/^ul\s+/i,''),
+        street:(firma.adres||'').replace(/^ul\.\s*/i,'').replace(/^ul\s+/i,'')
+          .replace(/ą/g,'a').replace(/ć/g,'c').replace(/ę/g,'e').replace(/ł/g,'l')
+          .replace(/ń/g,'n').replace(/ó/g,'o').replace(/ś/g,'s').replace(/ź/g,'z').replace(/ż/g,'z')
+          .replace(/Ą/g,'A').replace(/Ć/g,'C').replace(/Ę/g,'E').replace(/Ł/g,'L')
+          .replace(/Ń/g,'N').replace(/Ó/g,'O').replace(/Ś/g,'S').replace(/Ź/g,'Z').replace(/Ż/g,'Z'),
         postalCode:firma.kod,
         city:firma.miasto,
         countryCode:'PL',
