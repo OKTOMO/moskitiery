@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260425.47</title>
+<title>MosquitoApp v20260425.48</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260425.47';
+  window.__MOSK_VERSION='20260425.48';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -3658,6 +3658,7 @@ function App() {
                     <div style={{color:"#5a8a7a"}}>{imp.klientUlica}, {imp.klientKod} {imp.klientMiasto}</div>
                     {imp.telefon&&<div style={{color:"#5a8a7a"}}>{imp.telefon}</div>}
                     <div style={{marginTop:6,fontSize:14,color:"#3a6a5a",fontStyle:"italic"}} title={imp.offerNames}>{imp.offerNames||"—"}</div>
+                    {imp.buyerMsg&&<div style={{marginTop:8,padding:"6px 10px",background:"#0a140e",border:"1px solid #1a3a2a",borderRadius:6,fontSize:13,color:"#cfaf6f",fontStyle:"italic",whiteSpace:"pre-wrap",wordBreak:"break-word"}}>💬 {imp.buyerMsg}</div>}
                   </div>
 
                   {/* Zakładki trybu */}
