@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260425.32</title>
+<title>MosquitoApp v20260425.33</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260425.32';
+  window.__MOSK_VERSION='20260425.33';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -1886,6 +1886,7 @@ function App() {
           // Wzbogać pickupTimes o proposalId z proposalItems
           const items=firstEntry?.proposals?.[0]?.proposalItems||[];
           const enriched=times.map((t,i)=>({...t,id:items[i]?.id||null}));
+          console.log('📞 setting proposals:',enriched.length,'items');
           setPickupProposals(enriched);
           setPickupTime(enriched[0]);
         } else {
