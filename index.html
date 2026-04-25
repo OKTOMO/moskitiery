@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260425.27</title>
+<title>MosquitoApp v20260425.28</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260425.27';
+  window.__MOSK_VERSION='20260425.28';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -1916,7 +1916,7 @@ function App() {
           address:{
             name:address.name||firma.nazwa,
             street:address.street||firma.adres,
-            postCode:(address.postCode||address.postalCode||address.zipCode||firma.kod),
+            postalCode:(address.postCode||address.postalCode||address.zipCode||firma.kod).replace('-',''),
             city:address.city||firma.miasto,
             countryCode:address.countryCode||'PL',
             email:address.email||firma.email||'',
@@ -2061,7 +2061,7 @@ function App() {
         if(linkedOrdForPdf.pozycje.some(p=>p.isDrzwi)) drukujPDF_drzwi(linkedOrdForPdf);
       }
       // Auto-pobierz propozycje odbioru (firma już zadeklarowana wyżej w try{})
-      const pickupAddr={name:firma.nazwa,street:firma.adres,postCode:firma.kod,city:firma.miasto,countryCode:'PL',email:firma.email||'',phone:firma.telefon||'+48605361191'};
+      const pickupAddr={name:firma.nazwa,street:firma.adres,postalCode:firma.kod.replace('-',''),city:firma.miasto,countryCode:'PL',email:firma.email||'',phone:firma.telefon||'+48605361191'};
       setPickupAddress(pickupAddr);
       fetchPickupProposals(d1.shipmentId, imp.kontoId, pickupAddr);
     }catch(e){
@@ -3155,7 +3155,7 @@ function App() {
                     {hasEtykieta&&sh&&<button title="Zamów odbiór kuriera"
                       onClick={()=>{
                         const firma=FIRMY_DANE[imp.firma]||FIRMY_DANE["F"];
-                        const pickupAddr={name:firma.nazwa,street:firma.adres,postCode:firma.kod,city:firma.miasto,countryCode:'PL',email:firma.email||'',phone:firma.telefon||'+48605361191'};
+                        const pickupAddr={name:firma.nazwa,street:firma.adres,postalCode:firma.kod.replace('-',''),city:firma.miasto,countryCode:'PL',email:firma.email||'',phone:firma.telefon||'+48605361191'};
                         setPickupProposals([]);setPickupDate('');setPickupTime(null);setPickupResult(null);
                         setPickupAddress(pickupAddr);
                         setShipmentModal({imp,services:[],createdShipmentId:sh.shipmentId,createdCarrierId:sh.carrierId||null});
