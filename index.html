@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260426.7</title>
+<title>MosquitoApp v20260426.8</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260426.7';
+  window.__MOSK_VERSION='20260426.8';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -2410,6 +2410,20 @@ function App() {
     setSaved(true);
     setLastSavedOrder(order);
     setTimeout(()=>setLastSavedOrder(null), 60000);
+    // Ustaw status W realizacji dla zamówienia Allegro
+    const savedAllegroId=allegroOrderIdForForm;
+    if(savedAllegroId){
+      setOrderAppStatus(savedAllegroId,'W realizacji');
+      // Znajdź kontoId z listy allegroImportResults
+      const allegroImp=allegroImportResults.find(i=>i.allegroOrderId===savedAllegroId);
+      if(allegroImp&&allegroImp.kontoId){
+        fetch(AUTORESPONDER_URL+'/order/status',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},
+          body:JSON.stringify({allegroOrderId:savedAllegroId,kontoId:allegroImp.kontoId,status:'PROCESSING'})
+        }).catch(e=>console.warn('Status update failed:',e));
+      }
+    }
     setWiadomosc(""); setAdres(""); setForm(pustyForm(form.firma)); setNumerOverride(""); setKalNumerForForm(""); setAllegroOrderIdForForm("");
     if(nadajDPD && order.klientUlica && order.klientKod){
       setDpdModal(order); setDpdWaga('5');
