@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260426.17</title>
+<title>MosquitoApp v20260426.18</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260426.17';
+  window.__MOSK_VERSION='20260426.18';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -1813,7 +1813,7 @@ function App() {
       const pd=await pr.json();
       if(!pd.ok) throw new Error('PDF render fail: '+JSON.stringify(pd));
       console.log('[PDF] rozmiar z CF Browser Rendering:',pd.size,'bytes');
-      attachments.push({name:`${subject} L.pdf`,content:pd.pdf,mimeType:'application/pdf'});
+      attachments.push({name:`${subject}.pdf`,content:pd.pdf,mimeType:'application/pdf'});
       // Etykieta PDF
       const sh=allegroShipments[imp.allegroOrderId];
       if(sh){
@@ -3674,7 +3674,7 @@ function App() {
                   <div style={{marginBottom:6}}><span style={{color:"#4a7a9a"}}>Temat:</span> <strong style={{color:"#cfdfaf"}}>{mailPreview.subject}</strong></div>
                   <div style={{marginBottom:6}}><span style={{color:"#4a7a9a"}}>Załączniki:</span>
                     <div style={{marginTop:4,fontSize:12}}>
-                      <div style={{color:"#7acf7a"}}>📄 {mailPreview.subject} L.pdf — zlecenie</div>
+                      <div style={{color:"#7acf7a"}}>📄 {mailPreview.subject}.pdf — zlecenie</div>
                       {mailPreview.hasEtykieta&&<div style={{color:"#7acf7a"}}>📦 {mailPreview.subject} etykieta.pdf — etykieta</div>}
                       {!mailPreview.hasEtykieta&&<div style={{color:"#cf9a4a"}}>⚠️ Brak etykiety — nie wygenerowano jeszcze</div>}
                     </div>
@@ -6234,7 +6234,7 @@ function App() {
                 style={{flex:1,background:"#0a140a",border:"1px solid #2a4a2a",borderRadius:4,color:"#cfdfaf",padding:"4px 8px",fontSize:13,fontFamily:"monospace"}}/>
             </div>
             <div style={{fontSize:12,marginBottom:12}}>
-              <div style={{color:"#7acf7a"}}>📄 {mailPreview.subject} L.pdf</div>
+              <div style={{color:"#7acf7a"}}>📄 {mailPreview.subject}.pdf</div>
               {mailPreview.hasEtykieta?<div style={{color:"#7acf7a"}}>📦 etykieta.pdf</div>:<div style={{color:"#cf9a4a"}}>⚠️ Brak etykiety</div>}
             </div>
             <div style={{display:"flex",gap:8}}>
