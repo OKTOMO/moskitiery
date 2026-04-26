@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260426.21</title>
+<title>MosquitoApp v20260426.22</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260426.21';
+  window.__MOSK_VERSION='20260426.22';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -3961,7 +3961,12 @@ function App() {
                       : <button onClick={()=>{setDocsModal(null);openShipmentModal(docsModal.imp);}}
                           style={{padding:'6px 14px',borderRadius:6,border:'1px solid #2a4a2a',background:'#111a11',color:'#5a9a5a',cursor:'pointer',fontSize:12}}>
                           + Utwórz
-                        </button>
+                        </button>}
+                    {docsModal.sh?.shipmentId&&<button
+                      onClick={()=>{if(confirm('Usunąć etykietę z pamięci aplikacji? Etykieta w Allegro pozostaje.')){setAllegroShipments(p=>{const n={...p};delete n[docsModal.imp.allegroOrderId];localStorage.setItem('allegro_shipments',JSON.stringify(n));return n;});setDocsModal(null);}}}
+                      style={{padding:'4px 10px',borderRadius:6,border:'1px solid #4a1a1a',background:'#1a0a0a',color:'#9a4a4a',cursor:'pointer',fontSize:11,marginTop:4}}>
+                      🗑 Resetuj z pamięci
+                    </button>
                     }
                   </div>
                   {/* Faktura */}
@@ -6121,11 +6126,13 @@ function App() {
                 style={{flex:1,padding:"8px",fontSize:14,borderRadius:6,cursor:"pointer",background:"#1a2a1a",border:"1px solid #2a4a2a",color:"#5a8a5a"}}>
                 Anuluj
               </button>
-              <button disabled={shipmentCreating||!shipmentServiceId}
+              <button disabled={shipmentCreating||!shipmentServiceId||!!shipmentModal.createdShipmentId}
                 onClick={()=>createShipment()}
-                style={{flex:2,padding:"8px",fontSize:14,fontWeight:700,borderRadius:6,cursor:shipmentCreating?"not-allowed":"pointer",
-                  background:shipmentCreating?"#1a2a1a":"#2a5a1a",border:"1px solid #3a8a2a",color:"#afffaf"}}>
-                {shipmentCreating?"⟳ Tworzę...":"📦 Utwórz etykietę"}
+                style={{flex:2,padding:"8px",fontSize:14,fontWeight:700,borderRadius:6,
+                  cursor:(shipmentCreating||shipmentModal.createdShipmentId)?"not-allowed":"pointer",
+                  background:shipmentModal.createdShipmentId?"#0a2a0a":shipmentCreating?"#1a2a1a":"#2a5a1a",
+                  border:"1px solid "+(shipmentModal.createdShipmentId?"#2a5a2a":"#3a8a2a"),color:"#afffaf"}}>
+                {shipmentModal.createdShipmentId?"✅ Etykieta utworzona":shipmentCreating?"⟳ Tworzę...":"📦 Utwórz etykietę"}
               </button>
             </div>
             {/* ── Sekcja zamówienia odbioru ── */}
