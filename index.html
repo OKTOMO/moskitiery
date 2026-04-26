@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260426.1</title>
+<title>MosquitoApp v20260426.3</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260426.1';
+  window.__MOSK_VERSION='20260426.3';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -1482,6 +1482,10 @@ function App() {
     }
     // Jeśli brak wymiarów — użyj pustaPoz() ale z wykrytymi kolorami
     const defaultPoz=()=>{const p=pustaPoz();if(detectedKolorRamki)p.kolorRamki=detectedKolorRamki;if(detectedKolorSiatki)p.kolorSiatki=detectedKolorSiatki;return p;};
+    // Auto-wypełnij pole wiadomości z buyerMsg (do parsowania AI)
+    if(imp.buyerMsg) setWiadomosc(imp.buyerMsg);
+    if(imp.allegroOrderId) setAllegroOrderIdForForm(imp.allegroOrderId);
+    setTab('nowe');
     setImportModal({
       imp,
       mode:kalNum?"kal":(parsedPozycje?"parse":"manual"),
@@ -3150,7 +3154,7 @@ function App() {
             const openBox=zamOpenBox[imp.allegroOrderId];
             const isMosk=(()=>{const t=((imp.offerNames||'')+(imp.buyerMsg||'')).toLowerCase();return t.includes('moskitiera')||t.includes('mosquito');})();
             return (
-              <div key={idx} style={{borderBottom:'1px solid #0f1f2f',background:isWyslano?(idx%2===0?'#050d05':'#070f07'):isRealizacja?(idx%2===0?'#0a1a0a':'#0c1f0c'):(idx%2===0?'#0a1020':'#0c1228'),opacity:isWyslano?0.6:1}}>
+              <div key={idx} style={{borderBottom:'1px solid #0f1f2f',background:isWyslano?(idx%2===0?'#040c04':'#081508'):isRealizacja?(idx%2===0?'#091509':'#112311'):(idx%2===0?'#090e1a':'#111828'),opacity:isWyslano?0.6:1}}>
                 <div style={{display:'flex',alignItems:'center',gap:8,padding:'9px 12px',flexWrap:'wrap'}}>
                   <div style={{minWidth:76}}>
                     <span style={{fontSize:11,padding:'2px 5px',borderRadius:5,background:kBg,color:kCol,fontFamily:'monospace',fontWeight:700,display:'inline-block'}}>{imp.kontoId}</span>
@@ -3167,7 +3171,17 @@ function App() {
                   <div style={{flex:2,minWidth:130}}>
                     <div style={{fontSize:12,color:'#5a8a9a',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{imp.offerNames||'—'}</div>
                     {imp.buyerMsg&&<div style={{fontSize:10,color:'#cfaf6f',fontStyle:'italic',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>💬 {imp.buyerMsg}</div>}
-                    {imp.kwotaBrutto&&<div style={{fontSize:11,color:'#afdf7f',fontWeight:700}}>💰 {parseFloat(imp.kwotaBrutto).toFixed(2)} zł</div>}
+                    {imp.kwotaBrutto&&<div style={{fontSize:11,color:'#afdf7f',fontWeight:700,marginTop:2}}>
+                      💰 {parseFloat(imp.kwotaBrutto).toFixed(2)} zł
+                      {imp.deliveryCost>0&&<span style={{color:'#cfaf6f',marginLeft:5}}>+ {parseFloat(imp.deliveryCost).toFixed(2)} zł dostawa</span>}
+                      {imp.isCOD&&<span style={{color:'#ff9f5f',marginLeft:5,fontWeight:900,background:'#2a1500',border:'1px solid #cf7a2a',borderRadius:4,padding:'0 5px'}}>💵 POBRANIE {imp.codAmount?parseFloat(imp.codAmount).toFixed(2)+' zł':''}</span>}
+                    </div>}
+                    {imp.pozycje&&imp.pozycje.length>0&&(()=>{
+                      const jedn=imp.pozycje.reduce((s,p)=>s+(parseFloat(p.cenaNetto||0)*1.23*(parseInt(p.ilosc)||1)),0);
+                      const szt=imp.pozycje.reduce((s,p)=>s+(parseInt(p.ilosc)||1),0);
+                      const ile3=Math.round(jedn/3);
+                      return ile3>0?<div style={{fontSize:10,color:'#7a9a7a',marginTop:1}}>~{ile3} jedn. × 3 zł ({szt} szt.)</div>:null;
+                    })()}
                   </div>
                   <select value={as||effStatus} onChange={e=>setOrderAppStatus(imp.allegroOrderId,e.target.value)}
                     style={{padding:'3px 5px',fontSize:11,borderRadius:4,cursor:'pointer',
