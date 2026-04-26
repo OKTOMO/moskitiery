@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260426.20</title>
+<title>MosquitoApp v20260426.21</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260426.20';
+  window.__MOSK_VERSION='20260426.21';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -2023,11 +2023,10 @@ function App() {
     console.log('[SHIPMENT] isCOD:',isCOD,'codAmount:',codAmount,'serviceName:',service?.name);
     const isInternational=(imp.klientKraj&&imp.klientKraj!=='PL')||(service?.name||'').toLowerCase().includes('international');
     const maxWeight=isInternational?15:25;
-    // Limity wymiarów dla różnych operatorów punktów odbioru
-    // DHL Automat: max 50x35x31 cm, ORLEN/DPD punkt: max 60x40x40 cm
-    const SIZES_DHL_AUTOMAT={"A":{length:50,width:35,height:8,weight:5},"B":{length:50,width:35,height:19,weight:5},"C":{length:50,width:35,height:31,weight:5}};
-    const SIZES={"A":{length:64,width:38,height:8,weight:5},"B":{length:64,width:38,height:19,weight:5},"C":{length:64,width:38,height:41,weight:5}};
-    const activeSizes=isDHLAutomat?SIZES_DHL_AUTOMAT:SIZES;
+    // Limity wymiarów — z API jeśli dostępne, fallback do hardcoded
+    const _maxL=service?.maxLength||64, _maxW=service?.maxWidth||38, _maxH=service?.maxHeight||(isDHLAutomat?31:41);
+    const SIZES={"A":{length:_maxL,width:_maxW,height:Math.min(8,_maxH),weight:5},"B":{length:_maxL,width:_maxW,height:Math.min(19,_maxH),weight:5},"C":{length:_maxL,width:_maxW,height:_maxH,weight:5}};
+    const activeSizes=SIZES;
     // Auto-kalkulator paczek
     const desc=(shipmentDescription||"").toLowerCase();
     const ssMatch=desc.match(/(\d+)\s*ss/);
@@ -2104,6 +2103,13 @@ function App() {
               cashOnDelivery:{amount:String(codAmount.toFixed(2)),currency:"PLN"},
               insurance:{amount:String(codAmount.toFixed(2)),currency:"PLN"}
             };
+            // Użyj wymagań z API jeśli dostępne
+            if(service?.insuranceRequired && service?.insuranceCurrency){
+              const _cur=service.insuranceCurrency;
+              const _rates={HUF:390,CZK:24,EUR:4.25,RON:4.25,PLN:1};
+              const _r=_rates[_cur]||1;
+              return {insurance:{amount:(_r*50).toFixed(2),currency:_cur}};
+            }
             // DHL Automat i ORLEN pickup nie obsługują insurance
             if(isDHLAutomat||isORLEN) return {};
             if(_ins) return {
