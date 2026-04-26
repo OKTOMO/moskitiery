@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260426.19</title>
+<title>MosquitoApp v20260426.20</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260426.19';
+  window.__MOSK_VERSION='20260426.20';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -2104,6 +2104,8 @@ function App() {
               cashOnDelivery:{amount:String(codAmount.toFixed(2)),currency:"PLN"},
               insurance:{amount:String(codAmount.toFixed(2)),currency:"PLN"}
             };
+            // DHL Automat i ORLEN pickup nie obsługują insurance
+            if(isDHLAutomat||isORLEN) return {};
             if(_ins) return {
               insurance:{amount:(_ins.r*50).toFixed(2),currency:_ins.c}
             };
