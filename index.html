@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260426.18</title>
+<title>MosquitoApp v20260426.19</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260426.18';
+  window.__MOSK_VERSION='20260426.19';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -2011,7 +2011,10 @@ function App() {
     setShipmentCreating(true);
     setShipmentError("");
     const service=services.find(s=>s.id===shipmentServiceId)||services[0];
-    const isInPost=(service?.name||'').toLowerCase().includes('inpost')||(service?.name||'').toLowerCase().includes('paczkomat')||(service?.carrierId||'').toLowerCase().includes('inpost');
+    const svcName=(service?.name||'').toLowerCase();
+    const isInPost=svcName.includes('inpost')||svcName.includes('paczkomat')||(service?.carrierId||'').toLowerCase().includes('inpost');
+    const isDHLAutomat=svcName.includes('dhl')&&(svcName.includes('automat')||svcName.includes('paczk'));
+    const isORLEN=svcName.includes('orlen')||svcName.includes('dpd pickup')||svcName.includes('dpd point');
     // isPickupPoint oparty wyłącznie o pickupPointId z zamówienia Allegro — niezawodne, bez zgadywania po nazwie
     const isPickupPoint=!!(imp.pickupPointId);
     const isCOD=(service?.name||'').toLowerCase().includes('pobranie')||(service?.name||'').toLowerCase().includes('cod')||imp.isCOD;
@@ -2020,7 +2023,11 @@ function App() {
     console.log('[SHIPMENT] isCOD:',isCOD,'codAmount:',codAmount,'serviceName:',service?.name);
     const isInternational=(imp.klientKraj&&imp.klientKraj!=='PL')||(service?.name||'').toLowerCase().includes('international');
     const maxWeight=isInternational?15:25;
+    // Limity wymiarów dla różnych operatorów punktów odbioru
+    // DHL Automat: max 50x35x31 cm, ORLEN/DPD punkt: max 60x40x40 cm
+    const SIZES_DHL_AUTOMAT={"A":{length:50,width:35,height:8,weight:5},"B":{length:50,width:35,height:19,weight:5},"C":{length:50,width:35,height:31,weight:5}};
     const SIZES={"A":{length:64,width:38,height:8,weight:5},"B":{length:64,width:38,height:19,weight:5},"C":{length:64,width:38,height:41,weight:5}};
+    const activeSizes=isDHLAutomat?SIZES_DHL_AUTOMAT:SIZES;
     // Auto-kalkulator paczek
     const desc=(shipmentDescription||"").toLowerCase();
     const ssMatch=desc.match(/(\d+)\s*ss/);
@@ -2044,7 +2051,7 @@ function App() {
         }
       }
     }
-    const manualPkg={type:"PACKAGE",weight:{value:isInPost?(SIZES[shipmentSize]||SIZES["A"]).weight:shipmentCustomSize?.weight||5,unit:"KILOGRAMS"},length:{value:isInPost?(SIZES[shipmentSize]||SIZES["A"]).length:shipmentCustomSize?.length||64,unit:"CENTIMETER"},width:{value:isInPost?(SIZES[shipmentSize]||SIZES["A"]).width:shipmentCustomSize?.width||38,unit:"CENTIMETER"},height:{value:isInPost?(SIZES[shipmentSize]||SIZES["A"]).height:shipmentCustomSize?.height||15,unit:"CENTIMETER"},textOnLabel:shipmentDescription||""};
+    const usePresetSize=isInPost||isDHLAutomat||isORLEN;const sz=activeSizes[shipmentSize]||activeSizes["A"];const manualPkg={type:"PACKAGE",weight:{value:usePresetSize?sz.weight:shipmentCustomSize?.weight||5,unit:"KILOGRAMS"},length:{value:usePresetSize?sz.length:shipmentCustomSize?.length||64,unit:"CENTIMETER"},width:{value:usePresetSize?sz.width:shipmentCustomSize?.width||38,unit:"CENTIMETER"},height:{value:usePresetSize?sz.height:shipmentCustomSize?.height||15,unit:"CENTIMETER"},textOnLabel:shipmentDescription||""};
     const packages=autoPkgs.length>0?autoPkgs:[manualPkg];
     if(!service){setShipmentError("❌ Brak dostępnych usług dostawy dla tego zamówienia");setShipmentCreating(false);return;}
     try{
