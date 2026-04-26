@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260426.5</title>
+<title>MosquitoApp v20260426.6</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260426.5';
+  window.__MOSK_VERSION='20260426.6';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -1493,7 +1493,7 @@ function App() {
       klientKod:imp.klientKod||f.klientKod,
       klientMiasto:imp.klientMiasto||f.klientMiasto,
       telefon:imp.telefon||f.telefon,
-      uwagi:[imp.offerNames,imp.buyerMsg].filter(Boolean).join(" | "),
+      uwagi:"",
       pozycje:pozDoFormularza
     }));
     if(imp.allegroOrderId) setAllegroOrderIdForForm(imp.allegroOrderId);
@@ -1596,7 +1596,7 @@ function App() {
       klientKod:imp.klientKod,
       klientMiasto:imp.klientMiasto,
       telefon:imp.telefon,
-      uwagi:[imp.offerNames,imp.buyerMsg].filter(Boolean).join(" | "),
+      uwagi:"",
       pozycje:poz
     });
     setAllegroOrderIdForForm(imp.allegroOrderId);
