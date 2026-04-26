@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260426.3</title>
+<title>MosquitoApp v20260426.5</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260426.3';
+  window.__MOSK_VERSION='20260426.5';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -340,7 +340,7 @@ ${adres||"(brak)"}`;
 
   const claudeKey=localStorage.getItem("claude_api_key")||"";
   if(!claudeKey){throw new Error("Brak klucza API Claude — wpisz go w ustawieniach");}
-  const r=await fetch("https://allegro-autoresponder.favour-biuro.workers.dev/ai",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":claudeKey},body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:4000,messages:[{role:"user",content:prompt}]})});
+  const r=await fetch("https://allegro-autoresponder.favour-biuro.workers.dev/ai",{method:"POST",headers:{"Content-Type":"application/json","x-claude-key":claudeKey},body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:4000,messages:[{role:"user",content:prompt}]})});
   if(!r.ok){ const txt=await r.text().catch(()=>""); console.error("AI proxy error",r.status,txt); throw new Error("HTTP "+r.status+(txt?" — "+txt.slice(0,120):"")); }
   const d=await r.json();
   if(d.error){ console.error("AI error:",d.error); throw new Error(JSON.stringify(d.error)); }
@@ -1316,7 +1316,7 @@ function App() {
       const activeInstr=allInstrs.find(i=>i.id===activeId)||allInstrs[0]||null;
       const instr=activeInstr?activeInstr.content:"Jesteś pomocnym asystentem sklepu internetowego sprzedającego moskitiery. Odpowiadaj po polsku, profesjonalnie i przyjaźnie.";
       const prompt=instr+"\n\nHistoria rozmowy:\n"+history+"\n\nZaproponuj odpowiedź na ostatnią wiadomość kupującego. Podaj tylko treść wiadomości, bez wstępów i komentarzy.";
-      const r=await fetch("https://allegro-autoresponder.favour-biuro.workers.dev/ai",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":claudeKey},body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:2000,messages:[{role:"user",content:prompt}]})});
+      const r=await fetch("https://allegro-autoresponder.favour-biuro.workers.dev/ai",{method:"POST",headers:{"Content-Type":"application/json","x-claude-key":claudeKey},body:JSON.stringify({model:"claude-haiku-4-5-20251001",max_tokens:2000,messages:[{role:"user",content:prompt}]})});
       const d=await r.json();
       const text=d.content?.[0]?.text||"";
       if(!text) throw new Error("Brak odpowiedzi AI");
@@ -1482,19 +1482,52 @@ function App() {
     }
     // Jeśli brak wymiarów — użyj pustaPoz() ale z wykrytymi kolorami
     const defaultPoz=()=>{const p=pustaPoz();if(detectedKolorRamki)p.kolorRamki=detectedKolorRamki;if(detectedKolorSiatki)p.kolorSiatki=detectedKolorSiatki;return p;};
-    // Auto-wypełnij pole wiadomości z buyerMsg (do parsowania AI)
-    if(imp.buyerMsg) setWiadomosc(imp.buyerMsg);
+    // Wypełnij formularz danymi z Allegro od razu
+    const pozDoFormularza=parsedPozycje&&parsedPozycje.length>0?parsedPozycje:[defaultPoz()];
+    setForm(f=>({
+      ...f,
+      data:imp.data||f.data,
+      firma:imp.firma||f.firma,
+      klientImie:imp.klientImie||f.klientImie,
+      klientUlica:imp.klientUlica||f.klientUlica,
+      klientKod:imp.klientKod||f.klientKod,
+      klientMiasto:imp.klientMiasto||f.klientMiasto,
+      telefon:imp.telefon||f.telefon,
+      uwagi:[imp.offerNames,imp.buyerMsg].filter(Boolean).join(" | "),
+      pozycje:pozDoFormularza
+    }));
     if(imp.allegroOrderId) setAllegroOrderIdForForm(imp.allegroOrderId);
+    setNumerOverride("");
+    setSaved(false);
+    setImportModal(null);
     setTab('nowe');
-    setImportModal({
-      imp,
-      mode:kalNum?"kal":(parsedPozycje?"parse":"manual"),
-      kalNum,
-      kalLoading:!!kalNum,
-      kalError:"",
-      kalData:null,
-      pozycje:parsedPozycje||[defaultPoz()]
-    });
+    // Auto-parsowanie AI jeśli jest buyerMsg i nie ma wymiarów z regex
+    if(imp.buyerMsg){
+      setWiadomosc(imp.buyerMsg);
+      if(!parsedPozycje||parsedPozycje.length===0){
+        // Uruchom AI parsowanie w tle po przejściu do zakładki
+        setTimeout(async()=>{
+          try{
+            setParsing(true);
+            const adres=[imp.klientImie,imp.klientUlica,imp.klientKod+' '+imp.klientMiasto,imp.telefon].filter(Boolean).join('\n');
+            const r=await parseAI(imp.buyerMsg,adres,'okno');
+            const pozOkna=mapPozycje(r.pozycje,false,true);
+            if(pozOkna&&pozOkna.length>0){
+              setForm(f=>({
+                ...f,
+                klientImie:r.klientImie||f.klientImie,
+                klientUlica:r.klientUlica||f.klientUlica,
+                klientKod:r.klientKod||f.klientKod,
+                klientMiasto:r.klientMiasto||f.klientMiasto,
+                telefon:r.telefon||f.telefon,
+                pozycje:pozOkna
+              }));
+            }
+          }catch(e){console.warn('[AUTO-AI]',e.message);}
+          finally{setParsing(false);}
+        },200);
+      }
+    }
     // Auto-fetch danych kalkulatora jeśli numer został wykryty
     if(kalNum){
       fetch(AUTORESPONDER_URL+"/kalkulator/order/"+encodeURIComponent(kalNum.toLowerCase()))
