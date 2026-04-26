@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260426.10</title>
+<title>MosquitoApp v20260426.14</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260426.10';
+  window.__MOSK_VERSION='20260426.14';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -770,6 +770,7 @@ function App() {
   const [allegroImportShow,setAllegroImportShow]=useState(false);
   const [allegroImportError,setAllegroImportError]=useState("");
   const [shipmentModal,setShipmentModal]=useState(null);
+  const [docsModal,setDocsModal]=useState(null); // {imp, order, sh}
   const [shipmentLoading,setShipmentLoading]=useState(false);
   const [shipmentError,setShipmentError]=useState("");
   const [shipmentSize,setShipmentSize]=useState("A");
@@ -2122,8 +2123,7 @@ function App() {
       // Otwórz PDF do druku
       const pdfBlob=new Blob([Uint8Array.from(atob(d2.pdf),c=>c.charCodeAt(0))],{type:"application/pdf"});
       const pdfUrl=URL.createObjectURL(pdfBlob);
-      window.open(pdfUrl,"_blank");
-      // Zapisz shipmentId + waybill do ponownego druku i trackingu
+            // Zapisz shipmentId + waybill do ponownego druku i trackingu
       if(shipmentModal.imp.allegroOrderId){
         setAllegroShipments(prev=>{
           const next={...prev,[shipmentModal.imp.allegroOrderId]:{
@@ -3210,7 +3210,9 @@ function App() {
                   </div>
                   <div style={{minWidth:100,fontSize:11,color:'#5a8abf'}}>{imp.boughtAt?fmtDT(imp.boughtAt):imp.data||'—'}</div>
                   <div style={{flex:1,minWidth:110}}>
-                    <div style={{fontWeight:600,color:isWyslano?'#3a7a3a':isRealizacja?'#7abf7a':'#a0cfdf',fontSize:13}}>
+                    <div style={{fontWeight:600,color:isWyslano?'#3a7a3a':isRealizacja?'#7abf7a':'#a0cfdf',fontSize:13,cursor:hasZlecenie?'pointer':'default',textDecoration:hasZlecenie?'underline dotted':'none'}}
+                      onClick={()=>{if(hasZlecenie){const o=orders.find(ord=>ord.allegroOrderId===imp.allegroOrderId);setDocsModal({imp,order:o,sh});}}}
+                      title={hasZlecenie?'📄 Dokumenty zamówienia':''}>
                       {isWyslano?'✅ ':isRealizacja?'⚙️ ':''}{imp.klientImie||'—'}
                     </div>
                     {imp.klientLogin&&<div style={{fontSize:10,color:'#3a6a8a',fontFamily:'monospace'}}>{imp.klientLogin}</div>}
@@ -3273,8 +3275,7 @@ function App() {
                           for(let i=0;i<byteCharacters.length;i++) byteArray[i]=byteCharacters.charCodeAt(i);
                           const blob=new Blob([byteArray],{type:'application/pdf'});
                           const url=URL.createObjectURL(blob);
-                          const a=document.createElement('a');
-                          a.href=url;a.target='_blank';a.click();
+                          window.open(url,'_blank');
                           setTimeout(()=>URL.revokeObjectURL(url),5000);
                         }catch(e){alert('❌ '+e.message);}
                       }}
@@ -3579,7 +3580,7 @@ function App() {
                                             const d=await r.json();
                                             if(!d.pdf) throw new Error(d.error||"Brak PDF");
                                             const blob=new Blob([Uint8Array.from(atob(d.pdf),c=>c.charCodeAt(0))],{type:"application/pdf"});
-                                            window.open(URL.createObjectURL(blob),"_blank");
+                                            window.open(URL.createObjectURL(blob),'_blank');
                                           }catch(e){alert("❌ "+e.message);}
                                         }}
                                           title={"Ponownie drukuj etykietę z "+allegroShipments[imp.allegroOrderId].date}
@@ -3890,50 +3891,85 @@ function App() {
               </div>
             );
           })()}
-          {/* ── MODAL DPD ── */}
-          {dpdModal&&(
-            <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.75)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center"}}
-              onClick={e=>{if(e.target===e.currentTarget){setDpdModal(null);}}}>
-              <div style={{background:"#0c1a0c",border:"1px solid #3a7a3a",borderRadius:12,padding:24,width:360,maxWidth:"95vw"}}>
-                <div style={{fontWeight:700,fontSize:15,color:"#afdf7f",marginBottom:16}}>📦 Nadaj przesyłkę DPD</div>
-                <div style={{marginBottom:12,fontSize:14,color:"#7a9a7a"}}>
-                  <div style={{fontWeight:700,color:"#a0cfdf"}}>{dpdModal.klientImie}</div>
-                  <div>{dpdModal.klientUlica}</div>
-                  <div>{dpdModal.klientKod} {dpdModal.klientMiasto}</div>
-                  <div style={{fontSize:12,color:"#4a7a9a",marginTop:4}}>{dpdModal.numerZlecenia}</div>
+          {/* ── MODAL DOKUMENTÓW ── */}
+          {docsModal&&(
+            <div style={{position:'fixed',top:0,left:0,right:0,bottom:0,background:'rgba(0,0,0,.8)',zIndex:2000,display:'flex',alignItems:'center',justifyContent:'center'}}
+              onClick={e=>{if(e.target===e.currentTarget)setDocsModal(null);}}>
+              <div style={{background:'#0c1a0c',border:'1px solid #2a5a2a',borderRadius:12,padding:24,width:420,maxWidth:'95vw'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:16}}>
+                  <div style={{fontWeight:700,fontSize:15,color:'#afdf7f'}}>📄 Dokumenty zamówienia</div>
+                  <span style={{cursor:'pointer',color:'#5a7a5a',fontSize:20}} onClick={()=>setDocsModal(null)}>✕</span>
                 </div>
-                <div style={{marginBottom:14}}>
-                  <div style={{fontSize:13,color:"#4a7a5a",marginBottom:6}}>Waga paczki (kg)</div>
-                  <input type="number" min="0.1" step="0.1" value={dpdWaga}
-                    onChange={e=>setDpdWaga(e.target.value)}
-                    style={{width:"100%",padding:"8px 10px",borderRadius:6,border:"1px solid #2a5a3a",background:"#0a140a",color:"#a0dfaf",fontSize:16,fontWeight:700}}/>
+                <div style={{marginBottom:16,padding:'10px 12px',background:'#080f08',borderRadius:8,fontSize:13}}>
+                  <div style={{fontWeight:700,color:'#a0cfdf'}}>{docsModal.imp.klientImie}</div>
+                  <div style={{color:'#5a8a7a',fontSize:11}}>{docsModal.order?.numerZlecenia||'—'} · {docsModal.imp.klientMiasto}</div>
                 </div>
-                <div style={{marginBottom:14}}>
-                  <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13,color:"#9acf9a"}}>
-                    <input type="checkbox" checked={dpdCod} onChange={e=>setDpdCod(e.target.checked)} style={{accentColor:"#dfaf4a"}}/>
-                    Pobranie (COD)
-                  </label>
-                  {dpdCod&&(
-                    <input type="number" value={dpdCodAmount} onChange={e=>setDpdCodAmount(e.target.value)}
-                      placeholder="Kwota pobrania (PLN)" min="1" step="0.01"
-                      style={{width:"100%",padding:"8px 10px",borderRadius:6,border:"1px solid #7a5a0a",background:"#0a0e0a",color:"#dfaf4a",fontSize:14,marginTop:6}}/>
-                  )}
+                <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                  {/* PDF zamówienia */}
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 14px',background:'#0a1a0a',borderRadius:8,border:'1px solid #1a3a1a'}}>
+                    <div>
+                      <div style={{fontWeight:700,color:'#7acf7a',fontSize:13}}>📋 Zamówienie PDF</div>
+                      <div style={{fontSize:11,color:'#4a7a4a'}}>{docsModal.order?.numerZlecenia||'brak numeru'}</div>
+                    </div>
+                    {docsModal.order
+                      ? <button onClick={()=>drukujPDF(docsModal.order)}
+                          style={{padding:'6px 14px',borderRadius:6,border:'1px solid #3a7a3a',background:'#1a3a1a',color:'#7acf7a',cursor:'pointer',fontWeight:700,fontSize:12}}>
+                          🖨 Drukuj
+                        </button>
+                      : <span style={{fontSize:11,color:'#3a5a3a'}}>brak zlecenia</span>
+                    }
+                  </div>
+                  {/* Etykieta */}
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 14px',background:'#0a1a0a',borderRadius:8,border:'1px solid #1a3a1a'}}>
+                    <div>
+                      <div style={{fontWeight:700,color:'#7acf7a',fontSize:13}}>📦 Etykieta wysyłkowa</div>
+                      <div style={{fontSize:11,color:'#4a7a4a'}}>{docsModal.sh?.waybill||docsModal.sh?.shipmentId||'brak'}</div>
+                    </div>
+                    {docsModal.sh?.shipmentId
+                      ? <button onClick={async()=>{
+                            try{
+                              const r=await fetch(AUTORESPONDER_URL+'/shipment/label?kontoId='+docsModal.sh.kontoId,{
+                                method:'POST',headers:{'x-api-key':AUTORESPONDER_KEY,'Content-Type':'application/json'},
+                                body:JSON.stringify({shipmentIds:[docsModal.sh.shipmentId],pageSize:'A6'})
+                              });
+                              const d=await r.json();
+                              if(!d.pdf){alert('❌ Brak PDF etykiety');return;}
+                              const blob=new Blob([Uint8Array.from(atob(d.pdf),c=>c.charCodeAt(0))],{type:'application/pdf'});
+                              window.open(URL.createObjectURL(blob),'_blank');
+                            }catch(e){alert('❌ '+e.message);}
+                          }}
+                          style={{padding:'6px 14px',borderRadius:6,border:'1px solid #3a7a3a',background:'#1a3a1a',color:'#7acf7a',cursor:'pointer',fontWeight:700,fontSize:12}}>
+                          🖨 Drukuj
+                        </button>
+                      : <button onClick={()=>{setDocsModal(null);openShipmentModal(docsModal.imp);}}
+                          style={{padding:'6px 14px',borderRadius:6,border:'1px solid #2a4a2a',background:'#111a11',color:'#5a9a5a',cursor:'pointer',fontSize:12}}>
+                          + Utwórz
+                        </button>
+                    }
+                  </div>
+                  {/* Faktura */}
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 14px',background:'#0a1a0a',borderRadius:8,border:'1px solid #1a3a1a',opacity:0.5}}>
+                    <div>
+                      <div style={{fontWeight:700,color:'#7acf7a',fontSize:13}}>🧾 Faktura</div>
+                      <div style={{fontSize:11,color:'#4a7a4a'}}>funkcja w przygotowaniu</div>
+                    </div>
+                    <span style={{fontSize:11,color:'#3a5a3a'}}>wkrótce</span>
+                  </div>
                 </div>
-                {dpdLoading&&<div style={{color:"#7abfdf",fontSize:14,marginBottom:12}}>⟳ Generuję etykietę...</div>}
-                <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-                  <button onClick={()=>setDpdModal(null)}
-                    style={{padding:"8px 18px",borderRadius:6,border:"1px solid #2a3a2a",background:"none",color:"#5a7a5a",cursor:"pointer"}}>
-                    Anuluj
+                <div style={{marginTop:16,display:'flex',gap:8,justifyContent:'flex-end'}}>
+                  <button onClick={()=>{setDocsModal(null);prepareMailPreview(docsModal.imp);}}
+                    style={{padding:'7px 14px',borderRadius:6,border:'1px solid #3a3a7a',background:'#1a1a3a',color:'#9a9adf',cursor:'pointer',fontSize:12,fontWeight:700}}>
+                    ✉️ Wyślij na produkcję
                   </button>
-                  <button onClick={dpdNadaj} disabled={dpdLoading}
-                    style={{padding:"8px 22px",borderRadius:6,border:"1px solid #4a9a5a",background:"#1a5a2a",color:"#7fcf7f",cursor:"pointer",fontWeight:700,fontSize:14}}>
-                    📦 Generuj etykietę DPD
+                  <button onClick={()=>setDocsModal(null)}
+                    style={{padding:'7px 14px',borderRadius:6,border:'1px solid #2a3a2a',background:'#111811',color:'#5a7a5a',cursor:'pointer',fontSize:12}}>
+                    Zamknij
                   </button>
                 </div>
               </div>
             </div>
           )}
-          {/* ── MODAL ETYKIETA ── */}
+
           {shipmentModal&&shipmentModal.imp&&(
             <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.75)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center"}}
               onClick={e=>{if(e.target===e.currentTarget){setShipmentModal(null);setShipmentError("");}}}>
@@ -5971,7 +6007,51 @@ function App() {
             );
           })()}
 
-      {/* ── GLOBALNE MODAŁY (dostępne z każdej zakładki) ── */}
+      {/* ── MODAL DPD ── */}
+      {dpdModal&&(
+        <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.75)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center"}}
+          onClick={e=>{if(e.target===e.currentTarget){setDpdModal(null);}}}>
+          <div style={{background:"#0c1a0c",border:"1px solid #3a7a3a",borderRadius:12,padding:24,width:360,maxWidth:"95vw"}}>
+            <div style={{fontWeight:700,fontSize:15,color:"#afdf7f",marginBottom:16}}>📦 Nadaj przesyłkę DPD</div>
+            <div style={{marginBottom:12,fontSize:14,color:"#7a9a7a"}}>
+              <div style={{fontWeight:700,color:"#a0cfdf"}}>{dpdModal.klientImie}</div>
+              <div>{dpdModal.klientUlica}</div>
+              <div>{dpdModal.klientKod} {dpdModal.klientMiasto}</div>
+              <div style={{fontSize:12,color:"#4a7a9a",marginTop:4}}>{dpdModal.numerZlecenia}</div>
+            </div>
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:13,color:"#4a7a5a",marginBottom:6}}>Waga paczki (kg)</div>
+              <input type="number" min="0.1" step="0.1" value={dpdWaga}
+                onChange={e=>setDpdWaga(e.target.value)}
+                style={{width:"100%",padding:"8px 10px",borderRadius:6,border:"1px solid #2a5a3a",background:"#0a140a",color:"#a0dfaf",fontSize:16,fontWeight:700}}/>
+            </div>
+            <div style={{marginBottom:14}}>
+              <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",fontSize:13,color:"#9acf9a"}}>
+                <input type="checkbox" checked={dpdCod} onChange={e=>setDpdCod(e.target.checked)} style={{accentColor:"#dfaf4a"}}/>
+                Pobranie (COD)
+              </label>
+              {dpdCod&&(
+                <input type="number" value={dpdCodAmount} onChange={e=>setDpdCodAmount(e.target.value)}
+                  placeholder="Kwota pobrania (PLN)" min="1" step="0.01"
+                  style={{width:"100%",padding:"8px 10px",borderRadius:6,border:"1px solid #7a5a0a",background:"#0a0e0a",color:"#dfaf4a",fontSize:14,marginTop:6}}/>
+              )}
+            </div>
+            {dpdLoading&&<div style={{color:"#7abfdf",fontSize:14,marginBottom:12}}>⟳ Generuję etykietę...</div>}
+            <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+              <button onClick={()=>setDpdModal(null)}
+                style={{padding:"8px 18px",borderRadius:6,border:"1px solid #2a3a2a",background:"none",color:"#5a7a5a",cursor:"pointer"}}>
+                Anuluj
+              </button>
+              <button onClick={dpdNadaj} disabled={dpdLoading}
+                style={{padding:"8px 22px",borderRadius:6,border:"1px solid #4a9a5a",background:"#1a5a2a",color:"#7fcf7f",cursor:"pointer",fontWeight:700,fontSize:14}}>
+                📦 Generuj etykietę DPD
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ── MODAL ETYKIETA ── */}
+            {/* ── GLOBALNE MODAŁY (dostępne z każdej zakładki) ── */}
       {shipmentModal&&(
         <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.75)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center"}}
           onClick={e=>{if(e.target===e.currentTarget){setShipmentModal(null);setShipmentError("");}}}>
