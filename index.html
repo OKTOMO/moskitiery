@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260426.6</title>
+<title>MosquitoApp v20260426.7</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260426.6';
+  window.__MOSK_VERSION='20260426.7';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -3225,6 +3225,12 @@ function App() {
                     <option value="W realizacji">⚙️ W realizacji</option>
                     <option value="Wysłano">✅ Wysłano</option>
                   </select>
+                  {isRealizacja&&<button onClick={()=>setOrderAppStatus(imp.allegroOrderId,'Nowe')}
+                    title="Cofnij do Nowe"
+                    style={{padding:'3px 7px',fontSize:11,borderRadius:4,cursor:'pointer',
+                      background:'#1a1a0a',border:'1px solid #4a4a1a',color:'#9a9a4a'}}>
+                    ↩
+                  </button>}
                   <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
                     {isMosk&&<button onClick={()=>importAllegroOrder(imp)} title="Zlecenie"
                       style={{padding:'4px 8px',fontSize:12,borderRadius:5,cursor:'pointer',fontWeight:700,
