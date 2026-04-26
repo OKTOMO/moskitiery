@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260426.15</title>
+<title>MosquitoApp v20260426.17</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260426.15';
+  window.__MOSK_VERSION='20260426.17';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
 </head><body>
@@ -2424,10 +2424,15 @@ function App() {
           body:JSON.stringify({allegroOrderId:savedAllegroId,kontoId:allegroImp.kontoId,status:'PROCESSING'})
         }).catch(e=>console.warn('Status update failed:',e));
       }
+      // Auto-otwórz modal etykiety po zapisaniu zamówienia Allegro
+      if(allegroImp){
+        setTimeout(()=>openShipmentModal(allegroImp), 400);
+      }
     }
     setWiadomosc(""); setAdres(""); setForm(pustyForm(form.firma)); setNumerOverride(""); setKalNumerForForm(""); setAllegroOrderIdForForm("");
-    if(nadajDPD && order.klientUlica && order.klientKod){
-      setDpdModal(order); setDpdWaga('5');
+    // Dla zamówień z palca (bez Allegro) → auto-otwórz modal DPD
+    if(!savedAllegroId && order.klientUlica && order.klientKod){
+      setTimeout(()=>{setDpdModal(order);setDpdWaga('5');},200);
     }
     // PDF "L" nie jest drukowany automatycznie przy zapisie — drukuje się przy tworzeniu etykiety lub wysyłce maila
   }
@@ -3128,18 +3133,15 @@ function App() {
                 <button onClick={()=>{setEditingId(null);setNumerOverride("");setForm(pustyForm(form.firma));setSaved(false);}} style={{background:"#2a1a1a",border:"1px solid #5a2a2a",color:"#cf7a7a",borderRadius:4,padding:"2px 8px",cursor:"pointer",fontSize:14}}>✕ Anuluj</button>
               </div>}
               {!editingId&&(
-                <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",marginBottom:8,fontSize:14,
-                  color:nadajDPD?"#9fcf9f":"#4a6a8a",userSelect:"none",
-                  padding:"8px 12px",background:nadajDPD?"#0a1e0a":"transparent",
-                  border:`1px solid ${nadajDPD?"#2a6a2a":"#1a2a1a"}`,borderRadius:6}}>
-                  <input type="checkbox" checked={nadajDPD} onChange={e=>setNadajDPD(e.target.checked)}
-                    style={{width:16,height:16,cursor:"pointer",accentColor:"#4acf4a"}}/>
-                  📦 Nadaj przesyłkę DPD po zapisaniu
-                </label>
+                <div style={{marginBottom:8,fontSize:12,color:'#4a6a4a',padding:'7px 12px',background:'#080f08',border:'1px solid #1a2a1a',borderRadius:6}}>
+                  {allegroOrderIdForForm
+                    ? '🏷️ Po zapisaniu → modal etykiety Allegro'
+                    : '📦 Po zapisaniu → modal etykiety DPD'}
+                </div>
               )}
               <button className="btn" style={{width:"100%",padding:"12px",fontSize:14,background:editingId!==null?"#4a6a2a":"var(--accent)"}}
                 onClick={handleSave} disabled={!form.klientImie&&!form.klientMiasto&&!form.pozycje[0].szerokosc}>
-                {editingId!==null?"💾 Zapisz zmiany":nadajDPD?"💾 Zapisz + 📦 DPD":"💾 Zapisz zamówienie"}
+                {editingId!==null?"💾 Zapisz zmiany":"💾 Zapisz zamówienie"}
               </button>
               {saved&&lastSavedOrder&&(
                 <div style={{background:"#0a1e0a",border:"1px solid #2a6a2a",borderRadius:8,padding:"14px 16px",marginTop:8,position:"relative"}}>
