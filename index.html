@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260427.2</title>
+<title>MosquitoApp v20260427.5</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260427.2';
+  window.__MOSK_VERSION='20260427.5';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><g transform='translate(50,50)'><ellipse cx='0' cy='0' rx='22' ry='9' fill='%234a9a4a' transform='rotate(-20)'/><ellipse cx='18' cy='8' rx='16' ry='6' fill='%233a7a3a' transform='rotate(-10)'/><ellipse cx='34' cy='16' rx='12' ry='5' fill='%232a6a2a' transform='rotate(-5)'/><ellipse cx='46' cy='22' rx='8' ry='4' fill='%231a5a1a'/><circle cx='-20' cy='-5' r='8' fill='%234a9a4a'/><line x1='-28' y1='-5' x2='-58' y2='5' stroke='%232a6a2a' stroke-width='2' stroke-linecap='round'/><path d='M-18,-13 Q-30,-28 -22,-38' fill='none' stroke='%233a7a3a' stroke-width='1.5' stroke-linecap='round'/><path d='M-14,-13 Q-10,-30 -4,-38' fill='none' stroke='%233a7a3a' stroke-width='1.5' stroke-linecap='round'/><ellipse cx='-2' cy='-18' rx='28' ry='10' fill='%237acf7a' opacity='0.7' transform='rotate(-30,-2,-18)'/><ellipse cx='10' cy='-16' rx='24' ry='8' fill='%237acf7a' opacity='0.5' transform='rotate(-15,10,-16)'/><line x1='-5' y1='6' x2='-22' y2='22' stroke='%232a5a2a' stroke-width='1.5' stroke-linecap='round'/><line x1='-22' y1='22' x2='-30' y2='38' stroke='%232a5a2a' stroke-width='1.2' stroke-linecap='round'/><line x1='5' y1='7' x2='-8' y2='24' stroke='%232a5a2a' stroke-width='1.5' stroke-linecap='round'/><line x1='-8' y1='24' x2='-14' y2='40' stroke='%232a5a2a' stroke-width='1.2' stroke-linecap='round'/><line x1='15' y1='8' x2='8' y2='26' stroke='%232a5a2a' stroke-width='1.5' stroke-linecap='round'/><line x1='8' y1='26' x2='4' y2='42' stroke='%232a5a2a' stroke-width='1.2' stroke-linecap='round'/><line x1='12' y1='8' x2='28' y2='22' stroke='%232a5a2a' stroke-width='1.5' stroke-linecap='round'/><line x1='28' y1='22' x2='38' y2='36' stroke='%232a5a2a' stroke-width='1.2' stroke-linecap='round'/><line x1='22' y1='12' x2='40' y2='20' stroke='%232a5a2a' stroke-width='1.5' stroke-linecap='round'/><line x1='40' y1='20' x2='52' y2='32' stroke='%232a5a2a' stroke-width='1.2' stroke-linecap='round'/></g></svg>">
@@ -1872,10 +1872,90 @@ function App() {
     // Duża mata: 125cm szerokość (BS), mała: ss
     const duza=isMata&&(offerLower.includes("205")||offerLower.includes("duż"));
     const names=(imp.offerNames||"").split(", ").filter(function(n){return !MOSK_REGEX.test(n);});
+    // Słownik kosmetyków — mapowanie nazwy oferty na skrót etykiety
+    function mapKosmetyk(name){
+      const n=name.toLowerCase();
+      // Zapachy wspólne
+      const zapach=n.includes('boxer')?'box':n.includes('silver')||n.includes('silv')?'sil':n.includes('tobacco')||n.includes('tob')?'tob':n.includes('terre')?'ter':n.includes('aqua')?'aqu':n.includes('gold')?'gol':n.includes('adventure')||n.includes('adv')?'adv':'';
+      // Pomady do brody
+      if((n.includes('pomada')||n.includes('pomad'))&&n.includes('brod')) return 'p br'+(zapach?' '+zapach:'');
+      // Balsam do brody
+      if(n.includes('balsam')&&n.includes('brod')) return 'bal br'+(zapach?' '+zapach:'');
+      // Olejek
+      if(n.includes('olejek')||n.includes('olej')) return 'ol'+(zapach?' '+zapach:'');
+      // Pomada włosy — typy
+      if((n.includes('pomada')||n.includes('pomad'))&&(n.includes('włos')||n.includes('wlos')||n.includes('silver')||n.includes('srebrn'))){
+        if(n.includes('mocny')||n.includes('strong')&&!n.includes('super')) return 'p sr';
+        if(n.includes('super')&&n.includes('strong')) return 'p ss';
+        if(n.includes('złot')||n.includes('zlot')||n.includes('żółt')||n.includes('boxer')) return 'p zł';
+        if(n.includes('czerwon')||n.includes('woskov')||n.includes('woskow')) return 'p cz';
+        return 'p sr';
+      }
+      // Pomada ogólna (włosy)
+      if(n.includes('pomada')||n.includes('pomad')){
+        if(n.includes('mocny')||n.includes('strong')&&!n.includes('super')) return 'p sr';
+        if(n.includes('super')) return 'p ss';
+        if(n.includes('boxer')||n.includes('złot')||n.includes('zlot')) return 'p zł';
+        if(n.includes('czerwon')||n.includes('woskov')) return 'p cz';
+      }
+      // Pre-styler
+      if(n.includes('pre-styl')||n.includes('prestyler')||n.includes('pre styl')) return 'pre-st';
+      // Szampon do brody
+      if(n.includes('szampon')&&n.includes('brod')) return 'sz br';
+      // Szampon do włosów
+      if(n.includes('szampon')&&(n.includes('włos')||n.includes('wlos'))){
+        if(n.includes('500')) return 'sz 500';
+        return 'sz 250';
+      }
+      if(n.includes('szampon')){
+        if(n.includes('500')) return 'sz 500';
+        return 'sz 250';
+      }
+      // Żel po goleniu (after shave)
+      if(n.includes('żel')&&(n.includes('po golen')||n.includes('after'))) return 'ż as';
+      // Żel przed goleniem (before shave)
+      if(n.includes('żel')&&(n.includes('przed golen')||n.includes('before')||n.includes('bs'))) return 'ż bs';
+      // Żel do golenia
+      if(n.includes('żel')&&n.includes('golen')) return 'ż 500';
+      // Woda po goleniu
+      if(n.includes('woda')&&n.includes('golen')) return 'as'+(zapach?' '+zapach:'');
+      // Odżywka
+      if(n.includes('odżywka')||n.includes('odzywka')) return 'odż wł';
+      // Pomadka do ust
+      if(n.includes('pomadka')) return 'pom ust';
+      // Grooming
+      if(n.includes('grooming')) return 'groom';
+      // Gumki recepturki
+      if(n.includes('gumk')&&(n.includes('recepturk')||n.includes('kg')||n.includes('gumow'))) return '1 gr';
+      // Woreczki
+      if(n.includes('woreczk')||n.includes('worek')&&n.includes('moskitier')) return '1 wor';
+      // Tace
+      if(n.includes('tac')&&n.includes('90')) return '1 tac 90';
+      if(n.includes('tac')&&n.includes('60')) return '1 tac 60';
+      if(n.includes('tac')) return '1 tac';
+      // Drzwiczki dla zwierząt
+      if(n.includes('drzwiczk')||n.includes('drzwi')&&(n.includes('zwierz')||n.includes('kot')||n.includes('pies'))){
+        if(n.includes('duż')||n.includes('duz')||n.includes('large')) return '1 drzwiczki duże';
+        return '1 drzwiczki małe';
+      }
+      return '';
+    }
+    // Zbierz skróty ze wszystkich pozycji oferty
+    const kosmetykiDesc=(()=>{
+      const offerArr=(imp.offerNames||"").split(", ");
+      const skroty=[];
+      offerArr.forEach(name=>{
+        const sk=mapKosmetyk(name);
+        if(sk&&!skroty.includes(sk)) skroty.push(sk);
+      });
+      return skroty.join(', ');
+    })();
     let autoDesc="";
     if(isMata){
       const ilosc=(imp.pozycje&&imp.pozycje.length>0?imp.pozycje.reduce((a,p)=>a+(parseInt(p.ilosc)||1),0):1);
       autoDesc=(nrZlec?nrZlec+" ":"")+ilosc+" "+(duza?"BS":"ss");
+    } else if(kosmetykiDesc){
+      autoDesc=kosmetykiDesc;
     } else if(nrZlec){
       autoDesc=nrZlec;
     }
@@ -2051,7 +2131,7 @@ function App() {
         }
       }
     }
-    const usePresetSize=isInPost||isDHLAutomat||isORLEN;const sz=activeSizes[shipmentSize]||activeSizes["A"];const manualPkg={type:"PACKAGE",weight:{value:usePresetSize?sz.weight:shipmentCustomSize?.weight||5,unit:"KILOGRAMS"},length:{value:usePresetSize?sz.length:shipmentCustomSize?.length||64,unit:"CENTIMETER"},width:{value:usePresetSize?sz.width:shipmentCustomSize?.width||38,unit:"CENTIMETER"},height:{value:usePresetSize?sz.height:shipmentCustomSize?.height||15,unit:"CENTIMETER"},textOnLabel:shipmentDescription||""};
+    const usePresetSize=isInPost||isDHLAutomat||isORLEN;const sz=activeSizes[shipmentSize]||activeSizes["A"];const manualPkg={type:"PACKAGE",weight:{value:usePresetSize?sz.weight:shipmentCustomSize?.weight||5,unit:"KILOGRAMS"},length:{value:usePresetSize?sz.length:shipmentCustomSize?.length||64,unit:"CENTIMETER"},width:{value:usePresetSize?sz.width:shipmentCustomSize?.width||38,unit:"CENTIMETER"},height:{value:usePresetSize?sz.height:shipmentCustomSize?.height||15,unit:"CENTIMETER"},textOnLabel:([shipmentModal.imp._linkedOrder?.numerZlecenia||orders.find(o=>o.allegroOrderId===imp.allegroOrderId)?.numerZlecenia,shipmentDescription].filter(Boolean).join(' ')||'')};
     const packages=autoPkgs.length>0?autoPkgs:[manualPkg];
     if(!service){setShipmentError("❌ Brak dostępnych usług dostawy dla tego zamówienia");setShipmentCreating(false);return;}
     try{
