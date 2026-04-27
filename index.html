@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260427.6</title>
+<title>MosquitoApp v20260427.7</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260427.6';
+  window.__MOSK_VERSION='20260427.7';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><g transform='translate(50,50)'><ellipse cx='0' cy='0' rx='22' ry='9' fill='%234a9a4a' transform='rotate(-20)'/><ellipse cx='18' cy='8' rx='16' ry='6' fill='%233a7a3a' transform='rotate(-10)'/><ellipse cx='34' cy='16' rx='12' ry='5' fill='%232a6a2a' transform='rotate(-5)'/><ellipse cx='46' cy='22' rx='8' ry='4' fill='%231a5a1a'/><circle cx='-20' cy='-5' r='8' fill='%234a9a4a'/><line x1='-28' y1='-5' x2='-58' y2='5' stroke='%232a6a2a' stroke-width='2' stroke-linecap='round'/><path d='M-18,-13 Q-30,-28 -22,-38' fill='none' stroke='%233a7a3a' stroke-width='1.5' stroke-linecap='round'/><path d='M-14,-13 Q-10,-30 -4,-38' fill='none' stroke='%233a7a3a' stroke-width='1.5' stroke-linecap='round'/><ellipse cx='-2' cy='-18' rx='28' ry='10' fill='%237acf7a' opacity='0.7' transform='rotate(-30,-2,-18)'/><ellipse cx='10' cy='-16' rx='24' ry='8' fill='%237acf7a' opacity='0.5' transform='rotate(-15,10,-16)'/><line x1='-5' y1='6' x2='-22' y2='22' stroke='%232a5a2a' stroke-width='1.5' stroke-linecap='round'/><line x1='-22' y1='22' x2='-30' y2='38' stroke='%232a5a2a' stroke-width='1.2' stroke-linecap='round'/><line x1='5' y1='7' x2='-8' y2='24' stroke='%232a5a2a' stroke-width='1.5' stroke-linecap='round'/><line x1='-8' y1='24' x2='-14' y2='40' stroke='%232a5a2a' stroke-width='1.2' stroke-linecap='round'/><line x1='15' y1='8' x2='8' y2='26' stroke='%232a5a2a' stroke-width='1.5' stroke-linecap='round'/><line x1='8' y1='26' x2='4' y2='42' stroke='%232a5a2a' stroke-width='1.2' stroke-linecap='round'/><line x1='12' y1='8' x2='28' y2='22' stroke='%232a5a2a' stroke-width='1.5' stroke-linecap='round'/><line x1='28' y1='22' x2='38' y2='36' stroke='%232a5a2a' stroke-width='1.2' stroke-linecap='round'/><line x1='22' y1='12' x2='40' y2='20' stroke='%232a5a2a' stroke-width='1.5' stroke-linecap='round'/><line x1='40' y1='20' x2='52' y2='32' stroke='%232a5a2a' stroke-width='1.2' stroke-linecap='round'/></g></svg>">
@@ -704,6 +704,54 @@ table.main td.kolor{font-size:14px;font-weight:700}
 }
 
 // ─── APP ─────────────────────────────────────────────────────────────────────
+function ProduktSlownikPanel({produktSlownik,saveProduktSlownik}){
+  const [nowaFraza,setNowaFraza]=React.useState("");
+  const [nowySkrot,setNowySkrot]=React.useState("");
+  const [editIdx,setEditIdx]=React.useState(null);
+  return(
+    <div style={{maxWidth:700}}>
+      <div style={{fontSize:14,color:"#4a8a4a",letterSpacing:".15em",textTransform:"uppercase",marginBottom:14}}>📦 Słownik produktów — etykiety</div>
+      <div style={{fontSize:12,color:"#3a6a3a",marginBottom:16}}>Wpisz fragment nazwy aukcji i skrót na etykiecie. Wielkość liter nie ma znaczenia. Wpisy mają pierwszeństwo przed wbudowanym słownikiem.</div>
+      <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+        <input value={nowaFraza} onChange={e=>setNowaFraza(e.target.value)}
+          placeholder="Fragment nazwy aukcji (np. pomada broda boxer)"
+          style={{flex:2,minWidth:200,padding:"7px 10px",borderRadius:6,border:"1px solid #2a5a2a",background:"#0a140a",color:"#afffaf",fontSize:13}}/>
+        <input value={nowySkrot} onChange={e=>setNowySkrot(e.target.value)}
+          placeholder="Skrót na etykiecie (np. p br box)"
+          style={{flex:1,minWidth:120,padding:"7px 10px",borderRadius:6,border:"1px solid #2a5a2a",background:"#0a140a",color:"#afffaf",fontSize:13}}/>
+        <button onClick={()=>{
+            if(!nowaFraza.trim()||!nowySkrot.trim()) return;
+            const item={fraza:nowaFraza.trim().toLowerCase(),skrot:nowySkrot.trim(),id:Date.now()};
+            if(editIdx!==null){const next=[...produktSlownik];next[editIdx]=item;saveProduktSlownik(next);setEditIdx(null);}
+            else saveProduktSlownik([item,...produktSlownik]);
+            setNowaFraza("");setNowySkrot("");
+          }}
+          style={{padding:"7px 16px",borderRadius:6,border:"1px solid #3a7a3a",background:"#1a3a1a",color:"#7acf7a",cursor:"pointer",fontWeight:700,fontSize:13}}>
+          {editIdx!==null?"💾 Zapisz":"➕ Dodaj"}
+        </button>
+        {editIdx!==null&&<button onClick={()=>{setEditIdx(null);setNowaFraza("");setNowySkrot("");}}
+          style={{padding:"7px 12px",borderRadius:6,border:"1px solid #3a3a3a",background:"#1a1a1a",color:"#7a7a7a",cursor:"pointer",fontSize:13}}>Anuluj</button>}
+      </div>
+      {produktSlownik.length===0&&<div style={{color:"#3a5a3a",fontSize:13,padding:"20px 0"}}>Brak wpisów — dodaj pierwszy produkt powyżej.</div>}
+      <div style={{display:"flex",flexDirection:"column",gap:4}}>
+        {produktSlownik.map((p,i)=>(
+          <div key={p.id||i} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",
+            background:i%2===0?"#0a140a":"#0c180c",borderRadius:6,border:"1px solid #1a2a1a"}}>
+            <div style={{flex:2,fontSize:13,color:"#7ab87a"}}>{p.fraza}</div>
+            <div style={{fontSize:13,color:"#3a6a3a"}}>→</div>
+            <div style={{flex:1,fontSize:13,fontWeight:700,color:"#afffaf"}}>{p.skrot}</div>
+            <button onClick={()=>{setEditIdx(i);setNowaFraza(p.fraza);setNowySkrot(p.skrot);}}
+              style={{padding:"3px 10px",borderRadius:4,border:"1px solid #2a5a2a",background:"#0f1f0f",color:"#5a9a5a",cursor:"pointer",fontSize:12}}>✏️</button>
+            <button onClick={()=>{if(confirm("Usunąć?")) saveProduktSlownik(produktSlownik.filter((_,j)=>j!==i));}}
+              style={{padding:"3px 10px",borderRadius:4,border:"1px solid #3a1a1a",background:"#1a0a0a",color:"#9a4a4a",cursor:"pointer",fontSize:12}}>🗑</button>
+          </div>
+        ))}
+      </div>
+      <div style={{marginTop:12,fontSize:11,color:"#2a4a2a"}}>{produktSlownik.length} wpisów</div>
+    </div>
+  );
+}
+
 function App() {
   const [activeProfile,setActiveProfile]=useState(()=>localStorage.getItem('active_profile')||"");
   const [tab,setTab]=useState(()=>new URLSearchParams(window.location.search).has("code")?"allegro":"zamowienia");
@@ -4521,73 +4569,7 @@ function App() {
           </div>
         )
         {tab==="produkty" && (
-          <div style={{maxWidth:700}}>
-            <div style={{fontSize:14,color:"#4a8a4a",letterSpacing:".15em",textTransform:"uppercase",marginBottom:14}}>📦 Słownik produktów — etykiety</div>
-            <div style={{fontSize:12,color:"#3a6a3a",marginBottom:16}}>
-              Wpisz fragment nazwy aukcji Allegro i skrót który pojawi się na etykiecie. Wielkość liter nie ma znaczenia.
-            </div>
-            {(()=>{
-              const [nowaFraza,setNowaFraza]=React.useState("");
-              const [nowySkrot,setNowySkrot]=React.useState("");
-              const [editIdx,setEditIdx]=React.useState(null);
-              return (
-                <div>
-                  {/* Formularz dodawania */}
-                  <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
-                    <input value={nowaFraza} onChange={e=>setNowaFraza(e.target.value)}
-                      placeholder="Fragment nazwy aukcji (np. pomada broda boxer)"
-                      style={{flex:2,minWidth:200,padding:"7px 10px",borderRadius:6,border:"1px solid #2a5a2a",background:"#0a140a",color:"#afffaf",fontSize:13}}/>
-                    <input value={nowySkrot} onChange={e=>setNowySkrot(e.target.value)}
-                      placeholder="Skrót na etykiecie (np. p br box)"
-                      style={{flex:1,minWidth:120,padding:"7px 10px",borderRadius:6,border:"1px solid #2a5a2a",background:"#0a140a",color:"#afffaf",fontSize:13}}/>
-                    <button onClick={()=>{
-                        if(!nowaFraza.trim()||!nowySkrot.trim()) return;
-                        const item={fraza:nowaFraza.trim().toLowerCase(),skrot:nowySkrot.trim(),id:Date.now()};
-                        if(editIdx!==null){
-                          const next=[...produktSlownik];
-                          next[editIdx]=item;
-                          saveProduktSlownik(next);
-                          setEditIdx(null);
-                        } else {
-                          saveProduktSlownik([item,...produktSlownik]);
-                        }
-                        setNowaFraza("");setNowySkrot("");
-                      }}
-                      style={{padding:"7px 16px",borderRadius:6,border:"1px solid #3a7a3a",background:"#1a3a1a",color:"#7acf7a",cursor:"pointer",fontWeight:700,fontSize:13}}>
-                      {editIdx!==null?"💾 Zapisz":"➕ Dodaj"}
-                    </button>
-                    {editIdx!==null&&<button onClick={()=>{setEditIdx(null);setNowaFraza("");setNowySkrot("");}}
-                      style={{padding:"7px 12px",borderRadius:6,border:"1px solid #3a3a3a",background:"#1a1a1a",color:"#7a7a7a",cursor:"pointer",fontSize:13}}>
-                      Anuluj
-                    </button>}
-                  </div>
-                  {/* Lista wpisów */}
-                  {produktSlownik.length===0&&<div style={{color:"#3a5a3a",fontSize:13,padding:"20px 0"}}>Brak wpisów — dodaj pierwszy produkt powyżej.</div>}
-                  <div style={{display:"flex",flexDirection:"column",gap:4}}>
-                    {produktSlownik.map((p,i)=>(
-                      <div key={p.id||i} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",
-                        background:i%2===0?"#0a140a":"#0c180c",borderRadius:6,border:"1px solid #1a2a1a"}}>
-                        <div style={{flex:2,fontSize:13,color:"#7ab87a"}}>{p.fraza}</div>
-                        <div style={{fontSize:13,color:"#3a6a3a"}}>→</div>
-                        <div style={{flex:1,fontSize:13,fontWeight:700,color:"#afffaf"}}>{p.skrot}</div>
-                        <button onClick={()=>{setEditIdx(i);setNowaFraza(p.fraza);setNowySkrot(p.skrot);}}
-                          style={{padding:"3px 10px",borderRadius:4,border:"1px solid #2a5a2a",background:"#0f1f0f",color:"#5a9a5a",cursor:"pointer",fontSize:12}}>
-                          ✏️
-                        </button>
-                        <button onClick={()=>{if(confirm("Usunąć?")) saveProduktSlownik(produktSlownik.filter((_,j)=>j!==i));}}
-                          style={{padding:"3px 10px",borderRadius:4,border:"1px solid #3a1a1a",background:"#1a0a0a",color:"#9a4a4a",cursor:"pointer",fontSize:12}}>
-                          🗑
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{marginTop:12,fontSize:11,color:"#2a4a2a"}}>
-                    {produktSlownik.length} wpisów · Wpisy z tej listy mają pierwszeństwo przed wbudowanym słownikiem
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
+          <ProduktSlownikPanel produktSlownik={produktSlownik} saveProduktSlownik={saveProduktSlownik}/>
         )}}
 
         {/* ══ STATYSTYKI ══ */}
