@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260426.25</title>
+<title>MosquitoApp v20260427.1</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260426.25';
+  window.__MOSK_VERSION='20260427.1';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><g transform='translate(50,50)'><ellipse cx='0' cy='0' rx='22' ry='9' fill='%234a9a4a' transform='rotate(-20)'/><ellipse cx='18' cy='8' rx='16' ry='6' fill='%233a7a3a' transform='rotate(-10)'/><ellipse cx='34' cy='16' rx='12' ry='5' fill='%232a6a2a' transform='rotate(-5)'/><ellipse cx='46' cy='22' rx='8' ry='4' fill='%231a5a1a'/><circle cx='-20' cy='-5' r='8' fill='%234a9a4a'/><line x1='-28' y1='-5' x2='-58' y2='5' stroke='%232a6a2a' stroke-width='2' stroke-linecap='round'/><path d='M-18,-13 Q-30,-28 -22,-38' fill='none' stroke='%233a7a3a' stroke-width='1.5' stroke-linecap='round'/><path d='M-14,-13 Q-10,-30 -4,-38' fill='none' stroke='%233a7a3a' stroke-width='1.5' stroke-linecap='round'/><ellipse cx='-2' cy='-18' rx='28' ry='10' fill='%237acf7a' opacity='0.7' transform='rotate(-30,-2,-18)'/><ellipse cx='10' cy='-16' rx='24' ry='8' fill='%237acf7a' opacity='0.5' transform='rotate(-15,10,-16)'/><line x1='-5' y1='6' x2='-22' y2='22' stroke='%232a5a2a' stroke-width='1.5' stroke-linecap='round'/><line x1='-22' y1='22' x2='-30' y2='38' stroke='%232a5a2a' stroke-width='1.2' stroke-linecap='round'/><line x1='5' y1='7' x2='-8' y2='24' stroke='%232a5a2a' stroke-width='1.5' stroke-linecap='round'/><line x1='-8' y1='24' x2='-14' y2='40' stroke='%232a5a2a' stroke-width='1.2' stroke-linecap='round'/><line x1='15' y1='8' x2='8' y2='26' stroke='%232a5a2a' stroke-width='1.5' stroke-linecap='round'/><line x1='8' y1='26' x2='4' y2='42' stroke='%232a5a2a' stroke-width='1.2' stroke-linecap='round'/><line x1='12' y1='8' x2='28' y2='22' stroke='%232a5a2a' stroke-width='1.5' stroke-linecap='round'/><line x1='28' y1='22' x2='38' y2='36' stroke='%232a5a2a' stroke-width='1.2' stroke-linecap='round'/><line x1='22' y1='12' x2='40' y2='20' stroke='%232a5a2a' stroke-width='1.5' stroke-linecap='round'/><line x1='40' y1='20' x2='52' y2='32' stroke='%232a5a2a' stroke-width='1.2' stroke-linecap='round'/></g></svg>">
@@ -3247,6 +3247,10 @@ function App() {
                       {imp.isCOD&&<span style={{color:'#ff9f5f',marginLeft:5,fontWeight:900,background:'#2a1500',border:'1px solid #cf7a2a',borderRadius:4,padding:'0 5px'}}>💵 POBRANIE {imp.codAmount?parseFloat(imp.codAmount).toFixed(2)+' zł':''}</span>}
                     </div>}
                     {imp.pozycje&&imp.pozycje.length>0&&(()=>{
+                      // Sprawdź czy to moskitiery — tylko wtedy licz jednostki
+                      const offerLower=(imp.offerNames||imp.deliveryMethodName||'').toLowerCase();
+                      const isMoskitiera=offerLower.includes('moskitier')||offerLower.includes('siatk')||offerLower.includes('ramk')||offerLower.includes('drzwi');
+                      if(!isMoskitiera) return null;
                       const jedn=imp.pozycje.reduce((s,p)=>s+(parseFloat(p.cenaNetto||0)*1.23*(parseInt(p.ilosc)||1)),0);
                       const szt=imp.pozycje.reduce((s,p)=>s+(parseInt(p.ilosc)||1),0);
                       const ile3=Math.round(jedn/3);
@@ -6159,7 +6163,25 @@ function App() {
             {/* ── Sekcja zamówienia odbioru ── */}
             {shipmentModal.createdShipmentId&&(
               <div style={{marginTop:16,padding:14,background:'#0a1a0a',border:'1px solid #2a5a2a',borderRadius:8}}>
-                <div style={{fontWeight:700,fontSize:14,color:'#afdf7f',marginBottom:10}}>📞 Zamów odbiór przez kuriera</div>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
+                  <div style={{fontWeight:700,fontSize:14,color:'#afdf7f'}}>📞 Zamów odbiór przez kuriera</div>
+                  <button onClick={async()=>{
+                    try{
+                      const imp=shipmentModal.imp;
+                      const r=await fetch(AUTORESPONDER_URL+'/shipment/label?kontoId='+imp.kontoId,{
+                        method:'POST',headers:{'x-api-key':AUTORESPONDER_KEY,'Content-Type':'application/json'},
+                        body:JSON.stringify({shipmentIds:[shipmentModal.createdShipmentId],pageSize:'A6'})
+                      });
+                      const d=await r.json();
+                      if(!d.pdf){alert('❌ Brak PDF');return;}
+                      const blob=new Blob([Uint8Array.from(atob(d.pdf),c=>c.charCodeAt(0))],{type:'application/pdf'});
+                      window.open(URL.createObjectURL(blob),'_blank');
+                    }catch(e){alert('❌ '+e.message);}
+                  }}
+                  style={{padding:'5px 12px',borderRadius:6,border:'1px solid #3a7a3a',background:'#1a3a1a',color:'#7acf7a',cursor:'pointer',fontSize:12,fontWeight:700}}>
+                    🖨 Drukuj etykietę
+                  </button>
+                </div>
                 {pickupLoading&&<div style={{color:'#7abfdf',fontSize:13}}>⟳ Pobieranie terminów...</div>}
                 {pickupResult&&pickupResult.ok&&<div style={{color:'#7acf7a',fontSize:13}}>✅ Odbiór zamówiony!</div>}
                 {pickupResult&&!pickupResult.ok&&<div style={{color:'#cf4a4a',fontSize:12,wordBreak:'break-all'}}>❌ {pickupResult.error||JSON.stringify(pickupResult)}</div>}
