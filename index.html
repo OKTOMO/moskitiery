@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260427.18</title>
+<title>MosquitoApp v20260427.19</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260427.18';
+  window.__MOSK_VERSION='20260427.19';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><g transform='translate(50,50)'><ellipse cx='0' cy='0' rx='22' ry='9' fill='%234a9a4a' transform='rotate(-20)'/><ellipse cx='18' cy='8' rx='16' ry='6' fill='%233a7a3a' transform='rotate(-10)'/><ellipse cx='34' cy='16' rx='12' ry='5' fill='%232a6a2a' transform='rotate(-5)'/><ellipse cx='46' cy='22' rx='8' ry='4' fill='%231a5a1a'/><circle cx='-20' cy='-5' r='8' fill='%234a9a4a'/><line x1='-28' y1='-5' x2='-58' y2='5' stroke='%232a6a2a' stroke-width='2' stroke-linecap='round'/><path d='M-18,-13 Q-30,-28 -22,-38' fill='none' stroke='%233a7a3a' stroke-width='1.5' stroke-linecap='round'/><path d='M-14,-13 Q-10,-30 -4,-38' fill='none' stroke='%233a7a3a' stroke-width='1.5' stroke-linecap='round'/><ellipse cx='-2' cy='-18' rx='28' ry='10' fill='%237acf7a' opacity='0.7' transform='rotate(-30,-2,-18)'/><ellipse cx='10' cy='-16' rx='24' ry='8' fill='%237acf7a' opacity='0.5' transform='rotate(-15,10,-16)'/><line x1='-5' y1='6' x2='-22' y2='22' stroke='%232a5a2a' stroke-width='1.5' stroke-linecap='round'/><line x1='-22' y1='22' x2='-30' y2='38' stroke='%232a5a2a' stroke-width='1.2' stroke-linecap='round'/><line x1='5' y1='7' x2='-8' y2='24' stroke='%232a5a2a' stroke-width='1.5' stroke-linecap='round'/><line x1='-8' y1='24' x2='-14' y2='40' stroke='%232a5a2a' stroke-width='1.2' stroke-linecap='round'/><line x1='15' y1='8' x2='8' y2='26' stroke='%232a5a2a' stroke-width='1.5' stroke-linecap='round'/><line x1='8' y1='26' x2='4' y2='42' stroke='%232a5a2a' stroke-width='1.2' stroke-linecap='round'/><line x1='12' y1='8' x2='28' y2='22' stroke='%232a5a2a' stroke-width='1.5' stroke-linecap='round'/><line x1='28' y1='22' x2='38' y2='36' stroke='%232a5a2a' stroke-width='1.2' stroke-linecap='round'/><line x1='22' y1='12' x2='40' y2='20' stroke='%232a5a2a' stroke-width='1.5' stroke-linecap='round'/><line x1='40' y1='20' x2='52' y2='32' stroke='%232a5a2a' stroke-width='1.2' stroke-linecap='round'/></g></svg>">
@@ -4507,6 +4507,7 @@ function App() {
                             onClick={()=>{setDpdModal(o);setDpdWaga('5');setDpdCod(false);setDpdCodAmount('');setDpdError('');}}>
                             📦
                           </button>}
+                          <button className="btn-del" onClick={()=>{if(confirm("Usunąć "+o.numerZlecenia+"?"))updateOrders(orders.filter(x=>x.id!==o.id))}} title="Usuń" style={{background:"#2a0a0a",borderColor:"#6a2a2a",color:"#df7a7a",padding:"3px 8px",fontSize:13}}>🗑</button>
                         </td>
                         <td style={{padding:"10px 10px"}}><button className="btn-pdf" style={{background:"#2a4a6a"}} onClick={()=>{setForm({data:o.data,firma:o.firma,klientImie:o.klientImie,klientUlica:o.klientUlica||"",klientKod:o.klientKod||"",klientMiasto:o.klientMiasto,telefon:o.telefon,uwagi:o.uwagi,pozycje:o.pozycje.map(p=>({...p}))});setNumerOverride(o.numerZlecenia);setEditingId(o.id);setTab("nowe");setSaved(false);}} title="Edytuj zamówienie">✏️</button></td>
                         <td style={{padding:"10px 10px"}}>
@@ -4522,7 +4523,6 @@ function App() {
                               setMsgSubTab("threads");
                               setTab("wiadomosci");
                             }}>✉️</button>
-                          <button className="btn-del" onClick={()=>{if(confirm("Usunąć "+o.numerZlecenia+"?"))updateOrders(orders.filter(x=>x.id!==o.id))}} title="Usuń zamówienie">🗑</button>
                         </td>
                       </tr>
                     );
