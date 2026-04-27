@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260427.31</title>
+<title>MosquitoApp v20260427.34</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260427.31';
+  window.__MOSK_VERSION='20260427.34';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 </script>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><g transform='translate(50,50)'><ellipse cx='0' cy='0' rx='22' ry='9' fill='%234a9a4a' transform='rotate(-20)'/><ellipse cx='18' cy='8' rx='16' ry='6' fill='%233a7a3a' transform='rotate(-10)'/><ellipse cx='34' cy='16' rx='12' ry='5' fill='%232a6a2a' transform='rotate(-5)'/><ellipse cx='46' cy='22' rx='8' ry='4' fill='%231a5a1a'/><circle cx='-20' cy='-5' r='8' fill='%234a9a4a'/><line x1='-28' y1='-5' x2='-58' y2='5' stroke='%232a6a2a' stroke-width='2' stroke-linecap='round'/><path d='M-18,-13 Q-30,-28 -22,-38' fill='none' stroke='%233a7a3a' stroke-width='1.5' stroke-linecap='round'/><path d='M-14,-13 Q-10,-30 -4,-38' fill='none' stroke='%233a7a3a' stroke-width='1.5' stroke-linecap='round'/><ellipse cx='-2' cy='-18' rx='28' ry='10' fill='%237acf7a' opacity='0.7' transform='rotate(-30,-2,-18)'/><ellipse cx='10' cy='-16' rx='24' ry='8' fill='%237acf7a' opacity='0.5' transform='rotate(-15,10,-16)'/><line x1='-5' y1='6' x2='-22' y2='22' stroke='%232a5a2a' stroke-width='1.5' stroke-linecap='round'/><line x1='-22' y1='22' x2='-30' y2='38' stroke='%232a5a2a' stroke-width='1.2' stroke-linecap='round'/><line x1='5' y1='7' x2='-8' y2='24' stroke='%232a5a2a' stroke-width='1.5' stroke-linecap='round'/><line x1='-8' y1='24' x2='-14' y2='40' stroke='%232a5a2a' stroke-width='1.2' stroke-linecap='round'/><line x1='15' y1='8' x2='8' y2='26' stroke='%232a5a2a' stroke-width='1.5' stroke-linecap='round'/><line x1='8' y1='26' x2='4' y2='42' stroke='%232a5a2a' stroke-width='1.2' stroke-linecap='round'/><line x1='12' y1='8' x2='28' y2='22' stroke='%232a5a2a' stroke-width='1.5' stroke-linecap='round'/><line x1='28' y1='22' x2='38' y2='36' stroke='%232a5a2a' stroke-width='1.2' stroke-linecap='round'/><line x1='22' y1='12' x2='40' y2='20' stroke='%232a5a2a' stroke-width='1.5' stroke-linecap='round'/><line x1='40' y1='20' x2='52' y2='32' stroke='%232a5a2a' stroke-width='1.2' stroke-linecap='round'/></g></svg>">
@@ -1435,6 +1435,27 @@ function App() {
       });
       setAllegroImportResults(allResults);
       setAllegroImportShow(true);
+      // Auto-aktualizuj statusy na podstawie fulfillmentStatus z Allegro
+      setAppStatuses(prev=>{
+        const next={...prev};
+        let changed=false;
+        allResults.forEach(imp=>{
+          const fs=imp.fulfillmentStatus||'';
+          const id=imp.allegroOrderId;
+          if(!id) return;
+          if((fs==='SENT'||fs==='DELIVERED')&&next[id]!=='Wysłano'){
+            next[id]='Wysłano'; changed=true;
+            // Zapisz timestamp
+            const times=JSON.parse(localStorage.getItem('app_status_times')||'{}');
+            times[id]=new Date().toISOString();
+            localStorage.setItem('app_status_times',JSON.stringify(times));
+          } else if(fs==='READY_FOR_SHIPMENT'&&!next[id]){
+            next[id]='W realizacji'; changed=true;
+          }
+        });
+        if(changed) localStorage.setItem('app_statuses',JSON.stringify(next));
+        return changed?next:prev;
+      });
       if(allResults.length===0) setAllegroImportError("Brak zamówień — sprawdź czy tokeny są zsynchronizowane w Admin → Autoresponder → Synchronizuj tokeny");
       if(d.errors&&d.errors.length>0) console.warn("Błędy pobierania:",d.errors);
     }catch(e){
@@ -1607,6 +1628,27 @@ function App() {
       kalData:null,
       pozycje:parsedPozycje||[defaultPoz()]
     });
+    // Auto-parsowanie AI jeśli jest buyerMsg i brak kalNum i brak parsedPozycje
+    if(!kalNum && !parsedPozycje && imp.buyerMsg){
+      setTimeout(async()=>{
+        try{
+          setImportModal(prev=>prev?{...prev,kalLoading:true,kalError:''}:prev);
+          const r=await fetch(AUTORESPONDER_URL+'/order/parse',{
+            method:'POST',
+            headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},
+            body:JSON.stringify({msg:imp.buyerMsg,offerNames:imp.offerNames||'',ilosc:1})
+          });
+          const d=await r.json();
+          if(d.ok&&d.pozycje&&d.pozycje.length>0){
+            setImportModal(prev=>prev?{...prev,pozycje:d.pozycje,mode:'msg',kalLoading:false,kalError:''}:prev);
+          } else {
+            setImportModal(prev=>prev?{...prev,kalLoading:false}:prev);
+          }
+        }catch(e){
+          setImportModal(prev=>prev?{...prev,kalLoading:false}:prev);
+        }
+      },500);
+    }
     // Auto-fetch danych kalkulatora jeśli numer został wykryty
     if(kalNum){
       fetch(AUTORESPONDER_URL+"/kalkulator/order/"+encodeURIComponent(kalNum.toLowerCase()))
@@ -2620,6 +2662,24 @@ function App() {
       }
       // Etykieta otwierana ręcznie przez przyciski w panelu akcji
     }
+    // Auto-tracking DPD — sprawdź statusy przesyłek w tle
+    const _sh=JSON.parse(localStorage.getItem('allegro_shipments')||'{}');
+    Object.entries(_sh).forEach(([orderId,sh])=>{
+      if(sh.waybill && sh.carrierId && sh.carrierId.toLowerCase().includes('dpd') && !sh.delivered){
+        fetch(AUTORESPONDER_URL+'/dpd/track?waybill='+encodeURIComponent(sh.waybill),{
+          headers:{'x-api-key':AUTORESPONDER_KEY}
+        }).then(r=>r.json()).then(d=>{
+          if(d.ok && (d.isPickedUp||d.isDelivered||d.isSent)){
+            setOrderAppStatus(orderId,'Wysłano');
+            setAllegroShipments(prev=>{
+              const next={...prev,[orderId]:{...prev[orderId],delivered:true,deliveredAt:new Date().toISOString()}};
+              localStorage.setItem('allegro_shipments',JSON.stringify(next));
+              return next;
+            });
+          }
+        }).catch(()=>{});
+      }
+    });
     // Nie kasuj allegroOrderIdForForm — przechowaj w ref żeby przyciski działały po zapisie
     const _savedAllegroIdRef=allegroOrderIdForForm;
     setWiadomosc(""); setAdres(""); setForm(pustyForm(form.firma)); setNumerOverride(""); setKalNumerForForm("");
