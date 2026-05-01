@@ -530,7 +530,7 @@ const BRANDS = {
     display: 'FAVOUR',
     prefix: 'fav',
     nip: 'PL522-231-74-50',
-    email: 'favour.biuro@gmail.com',
+    email: 'biuro@oktomo.pl',
     color: '#4CAF50',
     kontoId: 'FAVOUR',
     kontoBg: '#333',
@@ -578,7 +578,7 @@ const BRANDS = {
     display: 'STAROLESKA',
     prefix: 'sta',
     nip: 'PL522-231-74-50',
-    email: 'favour.biuro@gmail.com',
+    email: 'biuro@oktomo.pl',
     color: '#1abc9c',
     kontoId: 'STAROLESKA',
     kontoBg: '#0d3d30',
@@ -616,7 +616,7 @@ const AUCTIONLINKS = {
 
 const WORKERURL = 'https://allegro-autoresponder.favour-biuro.workers.dev';
 const WORKERKEY = 'kalkulator2025';
-const MAILTOADDR = 'favour.biuro@gmail.com';
+const MAILTOADDR = 'biuro@oktomo.pl';
 
 /* ==========================
    STAN
@@ -903,6 +903,11 @@ async function sendForm() {
     jednostka:    r.jednostka
   }));
 
+  // Prawdziwa cena: sumuj surowe obwody wszystkich wierszy, zaokrąglij w górę do pełnych 10 cm (= 1 jednostka), × 3 zł/jedn.
+  const totalObwodCM = rows.reduce((a, r) => a + calcRowPrice(r), 0); // suma obwodów × ilość (cm)
+  const totalUnits = Math.ceil(totalObwodCM / 10);
+  const totalCost = totalUnits * 3;
+
   const payload = {
     orderNumber,
     createdAt: new Date().toISOString(),
@@ -914,7 +919,9 @@ async function sendForm() {
     pozycje,
     podsumowanie: {
       units: pozycje.reduce((a, p) => a + p.ilosc, 0),
-      cost: rows.reduce((a, r) => a + calcRowPrice(r), 0)
+      cost: totalCost,
+      totalUnits: totalUnits,
+      totalObwodCM: Math.round(totalObwodCM * 100) / 100
     }
   };
 
@@ -1288,17 +1295,4 @@ const KOLORYSIATKI = [
     <button onclick="document.querySelectorAll('button').forEach(function(b){if(b.innerText.includes('Generuj'))b.click()})" style="background:#e8a020;color:#1a2233;border:none;padding:7px 10px;border-radius:7px;font-weight:bold;cursor:pointer;font-size:13px;width:100%">📋 Generuj nr zamówienia</button>
     <div style="display:flex;gap:5px">
       <button onclick="copyMsg()" id="btnCopySticky" style="background:#2a4080;color:#fff;border:none;padding:7px 6px;border-radius:7px;font-weight:bold;cursor:pointer;font-size:13px;flex:1">📋 Kopiuj wiadomość</button>
-      <button onclick="downloadPDF()" style="background:#2a4080;color:#fff;border:none;padding:7px 6px;border-radius:7px;font-weight:bold;cursor:pointer;font-size:13px;flex:1">💾 Zapisz PDF</button>
-    </div>
-  </div>
-</div>
-<script>
-setInterval(function(){
-  var s = document.getElementById('priceTotal');
-  var d = document.getElementById('sticky-price');
-  if (s && d && s.textContent.trim()) d.innerText = s.textContent.trim();
-}, 300);
-</script>
-
-</body>
-</html>
+      <button onclick="downloadPDF()" style="background:#2a4080;color:#fff;border:none;padding:7
