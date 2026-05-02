@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<title>🔧 Naprawa numeracji zleceń</title>
+<style>
+  body { font-family: monospace; background: #0c1018; color: #7acf7a; padding: 20px; }
+  h1 { color: #afffaf; }
+  input, select { background: #1a2a1a; border: 1px solid #2a4a2a; color: #7acf7a; padding: 6px 10px; border-radius: 4px; font-family: monospace; }
+  button { background: #1a3a1a; border: 1px solid #2a6a2a; color: #7acf7a; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-family: monospace; margin: 4px; }
+  button:hover { background: #2a4a2a; }
+  button.red { background: #3a1a1a; border-color: #6a2a2a; color: #cf7a7a; }
+  button.blue { background: #1a1a3a; border-color: #2a2a6a; color: #7a9acf; }
+  table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+  th { background: #1a2a1a; color: #afffaf; padding: 6px; text-align: left; border: 1px solid #2a4a2a; }
+  td { padding: 5px 6px; border: 1px solid #1a3a1a; vertical-align: top; }
+  tr:hover td { background: #0a1a0a; }
+  .bad { color: #cf4a4a; font-weight: bold; }
+  .ok { color: #4acf4a; }
+  .warn { color: #cfcf4a; }
+  .log { background: #0a1a0a; border: 1px solid #1a3a1a; padding: 10px; margin: 10px 0; max-height: 200px; overflow-y: auto; font-size: 11px; }
+  .section { background: #0a1a0a; border: 1px solid #2a4a2a; border-radius: 6px; padding: 14px; margin: 14px 0; }
+  .nr-input { width: 120px; }
+  .firma-badge { padding: 2px 6px; border-radius: 3px; font-size: 11px; }
+  .F { background: #1a2a3a; color: #7aaacf; }
+  .AR { background: #2a1a3a; color: #aa7acf; }
+  .E { background: #1a3a1a; color: #7acf9a; }
+</style>
+</head>
+<body>
+<h1>🔧 Naprawa numeracji zleceń</h1>
+
+<div class="section">
+  <b>Klucz Workera:</b><br>
+  <input id="workerKey" type="password" style="width:400px" placeholder="masterKey z Cloudflare KV">
+  <button onclick="loadOrders()">📥 Pobierz zlecenia</button>
+  <div id="loadStatus" style="margin-top:8px;color:#cf9a4a"></div>
+</div>
+
+<div class="section" id="statsSection" style="display:none">
+  <b>Statystyki:</b>
+  <div id="stats" style="margin-top:6px"></div>
+</div>
+
+<div class="section" id="problemsSection" style="display:none">
+  <b>⚠️ Problematyczne zlecenia:</b>
+  <div style="margin:8px 0">
+    <button onclick="autoFix()">🔧 Auto-napraw numerację</button>
+    <button class="blue" onclick="showAll()">📋 Pokaż wszystkie</button>
+    <button class="blue" onclick="showProblems()">⚠️ Pokaż tylko problemy</button>
+  </div>
+  <div id="problemsTable"></div>
+</div>
+
+<div class="section" id="saveSection" style="display:none">
+  <button onclick="saveOrders()" style="background:#1a3a1a;border-color:#4acf4a;color:#4acf4a;font-size:14px;padding:10px 20px">
+    💾 Zapisz poprawione zlecenia do KV
+  </button>
+  <div id="saveStatus" style="margin-top:8px"></div>
+</div>
+
+<div class="log" id="log"></div>
+
+<script>
+const WORKER = 'https://allegro-autoresponder.favour-biuro.workers.dev';
+let allOrders = [];
+let modified = false;
+
+function log(msg, color='#7acf7a') {
+  const d = document.getElementById('log');
+  d.innerHTML += `<div style="color:${color}">${new Date().toLocaleTimeString('pl')} ${msg}</div>`;
+  d.scrollTop = d.scrollHeight;
+}
+
+function getKey() {
+  return document.getElementById('workerKey').value.trim() || localStorage.getItem('mosk_worker_key') || '';
+}
+
+async function loadOrders() {
+  const key = getKey();
+  if (!key) { alert('Wpisz klucz Workera'); return; }
+  localStorage.setItem('mosk_worker_key', key);
+  
+  document.getElementById('loadStatus').textContent = '⏳ Pobieranie...';
+  try {
+    const r = await fetch(WORKER + '/mosk/orders', { headers: { 'x-api-key': key } });
+    const d = await r.json();
+    if (!d.ok) throw new Error(JSON.stringify(d));
+    allOrders = d.orders || [];
+    log(`✅ Pobrano ${allOrders.length} zleceń`, '#4acf4a');
+    document.getElementById('loadStatus').textContent = `✅ Pobrano ${allOrders.length} zleceń`;
+    analyze();
+  } catch(e) {
+    log('❌ Błąd: ' + e.message, '#cf4a4a');
+    document.getElementById('loadStatus').textContent = '❌ ' + e.message;
+  }
+}
+
+function analyze() {
+  const rok = new Date().getFullYear().toString().slice(-2);
+  
+  // Znajdź duplikaty i braki
+  const byFirma = {};
+  const numCount = {};
+  
+  allOrders.forEach(o => {
+    const f = o.firma || 'F';
+    if (!byFirma[f]) byFirma[f] = [];
+    byFirma[f].push(o);
+    
+    const nr = o.numerZlecenia || '';
+    if (nr) {
+      if (!numCount[nr]) numCount[nr] = [];
+      numCount[nr].push(o);
+    }
+  });
+  
+  // Statystyki
+  let statsHtml = '';
+  for (const [f, ords] of Object.entries(byFirma)) {
+    const pat = new RegExp(`^(\\d+)\\.${rok} ${f}$`);
+    const nums = ords.map(o=>o.numerZlecenia).filter(n=>n&&pat.test(n)).map(n=>parseInt(n.match(pat)[1]));
+    const maxNum = nums.length ? Math.max(...nums) : 0;
+    const empty = ords.filter(o=>!o.numerZlecenia).length;
+    const dups = Object.entries(numCount).filter(([nr,list])=>list.length>1&&nr.includes(f)).length;
+    statsHtml += `<div style="margin:4px 0">
+      <span class="firma-badge ${f}">${f}</span> 
+      Zleceń: <b>${ords.length}</b> | 
+      Max nr: <b class="${maxNum?'ok':'bad'}">${maxNum || 'brak'}</b> | 
+      Bez numeru: <b class="${empty?'bad':'ok'}">${empty}</b> | 
+      Duplikaty: <b class="${dups?'bad':'ok'}">${dups}</b>
+    </div>`;
+  }
+  
+  document.getElementById('stats').innerHTML = statsHtml;
+  document.getElementById('statsSection').style.display = 'block';
+  document.getElementById('problemsSection').style.display = 'block';
+  document.getElementById('saveSection').style.display = 'block';
+  
+  showProblems();
+}
+
+function showProblems() {
+  const rok = new Date().getFullYear().toString().slice(-2);
+  const numCount = {};
+  allOrders.forEach(o => {
+    const nr = o.numerZlecenia || '';
+    if (nr) {
+      if (!numCount[nr]) numCount[nr] = 0;
+      numCount[nr]++;
+    }
+  });
+  
+  const problems = allOrders.filter(o => {
+    if (!o.numerZlecenia) return true;
+    if (numCount[o.numerZlecenia] > 1) return true;
+    return false;
+  });
+  
+  log(`Znaleziono ${problems.length} problematycznych zleceń`);
+  renderTable(problems, numCount);
+}
+
+function showAll() {
+  const numCount = {};
+  allOrders.forEach(o => {
+    const nr = o.numerZlecenia || '';
+    if (nr) {
+      if (!numCount[nr]) numCount[nr] = 0;
+      numCount[nr]++;
+    }
+  });
+  renderTable(allOrders, numCount);
+}
+
+function renderTable(orders, numCount) {
+  // Sortuj po dacie
+  const sorted = [...orders].sort((a,b) => {
+    const da = new Date(a.boughtAt||a.data||0);
+    const db = new Date(b.boughtAt||b.data||0);
+    return da - db;
+  });
+  
+  let html = `<table>
+    <tr>
+      <th>#</th><th>Firma</th><th>Numer zlecenia</th><th>Klient</th><th>Data</th><th>Status</th><th>Akcja</th>
+    </tr>`;
+  
+  sorted.forEach((o, i) => {
+    const nr = o.numerZlecenia || '';
+    const isDup = nr && numCount[nr] > 1;
+    const isEmpty = !nr;
+    const cls = isDup ? 'bad' : (isEmpty ? 'warn' : 'ok');
+    const problem = isDup ? '⚠️ DUPLIKAT' : (isEmpty ? '❌ BRAK' : '✅');
+    
+    html += `<tr>
+      <td style="color:#4a6a4a">${i+1}</td>
+      <td><span class="firma-badge ${o.firma||'F'}">${o.firma||'F'}</span></td>
+      <td class="${cls}">
+        <input class="nr-input" value="${nr}" 
+          onchange="changeNr('${o.id}', this.value)"
+          style="background:#0a1a0a;border:1px solid #${isDup?'6a2a2a':(isEmpty?'6a6a2a':'2a4a2a')};color:#${isDup?'cf7a7a':(isEmpty?'cfcf4a':'7acf7a')};width:130px;padding:3px 6px">
+      </td>
+      <td>${o.klientImie||''}</td>
+      <td style="color:#4a6a4a">${(o.data||o.boughtAt||'').slice(0,10)}</td>
+      <td>${problem}</td>
+      <td><button class="red" onclick="clearNr('${o.id}')" style="padding:2px 8px;font-size:11px">✕ Wyczyść</button></td>
+    </tr>`;
+  });
+  
+  html += '</table>';
+  document.getElementById('problemsTable').innerHTML = html;
+}
+
+function changeNr(id, newNr) {
+  const o = allOrders.find(x => String(x.id) === String(id));
+  if (o) {
+    o.numerZlecenia = newNr.trim();
+    modified = true;
+    log(`Zmieniono nr zlecenia ${id} → "${newNr}"`, '#cfcf4a');
+  }
+}
+
+function clearNr(id) {
+  const o = allOrders.find(x => String(x.id) === String(id));
+  if (o) {
+    o.numerZlecenia = '';
+    modified = true;
+    log(`Wyczyszczono nr zlecenia ${id}`, '#cf9a4a');
+    analyze();
+  }
+}
+
+function autoFix() {
+  const rok = new Date().getFullYear().toString().slice(-2);
+  
+  // Pogrupuj po firmie
+  const firmy = [...new Set(allOrders.map(o=>o.firma||'F'))];
+  
+  for (const firma of firmy) {
+    const pat = new RegExp(`^(\\d+)\\.${rok} ${firma === 'AR' ? '(?:AR|A)' : firma}$`);
+    const patD = new RegExp(`^D(\\d+)\\.${rok} ${firma}$`);
+    
+    // Znajdź zlecenia tej firmy z tego roku
+    const tegoRoku = allOrders.filter(o => {
+      const f = o.firma || 'F';
+      const nr = o.numerZlecenia || '';
+      const data = o.data || o.boughtAt || '';
+      const isThisYear = data.startsWith('20' + rok) || data.startsWith(rok);
+      return f === firma && (pat.test(nr) || patD.test(nr) || !nr);
+    });
+    
+    // Sortuj po dacie/id
+    tegoRoku.sort((a,b) => {
+      const da = new Date(a.boughtAt||a.data||0);
+      const db = new Date(b.boughtAt||b.data||0);
+      if (da.getTime() !== db.getTime()) return da - db;
+      return (a.id||0) - (b.id||0);
+    });
+    
+    // Znajdź max istniejący numer (bez duplikatów)
+    const numCount = {};
+    allOrders.forEach(o => {
+      const nr = o.numerZlecenia||'';
+      if (nr) numCount[nr] = (numCount[nr]||0)+1;
+    });
+    
+    // Znajdź zlecenia bez numeru lub z duplikatem
+    const toFix = tegoRoku.filter(o => {
+      const nr = o.numerZlecenia||'';
+      return !nr || numCount[nr] > 1;
+    });
+    
+    if (toFix.length === 0) {
+      log(`${firma}: brak do naprawy`, '#4acf4a');
+      continue;
+    }
+    
+    // Znajdź max numer
+    const allNums = allOrders
+      .map(o=>o.numerZlecenia||'')
+      .filter(n=>pat.test(n))
+      .map(n=>parseInt(n.match(pat)[1]));
+    let maxNum = allNums.length ? Math.max(...allNums) : 0;
+    
+    // Przypisz nowe numery
+    for (const o of toFix) {
+      // Jeśli ma duplikat — tylko jeden zostawia stary, reszta dostaje nowy
+      const nr = o.numerZlecenia||'';
+      if (nr && numCount[nr] > 1) {
+        numCount[nr]--;
+        if (numCount[nr] >= 1) {
+          // Ten dostaje nowy numer
+          maxNum++;
+          const nowyNr = `${maxNum}.${rok} ${firma}`;
+          log(`${firma}: duplikat ${nr} → ${nowyNr} (${o.klientImie||o.id})`, '#cfcf4a');
+          o.numerZlecenia = nowyNr;
+          modified = true;
+        }
+        // else: ostatni z duplikatów zostawia stary numer
+      } else if (!nr) {
+        maxNum++;
+        const nowyNr = `${maxNum}.${rok} ${firma}`;
+        log(`${firma}: brak numeru → ${nowyNr} (${o.klientImie||o.id})`, '#cf9a4a');
+        o.numerZlecenia = nowyNr;
+        modified = true;
+      }
+    }
+  }
+  
+  analyze();
+  log('✅ Auto-naprawa zakończona', '#4acf4a');
+}
+
+async function saveOrders() {
+  if (!modified) { alert('Brak zmian do zapisania'); return; }
+  const key = getKey();
+  if (!key) { alert('Brak klucza Workera'); return; }
+  
+  if (!confirm(`Zapisać ${allOrders.length} zleceń do KV? Ta operacja nadpisze obecne dane.`)) return;
+  
+  document.getElementById('saveStatus').textContent = '⏳ Zapisywanie...';
+  try {
+    const r = await fetch(WORKER + '/mosk/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key },
+      body: JSON.stringify({ orders: allOrders })
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(JSON.stringify(d));
+    modified = false;
+    log(`✅ Zapisano ${allOrders.length} zleceń do KV`, '#4acf4a');
+    document.getElementById('saveStatus').textContent = `✅ Zapisano ${allOrders.length} zleceń`;
+  } catch(e) {
+    log('❌ Błąd zapisu: ' + e.message, '#cf4a4a');
+    document.getElementById('saveStatus').textContent = '❌ ' + e.message;
+  }
+}
+
+// Auto-wypełnij klucz z localStorage
+window.onload = () => {
+  const key = localStorage.getItem('mosk_worker_key') || '';
+  if (key) document.getElementById('workerKey').value = key;
+};
+</script>
+</body>
+</html>
