@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<title>🔄 Przywracanie zleceń z maili</title>
+<style>
+  body { font-family: monospace; background: #0c1018; color: #7acf7a; padding: 20px; }
+  h1 { color: #afffaf; }
+  button { background: #1a3a1a; border: 1px solid #2a6a2a; color: #7acf7a; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-family: monospace; font-size: 14px; }
+  .section { background: #0a1a0a; border: 1px solid #2a4a2a; border-radius: 6px; padding: 14px; margin: 14px 0; }
+  .log { background: #0a1a0a; border: 1px solid #1a3a1a; padding: 10px; margin: 10px 0; max-height: 400px; overflow-y: auto; font-size: 12px; line-height: 1.6; }
+  input { background: #1a2a1a; border: 1px solid #2a4a2a; color: #7acf7a; padding: 6px 10px; border-radius: 3px; font-family: monospace; }
+  .warn { color: #cfcf4a; }
+  b { color: #afffaf; }
+</style>
+</head>
+<body>
+<h1>🔄 Przywracanie zleceń z maili — v20260501</h1>
+
+<div class="section">
+  <b>Klucz Workera:</b><br><br>
+  <input id="workerKey" type="password" style="width:500px;font-size:14px" placeholder="masterKey z Cloudflare KV">
+  <br><br>
+  <button onclick="restore()">🔄 Przywróć brakujące zlecenia do KV</button>
+</div>
+
+<div class="section">
+  <b>Co zostanie dodane (82 zlecenia z maili):</b>
+  <div style="margin-top:8px;line-height:2">
+    <span style="color:#7aaacf">F</span>: 103, 106, 113–160, D15–D18 (brak w mailach: 104, 105, 107–112)<br>
+    <span style="color:#aa7acf">AR</span>: 74, 80–100, 102 (brak w mailach: 75–79, 101)<br>
+    <span style="color:#7acf9a">E</span>: 35–39 ✅<br>
+    <div class="warn">⚠️ Narzędzie pomija zlecenia które już są w KV — bezpieczne do uruchomienia.</div>
+  </div>
+</div>
+
+<div class="log" id="log"><div style="color:#4a6a4a">Wpisz klucz i kliknij Przywróć...</div></div>
+
+<script>
+const WORKER = 'https://allegro-autoresponder.favour-biuro.workers.dev';
+const MISSING = [
+  {nr:"103.26 F",f:"F",k:"Kowal Piotr",m:"Goszcz",d:"2026-04-25"},
+  {nr:"106.26 F",f:"F",k:"Stawarz Dominik",m:"Płaza",d:"2026-04-20"},
+  {nr:"113.26 F",f:"F",k:"Wyszyńska Sylwia",m:"Łódź",d:"2026-04-27"},
+  {nr:"114.26 F",f:"F",k:"Kroczek Marcin",m:"Podegrodzie",d:"2026-04-19"},
+  {nr:"115.26 F",f:"F",k:"Naniewicz Sławek",m:"Police",d:"2026-04-19"},
+  {nr:"116.26 F",f:"F",k:"Nowak Jacek",m:"Luboszyce",d:"2026-04-19"},
+  {nr:"117.26 F",f:"F",k:"Pawełoszek Dawid",m:"Łódź",d:"2026-04-22"},
+  {nr:"118.26 F",f:"F",k:"Kozłowska Aleksandra",m:"Szczecin",d:"2026-04-20"},
+  {nr:"119.26 F",f:"F",k:"Pawłowicz Jakub",m:"Pogwizdów",d:"2026-04-20"},
+  {nr:"120.26 F",f:"F",k:"Nazarski Maksymilian",m:"Chrząstawa Mała",d:"2026-04-20"},
+  {nr:"121.26 F",f:"F",k:"Tomasz Kulig",m:"Stary Sącz",d:"2026-04-20"},
+  {nr:"122.26 F",f:"F",k:"Kłeczek Łukasz",m:"Tenczynek",d:"2026-04-20"},
+  {nr:"123.26 F",f:"F",k:"Bzdziel Marcin",m:"Wronki",d:"2026-04-20"},
+  {nr:"124.26 F",f:"F",k:"Piątek Małgorzata",m:"Firlej",d:"2026-04-20"},
+  {nr:"125.26 F",f:"F",k:"Samojedny Grzegorz",m:"Wrocław",d:"2026-04-20"},
+  {nr:"126.26 F",f:"F",k:"Murawski Tomasz",m:"Kowalewo",d:"2026-04-21"},
+  {nr:"127.26 F",f:"F",k:"Kroczek Paweł",m:"Złotoryja",d:"2026-04-21"},
+  {nr:"128.26 F",f:"F",k:"Janeczek Jarosław",m:"Rybna",d:"2026-04-21"},
+  {nr:"129.26 F",f:"F",k:"Walczewski Oskar",m:"Radom",d:"2026-04-21"},
+  {nr:"130.26 F",f:"F",k:"Rębacz Ewelina",m:"Szczecin",d:"2026-04-22"},
+  {nr:"131.26 F",f:"F",k:"Nikołajuk Tomasz",m:"Białystok",d:"2026-04-22"},
+  {nr:"132.26 F",f:"F",k:"Dominko Alina",m:"Ożarów Maz.",d:"2026-04-22"},
+  {nr:"133.26 F",f:"F",k:"Ziaja Marzena",m:"Brzeźnica",d:"2026-04-23"},
+  {nr:"134.26 F",f:"F",k:"Iwaniuk Tomasz",m:"Hajnówka",d:"2026-04-23"},
+  {nr:"135.26 F",f:"F",k:"Ostapowicz Natalia",m:"Mrągowo",d:"2026-04-23"},
+  {nr:"136.26 F",f:"F",k:"Kowalczyk Sonia",m:"Szczercow",d:"2026-04-23"},
+  {nr:"137.26 F",f:"F",k:"Górzyńska Agnieszka",m:"Kikół",d:"2026-04-23"},
+  {nr:"138.26 F",f:"F",k:"Pawlak Tomasz",m:"Gorzów Wielkopolski",d:"2026-04-24"},
+  {nr:"139.26 F",f:"F",k:"Mikołajko Maciej",m:"Radzymin",d:"2026-04-24"},
+  {nr:"140.26 F",f:"F",k:"Kubera Sławomir",m:"Kalisz",d:"2026-04-28"},
+  {nr:"141.26 F",f:"F",k:"Rotta Marek",m:"Rewa",d:"2026-04-28"},
+  {nr:"142.26 F",f:"F",k:"Notecki Krzysztof",m:"Poznań",d:"2026-04-28"},
+  {nr:"143.26 F",f:"F",k:"Aleksandrowicz Piotr",m:"Białystok",d:"2026-04-28"},
+  {nr:"144.26 F",f:"F",k:"Gaura Tomasz",m:"Lipnica Murowana",d:"2026-04-28"},
+  {nr:"145.26 F",f:"F",k:"Jędrzejas Marcin",m:"Sieborowice",d:"2026-04-28"},
+  {nr:"146.26 F",f:"F",k:"Klubkowski Nina",m:"Lubliniec",d:"2026-04-28"},
+  {nr:"147.26 F",f:"F",k:"Jaworska Arkadia",m:"Lubin",d:"2026-04-29"},
+  {nr:"148.26 F",f:"F",k:"Czapko Sylwester",m:"Bialowieza",d:"2026-04-29"},
+  {nr:"149.26 F",f:"F",k:"Rogoziński Tomasz",m:"Józefosław",d:"2026-04-29"},
+  {nr:"150.26 F",f:"F",k:"Pawłowicz Jakub",m:"Pogwizdów",d:"2026-04-29"},
+  {nr:"151.26 F",f:"F",k:"Stępiński Artur",m:"Lubin",d:"2026-04-29"},
+  {nr:"152.26 F",f:"F",k:"Rusnarczyk Elżbieta",m:"Prądzew",d:"2026-04-29"},
+  {nr:"153.26 F",f:"F",k:"Kowalczyk Sonia",m:"Szczercow",d:"2026-04-29"},
+  {nr:"154.26 F",f:"F",k:"Kuźniak Krzysztof",m:"Kraków",d:"2026-04-29"},
+  {nr:"155.26 F",f:"F",k:"Narajewska Maria",m:"Wrocław",d:"2026-04-29"},
+  {nr:"156.26 F",f:"F",k:"Gotszlik Karolina",m:"Bydgoszcz",d:"2026-04-30"},
+  {nr:"157.26 F",f:"F",k:"Mikołajko Maciej",m:"Radzymin",d:"2026-04-30"},
+  {nr:"158.26 F",f:"F",k:"Nowak Maciej",m:"Trzcianka",d:"2026-04-30"},
+  {nr:"159.26 F",f:"F",k:"Bartczak Maciej",m:"Barendrecht",d:"2026-04-30"},
+  {nr:"160.26 F",f:"F",k:"Głowala Marcin",m:"Zawada",d:"2026-04-30"},
+  {nr:"D15.26 F",f:"F",k:"Piwowarska Aneta",m:"Elbląg",d:"2026-04-22"},
+  {nr:"D16.26 F",f:"F",k:"Depka-Prondzińska Lucyna",m:"Nowa Wieś Wielka",d:"2026-04-21"},
+  {nr:"D17.26 F",f:"F",k:"Janowska Urszula",m:"Wieliczka",d:"2026-04-21"},
+  {nr:"D18.26 F",f:"F",k:"Andrushkiv Mariana",m:"Radzymin",d:"2026-04-30"},
+  {nr:"74.26 AR",f:"AR",k:"Bożek Tomasz",m:"Rzakta",d:"2026-04-20"},
+  {nr:"80.26 AR",f:"AR",k:"Kozłowski Patryk",m:"Jasieniec",d:"2026-04-19"},
+  {nr:"81.26 AR",f:"AR",k:"Domagała Dorota",m:"Kraków",d:"2026-04-19"},
+  {nr:"82.26 AR",f:"AR",k:"Beczała Zbigniew",m:"Suszec",d:"2026-04-19"},
+  {nr:"83.26 AR",f:"AR",k:"Pękala Adam",m:"Ustrzyki Dolne",d:"2026-04-20"},
+  {nr:"84.26 AR",f:"AR",k:"Budnik Weronika",m:"Wiry",d:"2026-04-21"},
+  {nr:"85.26 AR",f:"AR",k:"Haniszewski Marcin",m:"Drawski Młyn",d:"2026-04-21"},
+  {nr:"86.26 AR",f:"AR",k:"Zając Daniel",m:"Złotniki",d:"2026-04-21"},
+  {nr:"87.26 AR",f:"AR",k:"Daniel Bazyluk",m:"Kuriany",d:"2026-04-23"},
+  {nr:"88.26 AR",f:"AR",k:"Toporski Rafał",m:"Gubin",d:"2026-04-23"},
+  {nr:"89.26 AR",f:"AR",k:"Domagała Dorota",m:"Kraków",d:"2026-04-25"},
+  {nr:"90.26 AR",f:"AR",k:"Beczała Małgorzata",m:"Suszec",d:"2026-04-25"},
+  {nr:"91.26 AR",f:"AR",k:"Kozłowski Patryk",m:"Jasieniec",d:"2026-04-25"},
+  {nr:"92.26 AR",f:"AR",k:"Malcher Tomasz",m:"Warszawa",d:"2026-04-26"},
+  {nr:"93.26 AR",f:"AR",k:"Konopa Elżbieta",m:"Tarnowskie Góry",d:"2026-04-26"},
+  {nr:"94.26 AR",f:"AR",k:"Augustyniak Patryk",m:"Sobienie Jeziory",d:"2026-04-26"},
+  {nr:"95.26 AR",f:"AR",k:"Szydłowski Paweł",m:"Zielona Góra",d:"2026-04-27"},
+  {nr:"96.26 AR",f:"AR",k:"Kowalewska Mirosława",m:"Lipno",d:"2026-04-27"},
+  {nr:"97.26 AR",f:"AR",k:"Sikora Tomasz",m:"Ustroń",d:"2026-04-28"},
+  {nr:"98.26 AR",f:"AR",k:"Kęsik Zbigniew",m:"Nałęczów",d:"2026-04-28"},
+  {nr:"99.26 AR",f:"AR",k:"Łuczkoś Hanna",m:"Jejkowice",d:"2026-04-28"},
+  {nr:"100.26 AR",f:"AR",k:"Szymczakiewicz Piotr",m:"Częstochowa",d:"2026-04-25"},
+  {nr:"102.26 AR",f:"AR",k:"Kęsik Zbigniew",m:"Nałęczów",d:"2026-04-26"},
+  {nr:"35.26 E",f:"E",k:"Sabat Paweł",m:"Kamień Pomorski",d:"2026-04-22"},
+  {nr:"36.26 E",f:"E",k:"Jakubowska Monika",m:"Ciechanów",d:"2026-04-22"},
+  {nr:"37.26 E",f:"E",k:"Domagalski Kamil",m:"Kraków",d:"2026-04-28"},
+  {nr:"38.26 E",f:"E",k:"Mierzwińska Maja",m:"Katowice",d:"2026-04-29"},
+  {nr:"39.26 E",f:"E",k:"Ząbek Jerzy",m:"Solec Kujawski",d:"2026-04-30"},
+];
+
+function log(msg, color='#7acf7a') {
+  const d = document.getElementById('log');
+  d.innerHTML += `<div style="color:${color}">${new Date().toLocaleTimeString('pl')} — ${msg}</div>`;
+  d.scrollTop = d.scrollHeight;
+}
+
+async function restore() {
+  const key = document.getElementById('workerKey').value.trim() || localStorage.getItem('mosk_worker_key') || '';
+  if (!key) { alert('Wpisz klucz Workera'); return; }
+  localStorage.setItem('mosk_worker_key', key);
+
+  document.getElementById('log').innerHTML = '';
+  log('📥 Pobieram aktualne zlecenia z KV...');
+
+  let existing;
+  try {
+    const r = await fetch(WORKER + '/mosk/orders', { headers: { 'x-api-key': key } });
+    const d = await r.json();
+    if (!d.ok) throw new Error(JSON.stringify(d));
+    existing = d.orders || [];
+  } catch(e) {
+    log('❌ Błąd pobierania: ' + e.message, '#cf4a4a');
+    return;
+  }
+
+  const existingNrs = new Set(existing.map(o => o.numerZlecenia));
+  log(`✅ Pobrano ${existing.length} zleceń z KV`);
+
+  const toAdd = MISSING.filter(m => !existingNrs.has(m.nr));
+  const skipped = MISSING.length - toAdd.length;
+  log(`📋 Do dodania: ${toAdd.length} | Już jest w KV: ${skipped}`);
+
+  if (toAdd.length === 0) {
+    log('✅ Wszystkie zlecenia już są w KV!', '#4acf4a');
+    return;
+  }
+
+  const maxId = Math.max(...existing.map(o => Number(o.id) || 0), 9000000);
+  const newOrders = toAdd.map((m, i) => ({
+    id: maxId + i + 1,
+    numerZlecenia: m.nr,
+    firma: m.f,
+    data: m.d,
+    klientImie: m.k,
+    klientMiasto: m.m,
+    klientUlica: '', klientKod: '', telefon: '',
+    allegroOrderId: '', pozycje: [],
+    status: 'Zrealizowane',
+    _fromEmail: true
+  }));
+
+  newOrders.forEach(o => log(`  + ${o.numerZlecenia} — ${o.klientImie} — ${o.klientMiasto}`, '#cfcf4a'));
+
+  const merged = [...existing, ...newOrders];
+  log(`💾 Zapisuję ${merged.length} zleceń do KV...`);
+
+  try {
+    const sr = await fetch(WORKER + '/mosk/orders', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': key },
+      body: JSON.stringify({ orders: merged })
+    });
+    const sd = await sr.json();
+    if (!sd.ok) throw new Error(JSON.stringify(sd));
+    log(`✅ GOTOWE! ${merged.length} zleceń w KV (dodano ${newOrders.length}).`, '#4acf4a');
+    log('🔄 Odśwież aplikację główną żeby zobaczyć wszystkie zlecenia.', '#7aaacf');
+  } catch(e) {
+    log('❌ Błąd zapisu: ' + e.message, '#cf4a4a');
+  }
+}
+
+window.onload = () => {
+  const key = localStorage.getItem('mosk_worker_key') || '';
+  if (key) document.getElementById('workerKey').value = key;
+};
+</script>
+</body>
+</html>
