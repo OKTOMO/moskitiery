@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260501.3</title>
+<title>MosquitoApp v20260501.4</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260501.3';
+  window.__MOSK_VERSION='20260501.4';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -885,6 +885,7 @@ function App() {
   const [zamOpenBox,setZamOpenBox]=useState({});
   const [zamSearch,setZamSearch]=useState('');
   const [zamKonto,setZamKonto]=useState('');
+  const [mergeSelected,setMergeSelected]=useState(new Set());
   const [zamTab,setZamTab]=useState('nowe');
 
   const [fvAllegroStatus,setFvAllegroStatus]=useState(""); // "loading"|"ok"|"error"|""
@@ -2315,7 +2316,46 @@ function App() {
     setPickupLoading(false);
   }
 
-  async function orderPickup(shipmentId, kontoId, address, pickupTimeData, firma){
+  async function mergeOrders(selectedIds){
+    const imps = [...selectedIds].map(id=>allegroImportResults.find(i=>i.allegroOrderId===id)).filter(Boolean);
+    if(imps.length<2){alert('Zaznacz co najmniej 2 zamówienia');return;}
+    // Sprawdź czy ten sam klient
+    const klienci = [...new Set(imps.map(i=>i.klientImie||''))];
+    if(klienci.length>1){
+      if(!confirm(`Zamówienia należą do różnych klientów:\n${klienci.join('\n')}\nCzy na pewno scalić?`)) return;
+    }
+    // Znajdź zlecenia powiązane
+    const linkedOrders = imps.map(imp=>orders.find(o=>o.allegroOrderId===imp.allegroOrderId)).filter(Boolean);
+    if(linkedOrders.length===0){alert('Brak zleceń do scalenia — najpierw zaimportuj zamówienia.');return;}
+    // Pierwsze zlecenie jest bazą
+    const base = linkedOrders[0];
+    const rest = linkedOrders.slice(1);
+    // Scal pozycje
+    const allPozycje = linkedOrders.flatMap(o=>o.pozycje||[]);
+    // Numer zlecenia z pierwszego
+    const mergedOrder = {...base, pozycje: allPozycje, _mergedFrom: linkedOrders.map(o=>o.id)};
+    // Zaktualizuj bazę
+    const updatedOrders = orders.map(o=>{
+      if(o.id===base.id) return mergedOrder;
+      if(rest.find(r=>r.id===o.id)) return {...o, status:'Scalono', _mergedInto: base.id};
+      return o;
+    });
+    updateOrders(updatedOrders);
+    // Skopiuj etykietę z pierwszego do pozostałych
+    const baseSh = allegroShipments[base.allegroOrderId];
+    if(baseSh){
+      const newShipments = {...allegroShipments};
+      rest.forEach(o=>{
+        if(o.allegroOrderId) newShipments[o.allegroOrderId]={...baseSh};
+      });
+      setAllegroShipments(newShipments);
+      localStorage.setItem('allegro_shipments',JSON.stringify(newShipments));
+    }
+    // Ustaw status W realizacji dla scalonych
+    imps.forEach(imp=>setOrderAppStatus(imp.allegroOrderId,'W realizacji'));
+    setMergeSelected(new Set());
+    alert(`✅ Scalono ${linkedOrders.length} zamówień w jedno (${base.numerZlecenia})`);
+  }
     setPickupLoading(true);
     setPickupResult(null);
     try{
@@ -3685,6 +3725,16 @@ function App() {
             return (
               <div key={idx} style={{borderBottom:'1px solid #0f1f2f',background:isWyslano?(idx%2===0?'#040c04':'#081508'):isRealizacja?(idx%2===0?'#091509':'#112311'):(idx%2===0?'#090e1a':'#111828'),opacity:isWyslano?0.6:1}}>
                 <div style={{display:'flex',alignItems:'center',gap:8,padding:'9px 12px',flexWrap:'wrap'}}>
+                  <input type="checkbox" checked={mergeSelected.has(imp.allegroOrderId)}
+                    onChange={e=>{
+                      setMergeSelected(prev=>{
+                        const next=new Set(prev);
+                        e.target.checked?next.add(imp.allegroOrderId):next.delete(imp.allegroOrderId);
+                        return next;
+                      });
+                    }}
+                    style={{width:16,height:16,cursor:'pointer',accentColor:'#7acf7a'}}
+                  />
                   <div style={{minWidth:76}}>
                     <span style={{fontSize:11,padding:'2px 5px',borderRadius:5,background:kBg,color:kCol,fontFamily:'monospace',fontWeight:700,display:'inline-block'}}>{imp.kontoId}</span>
                     <div style={{fontSize:10,color:'#3a6a4a',marginTop:1}}>{imp.firma==='F'?'Favour':imp.firma==='AR'||imp.firma==='A'?'Arlis':imp.firma==='E'?'Everis':'Albama'}</div>
@@ -3872,6 +3922,22 @@ function App() {
                 </button>
               </div>
               {allegroImportResults.length===0&&<div style={{textAlign:'center',color:'#2a5a3a',padding:'40px 0',fontSize:14}}>Kliknij "Pobierz zamówienia" żeby załadować listę</div>}
+              {mergeSelected.size>=2&&(
+                <div style={{background:'#1a2a3a',border:'1px solid #2a4a8a',borderRadius:6,padding:'8px 14px',margin:'8px 0',display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+                  <span style={{color:'#7aaacf',fontWeight:700}}>🔗 Zaznaczono {mergeSelected.size} zamówień</span>
+                  <button onClick={()=>mergeOrders(mergeSelected)}
+                    style={{background:'#1a3a5a',border:'1px solid #2a6aaf',color:'#9acfff',padding:'5px 14px',borderRadius:5,cursor:'pointer',fontWeight:700,fontSize:13}}>
+                    🔗 Scal zamówienia
+                  </button>
+                  <button onClick={()=>setMergeSelected(new Set())}
+                    style={{background:'#1a1a2a',border:'1px solid #2a2a4a',color:'#6a7a9a',padding:'5px 10px',borderRadius:5,cursor:'pointer',fontSize:12}}>
+                    ✕ Anuluj
+                  </button>
+                  <span style={{fontSize:11,color:'#3a5a7a'}}>
+                    {[...mergeSelected].map(id=>{const i=allegroImportResults.find(x=>x.allegroOrderId===id);return i?.klientImie||id;}).join(' + ')}
+                  </span>
+                </div>
+              )}
               {(()=>{
                 const active=zamTab==='nowe'?noweList:zamTab==='realizacja'?realizacjaList:zrealizowaneList;
                 if(active.length===0&&allegroImportResults.length>0) return <div style={{textAlign:'center',color:'#3a5a3a',padding:'40px 0'}}>{zamTab==='nowe'?'🎉 Brak nowych zamówień!':zamTab==='realizacja'?'Brak zamówień w realizacji':'Brak zrealizowanych'}</div>;
