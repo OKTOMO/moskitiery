@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260501.5</title>
+<title>MosquitoApp v20260505.1</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260501.5';
+  window.__MOSK_VERSION='20260505.1';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2319,42 +2319,56 @@ function App() {
   async function mergeOrders(selectedIds){
     const imps = [...selectedIds].map(id=>allegroImportResults.find(i=>i.allegroOrderId===id)).filter(Boolean);
     if(imps.length<2){alert('Zaznacz co najmniej 2 zamówienia');return;}
-    // Sprawdź czy ten sam klient
-    const klienci = [...new Set(imps.map(i=>i.klientImie||''))];
-    if(klienci.length>1){
-      if(!confirm(`Zamówienia należą do różnych klientów:\n${klienci.join('\n')}\nCzy na pewno scalić?`)) return;
-    }
-    // Znajdź zlecenia powiązane
+
+    // Sprawdź czy są już zlecenia
     const linkedOrders = imps.map(imp=>orders.find(o=>o.allegroOrderId===imp.allegroOrderId)).filter(Boolean);
-    if(linkedOrders.length===0){alert('Brak zleceń do scalenia — najpierw zaimportuj zamówienia.');return;}
-    // Pierwsze zlecenie jest bazą
-    const base = linkedOrders[0];
-    const rest = linkedOrders.slice(1);
-    // Scal pozycje
-    const allPozycje = linkedOrders.flatMap(o=>o.pozycje||[]);
-    // Numer zlecenia z pierwszego
-    const mergedOrder = {...base, pozycje: allPozycje, _mergedFrom: linkedOrders.map(o=>o.id)};
-    // Zaktualizuj bazę
-    const updatedOrders = orders.map(o=>{
-      if(o.id===base.id) return mergedOrder;
-      if(rest.find(r=>r.id===o.id)) return {...o, status:'Scalono', _mergedInto: base.id};
-      return o;
-    });
-    updateOrders(updatedOrders);
-    // Skopiuj etykietę z pierwszego do pozostałych
-    const baseSh = allegroShipments[base.allegroOrderId];
-    if(baseSh){
-      const newShipments = {...allegroShipments};
-      rest.forEach(o=>{
-        if(o.allegroOrderId) newShipments[o.allegroOrderId]={...baseSh};
+
+    if(linkedOrders.length>=2){
+      // Scal istniejące zlecenia
+      const klienci = [...new Set(imps.map(i=>i.klientImie||''))];
+      if(klienci.length>1){
+        if(!confirm(`Zamówienia należą do różnych klientów:\n${klienci.join('\n')}\nCzy na pewno scalić?`)) return;
+      }
+      const base = linkedOrders[0];
+      const rest = linkedOrders.slice(1);
+      const allPozycje = linkedOrders.flatMap(o=>o.pozycje||[]);
+      const mergedOrder = {...base, pozycje: allPozycje, _mergedFrom: linkedOrders.map(o=>o.id)};
+      const updatedOrders = orders.map(o=>{
+        if(o.id===base.id) return mergedOrder;
+        if(rest.find(r=>r.id===o.id)) return {...o, status:'Scalono', _mergedInto: base.id};
+        return o;
       });
-      setAllegroShipments(newShipments);
-      localStorage.setItem('allegro_shipments',JSON.stringify(newShipments));
+      updateOrders(updatedOrders);
+      const baseSh = allegroShipments[base.allegroOrderId];
+      if(baseSh){
+        const newShipments = {...allegroShipments};
+        rest.forEach(o=>{if(o.allegroOrderId) newShipments[o.allegroOrderId]={...baseSh};});
+        setAllegroShipments(newShipments);
+        localStorage.setItem('allegro_shipments',JSON.stringify(newShipments));
+      }
+      imps.forEach(imp=>setOrderAppStatus(imp.allegroOrderId,'W realizacji'));
+      setMergeSelected(new Set());
+      alert(`✅ Scalono ${linkedOrders.length} zamówień w jedno (${base.numerZlecenia})`);
+    } else {
+      // Brak zleceń — otwórz modal importu z połączonymi danymi z obu zamówień
+      // Pobierz buyerMsg z obu (numery kalkulatora)
+      const allMsgs = imps.map(i=>i.buyerMsg||'').filter(Boolean).join('\n');
+      const allOffers = imps.map(i=>i.offerNames||'').filter(Boolean).join(', ');
+      // Znajdź numery kalkulatora z wiadomości
+      const kalMatches = allMsgs.match(/(?:FAV|STR|ARL|ALB|EVR|KAL)-\d{6}-\d{4}/gi)||[];
+      // Użyj danych pierwszego zamówienia jako baza
+      const baseImp = imps[0];
+      const mergedImp = {
+        ...baseImp,
+        offerNames: allOffers,
+        buyerMsg: allMsgs,
+        _mergedAllegroIds: imps.map(i=>i.allegroOrderId),
+        _isMerge: true,
+      };
+      setMergeSelected(new Set());
+      // Otwórz modal importu
+      importAllegroOrder(mergedImp);
     }
-    // Ustaw status W realizacji dla scalonych
-    imps.forEach(imp=>setOrderAppStatus(imp.allegroOrderId,'W realizacji'));
-    setMergeSelected(new Set());
-    alert(`✅ Scalono ${linkedOrders.length} zamówień w jedno (${base.numerZlecenia})`);
   }
 
   async function orderPickup(shipmentId, kontoId, address, pickupTimeData, firma){
@@ -2900,7 +2914,6 @@ function App() {
     const savedAllegroId=allegroOrderIdForForm;
     if(savedAllegroId){
       setOrderAppStatus(savedAllegroId,'W realizacji');
-      // Znajdź kontoId z listy allegroImportResults
       const allegroImp=allegroImportResults.find(i=>i.allegroOrderId===savedAllegroId);
       if(allegroImp&&allegroImp.kontoId){
         fetch(AUTORESPONDER_URL+'/order/status',{
@@ -2909,7 +2922,12 @@ function App() {
           body:JSON.stringify({allegroOrderId:savedAllegroId,kontoId:allegroImp.kontoId,status:'PROCESSING'})
         }).catch(e=>console.warn('Status update failed:',e));
       }
-      // Etykieta otwierana ręcznie przez przyciski w panelu akcji
+      // Jeśli scalanie — ustaw status dla wszystkich scalonych zamówień
+      if(allegroImp?._isMerge && allegroImp._mergedAllegroIds){
+        allegroImp._mergedAllegroIds.forEach(id=>{
+          if(id!==savedAllegroId) setOrderAppStatus(id,'W realizacji');
+        });
+      }
     }
     // Auto-tracking DPD — sprawdź statusy przesyłek w tle
     const _sh=JSON.parse(localStorage.getItem('allegro_shipments')||'{}');
