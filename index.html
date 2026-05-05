@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260501.2</title>
+<title>MosquitoApp v20260501.3</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260501.2';
+  window.__MOSK_VERSION='20260501.3';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -575,7 +575,7 @@ function generateOrderHtml(order) {
 }
 
 // ─── PDF DRZWI ───────────────────────────────────────────────────────────────
-function drukujPDF_drzwi(order) {
+function drukujPDF_drzwi(order, returnHtml=false) {
   const firmaNazwa=FIRMY.find(f=>f.kod===order.firma)?.nazwa||order.firma||"";
   const firma=order.firma||"?";
   const pozDrzwi=(order.pozycje||[]).filter(p=>p.isDrzwi);
@@ -701,6 +701,9 @@ table.main td.kolor{font-size:14px;font-weight:700}
 </div>
 
 </body></html>`;
+
+  // Tryb returnHtml — zwróć HTML zamiast otwierać okno (dla wysyłki maila)
+  if(returnHtml) return html;
 
   // Dodaj auto-print po załadowaniu
   const htmlWithPrint = html.replace('</body>', '<script>window.onload=function(){window.print();}<\/script></body>');
@@ -2020,17 +2023,25 @@ function App() {
       // Zlecenie PDF — tylko jeśli nie zostało usunięte i ma pozycje moskitiery
       const maPozcje = order.pozycje && order.pozycje.length > 0 && order.pozycje.some(p=>p.szerokosc||p.wysokosc);
       if(!removedFiles.includes('zlecenie') && maPozcje){
-        const pdfHtml=generateOrderHtml(order);
-        console.log('[PDF] wysyłam HTML do workera, długość:',pdfHtml.length);
-        const pr=await fetch(AUTORESPONDER_URL+'/pdf/render',{
-          method:'POST',
-          headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},
-          body:JSON.stringify({html:pdfHtml})
-        });
-        const pd=await pr.json();
-        if(!pd.ok) throw new Error('PDF render fail: '+JSON.stringify(pd));
-        console.log('[PDF] rozmiar z CF Browser Rendering:',pd.size,'bytes');
-        attachments.push({name:`${subject}.pdf`,content:pd.pdf,mimeType:'application/pdf'});
+        const hasDrzwi = order.pozycje && order.pozycje.some(p=>p.isDrzwi);
+        const hasOkna = order.pozycje && order.pozycje.some(p=>!p.isDrzwi);
+        // Generuj odpowiedni PDF — drzwi lub okna (lub oba jeśli mieszane)
+        let pdfHtmls = [];
+        if(hasOkna) pdfHtmls.push({html: generateOrderHtml(order), name: subject+'.pdf'});
+        if(hasDrzwi) pdfHtmls.push({html: drukujPDF_drzwi(order, true), name: subject+' DRZWI.pdf'});
+        if(pdfHtmls.length === 0) pdfHtmls.push({html: generateOrderHtml(order), name: subject+'.pdf'});
+        for(const {html, name} of pdfHtmls){
+          console.log('[PDF] wysyłam HTML do workera:',name,'długość:',html.length);
+          const pr=await fetch(AUTORESPONDER_URL+'/pdf/render',{
+            method:'POST',
+            headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},
+            body:JSON.stringify({html})
+          });
+          const pd=await pr.json();
+          if(!pd.ok) throw new Error('PDF render fail: '+JSON.stringify(pd));
+          console.log('[PDF] rozmiar:',pd.size,'bytes');
+          attachments.push({name,content:pd.pdf,mimeType:'application/pdf'});
+        }
       }
       // Etykieta PDF — tylko dla prawdziwych zamówień Allegro i jeśli nie usunięta
       const allegroId = imp.allegroOrderId;
