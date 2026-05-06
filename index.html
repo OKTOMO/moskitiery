@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260505.1</title>
+<title>MosquitoApp v20260505.3</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260505.1';
+  window.__MOSK_VERSION='20260505.3';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2447,7 +2447,10 @@ function App() {
     const isInternational=(imp.klientKraj&&imp.klientKraj!=='PL')||(service?.name||'').toLowerCase().includes('international');
     const maxWeight=isInternational?15:25;
     // Limity wymiarów — z API jeśli dostępne, fallback do hardcoded
-    const _maxL=service?.maxLength||64, _maxW=service?.maxWidth||38, _maxH=service?.maxHeight||(isDHLAutomat?31:41);
+    const isIntlAutomat = isInternational && (service?.name||'').toLowerCase().includes('automat');
+    const _maxL=service?.maxLength||(isIntlAutomat?57:64);
+    const _maxW=service?.maxWidth||(isIntlAutomat?43:38);
+    const _maxH=service?.maxHeight||(isDHLAutomat?31:(isIntlAutomat?33:41));
     const SIZES={"A":{length:_maxL,width:_maxW,height:Math.min(8,_maxH),weight:5},"B":{length:_maxL,width:_maxW,height:Math.min(19,_maxH),weight:5},"C":{length:_maxL,width:_maxW,height:_maxH,weight:5}};
     const activeSizes=SIZES;
     // Auto-kalkulator paczek
@@ -2657,8 +2660,32 @@ function App() {
     const statusInterval=setInterval(loadAppStatusesFromKV,30000);
     // Synchronizacja tokenów Allegro z KV co 60 sek (na wypadek refreshu na innym urządzeniu)
     const tokenInterval=setInterval(loadAllegroTokensFromKV,60000);
+    // Polling zleceń z KV co 90 sek — wykrywa nowe zlecenia dodane z telefonu
+    const ordersInterval=setInterval(async()=>{
+      try{
+        const fresh=await cloudLoad();
+        if(!fresh||fresh.length===0) return;
+        setOrders(prev=>{
+          if(fresh.length===prev.length) return prev; // brak zmian
+          // Dodaj nowe ręczne zlecenia do zakładki Zamówienia
+          const isManual=o=>!o.allegroOrderId||!/^[0-9a-f]{8}-[0-9a-f]{4}/i.test(o.allegroOrderId);
+          const newManual=fresh.filter(isManual);
+          if(newManual.length>0){
+            setAllegroImportResults(prev2=>{
+              const existingIds=new Set(prev2.map(x=>x.allegroOrderId));
+              const nowe=newManual
+                .map(o=>({allegroOrderId:'manual_'+o.id,kontoId:o.firma||'favo5',klientImie:o.klientImie||'',klientLogin:'',klientMiasto:o.klientMiasto||'',offerNames:o.pozycje?.map(p=>p.nazwa||'Moskitiera').join(', ')||'',boughtAt:o.data||'',totalAmount:o.kwota||0,fulfillmentStatus:'PROCESSING',numerZlecenia:o.numerZlecenia||'',_isManual:true,_linkedOrder:o}))
+                .filter(x=>!existingIds.has(x.allegroOrderId));
+              return nowe.length>0?[...prev2,...nowe]:prev2;
+            });
+          }
+          return fresh;
+        });
+      }catch(e){}
+    },90000);
     window.__statusSyncInterval=statusInterval;
     window.__tokenSyncInterval=tokenInterval;
+    window.__ordersInterval=ordersInterval;
     // Handle OAuth callback
     const params=new URLSearchParams(window.location.search);
     const code=params.get('code');
