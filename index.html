@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260505.4</title>
+<title>MosquitoApp v20260505.5</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260505.4';
+  window.__MOSK_VERSION='20260505.5';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -4995,7 +4995,14 @@ function App() {
                             style={{background:"#0a1a2a",border:"1px solid #2a4a6a",color:"#7ab8df",borderRadius:4,padding:"1px 6px",fontSize:12,cursor:"pointer",marginRight:4}}>✏️</button>
                           <span className="firma-badge">{o.firma||"?"}</span>
                           {hasDrzwi&&<span style={{marginLeft:4,fontSize:14}}>🚪</span>}
-                          <span style={{marginLeft:6,color:"#dfcf5f",fontWeight:700}}>{o.numerZlecenia||"—"}</span>
+                          <span style={{marginLeft:6,color:"#dfcf5f",fontWeight:700,cursor:"pointer",borderBottom:"1px dashed #5a5a2a"}}
+                            title="Kliknij aby edytować numer"
+                            onClick={()=>{
+                              const nowyNr=prompt('Zmień numer zlecenia:',o.numerZlecenia||'');
+                              if(nowyNr!==null&&nowyNr.trim()&&nowyNr.trim()!==o.numerZlecenia){
+                                updateOrders(orders.map(x=>x.id===o.id?{...x,numerZlecenia:nowyNr.trim()}:x));
+                              }
+                            }}>{o.numerZlecenia||"—"}</span>
                           {o.kalNumer&&<div style={{fontSize:14,color:"#4a8a6a",fontFamily:"monospace",marginTop:2,letterSpacing:'.03em'}}>📨 {o.kalNumer}</div>}
                         </td>
                         <td style={{padding:"10px 10px",color:"#7a9a7a"}}>{formatDate(o.data)}</td>
