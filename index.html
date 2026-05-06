@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260505.5</title>
+<title>MosquitoApp v20260505.6</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260505.5';
+  window.__MOSK_VERSION='20260505.6';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -3415,13 +3415,14 @@ function App() {
           else alert("Błędny PIN.");
         }}>🔒 Admin</button>
       </div>
-      {(tab==="allegro"||tab==="ustawienia"||tab==="historia"||tab==="importpdf"||tab==="produkty")&&(
+      {(tab==="allegro"||tab==="ustawienia"||tab==="historia"||tab==="importpdf"||tab==="produkty"||tab==="narzedzia")&&(
         <div style={{background:"#080e08",borderBottom:"1px solid #1e2a1e",display:"flex",gap:0,paddingLeft:32}}>
           <button className={`tab ${tab==="allegro"?"on":""}`} onClick={()=>setTab("allegro")} style={{fontSize:14,padding:"7px 14px"}}>🛒 Allegro</button>
           <button className={`tab ${tab==="ustawienia"?"on":""}`} onClick={()=>setTab("ustawienia")} style={{fontSize:14,padding:"7px 14px"}}>⚙️ Chmura</button>
           <button className={`tab ${tab==="historia"?"on":""}`} onClick={()=>setTab("historia")} style={{fontSize:14,padding:"7px 14px"}}>📁 Historia</button>
           <button className={`tab ${tab==="importpdf"?"on":""}`} onClick={()=>setTab("importpdf")} style={{fontSize:14,padding:"7px 14px"}}>📥 Import PDF</button>
           <button className={`tab ${tab==="produkty"?"on":""}`} onClick={()=>setTab("produkty")} style={{fontSize:14,padding:"7px 14px"}}>📦 Produkty</button>
+          <button className={`tab ${tab==="narzedzia"?"on":""}`} onClick={()=>setTab("narzedzia")} style={{fontSize:14,padding:"7px 14px"}}>🔧 Narzędzia</button>
         </div>
       )}
 
@@ -5065,6 +5066,170 @@ function App() {
         )}
 
         {/* ══ IMPORT PDF ══ */}
+        {tab==="narzedzia" && (()=>{
+          const [toolOpen,setToolOpen]=React.useState({});
+          const [nrOrders,setNrOrders]=React.useState([]);
+          const [nrLoading,setNrLoading]=React.useState(false);
+          const [nrLog,setNrLog]=React.useState([]);
+          const [restoreLog,setRestoreLog]=React.useState([]);
+
+          const nrLog2=(msg,c='#7acf7a')=>setNrLog(p=>[...p,{msg,c,t:new Date().toLocaleTimeString('pl')}]);
+          const restLog=(msg,c='#7acf7a')=>setRestoreLog(p=>[...p,{msg,c,t:new Date().toLocaleTimeString('pl')}]);
+
+          // Numery do przywrócenia z maili
+          const MISSING=[
+            {nr:"103.26 F",f:"F",k:"Kowal Piotr",m:"Goszcz",d:"2026-04-25"},{nr:"106.26 F",f:"F",k:"Stawarz Dominik",m:"Płaza",d:"2026-04-20"},
+            {nr:"113.26 F",f:"F",k:"Wyszyńska Sylwia",m:"Łódź",d:"2026-04-27"},{nr:"114.26 F",f:"F",k:"Kroczek Marcin",m:"Podegrodzie",d:"2026-04-19"},
+            {nr:"115.26 F",f:"F",k:"Naniewicz Sławek",m:"Police",d:"2026-04-19"},{nr:"116.26 F",f:"F",k:"Nowak Jacek",m:"Luboszyce",d:"2026-04-19"},
+            {nr:"117.26 F",f:"F",k:"Pawełoszek Dawid",m:"Łódź",d:"2026-04-22"},{nr:"118.26 F",f:"F",k:"Kozłowska Aleksandra",m:"Szczecin",d:"2026-04-20"},
+            {nr:"119.26 F",f:"F",k:"Pawłowicz Jakub",m:"Pogwizdów",d:"2026-04-20"},{nr:"120.26 F",f:"F",k:"Nazarski Maksymilian",m:"Chrząstawa Mała",d:"2026-04-20"},
+            {nr:"121.26 F",f:"F",k:"Tomasz Kulig",m:"Stary Sącz",d:"2026-04-20"},{nr:"122.26 F",f:"F",k:"Kłeczek Łukasz",m:"Tenczynek",d:"2026-04-20"},
+            {nr:"123.26 F",f:"F",k:"Bzdziel Marcin",m:"Wronki",d:"2026-04-20"},{nr:"124.26 F",f:"F",k:"Piątek Małgorzata",m:"Firlej",d:"2026-04-20"},
+            {nr:"125.26 F",f:"F",k:"Samojedny Grzegorz",m:"Wrocław",d:"2026-04-20"},{nr:"126.26 F",f:"F",k:"Murawski Tomasz",m:"Kowalewo",d:"2026-04-21"},
+            {nr:"127.26 F",f:"F",k:"Kroczek Paweł",m:"Złotoryja",d:"2026-04-21"},{nr:"128.26 F",f:"F",k:"Janeczek Jarosław",m:"Rybna",d:"2026-04-21"},
+            {nr:"129.26 F",f:"F",k:"Walczewski Oskar",m:"Radom",d:"2026-04-21"},{nr:"130.26 F",f:"F",k:"Rębacz Ewelina",m:"Szczecin",d:"2026-04-22"},
+            {nr:"131.26 F",f:"F",k:"Nikołajuk Tomasz",m:"Białystok",d:"2026-04-22"},{nr:"132.26 F",f:"F",k:"Dominko Alina",m:"Ożarów Maz.",d:"2026-04-22"},
+            {nr:"133.26 F",f:"F",k:"Ziaja Marzena",m:"Brzeźnica",d:"2026-04-23"},{nr:"134.26 F",f:"F",k:"Iwaniuk Tomasz",m:"Hajnówka",d:"2026-04-23"},
+            {nr:"135.26 F",f:"F",k:"Ostapowicz Natalia",m:"Mrągowo",d:"2026-04-23"},{nr:"136.26 F",f:"F",k:"Kowalczyk Sonia",m:"Szczercow",d:"2026-04-23"},
+            {nr:"137.26 F",f:"F",k:"Górzyńska Agnieszka",m:"Kikół",d:"2026-04-23"},{nr:"138.26 F",f:"F",k:"Pawlak Tomasz",m:"Gorzów Wielkopolski",d:"2026-04-24"},
+            {nr:"139.26 F",f:"F",k:"Mikołajko Maciej",m:"Radzymin",d:"2026-04-24"},{nr:"140.26 F",f:"F",k:"Kubera Sławomir",m:"Kalisz",d:"2026-04-28"},
+            {nr:"141.26 F",f:"F",k:"Rotta Marek",m:"Rewa",d:"2026-04-28"},{nr:"142.26 F",f:"F",k:"Notecki Krzysztof",m:"Poznań",d:"2026-04-28"},
+            {nr:"143.26 F",f:"F",k:"Aleksandrowicz Piotr",m:"Białystok",d:"2026-04-28"},{nr:"144.26 F",f:"F",k:"Gaura Tomasz",m:"Lipnica Murowana",d:"2026-04-28"},
+            {nr:"145.26 F",f:"F",k:"Jędrzejas Marcin",m:"Sieborowice",d:"2026-04-28"},{nr:"146.26 F",f:"F",k:"Klubkowski Nina",m:"Lubliniec",d:"2026-04-28"},
+            {nr:"147.26 F",f:"F",k:"Jaworska Arkadia",m:"Lubin",d:"2026-04-29"},{nr:"148.26 F",f:"F",k:"Czapko Sylwester",m:"Bialowieza",d:"2026-04-29"},
+            {nr:"149.26 F",f:"F",k:"Rogoziński Tomasz",m:"Józefosław",d:"2026-04-29"},{nr:"150.26 F",f:"F",k:"Pawłowicz Jakub",m:"Pogwizdów",d:"2026-04-29"},
+            {nr:"151.26 F",f:"F",k:"Stępiński Artur",m:"Lubin",d:"2026-04-29"},{nr:"152.26 F",f:"F",k:"Rusnarczyk Elżbieta",m:"Prądzew",d:"2026-04-29"},
+            {nr:"153.26 F",f:"F",k:"Kowalczyk Sonia",m:"Szczercow",d:"2026-04-29"},{nr:"154.26 F",f:"F",k:"Kuźniak Krzysztof",m:"Kraków",d:"2026-04-29"},
+            {nr:"155.26 F",f:"F",k:"Narajewska Maria",m:"Wrocław",d:"2026-04-29"},{nr:"156.26 F",f:"F",k:"Gotszlik Karolina",m:"Bydgoszcz",d:"2026-04-30"},
+            {nr:"157.26 F",f:"F",k:"Mikołajko Maciej",m:"Radzymin",d:"2026-04-30"},{nr:"158.26 F",f:"F",k:"Nowak Maciej",m:"Trzcianka",d:"2026-04-30"},
+            {nr:"159.26 F",f:"F",k:"Bartczak Maciej",m:"Barendrecht",d:"2026-04-30"},{nr:"160.26 F",f:"F",k:"Głowala Marcin",m:"Zawada",d:"2026-04-30"},
+            {nr:"D15.26 F",f:"F",k:"Piwowarska Aneta",m:"Elbląg",d:"2026-04-22"},{nr:"D16.26 F",f:"F",k:"Depka-Prondzińska Lucyna",m:"Nowa Wieś Wielka",d:"2026-04-21"},
+            {nr:"D17.26 F",f:"F",k:"Janowska Urszula",m:"Wieliczka",d:"2026-04-21"},{nr:"D18.26 F",f:"F",k:"Andrushkiv Mariana",m:"Radzymin",d:"2026-04-30"},
+            {nr:"74.26 AR",f:"AR",k:"Bożek Tomasz",m:"Rzakta",d:"2026-04-20"},{nr:"80.26 AR",f:"AR",k:"Kozłowski Patryk",m:"Jasieniec",d:"2026-04-19"},
+            {nr:"81.26 AR",f:"AR",k:"Domagała Dorota",m:"Kraków",d:"2026-04-19"},{nr:"82.26 AR",f:"AR",k:"Beczała Zbigniew",m:"Suszec",d:"2026-04-19"},
+            {nr:"83.26 AR",f:"AR",k:"Pękala Adam",m:"Ustrzyki Dolne",d:"2026-04-20"},{nr:"84.26 AR",f:"AR",k:"Budnik Weronika",m:"Wiry",d:"2026-04-21"},
+            {nr:"85.26 AR",f:"AR",k:"Haniszewski Marcin",m:"Drawski Młyn",d:"2026-04-21"},{nr:"86.26 AR",f:"AR",k:"Zając Daniel",m:"Złotniki",d:"2026-04-21"},
+            {nr:"87.26 AR",f:"AR",k:"Daniel Bazyluk",m:"Kuriany",d:"2026-04-23"},{nr:"88.26 AR",f:"AR",k:"Toporski Rafał",m:"Gubin",d:"2026-04-23"},
+            {nr:"89.26 AR",f:"AR",k:"Domagała Dorota",m:"Kraków",d:"2026-04-25"},{nr:"90.26 AR",f:"AR",k:"Beczała Małgorzata",m:"Suszec",d:"2026-04-25"},
+            {nr:"91.26 AR",f:"AR",k:"Kozłowski Patryk",m:"Jasieniec",d:"2026-04-25"},{nr:"92.26 AR",f:"AR",k:"Malcher Tomasz",m:"Warszawa",d:"2026-04-26"},
+            {nr:"93.26 AR",f:"AR",k:"Konopa Elżbieta",m:"Tarnowskie Góry",d:"2026-04-26"},{nr:"94.26 AR",f:"AR",k:"Augustyniak Patryk",m:"Sobienie Jeziory",d:"2026-04-26"},
+            {nr:"95.26 AR",f:"AR",k:"Szydłowski Paweł",m:"Zielona Góra",d:"2026-04-27"},{nr:"96.26 AR",f:"AR",k:"Kowalewska Mirosława",m:"Lipno",d:"2026-04-27"},
+            {nr:"97.26 AR",f:"AR",k:"Sikora Tomasz",m:"Ustroń",d:"2026-04-28"},{nr:"98.26 AR",f:"AR",k:"Kęsik Zbigniew",m:"Nałęczów",d:"2026-04-28"},
+            {nr:"99.26 AR",f:"AR",k:"Łuczkoś Hanna",m:"Jejkowice",d:"2026-04-28"},{nr:"100.26 AR",f:"AR",k:"Szymczakiewicz Piotr",m:"Częstochowa",d:"2026-04-25"},
+            {nr:"102.26 AR",f:"AR",k:"Kęsik Zbigniew",m:"Nałęczów",d:"2026-04-26"},
+            {nr:"35.26 E",f:"E",k:"Sabat Paweł",m:"Kamień Pomorski",d:"2026-04-22"},{nr:"36.26 E",f:"E",k:"Jakubowska Monika",m:"Ciechanów",d:"2026-04-22"},
+            {nr:"37.26 E",f:"E",k:"Domagalski Kamil",m:"Kraków",d:"2026-04-28"},{nr:"38.26 E",f:"E",k:"Mierzwińska Maja",m:"Katowice",d:"2026-04-29"},
+            {nr:"39.26 E",f:"E",k:"Ząbek Jerzy",m:"Solec Kujawski",d:"2026-04-30"},
+          ];
+
+          const logStyle={background:"#0a1a0a",border:"1px solid #1a3a1a",padding:8,marginTop:8,maxHeight:150,overflowY:"auto",fontSize:11,fontFamily:"monospace"};
+
+          return(
+          <div style={{display:"flex",flexDirection:"column",gap:16,maxWidth:700}}>
+
+            {/* ── PRZYWRÓĆ Z MAILI ── */}
+            <div className="card">
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}} onClick={()=>setToolOpen(p=>({...p,restore:!p.restore}))}>
+                <div style={{fontFamily:"'Syne',sans-serif",fontSize:16,fontWeight:800,color:"#afffaf"}}>📧 Przywróć zlecenia z maili</div>
+                <span style={{color:"#4a7a4a"}}>{toolOpen.restore?"▲":"▼"}</span>
+              </div>
+              {toolOpen.restore&&<div style={{marginTop:12}}>
+                <div style={{fontSize:13,color:"#4a7a5a",marginBottom:10}}>
+                  Przywraca 82 zlecenia z okresu 19–30 kwietnia 2026 które zginęły przy nadpisaniu przez telefon. Bezpieczne — pomija te które już są w bazie.
+                </div>
+                <button className="btn" onClick={async()=>{
+                  setRestoreLog([]);
+                  restLog('📥 Pobieram zlecenia z KV...');
+                  const existing=await cloudLoad();
+                  const existingNrs=new Set(existing.map(o=>o.numerZlecenia));
+                  const toAdd=MISSING.filter(m=>!existingNrs.has(m.nr));
+                  restLog(`✅ W bazie: ${existing.length} | Do dodania: ${toAdd.length}`);
+                  if(toAdd.length===0){restLog('✅ Wszystkie zlecenia już są w bazie!','#4acf4a');return;}
+                  const maxId=Math.max(...existing.map(o=>Number(o.id)||0),9000000);
+                  const newOrders=toAdd.map((m,i)=>({id:maxId+i+1,numerZlecenia:m.nr,firma:m.f,data:m.d,klientImie:m.k,klientMiasto:m.m,klientUlica:'',klientKod:'',telefon:'',allegroOrderId:'',pozycje:[],status:'Zrealizowane',_fromEmail:true}));
+                  newOrders.forEach(o=>restLog(`  + ${o.numerZlecenia} — ${o.klientImie}`,'#cfcf4a'));
+                  const merged=[...existing,...newOrders];
+                  await cloudSave(merged);
+                  setOrders(merged);
+                  restLog(`✅ Gotowe! Dodano ${newOrders.length} zleceń.`,'#4acf4a');
+                }}>📧 Przywróć brakujące zlecenia</button>
+                {restoreLog.length>0&&<div style={logStyle}>{restoreLog.map((l,i)=><div key={i} style={{color:l.c}}>{l.t} — {l.msg}</div>)}</div>}
+              </div>}
+            </div>
+
+            {/* ── NAPRAWA NUMERACJI ── */}
+            <div className="card">
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",cursor:"pointer"}} onClick={()=>setToolOpen(p=>({...p,nr:!p.nr}))}>
+                <div style={{fontFamily:"'Syne',sans-serif",fontSize:16,fontWeight:800,color:"#afffaf"}}>🔢 Naprawa numeracji</div>
+                <span style={{color:"#4a7a4a"}}>{toolOpen.nr?"▲":"▼"}</span>
+              </div>
+              {toolOpen.nr&&<div style={{marginTop:12}}>
+                <div style={{fontSize:13,color:"#4a7a5a",marginBottom:10}}>
+                  Wykrywa duplikaty i braki numerów zleceń. Auto-naprawia przypisując kolejne numery.
+                </div>
+                <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8}}>
+                  <button className="btn" onClick={async()=>{
+                    setNrLog([]);setNrLoading(true);
+                    const all=await cloudLoad();
+                    setNrOrders(all);
+                    const rok=new Date().getFullYear().toString().slice(-2);
+                    const numCount={};
+                    all.forEach(o=>{const nr=o.numerZlecenia||'';if(nr){numCount[nr]=(numCount[nr]||0)+1;}});
+                    for(const f of ['F','AR','E']){
+                      const pat=new RegExp(`^(\\d+)\\.${rok} ${f}$`);
+                      const nums=all.map(o=>o.numerZlecenia||'').filter(n=>pat.test(n)).map(n=>parseInt(n.match(pat)[1]));
+                      const max=nums.length?Math.max(...nums):0;
+                      const empty=all.filter(o=>(o.firma||'F')===f&&!o.numerZlecenia).length;
+                      const dups=Object.entries(numCount).filter(([nr,c])=>c>1&&nr.includes(f)).length;
+                      nrLog2(`${f}: max=${max} | bez numeru=${empty} | duplikaty=${dups}`,dups||empty?'#cfcf4a':'#4acf4a');
+                    }
+                    setNrLoading(false);
+                  }}>🔍 Analizuj</button>
+                  <button className="btn" style={{background:"#1a3a1a",borderColor:"#2a6a2a"}} onClick={async()=>{
+                    if(!nrOrders.length){nrLog2('Najpierw kliknij Analizuj','#cf4a4a');return;}
+                    const rok=new Date().getFullYear().toString().slice(-2);
+                    const all=[...nrOrders];
+                    let changed=0;
+                    for(const f of ['F','AR','E','A']){
+                      const aliases=f==='AR'?['AR','A']:[f];
+                      const pat=new RegExp(`^(\\d+)\\.${rok} (?:${aliases.join('|')})$`);
+                      const numCount={};
+                      all.forEach(o=>{const nr=o.numerZlecenia||'';if(nr)numCount[nr]=(numCount[nr]||0)+1;});
+                      const allNums=all.map(o=>o.numerZlecenia||'').filter(n=>pat.test(n)).map(n=>parseInt(n.match(pat)[1]));
+                      let maxNum=allNums.length?Math.max(...allNums):0;
+                      const toFix=all.filter(o=>{
+                        const of2=o.firma||'F';
+                        if(!aliases.includes(of2)) return false;
+                        const nr=o.numerZlecenia||'';
+                        return !nr||(numCount[nr]>1);
+                      });
+                      for(const o of toFix){
+                        const nr=o.numerZlecenia||'';
+                        if(nr&&numCount[nr]>1){
+                          numCount[nr]--;
+                          if(numCount[nr]>=1){maxNum++;const nowyNr=`${maxNum}.${rok} ${f}`;nrLog2(`${nr} → ${nowyNr} (${o.klientImie||o.id})`,'#cfcf4a');o.numerZlecenia=nowyNr;changed++;}
+                        }else if(!nr){
+                          maxNum++;const nowyNr=`${maxNum}.${rok} ${f}`;nrLog2(`brak → ${nowyNr} (${o.klientImie||o.id})`,'#cf9a4a');o.numerZlecenia=nowyNr;changed++;
+                        }
+                      }
+                    }
+                    nrLog2(`Naprawiono ${changed} zleceń`,'#4acf4a');
+                    setNrOrders([...all]);
+                  }}>🔧 Auto-napraw</button>
+                  <button className="btn" style={{background:"#1a1a3a",borderColor:"#4a4acf",color:"#9a9aff"}} onClick={async()=>{
+                    if(!nrOrders.length){nrLog2('Najpierw Analizuj i Auto-napraw','#cf4a4a');return;}
+                    await cloudSave(nrOrders);
+                    setOrders(nrOrders);
+                    nrLog2('✅ Zapisano do KV!','#4acf4a');
+                  }}>💾 Zapisz poprawki</button>
+                </div>
+                {nrLog.length>0&&<div style={logStyle}>{nrLog.map((l,i)=><div key={i} style={{color:l.c}}>{l.t} — {l.msg}</div>)}</div>}
+              </div>}
+            </div>
+
+          </div>);
+        })()}
+
         {tab==="importpdf" && (
           <div style={{maxWidth:700}}>
             <div style={{fontSize:14,color:"#4a8a4a",letterSpacing:".15em",textTransform:"uppercase",marginBottom:14}}>📥 Import PDF → Baza zamówień</div>
