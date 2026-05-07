@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260506.1</title>
+<title>MosquitoApp v20260506.2</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260506.1';
+  window.__MOSK_VERSION='20260506.2';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -4714,8 +4714,17 @@ function App() {
                 <div style={{fontWeight:700,fontSize:15,color:"#afdf7f",marginBottom:16}}>📦 Generuj etykietę</div>
                 <div style={{marginBottom:12,fontSize:14,color:"#7a9a7a"}}>
                   <div style={{fontWeight:700,color:"#a0cfdf"}}>{shipmentModal.imp.klientImie}</div>
-                  <div>{shipmentModal.imp.klientUlica}</div>
-                  <div>{shipmentModal.imp.klientKod} {shipmentModal.imp.klientMiasto}</div>
+                  <input value={shipmentModal.imp.klientUlica||''} onChange={e=>setShipmentModal(p=>({...p,imp:{...p.imp,klientUlica:e.target.value}}))}
+                    style={{background:"#0a1a0a",border:"1px solid #2a4a2a",borderRadius:4,color:"#a0cfdf",padding:"3px 8px",fontSize:13,width:"100%",marginBottom:3}}
+                    placeholder="Ulica i numer budynku"/>
+                  <div style={{display:"flex",gap:6}}>
+                    <input value={shipmentModal.imp.klientKod||''} onChange={e=>setShipmentModal(p=>({...p,imp:{...p.imp,klientKod:e.target.value}}))}
+                      style={{background:"#0a1a0a",border:"1px solid #2a4a2a",borderRadius:4,color:"#7a9a7a",padding:"3px 8px",fontSize:13,width:90}}
+                      placeholder="Kod"/>
+                    <input value={shipmentModal.imp.klientMiasto||''} onChange={e=>setShipmentModal(p=>({...p,imp:{...p.imp,klientMiasto:e.target.value}}))}
+                      style={{background:"#0a1a0a",border:"1px solid #2a4a2a",borderRadius:4,color:"#7a9a7a",padding:"3px 8px",fontSize:13,flex:1}}
+                      placeholder="Miasto"/>
+                  </div>
                   <div style={{marginTop:4,fontSize:12,color:"#4a7a9a",fontFamily:"monospace"}}>{shipmentModal.imp.allegroOrderId}</div>
                   {/* Pozycje zamówienia */}
                   <div style={{marginTop:8,background:"#0a140a",border:"1px solid #1a3a1a",borderRadius:5,padding:"6px 10px"}}>
@@ -7031,8 +7040,17 @@ function App() {
             <div style={{fontWeight:700,fontSize:15,color:"#afdf7f",marginBottom:16}}>📦 Generuj etykietę</div>
             <div style={{marginBottom:12,fontSize:14,color:"#7a9a7a"}}>
               <div style={{fontWeight:700,color:"#a0cfdf"}}>{shipmentModal.imp.klientImie}</div>
-              <div>{shipmentModal.imp.klientUlica}</div>
-              <div>{shipmentModal.imp.klientKod} {shipmentModal.imp.klientMiasto}</div>
+              <input value={shipmentModal.imp.klientUlica||''} onChange={e=>setShipmentModal(p=>({...p,imp:{...p.imp,klientUlica:e.target.value}}))}
+                style={{background:"#0a1a0a",border:"1px solid #2a4a2a",borderRadius:4,color:"#a0cfdf",padding:"3px 8px",fontSize:13,width:"100%",marginBottom:3}}
+                placeholder="Ulica i numer budynku"/>
+              <div style={{display:"flex",gap:6}}>
+                <input value={shipmentModal.imp.klientKod||''} onChange={e=>setShipmentModal(p=>({...p,imp:{...p.imp,klientKod:e.target.value}}))}
+                  style={{background:"#0a1a0a",border:"1px solid #2a4a2a",borderRadius:4,color:"#7a9a7a",padding:"3px 8px",fontSize:13,width:90}}
+                  placeholder="Kod"/>
+                <input value={shipmentModal.imp.klientMiasto||''} onChange={e=>setShipmentModal(p=>({...p,imp:{...p.imp,klientMiasto:e.target.value}}))}
+                  style={{background:"#0a1a0a",border:"1px solid #2a4a2a",borderRadius:4,color:"#7a9a7a",padding:"3px 8px",fontSize:13,flex:1}}
+                  placeholder="Miasto"/>
+              </div>
             </div>
             {shipmentLoading&&<div style={{color:"#7abfdf",marginBottom:8}}>⟳ Pobieranie usług...</div>}
             {shipmentError&&<div style={{color:"#cf4a4a",marginBottom:8,fontSize:13}}>❌ {shipmentError}</div>}
