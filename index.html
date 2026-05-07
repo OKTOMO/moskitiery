@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260507.9</title>
+<title>MosquitoApp v20260507.10</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260507.9';
+  window.__MOSK_VERSION='20260507.10';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -837,6 +837,12 @@ function App() {
   const [shipmentCustomSize,setShipmentCustomSize]=useState({length:64,width:38,height:15,weight:5});
   const [shipmentCreating,setShipmentCreating]=useState(false);
   const [shipmentDescription,setShipmentDescription]=useState("");
+  // Narzędzia tab states
+  const [toolOpen,setToolOpen]=useState({});
+  const [nrOrders,setNrOrders]=useState([]);
+  const [nrLoading,setNrLoading]=useState(false);
+  const [nrLog,setNrLog]=useState([]);
+  const [restoreLog,setRestoreLog]=useState([]);
   const [produktSlownik,setProduktSlownik]=React.useState(()=>{
     try{return JSON.parse(localStorage.getItem('produkt_slownik')||'[]');}catch(e){return [];}
   });
@@ -5354,12 +5360,6 @@ function App() {
 
         {/* ══ IMPORT PDF ══ */}
         {tab==="narzedzia" && (()=>{
-          const [toolOpen,setToolOpen]=React.useState({});
-          const [nrOrders,setNrOrders]=React.useState([]);
-          const [nrLoading,setNrLoading]=React.useState(false);
-          const [nrLog,setNrLog]=React.useState([]);
-          const [restoreLog,setRestoreLog]=React.useState([]);
-
           const nrLog2=(msg,c='#7acf7a')=>setNrLog(p=>[...p,{msg,c,t:new Date().toLocaleTimeString('pl')}]);
           const restLog=(msg,c='#7acf7a')=>setRestoreLog(p=>[...p,{msg,c,t:new Date().toLocaleTimeString('pl')}]);
 
