@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260507.4</title>
+<title>MosquitoApp v20260507.6</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260507.4';
+  window.__MOSK_VERSION='20260507.6';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2117,6 +2117,75 @@ function App() {
     setMailSending(prev=>({...prev,[imp.allegroOrderId]:false}));
   }
 
+  // Buduje opis przesyłki (tak samo jak autoDesc w openShipmentModal) — używane też w temacie zbiorczej wysyłki
+  function buildShipmentDesc(imp, nrZlec){
+    const MATA_REGEX=/mata|podkładka|ochronna/i;
+    const isMata=MATA_REGEX.test(imp.offerNames||"");
+    const offerLower=(imp.offerNames||"").toLowerCase();
+    const duza=isMata&&(offerLower.includes("205")||offerLower.includes("duż"));
+    // Kosmetyki — mapuj po słowniku
+    const userDict=produktSlownik||[];
+    function _mapK(name){
+      const n=name.toLowerCase();
+      for(const w of userDict){if(w.fraza&&n.includes(w.fraza.toLowerCase()))return w.skrot;}
+      const zap=n.includes('boxer')?'box':n.includes('silver')||n.includes('silv')?'sil':n.includes('tobacco')||n.includes('tob')?'tob':n.includes('terre')?'ter':n.includes('aqua')?'aqu':n.includes('gold')?'gol':n.includes('adventure')||n.includes('adv')?'adv':'';
+      if((n.includes('pomada')||n.includes('pomad'))&&n.includes('brod'))return 'p br'+(zap?' '+zap:'');
+      if(n.includes('balsam')&&n.includes('brod'))return 'bal br'+(zap?' '+zap:'');
+      if(n.includes('olejek')||n.includes('olej'))return 'ol'+(zap?' '+zap:'');
+      if((n.includes('pomada')||n.includes('pomad'))&&!n.includes('brod')){
+        if(n.includes('silver')||n.includes('srebrn')||n.includes('silv'))return 'p sr';
+        if(n.includes('aqua'))return 'p ss';
+        if(n.includes('boxer')||n.includes('złot')||n.includes('zlot')||n.includes('żółt'))return 'p zł';
+        if(n.includes('adventure')||n.includes('adv'))return 'p adv';
+        if(n.includes('czerwon')||n.includes('woskov')||n.includes('woskow'))return 'p cz';
+        if(n.includes('super')||(n.includes('strong')&&n.includes('aqua')))return 'p ss';
+        return 'p sr';
+      }
+      if(n.includes('pre-styl')||n.includes('prestyler')||n.includes('pre styl'))return 'pre-st';
+      if(n.includes('szampon')&&n.includes('brod'))return 'sz br';
+      if(n.includes('szampon')){return n.includes('500')?'sz 500':'sz 250';}
+      if(n.includes('żel')&&(n.includes('po golen')||n.includes('after')))return 'ż as';
+      if(n.includes('żel')&&(n.includes('przed golen')||n.includes('before')||n.includes('bs')))return 'ż bs';
+      if(n.includes('żel')&&n.includes('golen'))return 'ż 500';
+      if(n.includes('woda')&&n.includes('golen'))return 'as'+(zap?' '+zap:'');
+      if(n.includes('odżywka')||n.includes('odzywka'))return 'odż wł';
+      if(n.includes('pomadka'))return 'pom ust';
+      if(n.includes('grooming'))return 'groom';
+      if(n.includes('gumk')&&(n.includes('recepturk')||n.includes('kg')||n.includes('gumow')))return '1 gr';
+      if(n.includes('woreczk')||(n.includes('worek')&&n.includes('moskitier')))return '1 wor';
+      if(n.includes('tac')&&n.includes('90'))return '1 tac 90';
+      if(n.includes('tac')&&n.includes('60'))return '1 tac 60';
+      if(n.includes('tac'))return '1 tac';
+      if(n.includes('drzwiczk')||(n.includes('drzwi')&&(n.includes('zwierz')||n.includes('kot')||n.includes('pies'))))return n.includes('duż')||n.includes('duz')||n.includes('large')?'1 drzwiczki duże':'1 drzwiczki małe';
+      return '';
+    }
+    const offerArr=(imp.offerNames||"").split(", ");
+    const pozycje=imp.pozycje||[];
+    let kosmetykiDesc='';
+    const counts={};
+    if(pozycje.length>0){
+      pozycje.forEach(p=>{
+        const nazwa=p.nazwa||p.name||"";const il=parseInt(p.ilosc)||1;
+        const sk=_mapK(nazwa)||_mapK(offerArr.find(o=>o.toLowerCase().includes(nazwa.toLowerCase().slice(0,6)))||nazwa);
+        if(sk)counts[sk]=(counts[sk]||0)+il;
+      });
+    } else {
+      offerArr.forEach(n=>{const sk=_mapK(n);if(sk)counts[sk]=(counts[sk]||0)+1;});
+    }
+    if(Object.keys(counts).length>0)kosmetykiDesc=Object.entries(counts).map(([sk,il])=>il>1?`${il}x ${sk}`:sk).join(', ');
+    if(isMata){
+      let bsCount=0,ssCount=0;
+      if(pozycje.length>0){
+        pozycje.forEach(p=>{const n=(p.nazwa||p.name||"").toLowerCase();const il=parseInt(p.ilosc)||1;if(n.includes("205")||n.includes("duż"))bsCount+=il;else ssCount+=il;});
+      }
+      if(bsCount===0&&ssCount===0){const tot=pozycje.length>0?pozycje.reduce((a,p)=>a+(parseInt(p.ilosc)||1),0):1;if(duza)bsCount=tot;else ssCount=tot;}
+      const parts=[];if(bsCount>0)parts.push(bsCount+" BS");if(ssCount>0)parts.push(ssCount+" ss");
+      return (nrZlec?nrZlec+" ":"")+parts.join(" ");
+    }
+    if(kosmetykiDesc)return kosmetykiDesc;
+    return nrZlec||'';
+  }
+
   async function openShipmentModal(imp){
     // Znajdź powiązane zlecenie po allegroOrderId
     const linkedOrder=imp._linkedOrder||orders.find(o=>o.allegroOrderId===imp.allegroOrderId);
@@ -4110,13 +4179,25 @@ function App() {
                         const czesci=selImps.map(i=>{
                           const sh=allegroShipments[i.allegroOrderId];
                           const ord=orders.find(o=>o.allegroOrderId===i.allegroOrderId);
-                          const desc=sh?.description||'';
                           const miasto=sh?.klientMiasto||i.klientMiasto||ord?.klientMiasto||'';
-                          if(desc&&miasto) return `${desc} ${miasto}`;
-                          if(desc) return desc;
-                          // Fallback gdy brak etykiety — nr zlecenia + imię + miasto
                           const nr=ord?.numerZlecenia||i.numerZlecenia||'';
-                          const imie=ord?.klientImie||i.klientImie||'';
+                          const isMosk=(i.offerNames||'').toLowerCase().includes('moskitiera');
+                          const imie=isMosk?(ord?.klientImie||sh?.klientImie||i.klientImie||''):'';
+                          // Priorytet: zapisany description z etykiety
+                          const desc=sh?.description||'';
+                          if(desc){
+                            // Dla moskitier: description to zazwyczaj sam nr zlecenia — dołącz imię
+                            const descBase=isMosk&&imie&&!desc.toLowerCase().includes(imie.toLowerCase().split(' ')[0].toLowerCase())
+                              ?`${desc} ${imie}`:desc;
+                            return miasto?`${descBase} ${miasto}`:descBase;
+                          }
+                          // Fallback: zbuduj opis ze słownika (maty/kosmetyki) lub nr+imię (moskitiera)
+                          const builtDesc=buildShipmentDesc(i, nr);
+                          if(builtDesc&&builtDesc!==nr){
+                            // Maty/kosmetyki — opis produktowy + miasto
+                            return miasto?`${builtDesc} ${miasto}`:builtDesc;
+                          }
+                          // Moskitiera — nr zlecenia + imię + miasto
                           return [nr,imie,miasto].filter(Boolean).join(' ');
                         }).filter(Boolean);
                         // Deduplikacja miejscowości — przy powtórzeniu dodaj I, II, III
