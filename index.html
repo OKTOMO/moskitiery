@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260507.8</title>
+<title>MosquitoApp v20260507.9</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260507.8';
+  window.__MOSK_VERSION='20260507.9';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2352,7 +2352,7 @@ function App() {
     setShipmentModal({imp, services:[]});
     setShipmentLoading(true);
     setShipmentError("");
-    setShipmentSize("A");
+    setShipmentSize((isMoskitiera||isMata)?"custom":"A");
     setPickupProposals([]);
     setPickupDate('');
     setPickupTime(null);
@@ -7345,8 +7345,6 @@ function App() {
                 const isMata=desc.includes(' ss')||desc.includes(' bs')||/^\d+\s*(ss|bs)/.test(desc);
                 const isMosk=(shipmentModal?.imp?.offerNames||'').toLowerCase().includes('moskitiera');
                 const sizes=(isMata||isMosk)?["custom"]:["A","B","C","custom"];
-                // Ustaw domyślne wymiary dla moskitiery gdy wchodzi w custom
-                if(isMosk&&shipmentSize!=="custom") setShipmentSize("custom");
                 return sizes.map(sz=>(
                   <button key={sz} onClick={()=>setShipmentSize(sz)}
                     style={{padding:"4px 10px",fontSize:12,borderRadius:4,cursor:"pointer",
