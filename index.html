@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260507.6</title>
+<title>MosquitoApp v20260507.8</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260507.6';
+  window.__MOSK_VERSION='20260507.8';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -4175,30 +4175,22 @@ function App() {
                         let to=emailCfg.emailProdukcji||'';
                         if(!to){try{await loadSettingsFromKV();const c=JSON.parse(localStorage.getItem('email_produkcji_config')||'{}');to=c.emailProdukcji||'';}catch(e){}}
                         if(!to){alert('Brak adresu email produkcji');return;}
-                        // Zbierz opisy i miejscowości — z zapisanego description (etykieta) lub z danych zlecenia
+                        // Zbierz opisy i miejscowości
                         const czesci=selImps.map(i=>{
                           const sh=allegroShipments[i.allegroOrderId];
                           const ord=orders.find(o=>o.allegroOrderId===i.allegroOrderId);
-                          const miasto=sh?.klientMiasto||i.klientMiasto||ord?.klientMiasto||'';
+                          const miasto=sh?.klientMiasto||ord?.klientMiasto||i.klientMiasto||'';
                           const nr=ord?.numerZlecenia||i.numerZlecenia||'';
                           const isMosk=(i.offerNames||'').toLowerCase().includes('moskitiera');
-                          const imie=isMosk?(ord?.klientImie||sh?.klientImie||i.klientImie||''):'';
-                          // Priorytet: zapisany description z etykiety
+                          const imie=ord?.klientImie||sh?.klientImie||i.klientImie||'';
+                          if(isMosk){
+                            // Moskitiera: nr zlecenia + imię + miasto
+                            return [nr,imie,miasto].filter(Boolean).join(' ');
+                          }
+                          // Mata/kosmetyki: opis produktowy (z etykiety lub słownika) + miasto
                           const desc=sh?.description||'';
-                          if(desc){
-                            // Dla moskitier: description to zazwyczaj sam nr zlecenia — dołącz imię
-                            const descBase=isMosk&&imie&&!desc.toLowerCase().includes(imie.toLowerCase().split(' ')[0].toLowerCase())
-                              ?`${desc} ${imie}`:desc;
-                            return miasto?`${descBase} ${miasto}`:descBase;
-                          }
-                          // Fallback: zbuduj opis ze słownika (maty/kosmetyki) lub nr+imię (moskitiera)
-                          const builtDesc=buildShipmentDesc(i, nr);
-                          if(builtDesc&&builtDesc!==nr){
-                            // Maty/kosmetyki — opis produktowy + miasto
-                            return miasto?`${builtDesc} ${miasto}`:builtDesc;
-                          }
-                          // Moskitiera — nr zlecenia + imię + miasto
-                          return [nr,imie,miasto].filter(Boolean).join(' ');
+                          const prodDesc=desc||buildShipmentDesc(i,nr);
+                          return [prodDesc,miasto].filter(Boolean).join(' ');
                         }).filter(Boolean);
                         // Deduplikacja miejscowości — przy powtórzeniu dodaj I, II, III
                         const miesCount={};
@@ -7351,7 +7343,10 @@ function App() {
               {(()=>{
                 const desc=(shipmentDescription||'').toLowerCase();
                 const isMata=desc.includes(' ss')||desc.includes(' bs')||/^\d+\s*(ss|bs)/.test(desc);
-                const sizes=isMata?["custom"]:["A","B","C","custom"];
+                const isMosk=(shipmentModal?.imp?.offerNames||'').toLowerCase().includes('moskitiera');
+                const sizes=(isMata||isMosk)?["custom"]:["A","B","C","custom"];
+                // Ustaw domyślne wymiary dla moskitiery gdy wchodzi w custom
+                if(isMosk&&shipmentSize!=="custom") setShipmentSize("custom");
                 return sizes.map(sz=>(
                   <button key={sz} onClick={()=>setShipmentSize(sz)}
                     style={{padding:"4px 10px",fontSize:12,borderRadius:4,cursor:"pointer",
@@ -7415,9 +7410,14 @@ function App() {
                       const to=emailCfg.emailProdukcji||'';
                       if(!to){alert('Brak adresu email produkcji — ustaw w Ustawieniach');return;}
                       // Temat: skrót produktu (np "1 ss", "2 BS", "p sr") + miejscowość
+                      // Dla moskitier: nr zlecenia + imię + miasto
                       const desc=(shipmentDescription||'').trim();
                       const miasto=imp.klientMiasto||order.klientMiasto||'';
-                      const subject=desc?`${desc} ${miasto}`.trim():`${order.numerZlecenia||''} ${imp.klientImie||''} ${miasto}`.trim();
+                      const isMosk=(imp.offerNames||'').toLowerCase().includes('moskitiera');
+                      const imie=order.klientImie||imp.klientImie||'';
+                      const subject=isMosk
+                        ?[desc||order.numerZlecenia||'',imie,miasto].filter(Boolean).join(' ').trim()
+                        :(desc?`${desc} ${miasto}`.trim():[order.numerZlecenia||'',imie,miasto].filter(Boolean).join(' ').trim());
                       setShipmentModal(null);
                       setMailPreview({imp,order,to,subject,hasEtykieta:true});
                       loadRecentEmails();
