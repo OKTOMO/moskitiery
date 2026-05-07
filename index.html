@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260506.16</title>
+<title>MosquitoApp v20260506.18</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260506.16';
+  window.__MOSK_VERSION='20260506.18';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -3780,7 +3780,8 @@ function App() {
                       if(!lastSavedOrder){alert('Najpierw zapisz zamówienie');return;}
                       const emailCfg=JSON.parse(localStorage.getItem('email_produkcji_config')||'{}');
                       const to=emailCfg.emailProdukcji||'biuro@superis.pl';
-                      const subject=`${lastSavedOrder.numerZlecenia||''} ${lastSavedOrder.klientImie||''} ${lastSavedOrder.klientMiasto||''}`.trim();
+                      const allegroImp2=allegroImportResults.find(i=>i.allegroOrderId===allegroOrderIdForForm);
+                      const subject=`${lastSavedOrder.numerZlecenia||''} ${lastSavedOrder.klientImie||allegroImp2?.klientImie||''} ${lastSavedOrder.klientMiasto||allegroImp2?.klientMiasto||''}`.trim();
                       setMailPreview({imp:{...lastSavedOrder,allegroOrderId:allegroOrderIdForForm},order:lastSavedOrder,to,subject,hasEtykieta:false});
                       loadRecentEmails();
                     }}
@@ -4083,13 +4084,9 @@ function App() {
                         if(!to){try{await loadSettingsFromKV();const c=JSON.parse(localStorage.getItem('email_produkcji_config')||'{}');to=c.emailProdukcji||'';}catch(e){}}
                         if(!to){alert('Brak adresu email produkcji');return;}
                         // Zbierz opisy i miejscowości
-                        const opisy=selImps.map(i=>{const sh=allegroShipments[i.allegroOrderId];return sh?.description||sh?.textOnLabel||'';}).filter(Boolean);
-                        const miasta=[...new Set(selImps.map(i=>i.klientMiasto||'').filter(Boolean))];
+                        const opisy=selImps.map(i=>{const sh=allegroShipments[i.allegroOrderId];const desc=sh?.description||sh?.textOnLabel||'';return desc?`${desc} ${i.klientMiasto||''}`.trim():'';}).filter(Boolean);
                         const linkedOrds=selImps.map(i=>orders.find(o=>o.allegroOrderId===i.allegroOrderId)).filter(Boolean);
-                        const isMata=opisy.some(d=>/\b(ss|BS)\b/i.test(d));
-                        const subject=opisy.length>0&&isMata
-                          ?`${opisy.join(', ')} ${miasta.join(', ')}`.trim()
-                          :`${linkedOrds.map(o=>o.numerZlecenia||'').filter(Boolean).join(', ')} ${miasta.join(', ')}`.trim();
+                        const subject=opisy.length>0?opisy.join(', '):`${linkedOrds.map(o=>o.numerZlecenia||'').filter(Boolean).join(', ')}`.trim();
                         const hasSh=selImps.some(i=>allegroShipments[i.allegroOrderId]);
                         _setBatchSel([]);
                         setMailPreview({imp:selImps[0],order:linkedOrds[0]||selImps[0],to,subject,hasEtykieta:hasSh,_batchImps:selImps,_batchOrders:linkedOrds});
