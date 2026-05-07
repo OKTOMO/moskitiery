@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260506.3</title>
+<title>MosquitoApp v20260506.5</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260506.3';
+  window.__MOSK_VERSION='20260506.5';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2078,6 +2078,7 @@ function App() {
         const attCount=d.attachmentsUploaded!==undefined?d.attachmentsUploaded:attachments.length;
         alert(`✅ Mail wysłany do ${to}\nTemat: ${subject}\nZałączniki: ${attCount}/${attachments.length}`);
         loadRecentEmails();
+        setTab("zamowienia");  // wróć do zakładki Zamówienia po wysłaniu
         if(imp.allegroOrderId){
           setAllegroShipments(prev=>{
             const next={...prev,[imp.allegroOrderId]:{...(prev[imp.allegroOrderId]||{}),mailWyslany:true,mailWyslanyAt:new Date().toISOString()}};
@@ -7092,14 +7093,19 @@ function App() {
                 style={{width:"100%",boxSizing:"border-box",background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:5,color:"#c0e0c0",padding:"6px 10px",fontSize:14,fontFamily:"monospace"}}/>
             </div>
             <div style={{display:"flex",gap:8,marginBottom:12}}>
-              {["A","B","C","custom"].map(sz=>(
-                <button key={sz} onClick={()=>setShipmentSize(sz)}
-                  style={{padding:"4px 10px",fontSize:12,borderRadius:4,cursor:"pointer",
-                    background:shipmentSize===sz?"#2a5a2a":"#1a2a1a",
-                    border:`1px solid ${shipmentSize===sz?"#5a9a5a":"#2a4a2a"}`,color:"#9fcf9f"}}>
-                  {sz==="custom"?"Własny":sz}
-                </button>
-              ))}
+              {(()=>{
+                const desc=(shipmentDescription||'').toLowerCase();
+                const isMata=desc.includes(' ss')||desc.includes(' bs')||/^\d+\s*(ss|bs)/.test(desc);
+                const sizes=isMata?["custom"]:["A","B","C","custom"];
+                return sizes.map(sz=>(
+                  <button key={sz} onClick={()=>setShipmentSize(sz)}
+                    style={{padding:"4px 10px",fontSize:12,borderRadius:4,cursor:"pointer",
+                      background:shipmentSize===sz?"#2a5a2a":"#1a2a1a",
+                      border:`1px solid ${shipmentSize===sz?"#5a9a5a":"#2a4a2a"}`,color:"#9fcf9f"}}>
+                    {sz==="custom"?"Własny":sz}
+                  </button>
+                ));
+              })()}
             </div>
             {shipmentSize==="custom"&&(
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginBottom:12}}>
