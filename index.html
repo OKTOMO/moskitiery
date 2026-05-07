@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260506.8</title>
+<title>MosquitoApp v20260506.9</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260506.8';
+  window.__MOSK_VERSION='20260506.9';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2019,6 +2019,7 @@ function App() {
     const extraFiles = mailPreview.extraFiles || [];
     const removedFiles = mailPreview.removedFiles || [];
     const batchOrders = mailPreview._batchOrders || null;
+    const batchImps = mailPreview._batchImps || null;
     setMailPreview(null);
     setMailSending(prev=>({...prev,[imp.allegroOrderId]:true}));
     try{
@@ -2067,18 +2068,20 @@ function App() {
       console.log('[MAIL] wysyłka: '+attachments.length+' załącznik(ów)');
       // Ręcznie dodane dokumenty
       for(const f of extraFiles) attachments.push(f);
-      // Zbiorcza wysyłka — pobierz etykiety ze wszystkich zaznaczonych zleceń
-      if(batchOrders && batchOrders.length>1){
-        for(const bo of batchOrders){
-          const boSh=allegroShipments[bo.allegroOrderId||''];
-          if(boSh?.shipmentId){
+      // Zbiorcza wysyłka — pobierz etykiety ze wszystkich zaznaczonych zamówień
+      const allBatchImps = batchImps || (batchOrders ? batchOrders.map(o=>allegroImportResults.find(i=>i.allegroOrderId===o.allegroOrderId)).filter(Boolean) : []);
+      if(allBatchImps.length>1){
+        for(const bi of allBatchImps){
+          const biSh=allegroShipments[bi.allegroOrderId||''];
+          if(biSh?.shipmentId){
             try{
-              const lr=await fetch(AUTORESPONDER_URL+"/shipment/label?kontoId="+boSh.kontoId,{
+              const lr=await fetch(AUTORESPONDER_URL+"/shipment/label?kontoId="+biSh.kontoId,{
                 method:"POST",headers:{"x-api-key":AUTORESPONDER_KEY,"Content-Type":"application/json"},
-                body:JSON.stringify({shipmentIds:[boSh.shipmentId],pageSize:"A6"})
+                body:JSON.stringify({shipmentIds:[biSh.shipmentId],pageSize:"A6"})
               });
               const ld=await lr.json();
-              if(ld.pdf) attachments.push({name:`etykieta_${bo.numerZlecenia||bo.klientMiasto||'zbior'}.pdf`,content:ld.pdf,mimeType:"application/pdf"});
+              const labelName=`etykieta_${bi.klientMiasto||bi.allegroOrderId?.slice(-6)||'zbior'}.pdf`;
+              if(ld.pdf) attachments.push({name:labelName,content:ld.pdf,mimeType:"application/pdf"});
             }catch(e){ console.warn('[BATCH LABEL] błąd:',e); }
           }
         }
@@ -3841,6 +3844,17 @@ function App() {
                     }}
                     style={{width:16,height:16,cursor:'pointer',accentColor:'#7acf7a'}}
                   />
+                  {isRealizacja&&<input type="checkbox" checked={batchMailSelected.has(imp.allegroOrderId)}
+                    title="Dodaj do wysyłki zbiorczej"
+                    onChange={e=>{
+                      setBatchMailSelected(prev=>{
+                        const next=new Set(prev);
+                        e.target.checked?next.add(imp.allegroOrderId):next.delete(imp.allegroOrderId);
+                        return next;
+                      });
+                    }}
+                    style={{width:16,height:16,cursor:'pointer',accentColor:'#9a9adf'}}
+                  />
                   <div style={{minWidth:76}}>
                     <span style={{fontSize:11,padding:'2px 5px',borderRadius:5,background:kBg,color:kCol,fontFamily:'monospace',fontWeight:700,display:'inline-block'}}>{imp.kontoId}</span>
                     <div style={{fontSize:10,color:'#3a6a4a',marginTop:1}}>{imp.firma==='F'?'Favour':imp.firma==='AR'||imp.firma==='A'?'Arlis':imp.firma==='E'?'Everis':'Albama'}</div>
@@ -4047,7 +4061,41 @@ function App() {
               {(()=>{
                 const active=zamTab==='nowe'?noweList:zamTab==='realizacja'?realizacjaList:zrealizowaneList;
                 if(active.length===0&&allegroImportResults.length>0) return <div style={{textAlign:'center',color:'#3a5a3a',padding:'40px 0'}}>{zamTab==='nowe'?'🎉 Brak nowych zamówień!':zamTab==='realizacja'?'Brak zamówień w realizacji':'Brak zrealizowanych'}</div>;
-                return <div style={{border:'1px solid #1a2a1a',borderTop:'none',borderRadius:'0 0 6px 6px',overflow:'hidden'}}>{active.map((imp,idx)=>renderRow(imp,idx))}</div>;
+                return <div>
+                  {batchMailSelected.size>0&&zamTab==='realizacja'&&(
+                    <div style={{background:"#1a1a3a",border:"1px solid #2a2a8a",borderRadius:6,padding:"8px 14px",margin:"0 0 8px",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+                      <span style={{color:"#9a9adf",fontWeight:700}}>✉️ Zaznaczono {batchMailSelected.size} zamówień do wysyłki zbiorczej</span>
+                      <button onClick={async()=>{
+                        const selImps=[...batchMailSelected].map(id=>allegroImportResults.find(i=>i.allegroOrderId===id)).filter(Boolean);
+                        const emailCfg=JSON.parse(localStorage.getItem('email_produkcji_config')||'{}');
+                        let to=emailCfg.emailProdukcji||'';
+                        if(!to){try{await loadSettingsFromKV();const c=JSON.parse(localStorage.getItem('email_produkcji_config')||'{}');to=c.emailProdukcji||'';}catch(e){}}
+                        if(!to){alert('Brak adresu email produkcji');return;}
+                        // Zbierz opisy i miejscowości
+                        const opisy=selImps.map(i=>{const sh=allegroShipments[i.allegroOrderId];return sh?.description||sh?.textOnLabel||'';}).filter(Boolean);
+                        const miasta=[...new Set(selImps.map(i=>i.klientMiasto||'').filter(Boolean))];
+                        const linkedOrds=selImps.map(i=>orders.find(o=>o.allegroOrderId===i.allegroOrderId)).filter(Boolean);
+                        const isMata=opisy.some(d=>/\b(ss|BS)\b/i.test(d));
+                        const subject=opisy.length>0&&isMata
+                          ?`${opisy.join(', ')} ${miasta.join(', ')}`.trim()
+                          :`${linkedOrds.map(o=>o.numerZlecenia||'').filter(Boolean).join(', ')} ${miasta.join(', ')}`.trim();
+                        const hasSh=selImps.some(i=>allegroShipments[i.allegroOrderId]);
+                        setBatchMailSelected(new Set());
+                        setMailPreview({imp:selImps[0],order:linkedOrds[0]||selImps[0],to,subject,hasEtykieta:hasSh,_batchImps:selImps,_batchOrders:linkedOrds});
+                        loadRecentEmails();
+                      }}
+                        style={{background:"#1a1a5a",border:"1px solid #4a4acf",color:"#9a9aff",padding:"5px 14px",borderRadius:5,cursor:"pointer",fontWeight:700,fontSize:13}}>
+                        ✉️ Wyślij zbiorczo na produkcję
+                      </button>
+                      <button onClick={()=>setBatchMailSelected(new Set())}
+                        style={{background:"#1a1a2a",border:"1px solid #2a2a4a",color:"#6a7a9a",padding:"5px 10px",borderRadius:5,cursor:"pointer",fontSize:12}}>
+                        ✕ Anuluj
+                      </button>
+                      <span style={{fontSize:11,color:"#3a3a7a"}}>{selImps.map?.[0]&&[...batchMailSelected].map(id=>{const i=allegroImportResults.find(x=>x.allegroOrderId===id);return i?.klientImie||'';}).join(' + ')}</span>
+                    </div>
+                  )}
+                  <div style={{border:'1px solid #1a2a1a',borderTop:'none',borderRadius:'0 0 6px 6px',overflow:'hidden'}}>{active.map((imp,idx)=>renderRow(imp,idx))}</div>
+                </div>;
               })()}
             </div>
           );
