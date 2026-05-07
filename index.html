@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260506.6</title>
+<title>MosquitoApp v20260506.7</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260506.6';
+  window.__MOSK_VERSION='20260506.7';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -886,6 +886,7 @@ function App() {
   const [zamSearch,setZamSearch]=useState('');
   const [zamKonto,setZamKonto]=useState('');
   const [mergeSelected,setMergeSelected]=useState(new Set());
+  const [batchMailSelected,setBatchMailSelected]=useState(new Set());
   const [zamTab,setZamTab]=useState('nowe');
 
   const [fvAllegroStatus,setFvAllegroStatus]=useState(""); // "loading"|"ok"|"error"|""
@@ -2017,6 +2018,7 @@ function App() {
     const {imp, order, to, subject} = mailPreview;
     const extraFiles = mailPreview.extraFiles || [];
     const removedFiles = mailPreview.removedFiles || [];
+    const batchOrders = mailPreview._batchOrders || null;
     setMailPreview(null);
     setMailSending(prev=>({...prev,[imp.allegroOrderId]:true}));
     try{
@@ -2065,6 +2067,22 @@ function App() {
       console.log('[MAIL] wysyłka: '+attachments.length+' załącznik(ów)');
       // Ręcznie dodane dokumenty
       for(const f of extraFiles) attachments.push(f);
+      // Zbiorcza wysyłka — pobierz etykiety ze wszystkich zaznaczonych zleceń
+      if(batchOrders && batchOrders.length>1){
+        for(const bo of batchOrders){
+          const boSh=allegroShipments[bo.allegroOrderId||''];
+          if(boSh?.shipmentId){
+            try{
+              const lr=await fetch(AUTORESPONDER_URL+"/shipment/label?kontoId="+boSh.kontoId,{
+                method:"POST",headers:{"x-api-key":AUTORESPONDER_KEY,"Content-Type":"application/json"},
+                body:JSON.stringify({shipmentIds:[boSh.shipmentId],pageSize:"A6"})
+              });
+              const ld=await lr.json();
+              if(ld.pdf) attachments.push({name:`etykieta_${bo.numerZlecenia||bo.klientMiasto||'zbior'}.pdf`,content:ld.pdf,mimeType:"application/pdf"});
+            }catch(e){ console.warn('[BATCH LABEL] błąd:',e); }
+          }
+        }
+      }
       const extraNote = mailPreview.extraNote||'';
       const content = extraNote ? `<p style="font-family:monospace;font-size:14px;color:#333">${extraNote.replace(/\n/g,'<br>')}</p>` : '';
       const r=await fetch(AUTORESPONDER_URL+'/email/send',{
@@ -5019,11 +5037,44 @@ function App() {
               </div>
             )}
 
+            {batchMailSelected.size>0&&(
+              <div style={{background:"#1a1a3a",border:"1px solid #2a2a8a",borderRadius:6,padding:"8px 14px",margin:"8px 0",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+                <span style={{color:"#9a9adf",fontWeight:700}}>✉️ Zaznaczono {batchMailSelected.size} zleceń do wysyłki</span>
+                <button onClick={async()=>{
+                  const sel=[...batchMailSelected].map(id=>orders.find(o=>o.id===id)).filter(Boolean);
+                  const emailCfg=JSON.parse(localStorage.getItem('email_produkcji_config')||'{}');
+                  const to=emailCfg.emailProdukcji||'';
+                  if(!to){alert('Brak adresu email produkcji');return;}
+                  // Zbierz opisy etykiet i miejscowości
+                  const opisy=sel.map(o=>{
+                    const sh=allegroShipments[o.allegroOrderId||''];
+                    return sh?.description||sh?.textOnLabel||o.numerZlecenia||'';
+                  }).filter(Boolean);
+                  const miasta=[...new Set(sel.map(o=>o.klientMiasto||'').filter(Boolean))];
+                  const subject=`${opisy.join(', ')} ${miasta.join(', ')}`.trim();
+                  // Użyj pierwszego zlecenia jako baza dla imp
+                  const baseOrder=sel[0];
+                  const baseImp=allegroImportResults.find(i=>i.allegroOrderId===baseOrder.allegroOrderId)||baseOrder;
+                  const hasSh=sel.some(o=>allegroShipments[o.allegroOrderId||'']);
+                  setBatchMailSelected(new Set());
+                  setMailPreview({imp:baseImp,order:baseOrder,to,subject,hasEtykieta:hasSh,_batchOrders:sel});
+                  loadRecentEmails();
+                }}
+                  style={{background:"#1a1a5a",border:"1px solid #4a4acf",color:"#9a9aff",padding:"5px 14px",borderRadius:5,cursor:"pointer",fontWeight:700,fontSize:13}}>
+                  ✉️ Wyślij zbiorczo
+                </button>
+                <button onClick={()=>setBatchMailSelected(new Set())}
+                  style={{background:"#1a1a2a",border:"1px solid #2a2a4a",color:"#6a7a9a",padding:"5px 10px",borderRadius:5,cursor:"pointer",fontSize:12}}>
+                  ✕ Anuluj
+                </button>
+              </div>
+            )}
+
             <div className="card" style={{padding:0,overflow:"hidden"}}>
               <table style={{width:"100%",borderCollapse:"collapse",fontSize:14}}>
                 <thead>
                   <tr style={{borderBottom:"2px solid #1e3a1e",background:"#0c1a0c"}}>
-                    {["Nr zlecenia","Data","Klient","Miasto","Mosk.","Linka","Blaszki","Ramka","Siatka","","✉️",""].map((h,i)=>(
+                    {["☐","Nr zlecenia","Data","Klient","Miasto","Mosk.","Linka","Blaszki","Ramka","Siatka","","✉️",""].map((h,i)=>(
                       <th key={i} style={{padding:"10px 10px",textAlign:"left",fontSize:14,color:"#3a7a3a",letterSpacing:".1em",textTransform:"uppercase",fontWeight:700}}>{h}</th>
                     ))}
                   </tr>
@@ -5038,6 +5089,11 @@ function App() {
                     const kolSiatki=[...new Set(o.pozycje.map(p=>p.kolorSiatki).filter(Boolean))].join(", ");
                     return (
                       <tr key={o.id} className="tr">
+                        <td style={{padding:"6px 8px",width:28}}>
+                          <input type="checkbox" checked={batchMailSelected.has(o.id)}
+                            onChange={e=>{setBatchMailSelected(prev=>{const next=new Set(prev);e.target.checked?next.add(o.id):next.delete(o.id);return next;});}}
+                            style={{width:15,height:15,cursor:"pointer",accentColor:"#9a9adf"}}/>
+                        </td>
                         <td style={{padding:"10px 10px"}}>
                           <button onClick={()=>{if(confirm("Usunąć "+o.numerZlecenia+"?"))updateOrders(orders.filter(x=>x.id!==o.id))}}
                             style={{background:"#2a0a0a",border:"1px solid #6a2a2a",color:"#df7a7a",borderRadius:4,padding:"1px 6px",fontSize:12,cursor:"pointer",marginRight:2}}>🗑</button>
@@ -5078,8 +5134,11 @@ function App() {
                               }catch(e){}
                             }
                             if(!to){alert('Brak adresu email produkcji.\n\nUstaw go w: Admin → Ustawienia → "Email produkcji" → Zapisz w chmurze.\n\nPo zapisaniu na komputerze telefon pobierze ustawienia automatycznie.');return;}
-                            const subject=`${o.numerZlecenia||''} ${o.klientImie||''} ${o.klientMiasto||''}`.trim();
                             const sh=allegroShipments[o.allegroOrderId||''];
+                            const etykietaDesc=sh?.description||sh?.textOnLabel||'';
+                            const subject=etykietaDesc
+                              ?`${etykietaDesc} ${o.klientMiasto||''}`.trim()
+                              :`${o.numerZlecenia||''} ${o.klientImie||''} ${o.klientMiasto||''}`.trim();
                             setMailPreview({imp:o,order:o,to,subject,hasEtykieta:!!sh});
                             loadRecentEmails();
                           }}>✉️</button>
