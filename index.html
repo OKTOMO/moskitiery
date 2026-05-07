@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260506.5</title>
+<title>MosquitoApp v20260506.6</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260506.5';
+  window.__MOSK_VERSION='20260506.6';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -7159,7 +7159,10 @@ function App() {
                       const emailCfg=JSON.parse(localStorage.getItem('email_produkcji_config')||'{}');
                       const to=emailCfg.emailProdukcji||'';
                       if(!to){alert('Brak adresu email produkcji — ustaw w Ustawieniach');return;}
-                      const subject=`${order.numerZlecenia||''} ${imp.klientImie||''} ${imp.klientMiasto||''}`.trim();
+                      // Temat: skrót produktu (np "1 ss", "2 BS", "p sr") + miejscowość
+                      const desc=(shipmentDescription||'').trim();
+                      const miasto=imp.klientMiasto||order.klientMiasto||'';
+                      const subject=desc?`${desc} ${miasto}`.trim():`${order.numerZlecenia||''} ${imp.klientImie||''} ${miasto}`.trim();
                       setShipmentModal(null);
                       setMailPreview({imp,order,to,subject,hasEtykieta:true});
                       loadRecentEmails();
@@ -7322,6 +7325,12 @@ function App() {
                     e.target.value='';
                   }}/>
               </label>
+            </div>
+            <div style={{marginTop:10}}>
+              <div style={{fontSize:12,color:"#4a6a5a",marginBottom:4}}>💬 Dodatkowa wiadomość (opcjonalnie):</div>
+              <textarea value={mailPreview.extraNote||''} onChange={e=>setMailPreview(p=>({...p,extraNote:e.target.value}))}
+                placeholder="Np. pilne, klient prosi o zmianę koloru, uwagi dla produkcji..."
+                style={{width:"100%",background:"#0a1a0a",border:"1px solid #2a4a2a",borderRadius:5,color:"#9acf9a",padding:"6px 10px",fontSize:13,fontFamily:"monospace",resize:"vertical",minHeight:60,boxSizing:"border-box"}}/>
             </div>
             <div style={{display:"flex",gap:8}}>
               <button onClick={()=>setMailPreview(null)}
