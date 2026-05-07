@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260506.11</title>
+<title>MosquitoApp v20260506.14</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260506.11';
+  window.__MOSK_VERSION='20260506.14';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -886,7 +886,7 @@ function App() {
   const [zamSearch,setZamSearch]=useState('');
   const [zamKonto,setZamKonto]=useState('');
   const [mergeSelected,setMergeSelected]=useState(new Set());
-  const [batchMailSelected,setBatchMailSelected]=useState(new Set());
+  const [batchMailSelected,setBatchMailSelected]=useState([]);
   const [zamTab,setZamTab]=useState('nowe');
 
   const [fvAllegroStatus,setFvAllegroStatus]=useState(""); // "loading"|"ok"|"error"|""
@@ -3556,7 +3556,7 @@ function App() {
                 </div>
                 <div>
                   <span className="lbl">Uwagi</span>
-                  <input value={form.uwagi} onChange={e=>setForm(f=>({...f,uwagi:e.target.value}))} placeholder="Dodatkowe uwagi..."/>
+                  <input value={form.uwagi} onChange={e=>setForm(f=>({...f,uwagi:e.target.value}))} placeholder="Dodatkowe uwagi..." style={{fontSize:16,padding:"6px 10px"}}/>
                 </div>
               </div>
             </div>
@@ -3671,7 +3671,7 @@ function App() {
                         })()}
                         <div style={{marginTop:8}}>
                           <span className="lbl">Uwagi</span>
-                          <input value={poz.uwagi||""} onChange={e=>updPoz(i,"uwagi",e.target.value)} placeholder="Uwagi do pozycji..."/>
+                          <input value={poz.uwagi||""} onChange={e=>updPoz(i,"uwagi",e.target.value)} placeholder="Uwagi do pozycji..." style={{fontSize:15,padding:"5px 10px"}}/>
                         </div>
                       </>
                     ):(
@@ -3844,15 +3844,11 @@ function App() {
                     }}
                     style={{width:16,height:16,cursor:'pointer',accentColor:'#7acf7a'}}
                   />
-                  {isRealizacja&&<input type="checkbox" checked={batchMailSelected.has(imp.allegroOrderId)}
+                  {isRealizacja&&false&&<input type="checkbox" checked={batchMailSelected.includes(imp.allegroOrderId)}
                     title="Dodaj do wysyłki zbiorczej (fioletowy)"
                     onChange={e=>{
                       const id=imp.allegroOrderId;
-                      setBatchMailSelected(prev=>{
-                        const next=new Set([...prev]);
-                        e.target.checked?next.add(id):next.delete(id);
-                        return next;
-                      });
+                      setBatchMailSelected(prev=>e.target.checked?[...prev,id]:prev.filter(x=>x!==id));
                     }}
                     style={{width:16,height:16,cursor:'pointer',accentColor:'#9a9adf'}}
                   />}
@@ -3992,6 +3988,18 @@ function App() {
                         background:openBox==='faktura'?'#3a2a1a':'#2a1a0a',border:'1px solid #7a5a2a',color:'#dfaf5a'}}>
                       🧾
                     </button>}
+                    {isRealizacja&&<button
+                      title={batchMailSelected.includes(imp.allegroOrderId)?"✅ Dodano do wysyłki zbiorczej":"Dodaj do wysyłki zbiorczej"}
+                      onClick={()=>{
+                        const id=imp.allegroOrderId;
+                        setBatchMailSelected(prev=>prev.includes(id)?prev.filter(x=>x!==id):[...prev,id]);
+                      }}
+                      style={{padding:'4px 8px',fontSize:12,borderRadius:5,cursor:'pointer',
+                        background:batchMailSelected.includes(imp.allegroOrderId)?'#1a1a5a':'#0a0a2a',
+                        border:`1px solid ${batchMailSelected.includes(imp.allegroOrderId)?'#5a5acf':'#2a2a5a'}`,
+                        color:batchMailSelected.includes(imp.allegroOrderId)?'#9a9aff':'#4a4a9a'}}>
+                      📦{batchMailSelected.includes(imp.allegroOrderId)?'✓':''}
+                    </button>}
                     <button onClick={()=>{setSelectedOrderId(imp.allegroOrderId);setSelectedKontoId(imp.kontoId);setTab('wiadomosci');}} title="Wiadomości"
                       style={{padding:'4px 7px',fontSize:12,borderRadius:5,cursor:'pointer',background:'#1a2a2a',border:'1px solid #2a5a5a',color:'#5abfbf'}}>
                       💬
@@ -4063,9 +4071,9 @@ function App() {
                 const active=zamTab==='nowe'?noweList:zamTab==='realizacja'?realizacjaList:zrealizowaneList;
                 if(active.length===0&&allegroImportResults.length>0) return <div style={{textAlign:'center',color:'#3a5a3a',padding:'40px 0'}}>{zamTab==='nowe'?'🎉 Brak nowych zamówień!':zamTab==='realizacja'?'Brak zamówień w realizacji':'Brak zrealizowanych'}</div>;
                 return <div>
-                  {batchMailSelected.size>0&&zamTab==='realizacja'&&(
+                  {batchMailSelected.length>0&&zamTab==='realizacja'&&(
                     <div style={{background:"#1a1a3a",border:"1px solid #2a2a8a",borderRadius:6,padding:"8px 14px",margin:"0 0 8px",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
-                      <span style={{color:"#9a9adf",fontWeight:700}}>✉️ Zaznaczono {batchMailSelected.size} zamówień do wysyłki zbiorczej</span>
+                      <span style={{color:"#9a9adf",fontWeight:700}}>✉️ Zaznaczono {batchMailSelected.length} zamówień do wysyłki zbiorczej</span>
                       <button onClick={async()=>{
                         const selImps=[...batchMailSelected].map(id=>allegroImportResults.find(i=>i.allegroOrderId===id)).filter(Boolean);
                         const emailCfg=JSON.parse(localStorage.getItem('email_produkcji_config')||'{}');
@@ -4081,14 +4089,14 @@ function App() {
                           ?`${opisy.join(', ')} ${miasta.join(', ')}`.trim()
                           :`${linkedOrds.map(o=>o.numerZlecenia||'').filter(Boolean).join(', ')} ${miasta.join(', ')}`.trim();
                         const hasSh=selImps.some(i=>allegroShipments[i.allegroOrderId]);
-                        setBatchMailSelected(new Set());
+                        setBatchMailSelected([]);
                         setMailPreview({imp:selImps[0],order:linkedOrds[0]||selImps[0],to,subject,hasEtykieta:hasSh,_batchImps:selImps,_batchOrders:linkedOrds});
                         loadRecentEmails();
                       }}
                         style={{background:"#1a1a5a",border:"1px solid #4a4acf",color:"#9a9aff",padding:"5px 14px",borderRadius:5,cursor:"pointer",fontWeight:700,fontSize:13}}>
                         ✉️ Wyślij zbiorczo na produkcję
                       </button>
-                      <button onClick={()=>setBatchMailSelected(new Set())}
+                      <button onClick={()=>setBatchMailSelected([])}
                         style={{background:"#1a1a2a",border:"1px solid #2a2a4a",color:"#6a7a9a",padding:"5px 10px",borderRadius:5,cursor:"pointer",fontSize:12}}>
                         ✕ Anuluj
                       </button>
@@ -5086,9 +5094,9 @@ function App() {
               </div>
             )}
 
-            {batchMailSelected.size>0&&(
+            {batchMailSelected.length>0&&(
               <div style={{background:"#1a1a3a",border:"1px solid #2a2a8a",borderRadius:6,padding:"8px 14px",margin:"8px 0",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
-                <span style={{color:"#9a9adf",fontWeight:700}}>✉️ Zaznaczono {batchMailSelected.size} zleceń do wysyłki</span>
+                <span style={{color:"#9a9adf",fontWeight:700}}>✉️ Zaznaczono {batchMailSelected.length} zleceń do wysyłki</span>
                 <button onClick={async()=>{
                   const sel=[...batchMailSelected].map(id=>orders.find(o=>o.id===id)).filter(Boolean);
                   const emailCfg=JSON.parse(localStorage.getItem('email_produkcji_config')||'{}');
@@ -5105,14 +5113,14 @@ function App() {
                   const baseOrder=sel[0];
                   const baseImp=allegroImportResults.find(i=>i.allegroOrderId===baseOrder.allegroOrderId)||baseOrder;
                   const hasSh=sel.some(o=>allegroShipments[o.allegroOrderId||'']);
-                  setBatchMailSelected(new Set());
+                  setBatchMailSelected([]);
                   setMailPreview({imp:baseImp,order:baseOrder,to,subject,hasEtykieta:hasSh,_batchOrders:sel});
                   loadRecentEmails();
                 }}
                   style={{background:"#1a1a5a",border:"1px solid #4a4acf",color:"#9a9aff",padding:"5px 14px",borderRadius:5,cursor:"pointer",fontWeight:700,fontSize:13}}>
                   ✉️ Wyślij zbiorczo
                 </button>
-                <button onClick={()=>setBatchMailSelected(new Set())}
+                <button onClick={()=>setBatchMailSelected([])}
                   style={{background:"#1a1a2a",border:"1px solid #2a2a4a",color:"#6a7a9a",padding:"5px 10px",borderRadius:5,cursor:"pointer",fontSize:12}}>
                   ✕ Anuluj
                 </button>
@@ -5139,8 +5147,8 @@ function App() {
                     return (
                       <tr key={o.id} className="tr">
                         <td style={{padding:"6px 8px",width:28}}>
-                          <input type="checkbox" checked={batchMailSelected.has(o.id)}
-                            onChange={e=>{setBatchMailSelected(prev=>{const next=new Set(prev);e.target.checked?next.add(o.id):next.delete(o.id);return next;});}}
+                          <input type="checkbox" checked={batchMailSelected.includes(o.id)}
+                            onChange={e=>{const id=o.id;setBatchMailSelected(prev=>e.target.checked?[...prev,id]:prev.filter(x=>x!==id));}}
                             style={{width:15,height:15,cursor:"pointer",accentColor:"#9a9adf"}}/>
                         </td>
                         <td style={{padding:"10px 10px"}}>
