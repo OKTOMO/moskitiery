@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260506.18</title>
+<title>MosquitoApp v20260507.4</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260506.18';
+  window.__MOSK_VERSION='20260507.4';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -1516,7 +1516,8 @@ function App() {
     for(const [pat,val] of KOLORY_SIATKI){ if(lower.includes(pat)){kolorSiatki=val;break;} }
     const pozycje=[];
     // Format 1: 84x215 - 2 szt / 84x215 2szt / 84x215
-    const dimRe1=/(\d{2,3}[,.]?\d*)\s*[xX\u00d7\u0445]\s*(\d{2,3}[,.]?\d*)\s*[-–]?\s*[xX]?\s*(\d+)?\s*(?:szt(?:uk[ia]?)?)?/gi;
+    // 34x128x2 — trzecia liczba BEZ słowa "szt" i BEZ spacji/myślnika przed nią to grubość ramy — ignoruj
+    const dimRe1=/(\d{2,3}[,.]?\d*)\s*[xX\u00d7\u0445]\s*(\d{2,3}[,.]?\d*)(?:\s*[-–]\s*(\d+)\s*(?:szt(?:uk[ia]?)?)?|\s+(\d+)\s*szt(?:uk[ia]?)?|[xX]\s*(\d+)\s+szt(?:uk[ia]?)?|\s*[xX]\s+(\d+))?/gi;
     // Format 2: 878mm/996mm x2 sztuki / 878mm/996mm
     const dimRe2=/(\d{3,4})\s*mm\s*[\/\\]\s*(\d{3,4})\s*mm\s*[xX]?\s*(\d+)?\s*(?:szt(?:uk[ia]?)?)?/gi;
     let m;
@@ -1533,7 +1534,7 @@ function App() {
       while((m=dimRe1.exec(msg))!==null){
         let s=parseFloat(m[1].replace(",",".")), w=parseFloat(m[2].replace(",","."));
         if(s>w&&w>0){const tmp=s;s=w;w=tmp;}
-        const ilosc=parseInt(m[3])||1;
+        const ilosc=parseInt(m[3]||m[4]||m[5]||m[6])||1;
         if(s>10&&w>10) pozycje.push({szerokosc:String(s),wysokosc:String(w),glebokosc:String(DOMYSLNA_GLEBOKOS),kolorRamki,kolorSiatki,ilosc});
       }
     }
@@ -2006,7 +2007,7 @@ function App() {
     if(!order){alert('❌ Najpierw zaimportuj zamówienie do zleceń (➕ Zlecenie)');return;}
     const emailCfg=JSON.parse(localStorage.getItem('email_produkcji_config')||'{}');
     const to=emailCfg.emailProdukcji||'biuro@superis.pl';
-    const subject=`${order.numerZlecenia||''} ${order.klientImie||''} ${order.klientMiasto||''}`.trim();
+    const subject=`${order.numerZlecenia||''} ${order.klientImie||imp.klientImie||''} ${order.klientMiasto||imp.klientMiasto||''}`.trim();
     const sh=allegroShipments[imp.allegroOrderId];
     setMailPreview({imp, order, to, subject, hasEtykieta:!!sh});
     loadRecentEmails();
@@ -2250,8 +2251,26 @@ function App() {
     })();
     let autoDesc="";
     if(isMata){
-      const ilosc=(imp.pozycje&&imp.pozycje.length>0?imp.pozycje.reduce((a,p)=>a+(parseInt(p.ilosc)||1),0):1);
-      autoDesc=(nrZlec?nrZlec+" ":"")+ilosc+" "+(duza?"BS":"ss");
+      // Zlicz osobno duże maty (BS) i małe (ss) — po nazwie każdej pozycji
+      let bsCount=0, ssCount=0;
+      const pozycje=imp.pozycje||[];
+      if(pozycje.length>0){
+        pozycje.forEach(p=>{
+          const n=(p.nazwa||p.name||"").toLowerCase();
+          const il=parseInt(p.ilosc)||1;
+          if(n.includes("205")||n.includes("duż")) bsCount+=il;
+          else ssCount+=il;
+        });
+      }
+      // Fallback gdy brak pozycji — użyj wykrytego rozmiaru z offerNames
+      if(bsCount===0&&ssCount===0){
+        const totalIlosc=imp.pozycje&&imp.pozycje.length>0?imp.pozycje.reduce((a,p)=>a+(parseInt(p.ilosc)||1),0):1;
+        if(duza) bsCount=totalIlosc; else ssCount=totalIlosc;
+      }
+      const parts=[];
+      if(bsCount>0) parts.push(bsCount+" BS");
+      if(ssCount>0) parts.push(ssCount+" ss");
+      autoDesc=(nrZlec?nrZlec+" ":"")+parts.join(" ");
     } else if(kosmetykiDesc){
       autoDesc=kosmetykiDesc;
     } else if(nrZlec){
@@ -2606,7 +2625,10 @@ function App() {
             waybill:d1.waybill||null,
             carrierId:d1.carrierId||null,
             kontoId:imp.kontoId,
-            date:new Date().toLocaleDateString('pl-PL')
+            date:new Date().toLocaleDateString('pl-PL'),
+            description:shipmentDescription||'',
+            klientMiasto:imp.klientMiasto||'',
+            klientImie:imp.klientImie||''
           }};
           localStorage.setItem('allegro_shipments',JSON.stringify(next));
           return next;
@@ -3671,7 +3693,7 @@ function App() {
                         })()}
                         <div style={{marginTop:8}}>
                           <span className="lbl">Uwagi</span>
-                          <input value={poz.uwagi||""} onChange={e=>updPoz(i,"uwagi",e.target.value)} placeholder="Uwagi do pozycji..." style={{fontSize:15,padding:"5px 10px"}}/>
+                          <input value={poz.uwagi||""} onChange={e=>updPoz(i,"uwagi",e.target.value)} placeholder="Uwagi do pozycji..." style={{fontSize:14,padding:"5px 10px"}}/>
                         </div>
                       </>
                     ):(
@@ -3754,15 +3776,16 @@ function App() {
                 <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
                   <button onClick={()=>{
                       if(!allegroOrderIdForForm){alert('To zamówienie nie jest z Allegro — użyj Etykieta DPD');return;}
-                      if(!lastSavedOrder){alert('Najpierw zapisz zamówienie');return;}
+                      if(!saved){alert('Najpierw zapisz zamówienie');return;}
+                      const savedOrd=lastSavedOrder||orders.find(o=>o.allegroOrderId===allegroOrderIdForForm);
                       const allegroImp=allegroImportResults.find(i=>i.allegroOrderId===allegroOrderIdForForm);
-                      if(allegroImp) openShipmentModal({...allegroImp,_linkedOrder:lastSavedOrder});
+                      if(allegroImp) openShipmentModal({...allegroImp,_linkedOrder:savedOrd||allegroImp});
                       else alert('Nie znaleziono danych Allegro — odśwież zamówienia');
                     }}
                     style={{flex:1,padding:'9px 8px',fontSize:13,fontWeight:700,borderRadius:6,cursor:'pointer',
-                      background:allegroOrderIdForForm&&lastSavedOrder?'#1a3a1a':allegroOrderIdForForm?'#0f1f0f':'#0f0f0f',
-                      border:'1px solid '+(allegroOrderIdForForm&&lastSavedOrder?'#3a7a3a':allegroOrderIdForForm?'#1a3a1a':'#1a1a1a'),
-                      color:allegroOrderIdForForm&&lastSavedOrder?'#7acf7a':allegroOrderIdForForm?'#4a7a4a':'#2a2a2a',
+                      background:allegroOrderIdForForm&&saved?'#1a3a1a':allegroOrderIdForForm?'#0f1f0f':'#0f0f0f',
+                      border:'1px solid '+(allegroOrderIdForForm&&saved?'#3a7a3a':allegroOrderIdForForm?'#1a3a1a':'#1a1a1a'),
+                      color:allegroOrderIdForForm&&saved?'#7acf7a':allegroOrderIdForForm?'#4a7a4a':'#2a2a2a',
                       opacity:allegroOrderIdForForm?1:0.35}}>
                     🏷️ Etykieta Allegro
                   </button>
@@ -3977,7 +4000,7 @@ function App() {
                         }
                         if(!to){alert('Brak adresu email produkcji.\n\nUstaw go w: Admin → Ustawienia → "Email produkcji" → Zapisz w chmurze.\n\nPo zapisaniu na komputerze telefon pobierze ustawienia automatycznie.');return;}
                         const order=orders.find(o=>o.allegroOrderId===imp.allegroOrderId)||imp;
-                        const subject=`${order.numerZlecenia||imp.allegroOrderId||''} ${imp.klientImie||''} ${imp.klientMiasto||''}`.trim();
+                        const subject=`${order.numerZlecenia||imp.allegroOrderId||''} ${order.klientImie||imp.klientImie||''} ${order.klientMiasto||imp.klientMiasto||''}`.trim();
                         setMailPreview({imp,order,to,subject,hasEtykieta:!!sh});loadRecentEmails();
                       }} title={sh?.mailWyslany?`✅ Mail wysłany ${sh.mailWyslanyAt?new Date(sh.mailWyslanyAt).toLocaleDateString('pl-PL'):''}`:'Wyślij mail na produkcję'}
                       style={{padding:'4px 8px',fontSize:12,borderRadius:5,cursor:'pointer',
@@ -4083,10 +4106,36 @@ function App() {
                         let to=emailCfg.emailProdukcji||'';
                         if(!to){try{await loadSettingsFromKV();const c=JSON.parse(localStorage.getItem('email_produkcji_config')||'{}');to=c.emailProdukcji||'';}catch(e){}}
                         if(!to){alert('Brak adresu email produkcji');return;}
-                        // Zbierz opisy i miejscowości
-                        const opisy=selImps.map(i=>{const sh=allegroShipments[i.allegroOrderId];const desc=sh?.description||sh?.textOnLabel||'';return desc?`${desc} ${i.klientMiasto||''}`.trim():'';}).filter(Boolean);
+                        // Zbierz opisy i miejscowości — z zapisanego description (etykieta) lub z danych zlecenia
+                        const czesci=selImps.map(i=>{
+                          const sh=allegroShipments[i.allegroOrderId];
+                          const ord=orders.find(o=>o.allegroOrderId===i.allegroOrderId);
+                          const desc=sh?.description||'';
+                          const miasto=sh?.klientMiasto||i.klientMiasto||ord?.klientMiasto||'';
+                          if(desc&&miasto) return `${desc} ${miasto}`;
+                          if(desc) return desc;
+                          // Fallback gdy brak etykiety — nr zlecenia + imię + miasto
+                          const nr=ord?.numerZlecenia||i.numerZlecenia||'';
+                          const imie=ord?.klientImie||i.klientImie||'';
+                          return [nr,imie,miasto].filter(Boolean).join(' ');
+                        }).filter(Boolean);
+                        // Deduplikacja miejscowości — przy powtórzeniu dodaj I, II, III
+                        const miesCount={};
+                        const opisy=czesci.map(c=>{
+                          const key=c.toLowerCase();
+                          miesCount[key]=(miesCount[key]||0)+1;
+                          return miesCount[key]>1?c+' '+['I','II','III','IV','V'][miesCount[key]-1]:c;
+                        });
+                        // Drugie przejście — oznacz też pierwsze wystąpienie gdy są duplikaty
+                        const finalCount={};czesci.forEach(c=>{const k=c.toLowerCase();finalCount[k]=(finalCount[k]||0)+1;});
+                        const counter={};
+                        const opisyFinal=czesci.map(c=>{
+                          const k=c.toLowerCase();
+                          if(finalCount[k]>1){counter[k]=(counter[k]||0)+1;return c+' '+['I','II','III','IV','V'][counter[k]-1];}
+                          return c;
+                        });
                         const linkedOrds=selImps.map(i=>orders.find(o=>o.allegroOrderId===i.allegroOrderId)).filter(Boolean);
-                        const subject=opisy.length>0?opisy.join(', '):`${linkedOrds.map(o=>o.numerZlecenia||'').filter(Boolean).join(', ')}`.trim();
+                        const subject=opisyFinal.length>0?opisyFinal.join(', '):`${linkedOrds.map(o=>o.numerZlecenia||'').filter(Boolean).join(', ')}`.trim();
                         const hasSh=selImps.some(i=>allegroShipments[i.allegroOrderId]);
                         _setBatchSel([]);
                         setMailPreview({imp:selImps[0],order:linkedOrds[0]||selImps[0],to,subject,hasEtykieta:hasSh,_batchImps:selImps,_batchOrders:linkedOrds});
@@ -6756,6 +6805,15 @@ function App() {
                 if(d.ok) alert('✅ Zapisano konfigurację emaila');
                 else alert('❌ '+JSON.stringify(d));
               }}>💾 Zapisz konfigurację emaila do Workera</button>
+              <button className="btn-sm" style={{width:"100%",marginTop:8,background:"#1a0a0a",borderColor:"#5a2a2a",color:"#cf7a7a"}} onClick={async()=>{
+                if(!confirm('Wyczyścić historię podpowiadanych adresów email?\n(favourite.biuro@gmail.com i inne stare adresy zostaną usunięte)')) return;
+                try{
+                  const r=await fetch(AUTORESPONDER_URL+'/email/recent',{method:'DELETE',headers:{'x-api-key':AUTORESPONDER_KEY}});
+                  const d=await r.json();
+                  if(d.ok){setRecentEmails([]);alert('✅ Historia adresów email wyczyszczona');}
+                  else alert('❌ '+JSON.stringify(d));
+                }catch(e){alert('❌ '+e.message);}
+              }}>🗑 Wyczyść historię podpowiadanych adresów</button>
             </div>
 
             {/* ── DPD ── */}
