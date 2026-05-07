@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260506.7</title>
+<title>MosquitoApp v20260506.8</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260506.7';
+  window.__MOSK_VERSION='20260506.8';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -5136,7 +5136,8 @@ function App() {
                             if(!to){alert('Brak adresu email produkcji.\n\nUstaw go w: Admin → Ustawienia → "Email produkcji" → Zapisz w chmurze.\n\nPo zapisaniu na komputerze telefon pobierze ustawienia automatycznie.');return;}
                             const sh=allegroShipments[o.allegroOrderId||''];
                             const etykietaDesc=sh?.description||sh?.textOnLabel||'';
-                            const subject=etykietaDesc
+                            const isMata=etykietaDesc&&(/\b(ss|BS)\b/i.test(etykietaDesc)||/^(p |ol |ż |żel )/i.test(etykietaDesc));
+                            const subject=isMata
                               ?`${etykietaDesc} ${o.klientMiasto||''}`.trim()
                               :`${o.numerZlecenia||''} ${o.klientImie||''} ${o.klientMiasto||''}`.trim();
                             setMailPreview({imp:o,order:o,to,subject,hasEtykieta:!!sh});
