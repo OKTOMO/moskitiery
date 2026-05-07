@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260506.2</title>
+<title>MosquitoApp v20260506.3</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260506.2';
+  window.__MOSK_VERSION='20260506.3';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2065,10 +2065,12 @@ function App() {
       console.log('[MAIL] wysyłka: '+attachments.length+' załącznik(ów)');
       // Ręcznie dodane dokumenty
       for(const f of extraFiles) attachments.push(f);
+      const extraNote = mailPreview.extraNote||'';
+      const content = extraNote ? `<p style="font-family:monospace;font-size:14px;color:#333">${extraNote.replace(/\n/g,'<br>')}</p>` : '';
       const r=await fetch(AUTORESPONDER_URL+'/email/send',{
         method:'POST',
         headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},
-        body:JSON.stringify({to,subject,content:'',attachments})
+        body:JSON.stringify({to,subject,content,attachments})
       });
       const d=await r.json();
       console.log('[MAIL] worker response:',d);
@@ -3691,11 +3693,26 @@ function App() {
                 if(_ok.length<2) return null;
                 const _tj=_ok.reduce((a,p)=>a+obliczJedn(p.szerokosc,p.wysokosc,p.ilosc),0);
                 const _ts=_ok.reduce((a,p)=>a+(parseFloat(p.ilosc)||1),0);
-                return(<div style={{background:"#0c1a0c",border:"1px solid #2a4a2a",borderRadius:6,padding:"8px 14px",marginBottom:8,display:"flex",gap:16,flexWrap:"wrap",fontSize:14}}>
-                  <span style={{color:"#3a7a3a",fontWeight:700}}>RAZEM {_ts} szt:</span>
-                  <span style={{color:"#5a9a5a"}}>JEDN: <strong style={{color:"#afffaf"}}>{Math.round(_tj*10)/10} mb</strong></span>
-                  <span style={{color:"#5a9a5a"}}>Blaszki: <strong style={{color:"#afffaf"}}>{_ts*8} szt</strong></span>
-                  <span style={{color:"#5a9a5a"}}>Linka: <strong style={{color:"#afffaf"}}>{obliczLinkeLaczna(_ok)} mb</strong></span>
+                return(<div style={{background:"#0c1a0c",border:"1px solid #2a4a2a",borderRadius:6,padding:"8px 14px",marginBottom:8,fontSize:14}}>
+                  <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+                    <span style={{color:"#3a7a3a",fontWeight:700}}>RAZEM {_ts} szt:</span>
+                    <span style={{color:"#5a9a5a"}}>JEDN: <strong style={{color:"#afffaf"}}>{Math.round(_tj*10)/10} mb</strong></span>
+                    <span style={{color:"#5a9a5a"}}>Blaszki: <strong style={{color:"#afffaf"}}>{_ts*8} szt</strong></span>
+                    <span style={{color:"#5a9a5a"}}>Linka: <strong style={{color:"#afffaf"}}>{obliczLinkeLaczna(_ok)} mb</strong></span>
+                  </div>
+                  {(()=>{
+                    const allegroImp=allegroImportResults.find(i=>i.allegroOrderId===allegroOrderIdForForm);
+                    if(!allegroImp) return null;
+                    const kwota=allegroImp.totalAmount||allegroImp.price||0;
+                    const sztuki=allegroImp.quantity||allegroImp.totalQuantity||_ts;
+                    const jednostki=allegroImp.totalUnits||allegroImp.units||Math.round(_tj*10)/10;
+                    return kwota?(
+                      <div style={{marginTop:5,paddingTop:5,borderTop:"1px solid #1a3a1a",fontSize:13,color:"#5a8a5a",display:"flex",gap:12,flexWrap:"wrap"}}>
+                        <span>Zamówił: <strong style={{color:"#cfdf7a"}}>{sztuki} szt · {jednostki} jedn.</strong></span>
+                        <span>Zapłacił: <strong style={{color:"#7acf7a"}}>{typeof kwota==='number'?kwota.toFixed(2):kwota} zł</strong></span>
+                      </div>
+                    ):null;
+                  })()}
                 </div>);
               })()}
               {editingId!==null&&<div style={{background:"#1a2a0a",border:"1px solid #4a7a2a",borderRadius:6,padding:"6px 12px",marginBottom:8,fontSize:14,color:"#9acf7a",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -4363,6 +4380,12 @@ function App() {
                       </label>
                     </div>
                   </div>
+                </div>
+                <div style={{marginTop:10}}>
+                  <div style={{fontSize:12,color:"#4a6a5a",marginBottom:4}}>💬 Dodatkowa wiadomość (opcjonalnie):</div>
+                  <textarea value={mailPreview.extraNote||''} onChange={e=>setMailPreview(p=>({...p,extraNote:e.target.value}))}
+                    placeholder="Np. pilne, klient prosi o zmianę koloru, uwagi dla produkcji..."
+                    style={{width:"100%",background:"#0a1a0a",border:"1px solid #2a4a2a",borderRadius:5,color:"#9acf9a",padding:"6px 10px",fontSize:13,fontFamily:"monospace",resize:"vertical",minHeight:60,boxSizing:"border-box"}}/>
                 </div>
                 <div style={{display:"flex",gap:8,justifyContent:"flex-end",marginTop:16}}>
                   <button onClick={()=>setMailPreview(null)}
