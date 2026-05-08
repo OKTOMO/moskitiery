@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260507.10</title>
+<title>MosquitoApp v20260508.1</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260507.10';
+  window.__MOSK_VERSION='20260508.1';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2107,12 +2107,18 @@ function App() {
         alert(`✅ Mail wysłany do ${to}\nTemat: ${subject}\nZałączniki: ${attCount}/${attachments.length}`);
         loadRecentEmails();
         setTab("zamowienia");  // wróć do zakładki Zamówienia po wysłaniu
+        // Mail wysłany → przesuń do W realizacji
         if(imp.allegroOrderId){
+          setOrderAppStatus(imp.allegroOrderId,'W realizacji');
           setAllegroShipments(prev=>{
             const next={...prev,[imp.allegroOrderId]:{...(prev[imp.allegroOrderId]||{}),mailWyslany:true,mailWyslanyAt:new Date().toISOString()}};
             localStorage.setItem('allegro_shipments',JSON.stringify(next));
             return next;
           });
+        }
+        // Zbiorcza — ustaw W realizacji dla wszystkich
+        if(allBatchImps.length>1){
+          allBatchImps.forEach(bi=>{if(bi.allegroOrderId) setOrderAppStatus(bi.allegroOrderId,'W realizacji');});
         }
       }
       else throw new Error(JSON.stringify(d));
@@ -3080,10 +3086,11 @@ function App() {
     setSaved(true);
     setLastSavedOrder(order);
     setTimeout(()=>setLastSavedOrder(null), 60000);
-    // Ustaw status W realizacji dla zamówienia Allegro
+    // Dla zamówień Allegro NIE ustawiamy W realizacji przy samym zapisie —
+    // zlecenie zostaje w Nowe dopóki nie ma etykiety lub maila na produkcję
     const savedAllegroId=allegroOrderIdForForm;
     if(savedAllegroId){
-      setOrderAppStatus(savedAllegroId,'W realizacji');
+      // Tylko aktualizuj status na Allegro (PROCESSING) ale w appStatuses zostaje Nowe
       const allegroImp=allegroImportResults.find(i=>i.allegroOrderId===savedAllegroId);
       if(allegroImp&&allegroImp.kontoId){
         fetch(AUTORESPONDER_URL+'/order/status',{
@@ -3092,11 +3099,9 @@ function App() {
           body:JSON.stringify({allegroOrderId:savedAllegroId,kontoId:allegroImp.kontoId,status:'PROCESSING'})
         }).catch(e=>console.warn('Status update failed:',e));
       }
-      // Jeśli scalanie — ustaw status dla wszystkich scalonych zamówień
+      // Jeśli scalanie — tak samo dla scalonych
       if(allegroImp?._isMerge && allegroImp._mergedAllegroIds){
-        allegroImp._mergedAllegroIds.forEach(id=>{
-          if(id!==savedAllegroId) setOrderAppStatus(id,'W realizacji');
-        });
+        // brak zmiany statusu w appStatuses
       }
     }
     // Auto-tracking DPD — sprawdź statusy przesyłek w tle
@@ -3927,13 +3932,15 @@ function App() {
             const as=appStatuses[imp.allegroOrderId]||'';
             const sh=allegroShipments[imp.allegroOrderId];
             const hasZlecenie=!!orders.find(o=>o.allegroOrderId===imp.allegroOrderId);
+            const hasMailWyslany=!!sh?.mailWyslany;
+            const isZapisaneBezetykiety=hasZlecenie&&!hasEtykieta&&!hasMailWyslany&&!isRealizacja&&!isWyslano;
             const hasEtykieta=!!sh;
             const isRealizacja=effStatus==='W realizacji';
             const isWyslano=effStatus==='Wysłano';
             const openBox=zamOpenBox[imp.allegroOrderId];
             const isMosk=(()=>{const t=((imp.offerNames||'')+(imp.buyerMsg||'')).toLowerCase();return t.includes('moskitiera')||t.includes('mosquito');})();
             return (
-              <div key={idx} style={{borderBottom:'1px solid #0f1f2f',background:isWyslano?(idx%2===0?'#040c04':'#081508'):isRealizacja?(idx%2===0?'#091509':'#112311'):(idx%2===0?'#090e1a':'#111828'),opacity:isWyslano?0.6:1}}>
+              <div key={idx} style={{borderBottom:'1px solid #0f1f2f',background:isWyslano?(idx%2===0?'#040c04':'#081508'):isRealizacja?(idx%2===0?'#091509':'#112311'):isZapisaneBezetykiety?(idx%2===0?'#1a1400':'#201900'):(idx%2===0?'#090e1a':'#111828'),opacity:isWyslano?0.6:1}}>
                 <div style={{display:'flex',alignItems:'center',gap:8,padding:'9px 12px',flexWrap:'wrap'}}>
                   <input type="checkbox" checked={mergeSelected.has(imp.allegroOrderId)}
                     onChange={e=>{
@@ -3962,7 +3969,7 @@ function App() {
                     <div style={{fontWeight:600,color:isWyslano?'#3a7a3a':isRealizacja?'#7abf7a':'#a0cfdf',fontSize:13,cursor:hasZlecenie?'pointer':'default',textDecoration:hasZlecenie?'underline dotted':'none'}}
                       onClick={()=>{if(hasZlecenie){const o=orders.find(ord=>ord.allegroOrderId===imp.allegroOrderId);setDocsModal({imp,order:o,sh});}}}
                       title={hasZlecenie?'📄 Dokumenty zamówienia':''}>
-                      {isWyslano?'✅ ':isRealizacja?'⚙️ ':''}{imp.klientImie||'—'}
+                      {isWyslano?'✅ ':isRealizacja?'⚙️ ':isZapisaneBezetykiety?'📋 ':''}{imp.klientImie||'—'}
                     </div>
                     {imp.klientLogin&&<div style={{fontSize:10,color:'#3a6a8a',fontFamily:'monospace'}}>{imp.klientLogin}</div>}
                     {imp.klientMiasto&&<div style={{fontSize:10,color:'#4a7a6a'}}>{imp.klientMiasto}{imp.klientKraj&&imp.klientKraj!=='PL'&&<span style={{color:'#cf9a4a',marginLeft:4}}>🌍 {imp.klientKraj}</span>}</div>}
