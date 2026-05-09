@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260509.2</title>
+<title>MosquitoApp v20260509.3</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260509.2';
+  window.__MOSK_VERSION='20260509.3';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2499,7 +2499,14 @@ function App() {
         setAllegroShipments(newShipments);
         localStorage.setItem('allegro_shipments',JSON.stringify(newShipments));
       }
-      imps.forEach(imp=>setOrderAppStatus(imp.allegroOrderId,'W realizacji'));
+      // Ustaw W realizacji dla wszystkich scalonych — atomicznie w jednym wywołaniu
+      setAppStatuses(prev=>{
+        const next={...prev};
+        imps.forEach(imp=>{ if(imp.allegroOrderId) next[imp.allegroOrderId]='W realizacji'; });
+        localStorage.setItem('app_statuses',JSON.stringify(next));
+        syncAppStatusesToKV(next);
+        return next;
+      });
       setMergeSelected(new Set());
       alert(`✅ Scalono ${linkedOrders.length} zamówień w jedno (${base.numerZlecenia})`);
     } else {
