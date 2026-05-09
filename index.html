@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260508.10</title>
+<title>MosquitoApp v20260508.11</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260508.10';
+  window.__MOSK_VERSION='20260508.11';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -3883,7 +3883,7 @@ function App() {
                 {/* Wiersz 2: Etykiety i wysyłka */}
                 <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
                   <button onClick={()=>{
-                      if(!allegroOrderIdForForm){alert('To zamówienie nie jest z Allegro — użyj Etykieta DPD');return;}
+                      if(!allegroOrderIdForForm||allegroOrderIdForForm.startsWith('manual_')){alert('To zamówienie nie jest z Allegro — użyj Etykieta DPD');return;}
                       if(!saved){alert('Najpierw zapisz zamówienie');return;}
                       const savedOrd=lastSavedOrder||orders.find(o=>o.allegroOrderId===allegroOrderIdForForm);
                       const allegroImp=allegroImportResults.find(i=>i.allegroOrderId===allegroOrderIdForForm);
@@ -5371,7 +5371,7 @@ function App() {
                         </td>
                         <td style={{padding:"10px 10px",display:"flex",gap:4,alignItems:"center"}}>
                           <button className="btn-pdf" style={{background:"#2a4a6a"}} onClick={()=>{setForm({data:o.data,firma:o.firma,klientImie:o.klientImie,klientUlica:o.klientUlica||"",klientKod:o.klientKod||"",klientMiasto:o.klientMiasto,telefon:o.telefon,uwagi:o.uwagi,pozycje:o.pozycje.map(p=>({...p}))});setNumerOverride(o.numerZlecenia);setEditingId(o.id);setAllegroOrderIdForForm(o.allegroOrderId||"");setTab("nowe");setSaved(false);}} title="Edytuj zamówienie">✏️</button>
-                          <button className="btn-pdf" style={{background:"#2a1a4a",color:"#bf9fdf",borderColor:"#4a2a6a"}} onClick={()=>{setImportModal(null);setWiadomosc("");setAllegroOrderIdForForm("");setForm({data:new Date().toISOString().slice(0,10),firma:o.firma,klientImie:o.klientImie,klientUlica:o.klientUlica||"",klientKod:o.klientKod||"",klientMiasto:o.klientMiasto,telefon:o.telefon,uwagi:"",pozycje:[pustaPoz()]});setNumerOverride("");setEditingId(null);setSaved(false);setTab("nowe");}} title="Nowe zamówienie dla tego samego klienta">👤+</button>
+                          <button className="btn-pdf" style={{background:"#2a1a4a",color:"#bf9fdf",borderColor:"#4a2a6a"}} onClick={()=>{setImportModal(null);setWiadomosc("");setAllegroOrderIdForForm(o.allegroOrderId||"");setForm({data:new Date().toISOString().slice(0,10),firma:o.firma,klientImie:o.klientImie,klientUlica:o.klientUlica||"",klientKod:o.klientKod||"",klientMiasto:o.klientMiasto,telefon:o.telefon,uwagi:"",pozycje:[pustaPoz()]});setNumerOverride("");setEditingId(null);setSaved(false);setTab("nowe");}} title="Nowe zamówienie dla tego samego klienta">👤+</button>
                         </td>
                         <td style={{padding:"10px 10px"}}>
                           <button className="btn-pdf" title="Napisz wiadomość na Allegro" style={{background:"#1a3a4a",color:"#7acfdf",borderColor:"#2a6a7a"}}
