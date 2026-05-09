@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260509.3</title>
+<title>MosquitoApp v20260509.4</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260509.3';
+  window.__MOSK_VERSION='20260509.4';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -3010,21 +3010,36 @@ function App() {
     if(!wiadomosc.trim()&&!adres.trim()) return;
     setParsing(true);setSaved(false);
     try{
-      const r=await parseAI(wiadomosc,adres,withDrzwi?"okno":parseTyp);
-      const isDrzwiMode = !withDrzwi && parseTyp === "drzwi";
-      const pozOkna = mapPozycje(r.pozycje, isDrzwiMode, !withDrzwi && !isDrzwiMode);
-      let pozDrzwi=[];
-      if(withDrzwi&&wiadomoscDrzwi.trim()){
+      if(withDrzwi){
+        // Parsuj wiadomość główną jako okna
+        const r=await parseAI(wiadomosc,adres,"okno");
+        const pozOkna=mapPozycje(r.pozycje,false,true);
+        let pozDrzwi=[];
+        const srcDrzwi=wiadomoscDrzwi.trim()||wiadomosc.trim();
         setParsingDrzwi(true);
-        try{const rd=await parseAI(wiadomoscDrzwi,adres,"drzwi");pozDrzwi=mapPozycje(rd.pozycje,true,false);}catch(e2){}
+        try{const rd=await parseAI(srcDrzwi,adres,"drzwi");pozDrzwi=mapPozycje(rd.pozycje,true,false);}catch(e2){}
         setParsingDrzwi(false);
-      } else if(withDrzwi){pozDrzwi=[pustaPozDrzwi()];}
-      setForm(f=>({...f,
-        klientImie:r.klientImie||f.klientImie,klientUlica:r.klientUlica||f.klientUlica,
-        klientKod:r.klientKod||f.klientKod,klientMiasto:r.klientMiasto||f.klientMiasto,
-        telefon:r.telefon||f.telefon,uwagi:f.uwagi,
-        pozycje:[...pozOkna,...pozDrzwi].length?[...pozOkna,...pozDrzwi]:f.pozycje
-      }));
+        // Jeśli ta sama wiadomość — AI może zduplikować pozycje, dedupuj po isDrzwi
+        const finalPoz=wiadomoscDrzwi.trim()
+          ?[...pozOkna,...pozDrzwi]
+          :[...pozOkna.filter(p=>!p.isDrzwi),...pozDrzwi.filter(p=>p.isDrzwi)];
+        setForm(f=>({...f,
+          klientImie:r.klientImie||f.klientImie,klientUlica:r.klientUlica||f.klientUlica,
+          klientKod:r.klientKod||f.klientKod,klientMiasto:r.klientMiasto||f.klientMiasto,
+          telefon:r.telefon||f.telefon,uwagi:f.uwagi,
+          pozycje:finalPoz.length?finalPoz:f.pozycje
+        }));
+      } else {
+        const isDrzwiMode=parseTyp==="drzwi";
+        const r=await parseAI(wiadomosc,adres,isDrzwiMode?"drzwi":"okno");
+        const pozycje=mapPozycje(r.pozycje,isDrzwiMode,!isDrzwiMode);
+        setForm(f=>({...f,
+          klientImie:r.klientImie||f.klientImie,klientUlica:r.klientUlica||f.klientUlica,
+          klientKod:r.klientKod||f.klientKod,klientMiasto:r.klientMiasto||f.klientMiasto,
+          telefon:r.telefon||f.telefon,uwagi:f.uwagi,
+          pozycje:pozycje.length?pozycje:f.pozycje
+        }));
+      }
     }catch(e){
       setParsing(false);setParsingDrzwi(false);
       let msg=e.message||String(e);
@@ -3054,7 +3069,43 @@ function App() {
     if(_liveOrds.length>orders.length) setOrders(_liveOrds);
     const _hasDrzwi=form.pozycje.some(p=>p.isDrzwi);
     const _hasOkna=form.pozycje.some(p=>!p.isDrzwi);
-    const _isDrzwi=_hasDrzwi||parseTyp==="drzwi";
+    const _isDrzwi=(!_hasOkna&&_hasDrzwi)||parseTyp==="drzwi";
+    const _isMixed=_hasDrzwi&&_hasOkna; // okna + drzwi razem → zapisz dwa zlecenia
+
+    // Jeśli mieszane — zapisz dwa oddzielne zlecenia (okna + drzwi)
+    if(_isMixed && editingId===null){
+      if(!confirm(`Zamówienie zawiera okna i drzwi.\nZapisać jako dwa osobne zlecenia?\n• ${nextNumer(_ordBase,form.firma,false)} — okna\n• ${nextNumer(_ordBase,form.firma,true)} — drzwi`)) return;
+      // Numer dla okien
+      let numerOkna=numerOverride||nextNumer(_ordBase,form.firma,false);
+      let numerDrzwi=nextNumer([..._ordBase,{numerZlecenia:numerOkna,firma:form.firma}],form.firma,true);
+      const pozOkna=form.pozycje.filter(p=>!p.isDrzwi);
+      const pozDrzwi=form.pozycje.filter(p=>p.isDrzwi);
+      const baseOrder={id:Date.now(),firma:form.firma,data:form.data,allegroOrderId:allegroOrderIdForForm||"",
+        kalNumer:kalNumerForForm||"",klientImie:form.klientImie,klientUlica:form.klientUlica||"",
+        klientKod:form.klientKod||"",klientMiasto:form.klientMiasto,telefon:form.telefon,uwagi:form.uwagi};
+      const orderOkna={...baseOrder,numerZlecenia:numerOkna,
+        pozycje:pozOkna.map(p=>({...p,glebokosc:p.glebokosc||String(DOMYSLNA_GLEBOKOS),
+          kolorSiatki:p.kolorSiatki||"Czarna",linka:obliczLinke(p.szerokosc,p.wysokosc),
+          blaszRozmiar:obliczRozmiarBlaszki(p.glebokosc)}))};
+      const orderDrzwi={...baseOrder,id:Date.now()+1,numerZlecenia:numerDrzwi,
+        pozycje:pozDrzwi.map(p=>({...p,kolorSiatki:p.kolorSiatki||"Czarna"}))};
+      updateOrders([orderOkna,orderDrzwi,..._ordBase]);
+      setSaved(true);setLastSavedOrder(orderOkna);
+      setTimeout(()=>setLastSavedOrder(null),60000);
+      if(!allegroOrderIdForForm){
+        [orderOkna,orderDrzwi].forEach(o=>{
+          setAllegroImportResults(prev=>[{allegroOrderId:'manual_'+o.id,kontoId:o.firma||currentProfile.id,
+            klientImie:o.klientImie||'',klientLogin:'',klientMiasto:o.klientMiasto||'',
+            klientUlica:o.klientUlica||'',klientKod:o.klientKod||'',telefon:o.telefon||'',
+            offerNames:o.pozycje?.map(p=>p.nazwa||'Moskitiera').join(', ')||'',
+            boughtAt:o.data||'',totalAmount:0,fulfillmentStatus:'PROCESSING',
+            numerZlecenia:o.numerZlecenia||'',_isManual:true,_linkedOrder:o},
+            ...prev.filter(x=>x.allegroOrderId!=='manual_'+o.id)]);
+        });
+      }
+      alert(`✅ Zapisano dwa zlecenia:\n• ${numerOkna} (okna: ${pozOkna.length} szt.)\n• ${numerDrzwi} (drzwi: ${pozDrzwi.length} szt.)`);
+      return;
+    }
     // Atomowy lock numeru przez KV — zapobiega race condition przy szybkim dodawaniu
     let numer=numerOverride;
     if(!numer){
