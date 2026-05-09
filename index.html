@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260508.11</title>
+<title>MosquitoApp v20260508.12</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260508.11';
+  window.__MOSK_VERSION='20260508.12';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -3886,7 +3886,13 @@ function App() {
                       if(!allegroOrderIdForForm||allegroOrderIdForForm.startsWith('manual_')){alert('To zamówienie nie jest z Allegro — użyj Etykieta DPD');return;}
                       if(!saved){alert('Najpierw zapisz zamówienie');return;}
                       const savedOrd=lastSavedOrder||orders.find(o=>o.allegroOrderId===allegroOrderIdForForm);
-                      const allegroImp=allegroImportResults.find(i=>i.allegroOrderId===allegroOrderIdForForm);
+                      let allegroImp=allegroImportResults.find(i=>i.allegroOrderId===allegroOrderIdForForm);
+                      if(!allegroImp&&savedOrd){
+                        allegroImp={allegroOrderId:allegroOrderIdForForm,kontoId:savedOrd.firma||currentProfile.id,
+                          klientImie:savedOrd.klientImie||'',klientUlica:savedOrd.klientUlica||'',
+                          klientKod:savedOrd.klientKod||'',klientMiasto:savedOrd.klientMiasto||'',
+                          telefon:savedOrd.telefon||'',offerNames:'Moskitiera'};
+                      }
                       if(allegroImp) openShipmentModal({...allegroImp,_linkedOrder:savedOrd||allegroImp});
                       else alert('Nie znaleziono danych Allegro — odśwież zamówienia');
                     }}
