@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260508.3</title>
+<title>MosquitoApp v20260508.4</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260508.3';
+  window.__MOSK_VERSION='20260508.4';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -5296,10 +5296,13 @@ function App() {
                           <button onClick={()=>{setForm({data:o.data,firma:o.firma,klientImie:o.klientImie,klientUlica:o.klientUlica||"",klientKod:o.klientKod||"",klientMiasto:o.klientMiasto,telefon:o.telefon,uwagi:o.uwagi,pozycje:o.pozycje.map(p=>({...p}))});setNumerOverride(o.numerZlecenia);setEditingId(o.id);setTab("nowe");setSaved(false);}}
                             style={{background:"#0a1a2a",border:"1px solid #2a4a6a",color:"#7ab8df",borderRadius:4,padding:"1px 6px",fontSize:12,cursor:"pointer",marginRight:4}}>✏️</button>
                           <button title="Nowe zamówienie dla tego samego klienta" onClick={()=>{
-                            setForm({data:new Date().toISOString().slice(0,10),firma:o.firma,klientImie:o.klientImie,klientUlica:o.klientUlica||"",klientKod:o.klientKod||"",klientMiasto:o.klientMiasto,telefon:o.telefon,uwagi:"",pozycje:[pustaPoz()]});
+                            const klonForm={data:new Date().toISOString().slice(0,10),firma:o.firma,klientImie:o.klientImie,klientUlica:o.klientUlica||"",klientKod:o.klientKod||"",klientMiasto:o.klientMiasto,telefon:o.telefon,uwagi:"",pozycje:[pustaPoz()]};
                             setNumerOverride("");setEditingId(null);setSaved(false);
                             setAllegroOrderIdForForm(o.allegroOrderId||"");
+                            setWiadomosc("");setAdres("");
                             setTab("nowe");
+                            // setForm po setTab — React batch może nadpisać form, setTimeout gwarantuje kolejność
+                            setTimeout(()=>setForm(klonForm),0);
                           }}
                             style={{background:"#1a0a2a",border:"1px solid #4a2a6a",color:"#bf9fdf",borderRadius:4,padding:"1px 6px",fontSize:12,cursor:"pointer",marginRight:4}}>👤+</button>
                           <span className="firma-badge">{o.firma||"?"}</span>
