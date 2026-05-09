@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260508.1</title>
+<title>MosquitoApp v20260508.3</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260508.1';
+  window.__MOSK_VERSION='20260508.3';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -285,6 +285,8 @@ Przykłady parsowania:
 Dwie OSOBNE pozycje drzwi tylko gdy klient wyraźnie opisuje DWA różne otwory/miejsca montażu z RÓŻNYMI wymiarami.
 UWAGA: jeśli klient podaje "2 sztuki" lub "2 szt" przy jednym zestawie wymiarów (nawet 4 liczbach) → to JEDNA pozycja z ilosc=2, NIE dwie osobne pozycje.
 Przykład: "2 szt, 98,5/102,5 x 216/220" → jedna pozycja: szerokosc=98.5, szer2=102.5, wysokosc=216, wys2=220, ilosc=2
+
+UWAGA: jeśli klient podaje NUMEROWANĄ LISTĘ pozycji (np. "1. 59×62 ... 2. 59×62 ... 3. 59×63"), każdy wiersz to OSOBNA pozycja — NIE scalaj identycznych wymiarów w jedną z większą ilością. Każda linia listy = jedna pozycja z ilosc=1 (lub ilosc podaną w tej linii).
 
 Pozostałe pola:
 - glebokosc = null
@@ -843,6 +845,8 @@ function App() {
   const [nrLoading,setNrLoading]=useState(false);
   const [nrLog,setNrLog]=useState([]);
   const [restoreLog,setRestoreLog]=useState([]);
+  // Dodatkowe paczki w modalu etykiety
+  const [extraParcels,setExtraParcels]=useState([]);// [{shipmentId,description,size,customSize}]
   const [produktSlownik,setProduktSlownik]=React.useState(()=>{
     try{return JSON.parse(localStorage.getItem('produkt_slownik')||'[]');}catch(e){return [];}
   });
@@ -2361,6 +2365,7 @@ function App() {
     if(isMoskitiera) setShipmentCustomSize({length:150,width:10,height:10,weight:5});
     else if(isMata) setShipmentCustomSize(duza?{length:130,width:10,height:10,weight:4}:{length:110,width:10,height:10,weight:2});
     if(!isMata&&!isMoskitiera) setShipmentCustomSize({length:64,width:38,height:15,weight:5});
+    setExtraParcels([]);
     setShipmentModal({imp, services:[]});
     setShipmentLoading(true);
     setShipmentError("");
@@ -5290,6 +5295,13 @@ function App() {
                             style={{background:"#2a0a0a",border:"1px solid #6a2a2a",color:"#df7a7a",borderRadius:4,padding:"1px 6px",fontSize:12,cursor:"pointer",marginRight:2}}>🗑</button>
                           <button onClick={()=>{setForm({data:o.data,firma:o.firma,klientImie:o.klientImie,klientUlica:o.klientUlica||"",klientKod:o.klientKod||"",klientMiasto:o.klientMiasto,telefon:o.telefon,uwagi:o.uwagi,pozycje:o.pozycje.map(p=>({...p}))});setNumerOverride(o.numerZlecenia);setEditingId(o.id);setTab("nowe");setSaved(false);}}
                             style={{background:"#0a1a2a",border:"1px solid #2a4a6a",color:"#7ab8df",borderRadius:4,padding:"1px 6px",fontSize:12,cursor:"pointer",marginRight:4}}>✏️</button>
+                          <button title="Nowe zamówienie dla tego samego klienta" onClick={()=>{
+                            setForm({data:new Date().toISOString().slice(0,10),firma:o.firma,klientImie:o.klientImie,klientUlica:o.klientUlica||"",klientKod:o.klientKod||"",klientMiasto:o.klientMiasto,telefon:o.telefon,uwagi:"",pozycje:[pustaPoz()]});
+                            setNumerOverride("");setEditingId(null);setSaved(false);
+                            setAllegroOrderIdForForm(o.allegroOrderId||"");
+                            setTab("nowe");
+                          }}
+                            style={{background:"#1a0a2a",border:"1px solid #4a2a6a",color:"#bf9fdf",borderRadius:4,padding:"1px 6px",fontSize:12,cursor:"pointer",marginRight:4}}>👤+</button>
                           <span className="firma-badge">{o.firma||"?"}</span>
                           {hasDrzwi&&<span style={{marginLeft:4,fontSize:14}}>🚪</span>}
                           <span style={{marginLeft:6,color:"#dfcf5f",fontWeight:700,cursor:"pointer",borderBottom:"1px dashed #5a5a2a"}}
@@ -7387,6 +7399,71 @@ function App() {
                 {shipmentModal.createdShipmentId?"✅ Etykieta utworzona":shipmentCreating?"⟳ Tworzę...":"📦 Utwórz etykietę"}
               </button>
             </div>
+            {/* ── Sekcja dodatkowych paczek ── */}
+            {shipmentModal.createdShipmentId&&(
+              <div style={{marginTop:12,padding:12,background:'#0a0f1a',border:'1px solid #2a3a5a',borderRadius:8}}>
+                <div style={{fontWeight:700,fontSize:13,color:'#9fbfdf',marginBottom:8}}>📦 Dodatkowe paczki ({extraParcels.length})</div>
+                {extraParcels.map((ep,ei)=>(
+                  <div key={ei} style={{background:'#0c1a0c',border:'1px solid #2a5a2a',borderRadius:6,padding:8,marginBottom:6,fontSize:12}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                      <span style={{color:'#7acf7a',fontWeight:700}}>Paczka {ei+2}: {ep.shipmentId?'✅ Gotowa':'⏳ Niezapisana'}</span>
+                      {!ep.shipmentId&&<button onClick={async()=>{
+                        // Utwórz dodatkowy shipment
+                        try{
+                          const imp=shipmentModal.imp;
+                          const body={
+                            allegroOrderId:imp.allegroOrderId,kontoId:imp.kontoId,
+                            recipient:{name:imp.klientImie,street:imp.klientUlica,city:imp.klientMiasto,zipCode:imp.klientKod||'',countryCode:'PL',phone:imp.telefon||'',email:imp.email||''},
+                            serviceId:shipmentServiceId,
+                            parcels:[ep.size==='custom'?{weight:ep.customSize.weight,width:ep.customSize.width,height:ep.customSize.height,length:ep.customSize.length}:{size:ep.size}],
+                            shipmentDescription:ep.description||shipmentDescription
+                          };
+                          const r=await fetch(AUTORESPONDER_URL+'/shipment/create',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},body:JSON.stringify(body)});
+                          const d=await r.json();
+                          if(!d.ok) throw new Error(d.error||JSON.stringify(d));
+                          const newId=d.data?.shipmentId||d.shipmentId;
+                          setExtraParcels(prev=>prev.map((p,i)=>i===ei?{...p,shipmentId:newId}:p));
+                          // Dołącz do allegroShipments jako extraShipmentIds
+                          setAllegroShipments(prev=>{
+                            const existing=prev[imp.allegroOrderId]||{};
+                            const extras=[...(existing.extraShipmentIds||[]),newId];
+                            const next={...prev,[imp.allegroOrderId]:{...existing,extraShipmentIds:extras,kontoId:imp.kontoId}};
+                            localStorage.setItem('allegro_shipments',JSON.stringify(next));
+                            return next;
+                          });
+                          alert('✅ Dodatkowa paczka '+(ei+2)+' utworzona');
+                        }catch(e){alert('❌ '+e.message);}
+                      }} style={{padding:'3px 10px',fontSize:11,borderRadius:4,border:'1px solid #3a8a3a',background:'#1a3a1a',color:'#7acf7a',cursor:'pointer'}}>
+                        📦 Utwórz
+                      </button>}
+                      {ep.shipmentId&&<button onClick={async()=>{
+                        const imp=shipmentModal.imp;
+                        const r=await fetch(AUTORESPONDER_URL+'/shipment/label?kontoId='+imp.kontoId,{method:'POST',headers:{'x-api-key':AUTORESPONDER_KEY,'Content-Type':'application/json'},body:JSON.stringify({shipmentIds:[ep.shipmentId],pageSize:'A6'})});
+                        const d=await r.json();
+                        if(!d.pdf){alert('❌ Brak PDF');return;}
+                        const blob=new Blob([Uint8Array.from(atob(d.pdf),c=>c.charCodeAt(0))],{type:'application/pdf'});
+                        window.open(URL.createObjectURL(blob),'_blank');
+                      }} style={{padding:'3px 10px',fontSize:11,borderRadius:4,border:'1px solid #3a7a3a',background:'#1a3a1a',color:'#7acf7a',cursor:'pointer'}}>🖨 Drukuj</button>}
+                    </div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:4,marginTop:6}}>
+                      <input value={ep.description} onChange={e=>setExtraParcels(prev=>prev.map((p,i)=>i===ei?{...p,description:e.target.value}:p))}
+                        placeholder="Opis paczki" style={{background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:3,color:'#a0cfa0',padding:'3px 6px',fontSize:11,gridColumn:'1/-1'}}/>
+                      {ep.size==='custom'&&['length','width','height','weight'].map(f=>(
+                        <div key={f} style={{display:'flex',alignItems:'center',gap:3}}>
+                          <span style={{fontSize:10,color:'#4a7a4a',minWidth:30}}>{f==='weight'?'kg':f==='length'?'dł':f==='width'?'szer':'wys'}</span>
+                          <input type="number" value={ep.customSize[f]} onChange={e=>setExtraParcels(prev=>prev.map((p,i)=>i===ei?{...p,customSize:{...p.customSize,[f]:parseFloat(e.target.value)||0}}:p))}
+                            style={{width:'100%',padding:'2px 4px',fontSize:11,background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:3,color:'#9fcf9f'}}/>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                <button onClick={()=>setExtraParcels(prev=>[...prev,{shipmentId:null,description:shipmentDescription,size:'custom',customSize:{...shipmentCustomSize}}])}
+                  style={{width:'100%',padding:'6px',fontSize:12,borderRadius:5,border:'1px dashed #3a5a7a',background:'#0a0f1a',color:'#7a9fbf',cursor:'pointer'}}>
+                  ➕ Dodaj paczkę {extraParcels.length+2}
+                </button>
+              </div>
+            )}
             {/* ── Sekcja zamówienia odbioru ── */}
             {shipmentModal.createdShipmentId&&(
               <div style={{marginTop:16,padding:14,background:'#0a1a0a',border:'1px solid #2a5a2a',borderRadius:8}}>
@@ -7395,9 +7472,10 @@ function App() {
                   <button onClick={async()=>{
                     try{
                       const imp=shipmentModal.imp;
+                      const allIds=[shipmentModal.createdShipmentId,...extraParcels.filter(ep=>ep.shipmentId).map(ep=>ep.shipmentId)];
                       const r=await fetch(AUTORESPONDER_URL+'/shipment/label?kontoId='+imp.kontoId,{
                         method:'POST',headers:{'x-api-key':AUTORESPONDER_KEY,'Content-Type':'application/json'},
-                        body:JSON.stringify({shipmentIds:[shipmentModal.createdShipmentId],pageSize:'A6'})
+                        body:JSON.stringify({shipmentIds:allIds,pageSize:'A6'})
                       });
                       const d=await r.json();
                       if(!d.pdf){alert('❌ Brak PDF');return;}
@@ -7406,7 +7484,7 @@ function App() {
                     }catch(e){alert('❌ '+e.message);}
                   }}
                   style={{padding:'5px 12px',borderRadius:6,border:'1px solid #3a7a3a',background:'#1a3a1a',color:'#7acf7a',cursor:'pointer',fontSize:12,fontWeight:700}}>
-                    🖨 Drukuj etykietę
+                    🖨 Drukuj {extraParcels.filter(ep=>ep.shipmentId).length>0?`etykiety (${1+extraParcels.filter(ep=>ep.shipmentId).length})`:'etykietę'}
                   </button>
                   <button onClick={()=>{
                       const imp=shipmentModal.imp;
