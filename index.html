@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260508.5</title>
+<title>MosquitoApp v20260508.6</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260508.5';
+  window.__MOSK_VERSION='20260508.6';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -1569,6 +1569,26 @@ function App() {
   }
 
   function importAllegroOrder(imp){
+    // Klon — pomiń całą logikę parsowania/modalu, wypełnij formularz bezpośrednio
+    if(imp._isKlon){
+      setWiadomosc('');setAdres('');setWiadomoscDrzwi('');
+      setForm({
+        data:imp.data||new Date().toISOString().slice(0,10),
+        firma:imp.firma||'F',
+        klientImie:imp.klientImie||'',
+        klientUlica:imp.klientUlica||'',
+        klientKod:imp.klientKod||'',
+        klientMiasto:imp.klientMiasto||'',
+        telefon:imp.telefon||'',
+        uwagi:'',
+        pozycje:[pustaPoz()]
+      });
+      setNumerOverride('');setEditingId(null);setSaved(false);
+      setAllegroOrderIdForForm(imp.allegroOrderId||'');
+      setImportModal(null);
+      setTab('nowe');
+      return;
+    }
     // Numer zapytania kalkulatora (np. FAV-260424-4185) może być w offerNames, uwagi lub buyerMsg
     const allText=(imp.offerNames||"")+" "+(imp.uwagi||"")+" "+(imp.buyerMsg||"");
     console.log("importAllegroOrder buyerMsg:", JSON.stringify(imp.buyerMsg));
@@ -1648,25 +1668,6 @@ function App() {
     }
     setWiadomosc(imp.buyerMsg||"");  // zawsze czyść przy nowym imporcie
     setWiadomoscDrzwi('');
-    // Klon — pomiń modal, wypełnij formularz bezpośrednio z danymi klienta
-    if(imp._isKlon){
-      setForm({
-        data:imp.data||new Date().toISOString().slice(0,10),
-        firma:imp.firma||'F',
-        klientImie:imp.klientImie||'',
-        klientUlica:imp.klientUlica||'',
-        klientKod:imp.klientKod||'',
-        klientMiasto:imp.klientMiasto||'',
-        telefon:imp.telefon||'',
-        uwagi:'',
-        pozycje:[pustaPoz()]
-      });
-      setNumerOverride('');setEditingId(null);setSaved(false);
-      setAllegroOrderIdForForm(imp.allegroOrderId||'');
-      setImportModal(null);
-      setTab('nowe');
-      return;
-    }
     setImportModal({
       imp,
       mode:kalNum?"kal":(parsedPozycje?"parse":"manual"),
