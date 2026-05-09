@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260508.12</title>
+<title>MosquitoApp v20260509.1</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260508.12';
+  window.__MOSK_VERSION='20260509.1';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -822,7 +822,9 @@ function App() {
   const [allegroImportLoading,setAllegroImportLoading]=useState(false);
   const [alZamSearch,setAlZamSearch]=useState('');
   const [alZamKonto,setAlZamKonto]=useState('');
-  const [allegroImportResults,setAllegroImportResults]=useState([]); // lista zamówień z Allegro
+  const [allegroImportResults,setAllegroImportResults]=useState(()=>{
+    try{return JSON.parse(localStorage.getItem('allegro_import_results')||'[]');}catch{return [];}
+  }); // lista zamówień z Allegro
   const [appStatuses,setAppStatuses]=useState(()=>{try{return JSON.parse(localStorage.getItem('app_statuses')||'{}');}catch{return {};}});
   const [allegroShipments,setAllegroShipments]=useState(()=>{try{return JSON.parse(localStorage.getItem('allegro_shipments')||'{}');}catch{return {};}});
   const [mailSending,setMailSending]=useState({});
@@ -1457,6 +1459,7 @@ function App() {
         return new Date(b.data)-new Date(a.data);
       });
       setAllegroImportResults(allResults);
+      try{localStorage.setItem('allegro_import_results',JSON.stringify(allResults));}catch(e){console.warn('localStorage full:',e);}
       setAllegroImportShow(true);
       // Auto-aktualizuj statusy na podstawie fulfillmentStatus z Allegro
       setAppStatuses(prev=>{
@@ -2803,7 +2806,12 @@ function App() {
           const existingIds=new Set(prev.map(x=>x.allegroOrderId));
           const nowe=manualImps.filter(x=>!existingIds.has(x.allegroOrderId));
           console.log('[MANUAL] dodaję do Zamówień:', nowe.length);
-          return nowe.length>0?[...prev,...nowe]:prev;
+          if(nowe.length>0){
+            const next=[...prev,...nowe];
+            try{localStorage.setItem('allegro_import_results',JSON.stringify(next));}catch(e){}
+            return next;
+          }
+          return prev;
         });
       }
     });
