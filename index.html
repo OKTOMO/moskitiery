@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260510.9</title>
+<title>MosquitoApp v20260510.10</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260510.9';
+  window.__MOSK_VERSION='20260510.10';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2689,10 +2689,12 @@ function App() {
     const maxWeight=isInternational?15:25;
     // Limity wymiarów — z API jeśli dostępne, fallback do hardcoded
     // UWAGA: odejmij 1 od limitów API żeby uniknąć błędu DIMENSIONS_VALIDATION_ERROR na granicy
-    const isIntlAutomat = isInternational && (service?.name||'').toLowerCase().includes('automat');
-    const _maxL=service?.maxLength?(service.maxLength-1):(isIntlAutomat?56:64);
-    const _maxW=service?.maxWidth?(service.maxWidth-1):(isIntlAutomat?42:38);
-    const _maxH=service?.maxHeight?(service.maxHeight-1):(isDHLAutomat?30:(isIntlAutomat?32:41));
+    const isIntlAutomat = isInternational && (isDHLAutomat || (service?.name||'').toLowerCase().includes('automat'));
+    // Fallback wymiarów gdy API nie zwraca limitów — używaj bezpiecznych wartości poniżej typowych limitów
+    // DHL Automat zagraniczny: limit 50x35x31 → używaj 48x33x29
+    const _maxL=service?.maxLength?(service.maxLength-1):(isIntlAutomat?48:64);
+    const _maxW=service?.maxWidth?(service.maxWidth-1):(isIntlAutomat?33:38);
+    const _maxH=service?.maxHeight?(service.maxHeight-1):(isIntlAutomat?29:isDHLAutomat?30:41);
     const SIZES={"A":{length:_maxL,width:_maxW,height:Math.min(8,_maxH),weight:5},"B":{length:_maxL,width:_maxW,height:Math.min(19,_maxH),weight:5},"C":{length:_maxL,width:_maxW,height:_maxH,weight:5}};
     const activeSizes=SIZES;
     // Auto-kalkulator paczek
