@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260509.6</title>
+<title>MosquitoApp v20260510.1</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260509.6';
+  window.__MOSK_VERSION='20260510.1';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -1759,27 +1759,32 @@ function App() {
   // Mapowanie nazw RAL z kalkulatora do krótkich nazw w MosquitoApp
   function mapKolorProfilu(raw){
     if(!raw) return "Antracyt";
-    const r=raw.toLowerCase();
-    if(r.includes("bia")) return "Biały";
-    if(r.includes("antracyt")) return "Antracyt";
-    if(r.includes("br") && r.includes("z")) return "Brąz";
-    if(r.includes("czar")) return "Czarny";
-    if(r.includes("d") && (r.includes("b")||r.includes("dąb")||r.includes("dab"))) return "Dąb";
-    if(r.includes("srebrn")) return "Srebrna";
-    if(r.includes("zlot")||r.includes("złot")) return "Złota";
-    if(r.includes("szar")) return "Szara";
-    // fallback: pierwsze słowo
+    const r=raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+    // Kolejność ważna — bardziej specyficzne przed ogólnymi
+    if(r.includes("turner")||r.includes("woodeck")) return "Turner Oak";
+    if(r.includes("winchester")||r.includes("winch")) return "Winchester";
+    if(r.includes("mahon")) return "Mahoń";
+    if(r.includes("orzech")) return "Orzech";
+    if((r.includes("zlot")||r.includes("gold"))&&(r.includes("dab")||r.includes("oak"))) return "Złoty Dąb";
+    if((r.includes("ciem")||r.includes("dark"))&&(r.includes("dab")||r.includes("oak"))) return "Ciemny Dąb";
+    if(r.includes("zlot")||r.includes("gold")) return "Złoty Dąb";
+    if(r.includes("dab")||r.includes("oak")) return "Ciemny Dąb";
+    if(r.includes("bia")||r.includes("white")) return "Biały";
+    if(r.includes("antracyt")||r.includes("antr")||r.includes("graph")) return "Antracyt";
+    if(r.includes("czar")||r.includes("black")) return "Czarny";
+    if(r.includes("braz")||r.includes("brow")||r.includes("br")) return "Brąz";
     return raw.split(" ")[0]||"Antracyt";
   }
   function mapKolorSiatki(raw){
     if(!raw) return "Czarna";
-    const r=raw.toLowerCase();
-    if(r.includes("szar")) return "Szara";
+    const r=raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+    if(r.includes("szar")||r.includes("grey")||r.includes("gray")) return "Szara";
     return "Czarna";
   }
 
   async function doImportOrder(modal){
     const {imp,pozycje,kalData}=modal;
+    const forceDrzwi=modal._forceDrzwi||false;
     console.log("doImportOrder imp:", JSON.stringify({klientImie:imp.klientImie,klientUlica:imp.klientUlica,klientKod:imp.klientKod,klientMiasto:imp.klientMiasto,telefon:imp.telefon}));
     // Kalkulator zapisuje wymiary w mm. Aplikacja zleceń oczekuje cm — konwertuj na wejściu.
     const mm2cm = v => {
@@ -1790,14 +1795,18 @@ function App() {
     };
     const poz=(kalData&&kalData.pozycje&&kalData.pozycje.length>0)
       ?kalData.pozycje.map(p=>({
+          ...(forceDrzwi?pustaPozDrzwi():{szerokosc:mm2cm(p.szerokosc),wysokosc:mm2cm(p.wysokosc),glebokosc:p.felc?mm2cm(p.felc):String(DOMYSLNA_GLEBOKOS)}),
           szerokosc:mm2cm(p.szerokosc),
           wysokosc:mm2cm(p.wysokosc),
-          glebokosc:p.felc?mm2cm(p.felc):String(DOMYSLNA_GLEBOKOS),
+          glebokosc:forceDrzwi?null:(p.felc?mm2cm(p.felc):String(DOMYSLNA_GLEBOKOS)),
           kolorRamki:mapKolorProfilu(p.kolorProfilu),
           kolorSiatki:mapKolorSiatki(p.kolorSiatki),
-          ilosc:parseInt(p.ilosc)||1
+          ilosc:parseInt(p.ilosc)||1,
+          isDrzwi:forceDrzwi||false,
         }))
-      :(pozycje&&pozycje.length>0?pozycje:[pustaPoz()]);
+      :(pozycje&&pozycje.length>0
+        ?pozycje.map(p=>forceDrzwi?{...pustaPozDrzwi(),...p,isDrzwi:true}:p)
+        :[forceDrzwi?pustaPozDrzwi():pustaPoz()]);
     setForm({
       data:imp.data,
       firma:imp.firma,
@@ -3078,12 +3087,12 @@ function App() {
         }));
       }
     }catch(e){
-      setParsing(false);setParsingDrzwi(false);
       let msg=e.message||String(e);
       if(msg==="Failed to fetch") msg="Failed to fetch - sprawdź klucz API i Worker.";
-      alert("Błąd AI: "+msg);return;
+      alert("Błąd AI: "+msg);
+    }finally{
+      setParsing(false);setParsingDrzwi(false);
     }
-    setParsing(false);
   }
 
   function updPoz(i,field,val){
@@ -3987,6 +3996,24 @@ function App() {
                     ? `✅ Zapisano: ${lastSavedOrder.numerZlecenia||''}`
                     : editingId!==null?'💾 Zapisz zmiany':'💾 Zapisz zamówienie'}
                 </button>
+                {/* Podgląd zlecenia po zapisaniu */}
+                {saved&&lastSavedOrder&&(
+                  <div style={{background:'#0a1a0a',border:'1px solid #1a4a2a',borderRadius:6,padding:'8px 12px',fontSize:12,color:'#6a9a6a'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:4}}>
+                      <span style={{fontWeight:700,color:'#9acf9a',fontSize:13}}>📋 {lastSavedOrder.numerZlecenia}</span>
+                      <span style={{color:'#4a7a4a'}}>{lastSavedOrder.klientImie} · {lastSavedOrder.klientMiasto}</span>
+                    </div>
+                    {lastSavedOrder.pozycje&&lastSavedOrder.pozycje.length>0&&(
+                      <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
+                        {lastSavedOrder.pozycje.map((p,i)=>(
+                          <span key={i} style={{background:'#0f2a0f',border:'1px solid #1a4a1a',borderRadius:3,padding:'1px 6px',fontSize:11,color:'#7acf7a'}}>
+                            {p.isDrzwi?'🚪':'🧿'} {p.szerokosc}×{p.wysokosc} {p.kolorRamki} {p.ilosc>1?`×${p.ilosc}`:''}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
                 {/* Wiersz 2: Etykiety i wysyłka */}
                 <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
                   <button onClick={()=>{
@@ -4803,7 +4830,7 @@ function App() {
 
                   {/* Dane klienta */}
                   <div style={{background:"#0e1e0e",border:"1px solid #1a4a2a",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:14}}>
-                    <div style={{fontWeight:700,color:"#a0cfdf",marginBottom:4}}>{imp.klientImie}</div>
+                    <div style={{fontWeight:700,color:"#a0cfdf",marginBottom:4,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span>{imp.klientImie}</span>{imp.totalAmount>0&&<span style={{color:"#7acf7a",fontWeight:700}}>{Number(imp.totalAmount).toFixed(2)} zł</span>}</div>
                     <div style={{color:"#5a8a7a"}}>{imp.klientUlica}, {imp.klientKod} {imp.klientMiasto}</div>
                     {imp.telefon&&<div style={{color:"#5a8a7a"}}>{imp.telefon}</div>}
                     <div style={{marginTop:6,fontSize:14,color:"#3a6a5a",fontStyle:"italic"}} title={imp.offerNames}>{imp.offerNames||"—"}</div>
@@ -4981,12 +5008,16 @@ function App() {
                       ⚠️ Sprawdź ilość: z pozycji wychodzi <b>{warn.jedn} jedn.</b>, ale kwota {warn.kwota} zł sugeruje <b>{warn.jedn3} jedn.</b> (różnica: {warn.diff})
                     </div>;
                   })()}
-                  <div style={{marginTop:16,display:"flex",gap:8,justifyContent:"flex-end"}}>
+                  <div style={{marginTop:16,display:"flex",gap:8,justifyContent:"flex-end",alignItems:"center",flexWrap:"wrap"}}>
+                    <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",fontSize:13,color:"#7a9abf",userSelect:"none",marginRight:"auto"}}>
+                      <input type="checkbox" checked={importModal.isDrzwi||false} onChange={e=>setIM({isDrzwi:e.target.checked})} style={{width:15,height:15,cursor:"pointer"}}/>
+                      🚪 Drzwi
+                    </label>
                     <button onClick={()=>setImportModal(null)}
                       style={{padding:"8px 18px",borderRadius:6,border:"1px solid #2a3a2a",background:"none",color:"#5a7a5a",cursor:"pointer"}}>
                       Anuluj
                     </button>
-                    <button onClick={()=>doImportOrder(importModal)}
+                    <button onClick={()=>doImportOrder({...importModal,_forceDrzwi:importModal.isDrzwi})}
                       disabled={mode==="kal"&&!kalData}
                       style={{padding:"8px 22px",borderRadius:6,border:"1px solid #4a9a5a",
                         background:(mode==="kal"&&!kalData)?"#1a2a1a":"#1a5a2a",
@@ -7263,7 +7294,7 @@ function App() {
 
                   {/* Dane klienta */}
                   <div style={{background:"#0e1e0e",border:"1px solid #1a4a2a",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:14}}>
-                    <div style={{fontWeight:700,color:"#a0cfdf",marginBottom:4}}>{imp.klientImie}</div>
+                    <div style={{fontWeight:700,color:"#a0cfdf",marginBottom:4,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span>{imp.klientImie}</span>{imp.totalAmount>0&&<span style={{color:"#7acf7a",fontWeight:700}}>{Number(imp.totalAmount).toFixed(2)} zł</span>}</div>
                     <div style={{color:"#5a8a7a"}}>{imp.klientUlica}, {imp.klientKod} {imp.klientMiasto}</div>
                     {imp.telefon&&<div style={{color:"#5a8a7a"}}>{imp.telefon}</div>}
                     <div style={{marginTop:6,fontSize:14,color:"#3a6a5a",fontStyle:"italic"}} title={imp.offerNames}>{imp.offerNames||"—"}</div>
