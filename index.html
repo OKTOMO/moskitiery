@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260509.4</title>
+<title>MosquitoApp v20260509.6</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260509.4';
+  window.__MOSK_VERSION='20260509.6';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -215,7 +215,7 @@ async function cloudSave(o){
 async function parseAI(msg, adres, typ) {
   const prompt=`Wyodrębnij dane z wiadomości i zwróć TYLKO JSON bez markdown.
 
-TYP ZAMÓWIENIA: ${typ==="drzwi"?"DRZWI MOSKITIEROWE — ustaw isDrzwi:true dla wszystkich pozycji":"OKNA MOSKITIEROWE — ustaw isDrzwi:false dla wszystkich pozycji"}
+TYP ZAMÓWIENIA: ${typ==="drzwi"?"DRZWI MOSKITIEROWE — ustaw isDrzwi:true dla wszystkich pozycji":typ==="okno"?"OKNA MOSKITIEROWE — ustaw isDrzwi:false, chyba że wiadomość wyraźnie mówi o drzwiach — wtedy isDrzwi:true":"OKNA I DRZWI MOSKITIEROWE — wykryj typ każdej pozycji"}
 
 STRUKTURA JSON:
 {
@@ -269,7 +269,12 @@ Jak rozpoznać 4 wymiary jednych drzwi:
 - klient pisze np. "98,5 i 102,5 cm szerokość, 216,5 i 220,5 cm wysokość" → JEDNA pozycja
 - klient pisze "A=214, B=81,5, D=92" gdzie dwie wartości dotyczą jednego wymiaru → JEDNA pozycja  
 - klient pisze "98,5/102,5 x 216,5/220,5" → JEDNA pozycja
-- klient oznacza wymiary literami A,B,C,D — zwykle A i C to wysokości, B i D to szerokości (lub odwrotnie), ale zawsze chodzi o JEDNE drzwi
+- klient oznacza wymiary literami A,B,C,D — ZAWSZE chodzi o JEDNE drzwi
+
+KLUCZOWE: litery A,B,C,D nie mają stałego znaczenia — klient może używać ich dowolnie.
+Zawsze szukaj DWÓCH grup wartości: mniejsze pary (szerokości) i większe pary (wysokości).
+Przykład: "A-79,5 B-223 C-93 D-237" → wartości ok.79-93 to szerokości, ok.223-237 to wysokości
+→ szerokosc=79.5, szer2=93, wysokosc=223, wys2=237
 
 Przypisanie wartości dla JEDNEJ pozycji drzwi:
 - szerokosc = MNIEJSZA wartość spośród szerokości
@@ -340,7 +345,11 @@ Przykłady: "73,5x2+221,5x2=590/10=59 x3" → szerokosc=73.5, wysokosc=221.5, il
 
 NOTACJA X/Y: "120/124" dla okna → szerokosc=120, uwagi="120/124"
 CZTERY POMIARY OKNA: "46+46+66+66" → szerokosc=46, wysokosc=66
-ZAWIAS: "strona montażu zawiasów: lewa" → zawias="L", "prawa" → "P"
+ZAWIAS: rozpoznaj stronę zawiasu z dowolnego sformułowania:
+- "lewy", "lewa", "po lewo", "po lewej", "zawiasy lewe", "zawiasy po lewo", "zawias lewy", "left" → zawias="L"
+- "prawy", "prawa", "po prawo", "po prawej", "zawiasy prawe", "zawiasy po prawo", "zawias prawy", "right" → zawias="P"
+- "strona montażu zawiasów: lewa" → zawias="L", "prawa" → zawias="P"
+- jeśli nie podano strony → zawias="L" (domyślnie)
 
 WIADOMOŚĆ OD KLIENTA:
 ${msg||"(brak)"}
@@ -1622,6 +1631,34 @@ function App() {
     const nrMatch=colorSrc.match(/(?:kolor|kol\.?)\s*(\d{1,2})/);
     const detectedKolorRamki=nrMatch&&KOLOR_NR_MAP[nrMatch[1]]?KOLOR_NR_MAP[nrMatch[1]]:(()=>{for(const [pat,val] of KOLORY_RAMKI_MAP){if(colorSrc.includes(pat))return val;}return null;})();
     const detectedKolorSiatki=(()=>{for(const [pat,val] of KOLORY_SIATKI_MAP){if(colorSrc.includes(pat))return val;}return null;})();
+    // Rozpoznaj opcje moskitiery drzwiowej po cenie jednostkowej
+    function dedukujOpcjeDrzwi(cenaJedn){
+      const c=Math.round(cenaJedn);
+      // 499=bez poprzeczki+bez samo, 549=z poprzeczką+bez samo, 539=bez poprzeczki+z samo, 589=z poprzeczką+z samo
+      const CENY={499:{poprzeczka:false,samo:false},549:{poprzeczka:true,samo:false},
+                  539:{poprzeczka:false,samo:true},589:{poprzeczka:true,samo:true}};
+      return CENY[c]||null;
+    }
+    // Wykryj czy to moskitiera drzwiowa z offerNames lub buyerMsg
+    const isDrzwiowa=(imp.offerNames||'').toLowerCase().includes('drzwi')||(imp.buyerMsg||'').toLowerCase().includes('drzwi');
+    if(isDrzwiowa && imp.pozycje && imp.pozycje.length>0){
+      // Przypisz opcje do parsedPozycje na podstawie ceny
+      imp.pozycje.forEach(p=>{
+        const cenaJedn=p.cena&&p.ilosc?p.cena/p.ilosc:p.cena||0;
+        const opcje=dedukujOpcjeDrzwi(cenaJedn);
+        if(opcje&&parsedPozycje){
+          parsedPozycje=parsedPozycje.map((poz,i)=>{
+            if(i<(p.ilosc||1)){
+              const samoL=opcje.samo?(Math.random()>0.5?p.ilosc||1:0):0;
+              const samoP=opcje.samo?(samoL>0?0:p.ilosc||1):0;
+              return {...poz,isDrzwi:true,poprzeczka:opcje.poprzeczka,
+                samodomykajacyL:samoL,samodomykajacyP:samoP};
+            }
+            return poz;
+          });
+        }
+      });
+    }
     if(parsedPozycje){
       parsedPozycje=parsedPozycje.map(p=>{
         const np={...p};
@@ -3092,6 +3129,8 @@ function App() {
       updateOrders([orderOkna,orderDrzwi,..._ordBase]);
       setSaved(true);setLastSavedOrder(orderOkna);
       setTimeout(()=>setLastSavedOrder(null),60000);
+      setWiadomosc(""); setAdres(""); setForm(pustyForm(form.firma)); setNumerOverride(""); setKalNumerForForm("");
+      setWithDrzwi(false); setWiadomoscDrzwi(""); setParseTyp("okno");
       if(!allegroOrderIdForForm){
         [orderOkna,orderDrzwi].forEach(o=>{
           setAllegroImportResults(prev=>[{allegroOrderId:'manual_'+o.id,kontoId:o.firma||currentProfile.id,
@@ -3217,6 +3256,7 @@ function App() {
     // Nie kasuj allegroOrderIdForForm — przechowaj w ref żeby przyciski działały po zapisie
     const _savedAllegroIdRef=allegroOrderIdForForm;
     setWiadomosc(""); setAdres(""); setForm(pustyForm(form.firma)); setNumerOverride(""); setKalNumerForForm("");
+    setWithDrzwi(false); setWiadomoscDrzwi(""); setParseTyp("okno");
     // allegroOrderIdForForm kasujemy dopiero przy zamknięciu/nowym zamówieniu
     // setAllegroOrderIdForForm(""); // NIE kasuj — potrzebne dla przycisków etykiety
     // Etykieta DPD otwierana ręcznie przez przyciski w panelu akcji
