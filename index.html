@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260510.13</title>
+<title>MosquitoApp v20260510.14</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260510.13';
+  window.__MOSK_VERSION='20260510.14';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -4365,18 +4365,35 @@ function App() {
                     <option value="Problem">⚠️ Problem</option>
                   </select>
                   {(effStatus==='Wstrzymano'||effStatus==='Problem')&&(
-                    <input
-                      value={appStatuses[imp.allegroOrderId+'_powod']||''}
-                      onChange={e=>{
-                        const next={...appStatuses,[imp.allegroOrderId+'_powod']:e.target.value};
-                        setAppStatuses(next);
-                        localStorage.setItem('app_statuses',JSON.stringify(next));
-                      }}
-                      placeholder={effStatus==='Wstrzymano'?'Powód wstrzymania...':'Opis problemu...'}
-                      style={{fontSize:11,padding:'2px 6px',borderRadius:4,marginTop:3,width:'100%',
-                        background:effStatus==='Problem'?'#1a0a0a':'#1a1000',
-                        border:`1px solid ${effStatus==='Problem'?'#4a1a1a':'#4a3a00'}`,
-                        color:effStatus==='Problem'?'#df8a8a':'#dfaf6a'}}/>
+                    <div style={{display:'flex',gap:4,marginTop:3}}>
+                      <input
+                        value={appStatuses[imp.allegroOrderId+'_powod']||''}
+                        onChange={e=>{
+                          const next={...appStatuses,[imp.allegroOrderId+'_powod']:e.target.value};
+                          setAppStatuses(next);
+                          localStorage.setItem('app_statuses',JSON.stringify(next));
+                        }}
+                        onBlur={e=>{
+                          // Zapisz do KV przy utracie focusu
+                          const next={...appStatuses,[imp.allegroOrderId+'_powod']:e.target.value};
+                          syncAppStatusesToKV(next);
+                        }}
+                        placeholder={effStatus==='Wstrzymano'?'Powód wstrzymania...':'Opis problemu...'}
+                        style={{flex:1,fontSize:11,padding:'2px 6px',borderRadius:4,
+                          background:effStatus==='Problem'?'#1a0a0a':'#1a1000',
+                          border:`1px solid ${effStatus==='Problem'?'#4a1a1a':'#4a3a00'}`,
+                          color:effStatus==='Problem'?'#df8a8a':'#dfaf6a'}}/>
+                      <button onClick={()=>{
+                        const next={...appStatuses};
+                        syncAppStatusesToKV(next);
+                        // Wizualne potwierdzenie
+                        const btn=document.activeElement;
+                        if(btn) btn.textContent='✓';
+                        setTimeout(()=>{if(btn) btn.textContent='💾';},1000);
+                      }} style={{padding:'2px 6px',fontSize:11,borderRadius:4,cursor:'pointer',
+                        background:'#1a2a1a',border:'1px solid #2a5a2a',color:'#5acf5a',flexShrink:0}}
+                        title="Zapisz powód do chmury">💾</button>
+                    </div>
                   )}
                   {isRealizacja&&<button onClick={()=>setOrderAppStatus(imp.allegroOrderId,'Nowe')}
                     title="Cofnij do Nowe"
