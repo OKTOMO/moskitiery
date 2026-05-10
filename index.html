@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260510.12</title>
+<title>MosquitoApp v20260510.13</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260510.12';
+  window.__MOSK_VERSION='20260510.13';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -1875,9 +1875,14 @@ function App() {
   }
 
   // ── SHIPMENT functions ──
-  function setOrderAppStatus(allegroOrderId, status){
+  function setOrderAppStatus(allegroOrderId, status, force=false){
     setAppStatuses(function(prev){
       const next={...prev};
+      const current=prev[allegroOrderId]||'';
+      // Nie nadpisuj Wstrzymano/Problem automatycznie — chyba że użytkownik świadomie zmienia (force)
+      if(!force && status==='W realizacji' && (current==='Wstrzymano'||current==='Problem')){
+        return prev;
+      }
       if(status) next[allegroOrderId]=status;
       else delete next[allegroOrderId];
       localStorage.setItem('app_statuses',JSON.stringify(next));
@@ -4267,7 +4272,7 @@ function App() {
             if(zamSearch){const q=zamSearch.toLowerCase();return (imp.klientImie||'').toLowerCase().includes(q)||(imp.klientLogin||'').toLowerCase().includes(q)||(imp.klientMiasto||'').toLowerCase().includes(q)||(imp.offerNames||'').toLowerCase().includes(q);}
             return true;
           });
-          const noweList=filteredAll.filter(imp=>getEffectiveStatus(imp)==='Nowe');
+          const noweList=filteredAll.filter(imp=>{const s=getEffectiveStatus(imp);return s==='Nowe'||s==='Wstrzymano'||s==='Problem';});
           const _statusTimes=JSON.parse(localStorage.getItem('app_status_times')||'{}');
           const realizacjaList=filteredAll.filter(imp=>getEffectiveStatus(imp)==='W realizacji').sort((a,b)=>{
             const ta=_statusTimes[a.allegroOrderId]||a.updatedAt||a.boughtAt||a.data||'';
@@ -4345,15 +4350,34 @@ function App() {
                       return ile3>0?<div style={{fontSize:10,color:'#7a9a7a',marginTop:1}}>~{ile3} jedn. × 3 zł ({szt} szt.)</div>:null;
                     })()}
                   </div>
-                  <select value={as||effStatus} onChange={e=>setOrderAppStatus(imp.allegroOrderId,e.target.value)}
+                  <select value={as||effStatus} onChange={e=>{
+                      const newSt=e.target.value;
+                      setOrderAppStatus(imp.allegroOrderId,newSt,true);
+                    }}
                     style={{padding:'3px 5px',fontSize:11,borderRadius:4,cursor:'pointer',
-                      background:isWyslano?'#0a2a0a':isRealizacja?'#1a2a0a':'#0a1a0a',
-                      border:`1px solid ${isWyslano?'#3a7a3a':isRealizacja?'#5a7a2a':'#2a3a2a'}`,
-                      color:isWyslano?'#7acf7a':isRealizacja?'#afdf6f':'#4a6a4a'}}>
+                      background:isWyslano?'#0a2a0a':isRealizacja?'#1a2a0a':effStatus==='Wstrzymano'?'#2a1a00':effStatus==='Problem'?'#2a0a0a':'#0a1a0a',
+                      border:`1px solid ${isWyslano?'#3a7a3a':isRealizacja?'#5a7a2a':effStatus==='Wstrzymano'?'#6a4a00':effStatus==='Problem'?'#6a1a1a':'#2a3a2a'}`,
+                      color:isWyslano?'#7acf7a':isRealizacja?'#afdf6f':effStatus==='Wstrzymano'?'#dfaf4a':effStatus==='Problem'?'#df6a6a':'#4a6a4a'}}>
                     <option value="Nowe">🆕 Nowe</option>
                     <option value="W realizacji">⚙️ W realizacji</option>
                     <option value="Wysłano">✅ Wysłano</option>
+                    <option value="Wstrzymano">⏸ Wstrzymano</option>
+                    <option value="Problem">⚠️ Problem</option>
                   </select>
+                  {(effStatus==='Wstrzymano'||effStatus==='Problem')&&(
+                    <input
+                      value={appStatuses[imp.allegroOrderId+'_powod']||''}
+                      onChange={e=>{
+                        const next={...appStatuses,[imp.allegroOrderId+'_powod']:e.target.value};
+                        setAppStatuses(next);
+                        localStorage.setItem('app_statuses',JSON.stringify(next));
+                      }}
+                      placeholder={effStatus==='Wstrzymano'?'Powód wstrzymania...':'Opis problemu...'}
+                      style={{fontSize:11,padding:'2px 6px',borderRadius:4,marginTop:3,width:'100%',
+                        background:effStatus==='Problem'?'#1a0a0a':'#1a1000',
+                        border:`1px solid ${effStatus==='Problem'?'#4a1a1a':'#4a3a00'}`,
+                        color:effStatus==='Problem'?'#df8a8a':'#dfaf6a'}}/>
+                  )}
                   {isRealizacja&&<button onClick={()=>setOrderAppStatus(imp.allegroOrderId,'Nowe')}
                     title="Cofnij do Nowe"
                     style={{padding:'3px 7px',fontSize:11,borderRadius:4,cursor:'pointer',
