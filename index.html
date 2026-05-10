@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260510.6</title>
+<title>MosquitoApp v20260510.8</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260510.6';
+  window.__MOSK_VERSION='20260510.8';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -280,6 +280,8 @@ DLA OKIEN (isDrzwi:false):
   * Jeśli klient pisze "12mm", "15 mm", "głębokość 20" → glebokosc = ta liczba (już w mm)
   * Jeśli klient pisze "1,2cm", "1.5cm", "2cm" → przelicz na mm: 1,2cm = 12, 1,5cm = 15, 2cm = 20
   * Jeśli klient pisze "felc 12", "wnęka 15", "C=20" → glebokosc = ta liczba (mm)
+  * Format kalkulatora "SZEROKOŚĆ FELCA C(cm):1.7" lub "FELCA C(cm):2" → przelicz cm na mm: 1.7→17, 2→20
+  * Format "GŁĘBOKOŚĆ C(mm):20" → glebokosc = 20
   * Jeśli klient podaje TYLKO grubość ramy okiennej/profilu PCV (np. "rama 70mm", "profil 5cm") → glebokosc = null
   * Jeśli klient nie podaje głębokości wcale → glebokosc = null
   * UWAGA: liczby 10–35 to mm, liczby 1–3,5 to cm (przelicz ×10). Liczba >35 to prawie na pewno cm — przelicz ÷10 i zaokrąglij do mm.
@@ -2686,10 +2688,11 @@ function App() {
     const isInternational=(imp.klientKraj&&imp.klientKraj!=='PL')||(service?.name||'').toLowerCase().includes('international');
     const maxWeight=isInternational?15:25;
     // Limity wymiarów — z API jeśli dostępne, fallback do hardcoded
+    // UWAGA: odejmij 1 od limitów API żeby uniknąć błędu DIMENSIONS_VALIDATION_ERROR na granicy
     const isIntlAutomat = isInternational && (service?.name||'').toLowerCase().includes('automat');
-    const _maxL=service?.maxLength||(isIntlAutomat?57:64);
-    const _maxW=service?.maxWidth||(isIntlAutomat?43:38);
-    const _maxH=service?.maxHeight||(isDHLAutomat?31:(isIntlAutomat?33:41));
+    const _maxL=service?.maxLength?(service.maxLength-1):(isIntlAutomat?56:64);
+    const _maxW=service?.maxWidth?(service.maxWidth-1):(isIntlAutomat?42:38);
+    const _maxH=service?.maxHeight?(service.maxHeight-1):(isDHLAutomat?30:(isIntlAutomat?32:41));
     const SIZES={"A":{length:_maxL,width:_maxW,height:Math.min(8,_maxH),weight:5},"B":{length:_maxL,width:_maxW,height:Math.min(19,_maxH),weight:5},"C":{length:_maxL,width:_maxW,height:_maxH,weight:5}};
     const activeSizes=SIZES;
     // Auto-kalkulator paczek
@@ -4090,7 +4093,7 @@ function App() {
                         {linka!==null&&(
                           <div className="calc">
                             <span style={{color:"#5a9a5a"}}>🔗 JEDN: <strong style={{color:"#9fcf9f"}}>{obliczJedn(poz.szerokosc,poz.wysokosc,poz.ilosc)} mb</strong></span>
-                            <span style={{color:"#5a9a5a"}}>📎 Blaszek: <strong style={{color:"#9fcf9f"}}>8 szt</strong></span>
+                            <span style={{color:"#5a9a5a"}}>📎 Blaszek: <strong style={{color:"#9fcf9f"}}>{8*(parseInt(poz.ilosc)||1)} szt</strong></span>
                             <span style={{color:"#5a9a5a"}}>📐 <strong style={{color:"#dfdf8f"}}>{blaszRoz} mm</strong>
                               <span style={{color:"#4a8a4a",fontSize:14}}> (głęb {g}mm → blaszka {blaszRoz}mm)</span>
                             </span>
