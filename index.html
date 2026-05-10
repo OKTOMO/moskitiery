@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260510.11</title>
+<title>MosquitoApp v20260510.12</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260510.11';
+  window.__MOSK_VERSION='20260510.12';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2819,8 +2819,8 @@ function App() {
               return {insurance:{amount:(_r*50).toFixed(2),currency:_cur}};
             }
             // DHL Automat krajowy i ORLEN krajowy nie obsługują insurance
-            // Zagraniczne punkty odbioru WYMAGAJĄ insurance w lokalnej walucie
-            if((isDHLAutomat||isORLEN) && !isInternational) return {};
+            // DHL Automat zagraniczny też często nie obsługuje insurance — pomijamy
+            if(isDHLAutomat||isORLEN) return {};
             if(_ins) return {
               insurance:{amount:(_ins.r*50).toFixed(2),currency:_ins.c}
             };
