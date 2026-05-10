@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260510.1</title>
+<title>MosquitoApp v20260510.6</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260510.1';
+  window.__MOSK_VERSION='20260510.6';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -212,10 +212,33 @@ async function cloudSave(o){
   }
 }
 
-async function parseAI(msg, adres, typ) {
+async function parseAI(msg, adres, typ, offerNames, rules) {
+  const offerLower=(offerNames||'').toLowerCase();
+  const isDrzwiOffer=offerLower.includes('drzwi')||offerLower.includes('balkon')||offerLower.includes('taras');
+  const autoTyp=isDrzwiOffer?'drzwi':typ;
+
+  // Buduj sekcję reguł AI z bazy użytkownika
+  let rulesSection='';
+  if(rules&&rules.length>0){
+    const keywords=rules.filter(r=>r.type==='keyword'&&r.keyword);
+    const examples=rules.filter(r=>r.type==='example'&&r.przyklad_wiad&&r.przyklad_wynik);
+    if(keywords.length>0){
+      rulesSection+='\nDODATKOWE REGUŁY (stosuj bezwzględnie):\n';
+      keywords.forEach(r=>{
+        rulesSection+=`- Gdy wiadomość zawiera "${r.keyword}": ${r.action}${r.isDrzwi?' (isDrzwi=true)':''}${r.odjij>0?` (odejmij ${r.odjij}cm od szerokości i wysokości)`:''}\n`;
+      });
+    }
+    if(examples.length>0){
+      rulesSection+='\nPRZYKŁADY PARSOWANIA (ucz się z nich):\n';
+      examples.forEach((r,i)=>{
+        rulesSection+=`Przykład ${i+1}:\nWiadomość: "${r.przyklad_wiad}"\nWynik: ${r.przyklad_wynik}\n\n`;
+      });
+    }
+  }
   const prompt=`Wyodrębnij dane z wiadomości i zwróć TYLKO JSON bez markdown.
 
-TYP ZAMÓWIENIA: ${typ==="drzwi"?"DRZWI MOSKITIEROWE — ustaw isDrzwi:true dla wszystkich pozycji":typ==="okno"?"OKNA MOSKITIEROWE — ustaw isDrzwi:false, chyba że wiadomość wyraźnie mówi o drzwiach — wtedy isDrzwi:true":"OKNA I DRZWI MOSKITIEROWE — wykryj typ każdej pozycji"}
+TYP ZAMÓWIENIA: ${autoTyp==="drzwi"?"DRZWI MOSKITIEROWE — ustaw isDrzwi:true dla wszystkich pozycji":typ==="okno"?"OKNA MOSKITIEROWE — ustaw isDrzwi:false, chyba że wiadomość wyraźnie mówi o drzwiach — wtedy isDrzwi:true":"OKNA I DRZWI MOSKITIEROWE — wykryj typ każdej pozycji"}
+${offerNames?`\nTYTUŁ OFERTY Z ALLEGRO: "${offerNames}" — użyj do określenia typu (drzwi/okno) i koloru gdy nie podano w wiadomości.`:''}
 
 STRUKTURA JSON:
 {
@@ -335,7 +358,14 @@ WAŻNE:
 - WYMIARY: szerokosc zawsze mniejsza wartość, wysokosc zawsze większa. Np. klient podał "214 x 81,5" → szerokosc=81.5, wysokosc=214. Dotyczy zarówno okien jak i drzwi.
 - JEDNOSTKI mm vs cm: wymiary ZAWSZE zwracaj w cm. Jeśli klient podał wartości w mm (np. "780 x 2165 mm" lub liczby >400 bez jednostki), podziel przez 10. Przykład: 780mm → 78cm, 2165mm → 216.5cm. Jeśli wartość bez jednostki jest np. 78 lub 216 — to już cm, nie przeliczaj.
 - NOTACJA "2×WARTOŚĆ": klient mierzy dwukrotnie i zapisuje np. "A wysokość 2×216,5" lub "2×78 cm" — oznacza to JEDNĄ wartość 216,5 (lub 78), mierzoną dwa razy. Użyj tej jednej wartości, NIE mnóż przez 2.
-- DRZWI "NA GOTOWO" / "NA ZERO" / "WYMIAR ZEWNĘTRZNY": klient podaje gotowy wymiar zewnętrzny ramy. Zapisz szerokosc i wysokosc dokładnie jak podał (bez odejmowania). Ustaw isDrzwi:true. Dodaj do uwagi: "wymiar zewnętrzny".
+- "NA GOTOWO" / "NA ZERO" / "WYMIAR ZEWNĘTRZNY" / "nie powiększać" / "bez powiększenia" / "proszę nie powiększać": klient podaje gotowy wymiar zewnętrzny ramy. Zasady:
+  * ODEJMIJ dokładnie 4cm od szerokości i 4cm od wysokości — wpisz wynik bezpośrednio do szerokosc i wysokosc
+  * Przykład: "85 x 227 na gotowo" → szerokosc=81, wysokosc=223
+  * Przykład: "90 x 210 nie powiększać" → szerokosc=86, wysokosc=206
+  * NIE wpisuj oryginalnego wymiaru nigdzie — ani do szer2, wys2, ani do uwagi
+  * Ustaw isDrzwi:true
+  * TYLKO przy tych konkretnych zwrotach — bez nich NIE odejmuj nic
+- ROZPOZNAWANIE DRZWI bez słowa "drzwi": jeśli wysokość >180cm lub klient pisze "balkon", "taras", "wejście", "na gotowo", "nie powiększać" → ustaw isDrzwi:true nawet bez słowa "drzwi"
 - IGNORUJ NOTATKI CENOWE: frazy w nawiasach zawierające słowa "jednostek", "wg kalkulatora", "kalkulator", "jedn." itp. to adnotacje wewnętrzne sprzedawcy — CAŁKOWICIE IGNORUJ zawarte w nich liczby przy parsowaniu ilosc. Przykład: "(Ilosc jednostek wg kalkulatora 45)" → ilosc=1 (lub wg rzeczywistej ilości sztuk z reszty tekstu), NIE 45.
 
 IGNORUJ OBLICZENIA JEDNOSTEK:
@@ -353,7 +383,7 @@ ZAWIAS: rozpoznaj stronę zawiasu z dowolnego sformułowania:
 
 WIADOMOŚĆ OD KLIENTA:
 ${msg||"(brak)"}
-
+${rulesSection}
 DANE ADRESOWE Z ALLEGRO:
 ${adres||"(brak)"}`;
 
@@ -860,6 +890,9 @@ function App() {
   const [extraParcels,setExtraParcels]=useState([]);// [{shipmentId,description,size,customSize}]
   const [produktSlownik,setProduktSlownik]=React.useState(()=>{
     try{return JSON.parse(localStorage.getItem('produkt_slownik')||'[]');}catch(e){return [];}
+  });
+  const [aiRules,setAiRules]=React.useState(()=>{
+    try{return JSON.parse(localStorage.getItem('ai_rules')||'[]');}catch(e){return [];}
   });
   // Walidacja jednostek vs kwota zamówienia
   function walidujJednostki(pozycje, kwotaBrutto){
@@ -2832,6 +2865,17 @@ function App() {
     // Retry po 5s na wypadek wolnej sieci mobilnej
     loadSettingsFromKV().catch(()=>{});
     setTimeout(()=>loadSettingsFromKV().catch(()=>{}), 5000);
+    // Wczytaj reguły AI z KV
+    fetch(AUTORESPONDER_URL+'/kv/get?key=ai_rules',{headers:{'x-api-key':AUTORESPONDER_KEY}})
+      .then(r=>r.json()).then(d=>{
+        if(d.value){
+          try{
+            const rules=JSON.parse(d.value);
+            setAiRules(rules);
+            localStorage.setItem('ai_rules',JSON.stringify(rules));
+          }catch(e){}
+        }
+      }).catch(()=>{});
     cloudLoad().then(d=>{
       setOrders(d);
       setLoading(false);
@@ -3055,17 +3099,16 @@ function App() {
   async function handleParse(){
     if(!wiadomosc.trim()&&!adres.trim()) return;
     setParsing(true);setSaved(false);
+    const _offerNames=(allegroImportResults.find(i=>i.allegroOrderId===allegroOrderIdForForm)||{}).offerNames||'';
     try{
       if(withDrzwi){
-        // Parsuj wiadomość główną jako okna
-        const r=await parseAI(wiadomosc,adres,"okno");
+        const r=await parseAI(wiadomosc,adres,"okno",_offerNames,aiRules);
         const pozOkna=mapPozycje(r.pozycje,false,true);
         let pozDrzwi=[];
         const srcDrzwi=wiadomoscDrzwi.trim()||wiadomosc.trim();
         setParsingDrzwi(true);
-        try{const rd=await parseAI(srcDrzwi,adres,"drzwi");pozDrzwi=mapPozycje(rd.pozycje,true,false);}catch(e2){}
+        try{const rd=await parseAI(srcDrzwi,adres,"drzwi",_offerNames,aiRules);pozDrzwi=mapPozycje(rd.pozycje,true,false);}catch(e2){}
         setParsingDrzwi(false);
-        // Jeśli ta sama wiadomość — AI może zduplikować pozycje, dedupuj po isDrzwi
         const finalPoz=wiadomoscDrzwi.trim()
           ?[...pozOkna,...pozDrzwi]
           :[...pozOkna.filter(p=>!p.isDrzwi),...pozDrzwi.filter(p=>p.isDrzwi)];
@@ -3077,7 +3120,7 @@ function App() {
         }));
       } else {
         const isDrzwiMode=parseTyp==="drzwi";
-        const r=await parseAI(wiadomosc,adres,isDrzwiMode?"drzwi":"okno");
+        const r=await parseAI(wiadomosc,adres,isDrzwiMode?"drzwi":"okno",_offerNames,aiRules);
         const pozycje=mapPozycje(r.pozycje,isDrzwiMode,!isDrzwiMode);
         setForm(f=>({...f,
           klientImie:r.klientImie||f.klientImie,klientUlica:r.klientUlica||f.klientUlica,
@@ -3682,7 +3725,7 @@ function App() {
           else alert("Błędny PIN.");
         }}>🔒 Admin</button>
       </div>
-      {(tab==="allegro"||tab==="ustawienia"||tab==="historia"||tab==="importpdf"||tab==="produkty"||tab==="narzedzia")&&(
+      {(tab==="allegro"||tab==="ustawienia"||tab==="historia"||tab==="importpdf"||tab==="produkty"||tab==="narzedzia"||tab==="airules")&&(
         <div style={{background:"#080e08",borderBottom:"1px solid #1e2a1e",display:"flex",gap:0,paddingLeft:32}}>
           <button className={`tab ${tab==="allegro"?"on":""}`} onClick={()=>setTab("allegro")} style={{fontSize:14,padding:"7px 14px"}}>🛒 Allegro</button>
           <button className={`tab ${tab==="ustawienia"?"on":""}`} onClick={()=>setTab("ustawienia")} style={{fontSize:14,padding:"7px 14px"}}>⚙️ Chmura</button>
@@ -3690,10 +3733,117 @@ function App() {
           <button className={`tab ${tab==="importpdf"?"on":""}`} onClick={()=>setTab("importpdf")} style={{fontSize:14,padding:"7px 14px"}}>📥 Import PDF</button>
           <button className={`tab ${tab==="produkty"?"on":""}`} onClick={()=>setTab("produkty")} style={{fontSize:14,padding:"7px 14px"}}>📦 Produkty</button>
           <button className={`tab ${tab==="narzedzia"?"on":""}`} onClick={()=>setTab("narzedzia")} style={{fontSize:14,padding:"7px 14px"}}>🔧 Narzędzia</button>
+          <button className={`tab ${tab==="airules"?"on":""}`} onClick={()=>setTab("airules")} style={{fontSize:14,padding:"7px 14px"}}>🤖 Reguły AI</button>
         </div>
       )}
 
       <div style={{padding:16,maxWidth:1100,margin:"0 auto"}}>
+
+        {/* ══ REGUŁY AI ══ */}
+        {tab==="airules"&&(()=>{
+          const saveRules=(rules)=>{
+            setAiRules(rules);
+            localStorage.setItem('ai_rules',JSON.stringify(rules));
+            // Sync do KV
+            fetch(AUTORESPONDER_URL+'/kv/set',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},
+              body:JSON.stringify({key:'ai_rules',value:JSON.stringify(rules)})}).catch(()=>{});
+          };
+          const addRule=(type)=>saveRules([...aiRules,{id:Date.now(),type,keyword:'',action:'',isDrzwi:false,odjij:0,przyklad_wiad:'',przyklad_wynik:''}]);
+          const delRule=(id)=>saveRules(aiRules.filter(r=>r.id!==id));
+          const updRule=(id,field,val)=>saveRules(aiRules.map(r=>r.id===id?{...r,[field]:val}:r));
+
+          return (
+            <div style={{maxWidth:800}}>
+              <div className="card" style={{marginBottom:16}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+                  <span style={{fontWeight:700,fontSize:15,color:'#afffaf'}}>🤖 Reguły AI parsowania</span>
+                  <div style={{display:'flex',gap:8}}>
+                    <button className="btn-sm" onClick={()=>addRule('keyword')} style={{background:'#0a1a2a',borderColor:'#2a5a7a',color:'#7ab8df'}}>+ Słowo kluczowe</button>
+                    <button className="btn-sm" onClick={()=>addRule('example')} style={{background:'#1a0a2a',borderColor:'#4a2a6a',color:'#bf9fdf'}}>+ Przykład</button>
+                    <button className="btn-sm" onClick={async()=>{
+                      try{
+                        const r=await fetch(AUTORESPONDER_URL+'/kv/get?key=ai_rules',{headers:{'x-api-key':AUTORESPONDER_KEY}});
+                        const d=await r.json();
+                        if(d.value){const rules=JSON.parse(d.value);setAiRules(rules);localStorage.setItem('ai_rules',JSON.stringify(rules));alert('✅ Wczytano z chmury');}
+                        else alert('Brak reguł w chmurze');
+                      }catch(e){alert('❌ '+e.message);}
+                    }} style={{background:'#1a1a0a',borderColor:'#4a4a2a',color:'#cfcf7a'}}>☁️ Wczytaj z chmury</button>
+                  </div>
+                </div>
+                <div style={{fontSize:12,color:'#3a6a4a',marginBottom:12}}>
+                  Reguły są doklejane do promptu AI przy każdym parsowaniu. Działają dla wszystkich kont.
+                </div>
+
+                {aiRules.length===0&&<div style={{color:'#2a4a2a',fontSize:13,padding:12,textAlign:'center'}}>Brak reguł — dodaj słowo kluczowe lub przykład</div>}
+
+                {aiRules.map((rule,i)=>(
+                  <div key={rule.id} style={{background:'#0a140a',border:'1px solid #1a3a1a',borderRadius:8,padding:12,marginBottom:10}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                      <span style={{fontSize:11,fontWeight:700,color:rule.type==='keyword'?'#7ab8df':'#bf9fdf',letterSpacing:'.05em'}}>
+                        {rule.type==='keyword'?'🔤 SŁOWO KLUCZOWE':'📝 PRZYKŁAD'} #{i+1}
+                      </span>
+                      <button onClick={()=>delRule(rule.id)} style={{background:'none',border:'none',color:'#5a2a2a',cursor:'pointer',fontSize:16}}>🗑</button>
+                    </div>
+
+                    {rule.type==='keyword'?(
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                        <div>
+                          <div style={{fontSize:11,color:'#3a6a4a',marginBottom:3}}>Słowo/fraza w wiadomości:</div>
+                          <input value={rule.keyword} onChange={e=>updRule(rule.id,'keyword',e.target.value)}
+                            placeholder="np. nie powiększać, na gotowo, balkon..."
+                            style={{width:'100%',padding:'5px 8px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#9acf9a',fontSize:13}}/>
+                        </div>
+                        <div>
+                          <div style={{fontSize:11,color:'#3a6a4a',marginBottom:3}}>Opis akcji dla AI:</div>
+                          <input value={rule.action} onChange={e=>updRule(rule.id,'action',e.target.value)}
+                            placeholder="np. ustaw isDrzwi=true, odejmij 4cm od wymiarów"
+                            style={{width:'100%',padding:'5px 8px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#9acf9a',fontSize:13}}/>
+                        </div>
+                        <div style={{gridColumn:'1/-1',display:'flex',gap:16,alignItems:'center',marginTop:4}}>
+                          <label style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer',fontSize:12,color:'#5a8a5a'}}>
+                            <input type="checkbox" checked={rule.isDrzwi} onChange={e=>updRule(rule.id,'isDrzwi',e.target.checked)}/>
+                            isDrzwi=true
+                          </label>
+                          <label style={{display:'flex',alignItems:'center',gap:6,cursor:'pointer',fontSize:12,color:'#5a8a5a'}}>
+                            <span>Odejmij cm:</span>
+                            <input type="number" value={rule.odjij||0} onChange={e=>updRule(rule.id,'odjij',parseInt(e.target.value)||0)}
+                              style={{width:50,padding:'2px 5px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:3,color:'#9acf9a',fontSize:12}}/>
+                          </label>
+                        </div>
+                      </div>
+                    ):(
+                      <div style={{display:'grid',gap:8}}>
+                        <div>
+                          <div style={{fontSize:11,color:'#3a6a4a',marginBottom:3}}>Przykładowa wiadomość od klienta:</div>
+                          <textarea value={rule.przyklad_wiad} onChange={e=>updRule(rule.id,'przyklad_wiad',e.target.value)}
+                            placeholder="np. Proszę o moskitierę 85x227, wymiary na gotowo, kolor biały"
+                            rows={3} style={{width:'100%',padding:'5px 8px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#9acf9a',fontSize:12,fontFamily:'monospace',resize:'vertical'}}/>
+                        </div>
+                        <div>
+                          <div style={{fontSize:11,color:'#3a6a4a',marginBottom:3}}>Oczekiwany wynik (JSON pozycji):</div>
+                          <textarea value={rule.przyklad_wynik} onChange={e=>updRule(rule.id,'przyklad_wynik',e.target.value)}
+                            placeholder={'{"isDrzwi":true,"szerokosc":81,"wysokosc":223,"kolorRamki":"Biały","kolorSiatki":"Czarna","ilosc":1}'}
+                            rows={3} style={{width:'100%',padding:'5px 8px',background:'#0a0e0a',border:'1px solid #1a3a1a',borderRadius:4,color:'#7acf7a',fontSize:12,fontFamily:'monospace',resize:'vertical'}}/>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {aiRules.length>0&&<button className="btn" style={{width:'100%',marginTop:4}} onClick={()=>{
+                  saveRules(aiRules);alert('✅ Zapisano '+aiRules.length+' reguł');
+                }}>💾 Zapisz wszystkie reguły do chmury</button>}
+              </div>
+
+              <div className="card" style={{fontSize:12,color:'#3a5a3a'}}>
+                <div style={{fontWeight:700,marginBottom:6,color:'#5a8a5a'}}>ℹ️ Jak działają reguły:</div>
+                <div style={{marginBottom:4}}>• <b>Słowo kluczowe</b> — gdy AI znajdzie tę frazę w wiadomości, stosuje opisaną akcję. Np. "nie powiększać" → isDrzwi=true, odejmij 4cm.</div>
+                <div style={{marginBottom:4}}>• <b>Przykład</b> — para wiadomość→wynik JSON. AI widzi ten przykład i uczy się jak parsować podobne wiadomości w przyszłości.</div>
+                <div>• Reguły są synchronizowane przez chmurę — działają na wszystkich urządzeniach i kontach.</div>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ══ DODAJ ZAMÓWIENIE ══ */}
         {tab==="nowe" && (
@@ -4146,9 +4296,9 @@ function App() {
                     <div style={{fontSize:12,color:'#5a8a9a',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{imp.offerNames||'—'}</div>
                     {imp.buyerMsg&&<div style={{fontSize:10,color:'#cfaf6f',fontStyle:'italic',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>💬 {imp.buyerMsg}</div>}
                     {imp.kwotaBrutto&&<div style={{fontSize:11,color:'#afdf7f',fontWeight:700,marginTop:2}}>
-                      💰 {parseFloat(imp.kwotaBrutto).toFixed(2)} zł
-                      {imp.deliveryCost>0&&<span style={{color:'#cfaf6f',marginLeft:5}}>+ {parseFloat(imp.deliveryCost).toFixed(2)} zł dostawa</span>}
-                      {imp.isCOD&&<span style={{color:'#ff9f5f',marginLeft:5,fontWeight:900,background:'#2a1500',border:'1px solid #cf7a2a',borderRadius:4,padding:'0 5px'}}>💵 POBRANIE {imp.codAmount?parseFloat(imp.codAmount).toFixed(2)+' zł':''}</span>}
+                      💰 {parseFloat(imp.kwotaBrutto).toFixed(2)} {imp.kwotaWaluta||'zł'}
+                      {imp.deliveryCost>0&&<span style={{color:'#cfaf6f',marginLeft:5}}>+ {parseFloat(imp.deliveryCost).toFixed(2)} {imp.kwotaWaluta||'zł'} dostawa</span>}
+                      {imp.isCOD&&<span style={{color:'#ff9f5f',marginLeft:5,fontWeight:900,background:'#2a1500',border:'1px solid #cf7a2a',borderRadius:4,padding:'0 5px'}}>💵 POBRANIE {imp.codAmount?parseFloat(imp.codAmount).toFixed(2)+' '+(imp.kwotaWaluta||'zł'):''}</span>}
                     </div>}
                     {imp.pozycje&&imp.pozycje.length>0&&(()=>{
                       // Sprawdź czy to moskitiery — tylko wtedy licz jednostki
@@ -4830,7 +4980,7 @@ function App() {
 
                   {/* Dane klienta */}
                   <div style={{background:"#0e1e0e",border:"1px solid #1a4a2a",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:14}}>
-                    <div style={{fontWeight:700,color:"#a0cfdf",marginBottom:4,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span>{imp.klientImie}</span>{imp.totalAmount>0&&<span style={{color:"#7acf7a",fontWeight:700}}>{Number(imp.totalAmount).toFixed(2)} zł</span>}</div>
+                    <div style={{fontWeight:700,color:"#a0cfdf",marginBottom:4,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span>{imp.klientImie}</span>{imp.totalAmount>0&&<span style={{color:"#7acf7a",fontWeight:700}}>{Number(imp.totalAmount).toFixed(2)} {imp.kwotaWaluta||"zł"}</span>}</div>
                     <div style={{color:"#5a8a7a"}}>{imp.klientUlica}, {imp.klientKod} {imp.klientMiasto}</div>
                     {imp.telefon&&<div style={{color:"#5a8a7a"}}>{imp.telefon}</div>}
                     <div style={{marginTop:6,fontSize:14,color:"#3a6a5a",fontStyle:"italic"}} title={imp.offerNames}>{imp.offerNames||"—"}</div>
@@ -7294,7 +7444,7 @@ function App() {
 
                   {/* Dane klienta */}
                   <div style={{background:"#0e1e0e",border:"1px solid #1a4a2a",borderRadius:8,padding:"10px 14px",marginBottom:16,fontSize:14}}>
-                    <div style={{fontWeight:700,color:"#a0cfdf",marginBottom:4,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span>{imp.klientImie}</span>{imp.totalAmount>0&&<span style={{color:"#7acf7a",fontWeight:700}}>{Number(imp.totalAmount).toFixed(2)} zł</span>}</div>
+                    <div style={{fontWeight:700,color:"#a0cfdf",marginBottom:4,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span>{imp.klientImie}</span>{imp.totalAmount>0&&<span style={{color:"#7acf7a",fontWeight:700}}>{Number(imp.totalAmount).toFixed(2)} {imp.kwotaWaluta||"zł"}</span>}</div>
                     <div style={{color:"#5a8a7a"}}>{imp.klientUlica}, {imp.klientKod} {imp.klientMiasto}</div>
                     {imp.telefon&&<div style={{color:"#5a8a7a"}}>{imp.telefon}</div>}
                     <div style={{marginTop:6,fontSize:14,color:"#3a6a5a",fontStyle:"italic"}} title={imp.offerNames}>{imp.offerNames||"—"}</div>
