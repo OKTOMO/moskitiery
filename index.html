@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260510.10</title>
+<title>MosquitoApp v20260510.11</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260510.10';
+  window.__MOSK_VERSION='20260510.11';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2775,8 +2775,15 @@ function App() {
               if(/^\d{5}$/.test(kod)) return "PL"; // 12345 - PL
               if(/^\d{3}\d{2}$/.test(kod)) return "CZ"; // 76502 - CZ
               if(/^[A-Z]{1,2}\d/.test(kod)) return "GB"; // UK
-              if(/^\d{4}$/.test(kod)) return "SK"; // SK/AT
-              return imp.klientKraj||"PL";
+              // 4-cyfrowe kody: Węgry (1000-9985) i Słowacja (01001-99901 ale często 4 cyfry)
+              // Priorytet: imp.klientKraj z Allegro jest najbardziej wiarygodne
+              if(imp.klientKraj) return imp.klientKraj;
+              if(/^\d{4}$/.test(kod)){
+                const n=parseInt(kod);
+                // Węgierskie kody: 1000-9985, Słowackie: 0-9999 ale zazwyczaj z miastem można odróżnić
+                return n>=1000&&n<=9985?"HU":"SK";
+              }
+              return "PL";
             })(),
             phone:imp.telefon||"",
             email:imp.klientEmail||"",
@@ -2790,10 +2797,20 @@ function App() {
             const _kraj=(imp.klientKraj||'PL').toUpperCase();
             const _ins=_INS[_kraj];
             const _kwota=parseFloat(imp.kwotaBrutto)||100;
-            if(isCOD && codAmount>0) return {
-              cashOnDelivery:{amount:String(codAmount.toFixed(2)),currency:"PLN"},
-              insurance:{amount:String(codAmount.toFixed(2)),currency:"PLN"}
-            };
+            if(isCOD && codAmount>0){
+              // Zagraniczne COD — przelicz na lokalną walutę
+              if(_ins){
+                const _codLocal=(codAmount*_ins.r).toFixed(2);
+                return {
+                  cashOnDelivery:{amount:_codLocal,currency:_ins.c},
+                  insurance:{amount:_codLocal,currency:_ins.c}
+                };
+              }
+              return {
+                cashOnDelivery:{amount:String(codAmount.toFixed(2)),currency:"PLN"},
+                insurance:{amount:String(codAmount.toFixed(2)),currency:"PLN"}
+              };
+            }
             // Użyj wymagań z API jeśli dostępne
             if(service?.insuranceRequired && service?.insuranceCurrency){
               const _cur=service.insuranceCurrency;
