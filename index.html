@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260510.14</title>
+<title>MosquitoApp v20260511.1</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260510.14';
+  window.__MOSK_VERSION='20260511.1';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -4333,7 +4333,18 @@ function App() {
                   </div>
                   <div style={{flex:2,minWidth:130}}>
                     <div style={{fontSize:12,color:'#5a8a9a',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{imp.offerNames||'—'}</div>
-                    {imp.buyerMsg&&<div style={{fontSize:10,color:'#cfaf6f',fontStyle:'italic',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>💬 {imp.buyerMsg}</div>}
+                    {imp.buyerMsg&&<div
+                      onClick={()=>toggleBox(imp.allegroOrderId,'msg')}
+                      style={{fontSize:10,color:'#cfaf6f',fontStyle:'italic',cursor:'pointer',
+                        overflow:openBox==='msg'?'visible':'hidden',
+                        textOverflow:openBox==='msg'?'unset':'ellipsis',
+                        whiteSpace:openBox==='msg'?'pre-wrap':'nowrap',
+                        maxHeight:openBox==='msg'?'none':'1.4em',
+                        background:openBox==='msg'?'#0a140a':'transparent',
+                        borderRadius:4,padding:openBox==='msg'?'4px 6px':'0',
+                        marginTop:2,wordBreak:'break-word'}}
+                      title="Kliknij aby rozwinąć">💬 {imp.buyerMsg}</div>}
+                    {appStatuses[imp.allegroOrderId+'_powod']&&<div style={{fontSize:10,color:'#dfaf4a',fontStyle:'italic',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',marginTop:1}}>⏸ {appStatuses[imp.allegroOrderId+'_powod']}</div>}
                     {imp.kwotaBrutto&&<div style={{fontSize:11,color:'#afdf7f',fontWeight:700,marginTop:2}}>
                       💰 {parseFloat(imp.kwotaBrutto).toFixed(2)} {imp.kwotaWaluta||'zł'}
                       {imp.deliveryCost>0&&<span style={{color:'#cfaf6f',marginLeft:5}}>+ {parseFloat(imp.deliveryCost).toFixed(2)} {imp.kwotaWaluta||'zł'} dostawa</span>}
@@ -4501,8 +4512,11 @@ function App() {
                         color:_batchSel.includes(imp.allegroOrderId)?'#9a9aff':'#4a4a9a'}}>
                       📦{_batchSel.includes(imp.allegroOrderId)?'✓':''}
                     </button>}
-                    <button onClick={()=>{setSelectedOrderId(imp.allegroOrderId);setSelectedKontoId(imp.kontoId);setTab('wiadomosci');}} title="Wiadomości"
-                      style={{padding:'4px 7px',fontSize:12,borderRadius:5,cursor:'pointer',background:'#1a2a2a',border:'1px solid #2a5a5a',color:'#5abfbf'}}>
+                    <button onClick={()=>toggleBox(imp.allegroOrderId,'chat')} title="Napisz wiadomość do klienta"
+                      style={{padding:'4px 7px',fontSize:12,borderRadius:5,cursor:'pointer',
+                        background:openBox==='chat'?'#1a3a3a':'#1a2a2a',
+                        border:`1px solid ${openBox==='chat'?'#3a8a8a':'#2a5a5a'}`,
+                        color:openBox==='chat'?'#7adfdf':'#5abfbf'}}>
                       💬
                     </button>
                     <a href={`https://allegro.pl/transakcja/${imp.allegroOrderId}`} target="_blank" rel="noreferrer"
@@ -4511,6 +4525,40 @@ function App() {
                     </a>
                   </div>
                 </div>
+
+                {openBox==='chat'&&(
+                  <div style={{background:'#0a1a1a',borderTop:'1px solid #1a5a5a',padding:'10px 14px'}}>
+                    <div style={{fontSize:11,color:'#3a7a7a',marginBottom:6,fontWeight:700}}>✉️ Wiadomość do klienta — {imp.klientImie}</div>
+                    {imp.buyerMsg&&<div style={{fontSize:11,color:'#cfaf6f',fontStyle:'italic',marginBottom:8,padding:'5px 8px',background:'#0a1400',border:'1px solid #2a3a1a',borderRadius:4,whiteSpace:'pre-wrap',wordBreak:'break-word'}}>💬 Ostatnia wiadomość: {imp.buyerMsg}</div>}
+                    <textarea id={`chat_${imp.allegroOrderId}`}
+                      placeholder="Wpisz wiadomość do klienta..."
+                      rows={3}
+                      style={{width:'100%',padding:'6px 10px',borderRadius:5,border:'1px solid #1a5a5a',background:'#0a1a1a',color:'#9adfdf',fontSize:13,fontFamily:'monospace',resize:'vertical',boxSizing:'border-box'}}/>
+                    <div style={{display:'flex',gap:8,marginTop:6,justifyContent:'flex-end'}}>
+                      <button onClick={()=>toggleBox(imp.allegroOrderId,'chat')}
+                        style={{padding:'5px 14px',borderRadius:5,border:'1px solid #2a4a4a',background:'none',color:'#3a7a7a',cursor:'pointer',fontSize:12}}>
+                        Anuluj
+                      </button>
+                      <button onClick={async()=>{
+                        const txt=document.getElementById(`chat_${imp.allegroOrderId}`)?.value?.trim();
+                        if(!txt){alert('Wpisz wiadomość');return;}
+                        try{
+                          const r=await fetch(AUTORESPONDER_URL+'/message/send',{
+                            method:'POST',
+                            headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},
+                            body:JSON.stringify({allegroOrderId:imp.allegroOrderId,kontoId:imp.kontoId,text:txt})
+                          });
+                          const d=await r.json();
+                          if(d.ok){alert('✅ Wiadomość wysłana');toggleBox(imp.allegroOrderId,'chat');}
+                          else alert('❌ '+JSON.stringify(d));
+                        }catch(e){alert('❌ '+e.message);}
+                      }}
+                        style={{padding:'5px 18px',borderRadius:5,border:'1px solid #1a7a7a',background:'#0a3a3a',color:'#5adfdf',cursor:'pointer',fontSize:12,fontWeight:700}}>
+                        📨 Wyślij
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 {openBox==='faktura'&&(
                   <div style={{background:'#0f0a00',borderTop:'1px solid #5a3a00',padding:'8px 14px',fontSize:12,color:'#dfaf5a'}}>
@@ -4763,7 +4811,14 @@ function App() {
                             <td style={{padding:"8px 8px",color:"#7a9abf",whiteSpace:"nowrap",maxWidth:80,overflow:"hidden",textOverflow:"ellipsis"}} title={imp.klientMiasto}>{imp.klientMiasto||"—"}</td>
                             <td style={{padding:"8px 8px",maxWidth:160}} title={[imp.offerNames,imp.buyerMsg].filter(Boolean).join("\n")}>
                               <div style={{color:"#5a8a9a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontSize:13}}>{imp.offerNames||"—"}</div>
-                              {imp.buyerMsg&&<div style={{marginTop:2,fontSize:11,color:"#cfaf6f",fontStyle:"italic",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>💬 {imp.buyerMsg}</div>}
+                              {imp.buyerMsg&&<div
+                                onClick={()=>toggleBox(imp.allegroOrderId,'msg')}
+                                style={{marginTop:2,fontSize:11,color:"#cfaf6f",fontStyle:"italic",cursor:'pointer',
+                                  overflow:zamOpenBox[imp.allegroOrderId]==='msg'?'visible':"hidden",
+                                  textOverflow:zamOpenBox[imp.allegroOrderId]==='msg'?'unset':"ellipsis",
+                                  whiteSpace:zamOpenBox[imp.allegroOrderId]==='msg'?'pre-wrap':"nowrap",
+                                  wordBreak:'break-word'}}
+                                title="Kliknij aby rozwinąć">💬 {imp.buyerMsg}</div>}
                             </td>
                             <td style={{padding:"8px 12px",whiteSpace:"nowrap"}}>
                               <span style={{fontSize:14,padding:"2px 8px",borderRadius:10,fontWeight:700,
