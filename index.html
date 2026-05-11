@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260511.27</title>
+<title>MosquitoApp v20260511.28</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260511.27';
+  window.__MOSK_VERSION='20260511.28';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2338,7 +2338,22 @@ function App() {
       const orderId=imp?.allegroOrderId||order?.allegroOrderId||'';
       if(orderId){
         setInvoicesSent(prev=>{
-          const next={...prev,[orderId]:{number:inv.number,date:new Date().toISOString().slice(0,10),id:inv.id}};
+          const _imp=fakModal.imp; const _ord=fakModal.order; const _f=fakModal.form;
+          const next={...prev,[orderId]:{
+            number:inv.number,
+            date:new Date().toISOString().slice(0,10),
+            id:inv.id,
+            fakturowniaId:inv.id,
+            allegroOrderId:orderId,
+            kontoId:_imp?.kontoId||_ord?.firma||'',
+            firma:_ord?.firma||KONTO_DO_FIRMY[_imp?.kontoId||'']||'F',
+            klientNazwa:_f?.nazwaFirmy||_f?.imie||_imp?.klientImie||_ord?.klientImie||'',
+            klientMiasto:_imp?.klientMiasto||_ord?.klientMiasto||'',
+            nip:_f?.nip||'',
+            kwota:parseFloat(_f?.kwota)||0,
+            numerZlecenia:_ord?.numerZlecenia||'',
+            offerNames:_imp?.offerNames||'',
+          }};
           localStorage.setItem('invoices_sent',JSON.stringify(next));
           return next;
         });
@@ -5003,6 +5018,11 @@ function App() {
                 <button onClick={()=>setZamTab('pozostale')} style={{padding:'7px 16px',fontSize:13,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',background:zamTab==='pozostale'?'#1a2a3a':'#0a1420',color:zamTab==='pozostale'?'#7acfdf':'#2a4a6a',borderBottom:zamTab==='pozostale'?'2px solid #3a8acf':'2px solid transparent'}}>
                   ✅ Zrealizowane ({zrealizowaneList.length}){(()=>{const n=zrealizowaneList.filter(i=>i.invoiceRequired&&!invoicesSent[i.allegroOrderId]).length;return n>0?` 🧾${n}`:''})()}
                 </button>
+                {(()=>{const fvCount=Object.keys(invoicesSent).filter(k=>invoicesSent[k]?.id).length;return(
+                  <button onClick={()=>setZamTab('faktury_zam')} style={{padding:'7px 16px',fontSize:13,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',background:zamTab==='faktury_zam'?'#2a1a3a':'#0a0a1a',color:zamTab==='faktury_zam'?'#cf9fff':'#4a2a6a',borderBottom:zamTab==='faktury_zam'?'2px solid #9a4acf':'2px solid transparent'}}>
+                    🧾 Faktury ({fvCount})
+                  </button>
+                );})()}
               </div>
               {allegroImportResults.length===0&&<div style={{textAlign:'center',color:'#2a5a3a',padding:'40px 0',fontSize:14}}>Kliknij "Pobierz zamówienia" żeby załadować listę</div>}
               {mergeSelected.size>=2&&(
@@ -5022,6 +5042,99 @@ function App() {
                 </div>
               )}
               {(()=>{
+                // ── Zakładka Faktury w module zamówień ──
+                if(zamTab==='faktury_zam'){
+                  const cfg=fakturowniaConfig;
+                  const fvList=Object.entries(invoicesSent)
+                    .filter(([,v])=>v?.id)
+                    .map(([orderId,v])=>{
+                      // Wzbogać o dane z allegroImportResults
+                      const imp=allegroImportResults.find(i=>i.allegroOrderId===orderId);
+                      return {...v, allegroOrderId:orderId,
+                        klientNazwa:v.klientNazwa||imp?.klientImie||imp?.nabywcaNazwa||'',
+                        klientMiasto:v.klientMiasto||imp?.klientMiasto||'',
+                        offerNames:v.offerNames||imp?.offerNames||'',
+                        kontoId:v.kontoId||imp?.kontoId||'',
+                        firma:v.firma||KONTO_DO_FIRMY[imp?.kontoId||'']||'F',
+                        kwota:v.kwota||imp?.totalAmount||0,
+                      };
+                    })
+                    .sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+                  if(fvList.length===0) return <div style={{textAlign:'center',color:'#4a2a6a',padding:'40px 0',fontSize:14}}>Brak wystawionych faktur — wystaw fakturę klikając 🧾 przy zamówieniu</div>;
+                  return (
+                    <div style={{overflowX:'auto'}}>
+                      <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
+                        <thead><tr style={{background:'#1a0a2a',borderBottom:'1px solid #3a1a5a'}}>
+                          <th style={{padding:'8px 10px',textAlign:'left',color:'#cf9fff'}}>Nr faktury</th>
+                          <th style={{padding:'8px 10px',textAlign:'left',color:'#cf9fff'}}>Data</th>
+                          <th style={{padding:'8px 10px',textAlign:'left',color:'#cf9fff'}}>Nabywca</th>
+                          <th style={{padding:'8px 10px',textAlign:'left',color:'#cf9fff'}}>Oferta</th>
+                          <th style={{padding:'8px 10px',textAlign:'center',color:'#cf9fff'}}>Kwota</th>
+                          <th style={{padding:'8px 10px',textAlign:'center',color:'#cf9fff'}}>Firma</th>
+                          <th style={{padding:'8px 10px',textAlign:'center',color:'#cf9fff'}}></th>
+                        </tr></thead>
+                        <tbody>
+                          {fvList.map((fv,i)=>{
+                            const zebra=i%2===0;
+                            const imp=allegroImportResults.find(x=>x.allegroOrderId===fv.allegroOrderId);
+                            const FIRMA_LABEL={F:'Favour',AR:'Arlis',E:'Everis',AP:'Albama'};
+                            return <tr key={fv.allegroOrderId} style={{borderBottom:'1px solid #1a0a2a',background:zebra?'#0c0614':'#0e0818'}}>
+                              <td style={{padding:'7px 10px',fontWeight:700,color:'#dfcf5f'}}>
+                                {fv.number}
+                                {fv.allegroAttached&&<span title="Dołączono do Allegro" style={{marginLeft:5,fontSize:11}}>📎✅</span>}
+                              </td>
+                              <td style={{padding:'7px 10px',color:'#8a6aaa'}}>{fv.date?new Date(fv.date).toLocaleDateString('pl-PL'):''}</td>
+                              <td style={{padding:'7px 10px',color:'#c9a0ef'}}>
+                                <div style={{fontWeight:600}}>{fv.klientNazwa||'—'}</div>
+                                {fv.nip&&<div style={{fontSize:11,color:'#7a5a9a'}}>NIP: {fv.nip}</div>}
+                                {fv.klientMiasto&&<div style={{fontSize:11,color:'#5a3a7a'}}>{fv.klientMiasto}</div>}
+                              </td>
+                              <td style={{padding:'7px 10px',color:'#7a5a9a',fontSize:12,maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}
+                                title={fv.offerNames}>{fv.offerNames||fv.numerZlecenia||'—'}</td>
+                              <td style={{padding:'7px 10px',textAlign:'center',fontWeight:700,color:'#9fcf9f'}}>{fv.kwota>0?fv.kwota.toFixed(2)+' zł':'—'}</td>
+                              <td style={{padding:'7px 10px',textAlign:'center'}}>
+                                <span style={{fontSize:11,padding:'2px 7px',borderRadius:10,background:'#1a0a2a',border:'1px solid #4a2a6a',color:'#af7adf'}}>{FIRMA_LABEL[fv.firma]||fv.firma||'—'}</span>
+                              </td>
+                              <td style={{padding:'7px 10px',textAlign:'center'}}>
+                                <div style={{display:'flex',gap:5,justifyContent:'center',flexWrap:'wrap'}}>
+                                  {cfg.domain&&fv.fakturowniaId&&(
+                                    <button onClick={()=>window.open(`https://${cfg.domain}/invoices/${fv.fakturowniaId}`,'_blank')}
+                                      style={{padding:'3px 8px',fontSize:11,background:'#1a2a1a',border:'1px solid #3a6a3a',borderRadius:4,color:'#7acf7a',cursor:'pointer'}}
+                                      title="Otwórz w Fakturowni">🧾</button>
+                                  )}
+                                  {fv.allegroOrderId&&!fv.allegroOrderId.startsWith('manual_')&&!fv.allegroAttached&&(
+                                    <button onClick={async()=>{
+                                      if(!cfg.token||!cfg.domain){alert('Brak konfiguracji Fakturowni');return;}
+                                      if(!fv.fakturowniaId){alert('Brak ID faktury w Fakturowni');return;}
+                                      if(!confirm('Dołączyć fakturę '+fv.number+' do zamówienia Allegro?')) return;
+                                      try{
+                                        const r=await fetch(WORKER_URL+'/allegro/invoice/attach',{
+                                          method:'POST',headers:{'Content-Type':'application/json','x-api-key':getWorkerKey()},
+                                          body:JSON.stringify({kontoId:fv.kontoId,allegroOrderId:fv.allegroOrderId,fakturowniaInvoiceId:fv.fakturowniaId,fakturowniaToken:cfg.token,fakturowniaDomain:cfg.domain})
+                                        });
+                                        const d=await r.json().catch(()=>({}));
+                                        if(d.ok){
+                                          setInvoicesSent(prev=>{const next={...prev,[fv.allegroOrderId]:{...prev[fv.allegroOrderId],allegroAttached:true}};localStorage.setItem('invoices_sent',JSON.stringify(next));return next;});
+                                          alert('✅ Dołączono do Allegro!');
+                                        }else{alert('❌ '+(d.error||'Błąd'));}
+                                      }catch(e){alert('❌ '+e.message);}
+                                    }} style={{padding:'3px 8px',fontSize:11,background:'#0a1a2a',border:'1px solid #2a4a7a',borderRadius:4,color:'#7ab8df',cursor:'pointer'}}
+                                    title="Dołącz PDF do zamówienia Allegro">📎</button>
+                                  )}
+                                  <button onClick={()=>{
+                                    if(!confirm('Usunąć oznaczenie faktury '+fv.number+'?')) return;
+                                    setInvoicesSent(prev=>{const next={...prev};delete next[fv.allegroOrderId];localStorage.setItem('invoices_sent',JSON.stringify(next));return next;});
+                                  }} style={{padding:'3px 8px',fontSize:11,background:'#2a0a0a',border:'1px solid #5a2a2a',borderRadius:4,color:'#cf6a6a',cursor:'pointer'}}
+                                  title="Usuń z listy (faktura pozostaje w Fakturowni)">🗑</button>
+                                </div>
+                              </td>
+                            </tr>;
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  );
+                }
                 const active=zamTab==='nowe'?noweList:zamTab==='realizacja'?realizacjaList:zrealizowaneList;
                 if(active.length===0&&allegroImportResults.length>0) return <div style={{textAlign:'center',color:'#3a5a3a',padding:'40px 0'}}>{zamTab==='nowe'?'🎉 Brak nowych zamówień!':zamTab==='realizacja'?'Brak zamówień w realizacji':'Brak zrealizowanych'}</div>;
                 return <div>
