@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260511.28</title>
+<title>MosquitoApp v20260511.30</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260511.28';
+  window.__MOSK_VERSION='20260511.30';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2458,7 +2458,7 @@ function App() {
       const f=fakModal.form;
       const order=fakModal.order;
       const imp=fakModal.imp;
-      const firmaId=order?.firma||KONTO_DO_FIRMY[imp?.kontoId]||'F';
+      const firmaId=order?.firma||KONTO_DO_FIRMY[imp?.kontoId]||f.firma||'F';
       const deptId=FAKTUROWNIA_DEPT[firmaId]||FAKTUROWNIA_DEPT['F'];
       const kwota=parseFloat(f.kwota)||0;
       const buyerCompany=!!f.nip;
@@ -2472,7 +2472,7 @@ function App() {
           kind:'vat',
           issue_date:new Date().toISOString().slice(0,10),
           sell_date:f.sellDate||new Date().toISOString().slice(0,10),
-          payment_to:f.platnosc==='za_pobraniem'?new Date().toISOString().slice(0,10):(f.sellDate||new Date().toISOString().slice(0,10)),
+          payment_to:f.platnosc==='za_pobraniem'?new Date().toISOString().slice(0,10):(f.terminPlatnosci||new Date(Date.now()+14*86400000).toISOString().slice(0,10)),
           payment_type:f.platnosc,
           // Allegro Pay = już opłacone
           status:f.platnosc==='przelew'?'paid':'issued',
@@ -2507,7 +2507,7 @@ function App() {
       if(!resp.ok){const err=await resp.json().catch(()=>({}));throw new Error(JSON.stringify(err));}
       const inv=await resp.json();
       // Zapisz info o wystawionej fakturze
-      const orderId=fakModal.imp?.allegroOrderId||fakModal.order?.allegroOrderId||fakModal.order?.numerZlecenia||'';
+      const orderId=fakModal.imp?.allegroOrderId||fakModal.order?.allegroOrderId||fakModal.order?.numerZlecenia||fakModal.form?._manualOrderId||'';
       if(orderId){
         setInvoicesSent(prev=>{
           const next={...prev,[orderId]:{number:inv.number,date:new Date().toISOString().slice(0,10),id:inv.id}};
@@ -5048,7 +5048,6 @@ function App() {
                   const fvList=Object.entries(invoicesSent)
                     .filter(([,v])=>v?.id)
                     .map(([orderId,v])=>{
-                      // Wzbogać o dane z allegroImportResults
                       const imp=allegroImportResults.find(i=>i.allegroOrderId===orderId);
                       return {...v, allegroOrderId:orderId,
                         klientNazwa:v.klientNazwa||imp?.klientImie||imp?.nabywcaNazwa||'',
@@ -5057,12 +5056,61 @@ function App() {
                         kontoId:v.kontoId||imp?.kontoId||'',
                         firma:v.firma||KONTO_DO_FIRMY[imp?.kontoId||'']||'F',
                         kwota:v.kwota||imp?.totalAmount||0,
+                        klientUlica:v.klientUlica||imp?.klientUlica||'',
+                        klientKod:v.klientKod||imp?.klientKod||'',
                       };
                     })
                     .sort((a,b)=>(b.date||'').localeCompare(a.date||''));
-                  if(fvList.length===0) return <div style={{textAlign:'center',color:'#4a2a6a',padding:'40px 0',fontSize:14}}>Brak wystawionych faktur — wystaw fakturę klikając 🧾 przy zamówieniu</div>;
+
+                  // Otwórz modal faktury z danymi klienta (pusta kwota/opis do uzupełnienia)
+                  const openFvFromClient=(fv)=>{
+                    const dzis=new Date().toISOString().slice(0,10);
+                    const terminPlatnosci=new Date(Date.now()+14*86400000).toISOString().slice(0,10);
+                    setFakModal({
+                      order:null, imp:null,
+                      form:{
+                        nip:fv.nip||'',
+                        nazwaFirmy:fv.klientNazwa||'',
+                        imie:fv.klientNazwa||'',
+                        ulica:fv.klientUlica||'',
+                        kod:fv.klientKod||'',
+                        miasto:fv.klientMiasto||'',
+                        kwota:'',
+                        opis:'',
+                        vat:23,
+                        platnosc:'przelew',
+                        sellDate:dzis,
+                        terminPlatnosci,
+                        firma:fv.firma||'F',
+                        kontoId:fv.kontoId||'',
+                        _manualOrderId:'manual_fv_'+Date.now(),
+                      },
+                      gusLoading:false, gusError:'', sending:false
+                    });
+                  };
+
                   return (
-                    <div style={{overflowX:'auto'}}>
+                    <div>
+                      {/* Nagłówek z przyciskiem nowej faktury */}
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10,flexWrap:'wrap',gap:8}}>
+                        <span style={{color:'#cf9fff',fontWeight:700,fontSize:14}}>🧾 Wystawione faktury</span>
+                        <button onClick={()=>{
+                          const dzis=new Date().toISOString().slice(0,10);
+                          setFakModal({order:null,imp:null,
+                            form:{nip:'',nazwaFirmy:'',imie:'',ulica:'',kod:'',miasto:'',
+                              kwota:'',opis:'',vat:23,platnosc:'przelew',
+                              sellDate:dzis,
+                              terminPlatnosci:new Date(Date.now()+14*86400000).toISOString().slice(0,10),
+                              firma:currentProfile?.id||'F',kontoId:'',
+                              _manualOrderId:'manual_fv_'+Date.now()},
+                            gusLoading:false,gusError:'',sending:false});
+                        }} style={{padding:'6px 14px',fontSize:13,fontWeight:700,background:'#1a0a2a',border:'1px solid #6a3acf',borderRadius:6,color:'#cf9fff',cursor:'pointer'}}>
+                          + Nowa faktura
+                        </button>
+                      </div>
+
+                      {fvList.length===0&&<div style={{textAlign:'center',color:'#4a2a6a',padding:'40px 0',fontSize:14}}>Brak wystawionych faktur — wystaw fakturę klikając 🧾 przy zamówieniu lub "+ Nowa faktura"</div>}
+                      {fvList.length>0&&<div style={{overflowX:'auto'}}>
                       <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
                         <thead><tr style={{background:'#1a0a2a',borderBottom:'1px solid #3a1a5a'}}>
                           <th style={{padding:'8px 10px',textAlign:'left',color:'#cf9fff'}}>Nr faktury</th>
@@ -5078,7 +5126,7 @@ function App() {
                             const zebra=i%2===0;
                             const imp=allegroImportResults.find(x=>x.allegroOrderId===fv.allegroOrderId);
                             const FIRMA_LABEL={F:'Favour',AR:'Arlis',E:'Everis',AP:'Albama'};
-                            return <tr key={fv.allegroOrderId} style={{borderBottom:'1px solid #1a0a2a',background:zebra?'#0c0614':'#0e0818'}}>
+                            return <tr key={fv.allegroOrderId} style={{borderBottom:'1px solid #1a0a2a',background:zebra?'#0c0614':'#0e0818',cursor:'pointer'}} title="Kliknij aby wystawić nową fakturę dla tego klienta" onClick={(e)=>{if(e.target.tagName==='BUTTON'||e.target.closest('button')) return; openFvFromClient(fv);}}>
                               <td style={{padding:'7px 10px',fontWeight:700,color:'#dfcf5f'}}>
                                 {fv.number}
                                 {fv.allegroAttached&&<span title="Dołączono do Allegro" style={{marginLeft:5,fontSize:11}}>📎✅</span>}
@@ -5132,6 +5180,8 @@ function App() {
                           })}
                         </tbody>
                       </table>
+                    </div>
+                  </div>}
                     </div>
                   );
                 }
@@ -8432,6 +8482,21 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
                 <input type="date" value={fakModal.form.sellDate||''} onChange={e=>setFakModal(m=>({...m,form:{...m.form,sellDate:e.target.value}}))}
                   style={{width:'100%',padding:'5px 6px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#cfdf7a',fontSize:13}}/>
               </div>
+              <div>
+                <span className="lbl">Termin płatności</span>
+                <input type="date" value={fakModal.form.terminPlatnosci||''} onChange={e=>setFakModal(m=>({...m,form:{...m.form,terminPlatnosci:e.target.value}}))}
+                  style={{width:'100%',padding:'5px 6px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#cfdf7a',fontSize:13}}/>
+              </div>
+              {(!fakModal.imp&&!fakModal.order)&&<div>
+                <span className="lbl">Firma (dział)</span>
+                <select value={fakModal.form.firma||currentProfile?.id||'F'} onChange={e=>setFakModal(m=>({...m,form:{...m.form,firma:e.target.value}}))}
+                  style={{width:'100%',padding:'5px 6px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#9acf9a',fontSize:13}}>
+                  <option value="F">Favour</option>
+                  <option value="AR">Arlis</option>
+                  <option value="E">Everis</option>
+                  <option value="AP">Albama</option>
+                </select>
+              </div>}
             </div>
 
             <div style={{display:'flex',gap:8,justifyContent:'flex-end',flexWrap:'wrap'}}>
