@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260511.21</title>
+<title>MosquitoApp v20260511.22</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260511.21';
+  window.__MOSK_VERSION='20260511.22';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2439,6 +2439,45 @@ function App() {
       setFakModal(null);
     }catch(e){
       setFakModal(m=>({...m,sending:false}));
+      alert('❌ Błąd: '+e.message);
+    }
+  }
+
+  // Dołącza PDF faktury z Fakturowni do zamówienia Allegro
+  async function attachInvoiceToAllegro(allegroOrderId, kontoId, inv){
+    const cfg=fakturowniaConfig;
+    if(!cfg.token||!cfg.domain){alert('Uzupełnij konfigurację Fakturowni w Admin → Fakturownia');return;}
+    if(!allegroOrderId||allegroOrderId.startsWith('manual_')){alert('Brak ID zamówienia Allegro — nie można załączyć faktury.');return;}
+    if(!kontoId){alert('Brak konta Allegro — nie można załączyć faktury.');return;}
+    if(!inv?.id){alert('Brak ID faktury w Fakturowni.');return;}
+    setFakModal(m=>m?({...m,allegroAttaching:true,allegroAttachStatus:''}):m);
+    try{
+      const r=await fetch(WORKER_URL+'/allegro/invoice/attach',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-api-key':getWorkerKey()},
+        body:JSON.stringify({
+          kontoId,
+          allegroOrderId,
+          fakturowniaInvoiceId:inv.id,
+          fakturowniaToken:cfg.token,
+          fakturowniaDomain:cfg.domain
+        })
+      });
+      const d=await r.json().catch(()=>({}));
+      if(d.ok){
+        setFakModal(m=>m?({...m,allegroAttaching:false,allegroAttachStatus:'ok'}):m);
+        // Zapisz w invoicesSent że powiązano z Allegro
+        setInvoicesSent(prev=>{
+          const next={...prev,[allegroOrderId]:{...prev[allegroOrderId],allegroAttached:true}};
+          localStorage.setItem('invoices_sent',JSON.stringify(next));
+          return next;
+        });
+      }else{
+        setFakModal(m=>m?({...m,allegroAttaching:false,allegroAttachStatus:'error:'+(d.error||'Błąd')}):m);
+        alert('❌ Błąd dołączania do Allegro:\n'+(d.error||JSON.stringify(d)));
+      }
+    }catch(e){
+      setFakModal(m=>m?({...m,allegroAttaching:false,allegroAttachStatus:'error:'+e.message}):m);
       alert('❌ Błąd: '+e.message);
     }
   }
@@ -8198,6 +8237,26 @@ function App() {
                   🗑 Usuń oznaczenie faktury {inv.number}
                 </button>
               );})()}
+              {(()=>{
+                const id=fakModal.imp?.allegroOrderId||fakModal.order?.allegroOrderId||fakModal.order?.numerZlecenia;
+                const inv=invoicesSent[id];
+                const kontoId=fakModal.imp?.kontoId||fakModal.order?.kontoId||({F:'favo5',AR:'arlis_pl',E:'everis_pl',AP:'albama_eu'}[fakModal.imp?.firma||fakModal.order?.firma||'F'])||'favo5';
+                if(!inv||!id||id.startsWith('manual_')) return null;
+                if(inv.allegroAttached||fakModal.allegroAttachStatus==='ok'){
+                  return <span style={{padding:'8px 12px',fontSize:13,color:'#7acf7a',alignSelf:'center'}}>📎✅ Dodano do Allegro</span>;
+                }
+                return(
+                  <button onClick={()=>attachInvoiceToAllegro(id,kontoId,inv)}
+                    disabled={fakModal.allegroAttaching}
+                    title="Wyślij PDF faktury do Allegro — klient zobaczy ją w swoim koncie"
+                    style={{padding:'8px 14px',borderRadius:6,border:'1px solid #2a4a7a',
+                      background:fakModal.allegroAttaching?'#0a0a1a':'#0a1a2a',
+                      color:fakModal.allegroAttaching?'#3a5a8a':'#7ab8df',
+                      cursor:fakModal.allegroAttaching?'not-allowed':'pointer',fontSize:13}}>
+                    {fakModal.allegroAttaching?'⏳ Wysyłam...':'📎 Dodaj do Allegro'}
+                  </button>
+                );
+              })()}
               <button onClick={()=>setFakModal(null)}
                 style={{padding:'8px 18px',borderRadius:6,border:'1px solid #2a4a2a',background:'none',color:'#5a7a5a',cursor:'pointer'}}>
                 Anuluj
