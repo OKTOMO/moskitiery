@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260511.18</title>
+<title>MosquitoApp v20260511.19</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260511.18';
+  window.__MOSK_VERSION='20260511.19';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -8181,7 +8181,16 @@ function App() {
               </div>
             </div>
 
-            <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+            <div style={{display:'flex',gap:8,justifyContent:'flex-end',flexWrap:'wrap'}}>
+              {(()=>{const id=fakModal.imp?.allegroOrderId||fakModal.order?.allegroOrderId||fakModal.order?.numerZlecenia;const inv=invoicesSent[id];return inv&&(
+                <button onClick={()=>{
+                  if(!confirm(`Usunąć oznaczenie faktury ${inv.number}?\n(Faktura pozostanie w Fakturowni — usuń ją tam ręcznie)`)) return;
+                  setInvoicesSent(prev=>{const next={...prev};delete next[id];localStorage.setItem('invoices_sent',JSON.stringify(next));return next;});
+                  setFakModal(null);
+                }} style={{padding:'8px 14px',borderRadius:6,border:'1px solid #6a2a2a',background:'#2a0a0a',color:'#cf6a6a',cursor:'pointer',fontSize:13,marginRight:'auto'}}>
+                  🗑 Usuń oznaczenie faktury {inv.number}
+                </button>
+              );})()}
               <button onClick={()=>setFakModal(null)}
                 style={{padding:'8px 18px',borderRadius:6,border:'1px solid #2a4a2a',background:'none',color:'#5a7a5a',cursor:'pointer'}}>
                 Anuluj
