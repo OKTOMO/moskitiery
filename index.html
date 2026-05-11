@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260511.1</title>
+<title>MosquitoApp v20260511.4</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260511.1';
+  window.__MOSK_VERSION='20260511.4';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -896,6 +896,10 @@ function App() {
   const [aiRules,setAiRules]=React.useState(()=>{
     try{return JSON.parse(localStorage.getItem('ai_rules')||'[]');}catch(e){return [];}
   });
+  const [fakturowniaConfig,setFakturowniaConfig]=React.useState(()=>{
+    try{return JSON.parse(localStorage.getItem('fakturownia_config')||'{}');}catch(e){return {};}
+  });
+  const [fakModal,setFakModal]=React.useState(null); // {order, imp, form:{...}}
   // Walidacja jednostek vs kwota zamówienia
   function walidujJednostki(pozycje, kwotaBrutto){
     if(!kwotaBrutto||!pozycje||pozycje.length===0) return null;
@@ -2244,6 +2248,161 @@ function App() {
   }
 
   // Buduje opis przesyłki (tak samo jak autoDesc w openShipmentModal) — używane też w temacie zbiorczej wysyłki
+  // ── Fakturownia API ──
+  const FAKTUROWNIA_DEPT={F:1978585, AR:1978589, E:1978591};
+  const OSS_RATES={CZ:21,SK:20,HU:27,RO:19,DE:19,AT:20,FR:20};
+
+  async function createFakturowniaInvoice(imp,order){
+    const cfg=fakturowniaConfig;
+    if(!cfg.token||!cfg.domain) throw new Error('Brak konfiguracji Fakturowni — uzupełnij w Admin → Fakturownia');
+    const firmaId=FIRMA_BY_KONTO[imp.kontoId]||FIRMA_BY_KONTO[order?.firma]||'F';
+    const deptId=FAKTUROWNIA_DEPT[firmaId];
+    const kraj=(imp.klientKraj||'PL').toUpperCase();
+    const vat=kraj==='PL'?23:(OSS_RATES[kraj]||23);
+    const useOss=kraj!=='PL'?1:0;
+    const waluta=imp.kwotaWaluta||'PLN';
+    const kwota=parseFloat(imp.totalAmount||order?.kwota||0);
+    const pozNazwy=imp.offerNames||(order?.pozycje?.map(p=>`Moskitiera ${p.szerokosc}×${p.wysokosc}cm ${p.kolorRamki||''}`.trim()).join(', '))||'Moskitiera na wymiar';
+    const buyerNip=imp.nabywcaNip||order?.nabywcaNip||'';
+    const buyerCompany=!!buyerNip;
+    const buyerName=imp.nabywcaNazwa||imp.klientImie||order?.klientImie||'';
+    const payload={
+      api_token:cfg.token,
+      invoice:{
+        kind:'vat',
+        issue_date:new Date().toISOString().slice(0,10),
+        sell_date:(imp.boughtAt||new Date().toISOString()).slice(0,10),
+        payment_to:new Date(Date.now()+14*86400000).toISOString().slice(0,10),
+        payment_type:'transfer',
+        currency:waluta,
+        lang:kraj==='PL'?'pl':kraj==='CZ'?'cs':kraj==='SK'?'sk':kraj==='HU'?'hu':'pl',
+        use_oss:useOss,
+        department_id:deptId,
+        oid:imp.allegroOrderId||'',
+        oid_unique:'yes',
+        buyer_name:buyerName,
+        buyer_company:buyerCompany,
+        buyer_tax_no:buyerNip,
+        buyer_street:imp.klientUlica||order?.klientUlica||'',
+        buyer_post_code:imp.klientKod||order?.klientKod||'',
+        buyer_city:imp.klientMiasto||order?.klientMiasto||'',
+        buyer_country:kraj,
+        buyer_email:imp.email||'',
+        positions:[{name:pozNazwy,quantity:imp.totalQuantity||1,total_price_gross:kwota,tax:vat}]
+      }
+    };
+    const resp=await fetch(`https://${cfg.domain}/invoices.json`,{
+      method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    if(!resp.ok){const err=await resp.json().catch(()=>({}));throw new Error(JSON.stringify(err));}
+    return await resp.json();
+  }
+
+  async function handleFakturownia(imp,order){
+    const cfg=fakturowniaConfig;
+    if(!cfg.token||!cfg.domain){alert('Uzupełnij konfigurację Fakturowni w Admin → Fakturownia');return;}
+    try{
+      const inv=await createFakturowniaInvoice(imp,order);
+      window.open(`https://${cfg.domain}/invoices/${inv.id}`,'_blank');
+      alert(`✅ Faktura ${inv.number} utworzona`);
+    }catch(e){alert('❌ Błąd Fakturowni: '+e.message);}
+  }
+
+  function openFakModal(orderOrImp, secondArg, isImp=false){
+    // isImp=true gdy pierwsze arg to imp (zakładka Zamówienia)
+    // isImp=false gdy pierwsze arg to order (zakładka Zlecenia)
+    const imp=isImp?orderOrImp:secondArg;
+    const order=isImp?secondArg:orderOrImp;
+    const src=order||imp||{};
+    const f={
+      nip:src.nabywcaNip||'',
+      nazwaFirmy:src.nabywcaNazwa||'',
+      ulica:src.klientUlica||'',
+      kod:src.klientKod||'',
+      miasto:src.klientMiasto||'',
+      imie:src.klientImie||'',
+      kwota:src.totalAmount||src.kwota||'',
+      opis:imp?.offerNames||(order?.pozycje?.map(p=>`Moskitiera ${p.szerokosc}×${p.wysokosc}cm`).join(', '))||'Moskitiera na wymiar',
+      vat:23,
+      platnosc:'przelew',
+    };
+    setFakModal({order:order||null,imp:imp||null,form:f,gusLoading:false,gusError:'',sending:false});
+  }
+
+  async function gusLookup(){
+    if(!fakModal) return;
+    const nip=fakModal.form.nip.replace(/[\s-]/g,'');
+    if(nip.length!==10){setFakModal(m=>({...m,gusError:'NIP musi mieć 10 cyfr'}));return;}
+    setFakModal(m=>({...m,gusLoading:true,gusError:''}));
+    try{
+      // API MF białej listy VAT — darmowe, bez klucza
+      const today=new Date().toISOString().slice(0,10);
+      const r=await fetch(`https://wl-api.mf.gov.pl/api/search/nip/${nip}?date=${today}`);
+      const d=await r.json();
+      const s=d?.result?.subject;
+      if(!s) throw new Error('Nie znaleziono firmy dla NIP '+nip);
+      const adres=s.workingAddress||s.residenceAddress||'';
+      // Parsuj adres "ul. Testowa 1, 00-001 Warszawa"
+      const adresMatch=adres.match(/^(.+?),\s*(\d{2}-\d{3})\s+(.+)$/);
+      setFakModal(m=>({...m,gusLoading:false,form:{...m.form,
+        nazwaFirmy:s.name||'',
+        ulica:adresMatch?adresMatch[1]:(adres.split(',')[0]||''),
+        kod:adresMatch?adresMatch[2]:'',
+        miasto:adresMatch?adresMatch[3]:(adres.split(',')[1]?.trim()||''),
+      }}));
+    }catch(e){
+      setFakModal(m=>({...m,gusLoading:false,gusError:e.message}));
+    }
+  }
+
+  async function wyslijFakture(){
+    if(!fakModal) return;
+    const cfg=fakturowniaConfig;
+    if(!cfg.token||!cfg.domain){alert('Uzupełnij konfigurację Fakturowni w Admin → Fakturownia');return;}
+    setFakModal(m=>({...m,sending:true}));
+    try{
+      const f=fakModal.form;
+      const order=fakModal.order;
+      const firmaId=order.firma||'F';
+      const deptId=FAKTUROWNIA_DEPT[firmaId]||FAKTUROWNIA_DEPT['F'];
+      const kwota=parseFloat(f.kwota)||0;
+      const buyerCompany=!!f.nip;
+      const payload={
+        api_token:cfg.token,
+        invoice:{
+          kind:'vat',
+          issue_date:new Date().toISOString().slice(0,10),
+          sell_date:new Date().toISOString().slice(0,10),
+          payment_to:new Date(Date.now()+14*86400000).toISOString().slice(0,10),
+          payment_type:f.platnosc,
+          currency:'PLN',
+          department_id:deptId,
+          oid:order.numerZlecenia||'',
+          buyer_name:f.nazwaFirmy||f.imie,
+          buyer_company:buyerCompany,
+          buyer_tax_no:f.nip||'',
+          buyer_street:f.ulica,
+          buyer_post_code:f.kod,
+          buyer_city:f.miasto,
+          positions:[{name:f.opis,quantity:1,total_price_gross:kwota,tax:parseInt(f.vat)||23}]
+        }
+      };
+      const resp=await fetch(`https://${cfg.domain}/invoices.json`,{
+        method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},
+        body:JSON.stringify(payload)
+      });
+      if(!resp.ok){const err=await resp.json().catch(()=>({}));throw new Error(JSON.stringify(err));}
+      const inv=await resp.json();
+      window.open(`https://${cfg.domain}/invoices/${inv.id}`,'_blank');
+      alert(`✅ Faktura ${inv.number} utworzona`);
+      setFakModal(null);
+    }catch(e){
+      setFakModal(m=>({...m,sending:false}));
+      alert('❌ Błąd: '+e.message);
+    }
+  }
+
   function buildShipmentDesc(imp, nrZlec){
     const MATA_REGEX=/mata|podkładka|ochronna/i;
     const isMata=MATA_REGEX.test(imp.offerNames||"");
@@ -3764,8 +3923,8 @@ function App() {
           else alert("Błędny PIN.");
         }}>🔒 Admin</button>
       </div>
-      {(tab==="allegro"||tab==="ustawienia"||tab==="historia"||tab==="importpdf"||tab==="produkty"||tab==="narzedzia"||tab==="airules")&&(
-        <div style={{background:"#080e08",borderBottom:"1px solid #1e2a1e",display:"flex",gap:0,paddingLeft:32}}>
+      {(tab==="allegro"||tab==="ustawienia"||tab==="historia"||tab==="importpdf"||tab==="produkty"||tab==="narzedzia"||tab==="airules"||tab==="fakturownia_cfg")&&(
+        <div style={{background:"#080e08",borderBottom:"1px solid #1e2a1e",display:"flex",gap:0,paddingLeft:32,flexWrap:"wrap"}}>
           <button className={`tab ${tab==="allegro"?"on":""}`} onClick={()=>setTab("allegro")} style={{fontSize:14,padding:"7px 14px"}}>🛒 Allegro</button>
           <button className={`tab ${tab==="ustawienia"?"on":""}`} onClick={()=>setTab("ustawienia")} style={{fontSize:14,padding:"7px 14px"}}>⚙️ Chmura</button>
           <button className={`tab ${tab==="historia"?"on":""}`} onClick={()=>setTab("historia")} style={{fontSize:14,padding:"7px 14px"}}>📁 Historia</button>
@@ -3773,10 +3932,64 @@ function App() {
           <button className={`tab ${tab==="produkty"?"on":""}`} onClick={()=>setTab("produkty")} style={{fontSize:14,padding:"7px 14px"}}>📦 Produkty</button>
           <button className={`tab ${tab==="narzedzia"?"on":""}`} onClick={()=>setTab("narzedzia")} style={{fontSize:14,padding:"7px 14px"}}>🔧 Narzędzia</button>
           <button className={`tab ${tab==="airules"?"on":""}`} onClick={()=>setTab("airules")} style={{fontSize:14,padding:"7px 14px"}}>🤖 Reguły AI</button>
+          <button className={`tab ${tab==="fakturownia_cfg"?"on":""}`} onClick={()=>setTab("fakturownia_cfg")} style={{fontSize:14,padding:"7px 14px"}}>🧾 Fakturownia</button>
         </div>
       )}
 
       <div style={{padding:16,maxWidth:1100,margin:"0 auto"}}>
+
+        {/* ══ FAKTUROWNIA CONFIG ══ */}
+        {tab==="fakturownia_cfg"&&(
+          <div style={{maxWidth:600}}>
+            <div className="card" style={{marginBottom:16}}>
+              <div style={{fontWeight:700,fontSize:15,color:'#afffaf',marginBottom:12}}>🧾 Konfiguracja Fakturowni</div>
+              <div style={{display:'flex',flexDirection:'column',gap:10}}>
+                <div>
+                  <span className="lbl">Domena konta (np. everis75.fakturownia.pl)</span>
+                  <input id="fk_domain" defaultValue={fakturowniaConfig.domain||'everis75.fakturownia.pl'}
+                    style={{width:'100%',padding:'6px 10px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#9acf9a',fontSize:13}}/>
+                </div>
+                <div>
+                  <span className="lbl">API Token</span>
+                  <input id="fk_token" defaultValue={fakturowniaConfig.token||'T7CWLNn5cZ6vVx-bKFmk'}
+                    style={{width:'100%',padding:'6px 10px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#9acf9a',fontSize:13,fontFamily:'monospace'}}/>
+                </div>
+                <div style={{fontSize:12,color:'#3a6a3a',padding:'8px 10px',background:'#0a1400',border:'1px solid #1a3a1a',borderRadius:4}}>
+                  <div style={{fontWeight:700,marginBottom:4}}>Mapowanie kont → działy Fakturowni:</div>
+                  <div>• favo5, staroleska_pl, sinlook_pl → <strong>Favour</strong> (dział 1978585)</div>
+                  <div>• arlis_pl → <strong>Arlis</strong> (dział 1978589)</div>
+                  <div>• everis_pl → <strong>Everis</strong> (dział 1978591)</div>
+                </div>
+                <button className="btn" onClick={()=>{
+                  const domain=document.getElementById('fk_domain')?.value?.trim();
+                  const token=document.getElementById('fk_token')?.value?.trim();
+                  if(!domain||!token){alert('Uzupełnij domenę i token');return;}
+                  const cfg={domain,token};
+                  setFakturowniaConfig(cfg);
+                  localStorage.setItem('fakturownia_config',JSON.stringify(cfg));
+                  alert('✅ Zapisano konfigurację Fakturowni');
+                }}>💾 Zapisz konfigurację</button>
+                <button className="btn-sm" style={{background:'#0a1a2a',borderColor:'#2a4a7a',color:'#7abfdf'}} onClick={async()=>{
+                  const cfg=fakturowniaConfig;
+                  if(!cfg.token||!cfg.domain){alert('Najpierw zapisz konfigurację');return;}
+                  try{
+                    const r=await fetch(`https://${cfg.domain}/invoices.json?api_token=${cfg.token}&per_page=1`);
+                    if(r.ok){alert('✅ Połączenie z Fakturownią działa!');}
+                    else alert('❌ Błąd połączenia: '+r.status);
+                  }catch(e){alert('❌ '+e.message);}
+                }}>🔌 Testuj połączenie</button>
+              </div>
+            </div>
+            <div className="card" style={{fontSize:12,color:'#3a5a3a'}}>
+              <div style={{fontWeight:700,marginBottom:6,color:'#5a8a5a'}}>ℹ️ Jak działa integracja:</div>
+              <div style={{marginBottom:4}}>• Przycisk <strong>🧾</strong> przy każdym zamówieniu Allegro tworzy fakturę automatycznie</div>
+              <div style={{marginBottom:4}}>• Dane klienta, kwota i nazwa produktu zaciągane z Allegro</div>
+              <div style={{marginBottom:4}}>• VAT 23% dla PL, OSS (CZ 21%, SK 20%, HU 27%) dla zagranicy</div>
+              <div style={{marginBottom:4}}>• Faktura otwiera się w Fakturowni do podglądu/wysyłki</div>
+              <div>• Ochrona przed duplikatami przez numer zamówienia Allegro (oid_unique)</div>
+            </div>
+          </div>
+        )}
 
         {/* ══ REGUŁY AI ══ */}
         {tab==="airules"&&(()=>{
@@ -4495,11 +4708,16 @@ function App() {
                         color:sh?.mailWyslany?'#7acf7a':'#9a9adf'}}>
                       ✉️{sh?.mailWyslany?' ✅':''}
                     </button>
-                    {imp.invoiceRequired&&<button onClick={()=>toggleBox(imp.allegroOrderId,'faktura')} title="Faktura"
+                    <button onClick={()=>{
+                        const ord=orders.find(o=>o.allegroOrderId===imp.allegroOrderId);
+                        openFakModal(imp,ord||null,true);
+                      }} title={imp.invoiceRequired?"Klient zamówił fakturę — wystaw":"Wystaw fakturę"}
                       style={{padding:'4px 8px',fontSize:12,borderRadius:5,cursor:'pointer',
-                        background:openBox==='faktura'?'#3a2a1a':'#2a1a0a',border:'1px solid #7a5a2a',color:'#dfaf5a'}}>
-                      🧾
-                    </button>}
+                        background:imp.invoiceRequired?'#3a2a1a':'#1a1a2a',
+                        border:`1px solid ${imp.invoiceRequired?'#7a5a2a':'#3a3a6a'}`,
+                        color:imp.invoiceRequired?'#dfaf5a':'#8a8acf'}}>
+                      🧾{imp.invoiceRequired?' ❗':''}
+                    </button>
                     {isRealizacja&&<button
                       title={_batchSel.includes(imp.allegroOrderId)?"✅ Dodano do wysyłki zbiorczej":"Dodaj do wysyłki zbiorczej"}
                       onClick={()=>{
@@ -4518,6 +4736,13 @@ function App() {
                         border:`1px solid ${openBox==='chat'?'#3a8a8a':'#2a5a5a'}`,
                         color:openBox==='chat'?'#7adfdf':'#5abfbf'}}>
                       💬
+                    </button>
+                    <button onClick={()=>{
+                      const ord=orders.find(o=>o.allegroOrderId===imp.allegroOrderId);
+                      handleFakturownia(imp,ord);
+                    }} title="Wystaw fakturę w Fakturowni"
+                      style={{padding:'4px 7px',fontSize:12,borderRadius:5,cursor:'pointer',background:'#1a1a2a',border:'1px solid #3a3a6a',color:'#9a9adf'}}>
+                      🧾
                     </button>
                     <a href={`https://allegro.pl/transakcja/${imp.allegroOrderId}`} target="_blank" rel="noreferrer"
                       style={{padding:'4px 7px',fontSize:12,borderRadius:5,background:'#1a2a3a',border:'1px solid #2a5a7a',color:'#7abfdf',textDecoration:'none',display:'inline-block'}}>
@@ -5817,6 +6042,9 @@ function App() {
                         <td style={{padding:"10px 10px",display:"flex",gap:4,alignItems:"center"}}>
                           <button className="btn-pdf" style={{background:"#2a4a6a"}} onClick={()=>{setForm({data:o.data,firma:o.firma,klientImie:o.klientImie,klientUlica:o.klientUlica||"",klientKod:o.klientKod||"",klientMiasto:o.klientMiasto,telefon:o.telefon,uwagi:o.uwagi,pozycje:o.pozycje.map(p=>({...p}))});setNumerOverride(o.numerZlecenia);setEditingId(o.id);setAllegroOrderIdForForm(o.allegroOrderId||"");setTab("nowe");setSaved(false);}} title="Edytuj zamówienie">✏️</button>
                           <button className="btn-pdf" style={{background:"#2a1a4a",color:"#bf9fdf",borderColor:"#4a2a6a"}} onClick={()=>{setImportModal(null);setWiadomosc("");setAllegroOrderIdForForm(o.allegroOrderId||"");setForm({data:new Date().toISOString().slice(0,10),firma:o.firma,klientImie:o.klientImie,klientUlica:o.klientUlica||"",klientKod:o.klientKod||"",klientMiasto:o.klientMiasto,telefon:o.telefon,uwagi:"",pozycje:[pustaPoz()]});setNumerOverride("");setEditingId(null);setSaved(false);setTab("nowe");}} title="Nowe zamówienie dla tego samego klienta">👤+</button>
+                          <button className="btn-pdf" style={{background:"#1a1a2a",color:"#9a9adf",borderColor:"#3a3a6a"}}
+                            onClick={()=>{const imp=allegroImportResults.find(i=>i.allegroOrderId===o.allegroOrderId);openFakModal(o,imp||null);}}
+                            title="Wystaw fakturę w Fakturowni">🧾</button>
                         </td>
                         <td style={{padding:"10px 10px"}}>
                           <button className="btn-pdf" title="Napisz wiadomość na Allegro" style={{background:"#1a3a4a",color:"#7acfdf",borderColor:"#2a6a7a"}}
@@ -7808,6 +8036,105 @@ function App() {
       )}
       {/* ── MODAL ETYKIETA ── */}
             {/* ── GLOBALNE MODAŁY (dostępne z każdej zakładki) ── */}
+      {/* ══ MODAL FAKTURY ══ */}
+      {fakModal&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.7)',zIndex:3000,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
+          <div style={{background:'#0d1a0d',border:'1px solid #2a5a2a',borderRadius:12,padding:20,width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
+            <div style={{fontWeight:700,fontSize:16,color:'#afffaf',marginBottom:14}}>🧾 Wystaw fakturę — {fakModal.order.numerZlecenia}</div>
+
+            {/* NIP + GUS */}
+            <div style={{marginBottom:10}}>
+              <span className="lbl">NIP nabywcy (firma)</span>
+              <div style={{display:'flex',gap:6}}>
+                <input value={fakModal.form.nip} onChange={e=>setFakModal(m=>({...m,form:{...m.form,nip:e.target.value}}))}
+                  placeholder="np. 5222317450" style={{flex:1,padding:'6px 10px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#9acf9a',fontSize:13,fontFamily:'monospace'}}/>
+                <button onClick={gusLookup} disabled={fakModal.gusLoading}
+                  style={{padding:'6px 12px',borderRadius:4,border:'1px solid #3a7a3a',background:'#0a2a0a',color:'#7acf7a',cursor:'pointer',fontSize:12,whiteSpace:'nowrap'}}>
+                  {fakModal.gusLoading?'⏳ Szukam...':'🏛 GUS'}
+                </button>
+              </div>
+              {fakModal.gusError&&<div style={{color:'#cf7a7a',fontSize:11,marginTop:3}}>❌ {fakModal.gusError}</div>}
+            </div>
+
+            {/* Dane nabywcy */}
+            <div style={{display:'grid',gridTemplateColumns:'1fr',gap:8,marginBottom:10}}>
+              <div>
+                <span className="lbl">Nazwa firmy / Imię Nazwisko</span>
+                <input value={fakModal.form.nazwaFirmy||fakModal.form.imie}
+                  onChange={e=>setFakModal(m=>({...m,form:{...m.form,nazwaFirmy:e.target.value,imie:e.target.value}}))}
+                  style={{width:'100%',padding:'6px 10px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#9acf9a',fontSize:13}}/>
+              </div>
+              <div>
+                <span className="lbl">Ulica</span>
+                <input value={fakModal.form.ulica} onChange={e=>setFakModal(m=>({...m,form:{...m.form,ulica:e.target.value}}))}
+                  style={{width:'100%',padding:'6px 10px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#9acf9a',fontSize:13}}/>
+              </div>
+              <div style={{display:'grid',gridTemplateColumns:'120px 1fr',gap:8}}>
+                <div>
+                  <span className="lbl">Kod</span>
+                  <input value={fakModal.form.kod} onChange={e=>setFakModal(m=>({...m,form:{...m.form,kod:e.target.value}}))}
+                    style={{width:'100%',padding:'6px 10px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#9acf9a',fontSize:13}}/>
+                </div>
+                <div>
+                  <span className="lbl">Miasto</span>
+                  <input value={fakModal.form.miasto} onChange={e=>setFakModal(m=>({...m,form:{...m.form,miasto:e.target.value}}))}
+                    style={{width:'100%',padding:'6px 10px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#9acf9a',fontSize:13}}/>
+                </div>
+              </div>
+            </div>
+
+            {/* Pozycja */}
+            <div style={{marginBottom:10}}>
+              <span className="lbl">Opis usługi/towaru</span>
+              <input value={fakModal.form.opis} onChange={e=>setFakModal(m=>({...m,form:{...m.form,opis:e.target.value}}))}
+                style={{width:'100%',padding:'6px 10px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#9acf9a',fontSize:13}}/>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 80px 1fr',gap:8,marginBottom:14}}>
+              <div>
+                <span className="lbl">Kwota brutto (zł)</span>
+                <input type="number" step="0.01" value={fakModal.form.kwota} onChange={e=>setFakModal(m=>({...m,form:{...m.form,kwota:e.target.value}}))}
+                  placeholder="0.00" style={{width:'100%',padding:'6px 10px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#cfdf7a',fontSize:14,fontWeight:700}}/>
+              </div>
+              <div>
+                <span className="lbl">VAT %</span>
+                <select value={fakModal.form.vat} onChange={e=>setFakModal(m=>({...m,form:{...m.form,vat:e.target.value}}))}
+                  style={{width:'100%',padding:'6px 6px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#9acf9a',fontSize:13}}>
+                  <option value={23}>23%</option>
+                  <option value={8}>8%</option>
+                  <option value={5}>5%</option>
+                  <option value={0}>0%</option>
+                  <option value={'zw'}>zw</option>
+                </select>
+              </div>
+              <div>
+                <span className="lbl">Płatność</span>
+                <select value={fakModal.form.platnosc} onChange={e=>setFakModal(m=>({...m,form:{...m.form,platnosc:e.target.value}}))}
+                  style={{width:'100%',padding:'6px 6px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#9acf9a',fontSize:13}}>
+                  <option value="przelew">Przelew</option>
+                  <option value="gotowka">Gotówka</option>
+                  <option value="karta">Karta</option>
+                  <option value="za_pobraniem">Pobranie</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{display:'flex',gap:8,justifyContent:'flex-end'}}>
+              <button onClick={()=>setFakModal(null)}
+                style={{padding:'8px 18px',borderRadius:6,border:'1px solid #2a4a2a',background:'none',color:'#5a7a5a',cursor:'pointer'}}>
+                Anuluj
+              </button>
+              <button onClick={wyslijFakture} disabled={fakModal.sending||!fakModal.form.kwota}
+                style={{padding:'8px 22px',borderRadius:6,border:'1px solid #4a9a5a',
+                  background:fakModal.sending||!fakModal.form.kwota?'#1a2a1a':'#1a5a2a',
+                  color:fakModal.sending||!fakModal.form.kwota?'#3a5a3a':'#7fcf7f',
+                  cursor:fakModal.sending||!fakModal.form.kwota?'not-allowed':'pointer',fontWeight:700,fontSize:14}}>
+                {fakModal.sending?'⏳ Wysyłam...':'🧾 Wystaw fakturę'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {shipmentModal&&(
         <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.75)",zIndex:2000,display:"flex",alignItems:"center",justifyContent:"center"}}
           onClick={e=>{if(e.target===e.currentTarget){setShipmentModal(null);setShipmentError("");}}}>
