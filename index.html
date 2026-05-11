@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260511.25</title>
+<title>MosquitoApp v20260511.26</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260511.25';
+  window.__MOSK_VERSION='20260511.26';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2378,8 +2378,8 @@ function App() {
     const _firma=imp?.firma||order?.firma||'F';
     const _kontaMap={F:'favo5',AR:'arlis_pl',AP:'albama_eu',E:'everis_pl'};
     const _kontoId=imp?.kontoId||_kontaMap[_firma]||'favo5';
-    if(_allegroId&&!_allegroId.startsWith('manual_')&&!f.nip){
-      // Pobierz NIP w tle — nie blokuj otwarcia modalu
+    if(_allegroId&&!_allegroId.startsWith('manual_')){
+      // Zawsze pobierz dane z Allegro — kwota, NIP, adres faktury (nie tylko gdy brak NIP)
       fetchInvoiceFromAllegro(_allegroId,_firma,_kontoId).then(res=>{
         if(res&&!res.error){
           setFakModal(m=>m?({...m,form:{...m.form,
@@ -2389,6 +2389,12 @@ function App() {
             ulica:res.ulica||m.form.ulica,
             kod:res.kod||m.form.kod,
             miasto:res.miasto||m.form.miasto,
+            // Kwota: użyj z Allegro jeśli form.kwota=0 lub puste
+            kwota:(!m.form.kwota||parseFloat(m.form.kwota)===0)&&res.kwotaBrutto>0
+              ? String(res.kwotaBrutto)
+              : m.form.kwota,
+            // Data sprzedaży z Allegro jeśli brak
+            sellDate:m.form.sellDate||res.dataZakupu||m.form.sellDate,
           }}):m);
         }
       }).catch(()=>{});
