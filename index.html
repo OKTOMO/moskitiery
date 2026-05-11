@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260511.14</title>
+<title>MosquitoApp v20260511.15</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260511.14';
+  window.__MOSK_VERSION='20260511.15';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2260,7 +2260,7 @@ function App() {
   async function createFakturowniaInvoice(imp,order){
     const cfg=fakturowniaConfig;
     if(!cfg.token||!cfg.domain) throw new Error('Brak konfiguracji Fakturowni — uzupełnij w Admin → Fakturownia');
-    const firmaId=FIRMA_BY_KONTO[imp.kontoId]||FIRMA_BY_KONTO[order?.firma]||'F';
+    const firmaId=KONTO_DO_FIRMY[imp.kontoId]||KONTO_DO_FIRMY[order?.firma]||'F';
     const deptId=FAKTUROWNIA_DEPT[firmaId];
     const kraj=(imp.klientKraj||'PL').toUpperCase();
     const vat=kraj==='PL'?23:(OSS_RATES[kraj]||23);
@@ -2378,7 +2378,7 @@ function App() {
       const f=fakModal.form;
       const order=fakModal.order;
       const imp=fakModal.imp;
-      const firmaId=order?.firma||FIRMA_BY_KONTO[imp?.kontoId]||'F';
+      const firmaId=order?.firma||KONTO_DO_FIRMY[imp?.kontoId]||'F';
       const deptId=FAKTUROWNIA_DEPT[firmaId]||FAKTUROWNIA_DEPT['F'];
       const kwota=parseFloat(f.kwota)||0;
       const buyerCompany=!!f.nip;
