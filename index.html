@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260511.15</title>
+<title>MosquitoApp v20260511.16</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260511.15';
+  window.__MOSK_VERSION='20260511.16';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2382,6 +2382,10 @@ function App() {
       const deptId=FAKTUROWNIA_DEPT[firmaId]||FAKTUROWNIA_DEPT['F'];
       const kwota=parseFloat(f.kwota)||0;
       const buyerCompany=!!f.nip;
+      const buyerFullName=f.nazwaFirmy||f.imie||'';
+      const nameParts=buyerFullName.trim().split(/\s+/);
+      const buyerLastName=buyerCompany?'':(nameParts[0]||'');
+      const buyerFirstName=buyerCompany?'':(nameParts.slice(1).join(' ')||nameParts[0]||'');
       const payload={
         api_token:cfg.token,
         invoice:{
@@ -2393,7 +2397,9 @@ function App() {
           currency:'PLN',
           department_id:deptId,
           oid:order?.numerZlecenia||fakModal.imp?.allegroOrderId||'',
-          buyer_name:f.nazwaFirmy||f.imie,
+          buyer_name:buyerFullName,
+          buyer_first_name:buyerFirstName,
+          buyer_last_name:buyerLastName,
           buyer_company:buyerCompany,
           buyer_tax_no:f.nip||'',
           buyer_street:f.ulica,
