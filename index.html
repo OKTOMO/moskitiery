@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260511.13</title>
+<title>MosquitoApp v20260511.14</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260511.13';
+  window.__MOSK_VERSION='20260511.14';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -8082,7 +8082,7 @@ function App() {
       {fakModal&&(
         <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.7)',zIndex:3000,display:'flex',alignItems:'center',justifyContent:'center',padding:16}}>
           <div style={{background:'#0d1a0d',border:'1px solid #2a5a2a',borderRadius:12,padding:20,width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
-            <div style={{fontWeight:700,fontSize:16,color:'#afffaf',marginBottom:14}}>🧾 Wystaw fakturę — {fakModal.order.numerZlecenia}</div>
+            <div style={{fontWeight:700,fontSize:16,color:'#afffaf',marginBottom:14}}>🧾 Wystaw fakturę — {fakModal.order?.numerZlecenia||fakModal.imp?.klientImie||'nowe'}</div>
 
             {/* NIP + GUS */}
             <div style={{marginBottom:10}}>
