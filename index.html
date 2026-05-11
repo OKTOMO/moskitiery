@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260511.7</title>
+<title>MosquitoApp v20260511.8</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260511.7';
+  window.__MOSK_VERSION='20260511.8';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -3999,6 +3999,10 @@ function App() {
                     else alert('❌ Błąd połączenia: '+r.status);
                   }catch(e){alert('❌ '+e.message);}
                 }}>🔌 Testuj połączenie</button>
+                <a href={`https://${fakturowniaConfig.domain||'everis75.fakturownia.pl'}/expenses`} target="_blank" rel="noreferrer"
+                  style={{display:'block',padding:'7px 12px',borderRadius:5,border:'1px solid #2a5a7a',background:'#0a1a2a',color:'#7abfdf',fontSize:13,textAlign:'center',textDecoration:'none'}}>
+                  📥 Otwórz faktury kosztowe (KSeF) w Fakturowni
+                </a>
               </div>
             </div>
             <div className="card" style={{fontSize:12,color:'#3a5a3a'}}>
