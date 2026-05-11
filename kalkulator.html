@@ -935,9 +935,16 @@ async function sendForm() {
       },
       body: JSON.stringify(payload)
     });
-    if (resp.ok) saved = true;
+    if (resp.ok) {
+      saved = true;
+      console.log('[KAL] Zapisano zamówienie:', payload.orderNumber);
+    } else {
+      const errText = await resp.text().catch(()=>'');
+      console.error('[KAL] Worker błąd:', resp.status, errText);
+      alert('Błąd zapisu zamówienia: ' + resp.status + ' ' + errText);
+    }
   } catch (e) {
-    console.warn('Worker niedostępny, e-mail fallback', e);
+    console.warn('[KAL] Worker niedostępny:', e.message);
   }
 
   if (!saved) {
