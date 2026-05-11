@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260511.23</title>
+<title>MosquitoApp v20260511.25</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260511.23';
+  window.__MOSK_VERSION='20260511.25';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -808,40 +808,66 @@ function ProduktSlownikPanel({produktSlownik,saveProduktSlownik}){
 function App() {
   const [activeProfile,setActiveProfile]=useState(()=>localStorage.getItem('active_profile')||"");
   const [tab,setTab]=useState(()=>new URLSearchParams(window.location.search).has("code")?"allegro":"zamowienia");
-  async function fetchInvoiceFromAllegro(orderId, firma){
+  async function fetchInvoiceFromAllegro(orderId, firma, kontoIdHint){
     const kontaMap={"F":"favo5","AR":"arlis_pl","AP":"albama_eu","E":"everis_pl"};
-    const kontoId=kontaMap[firma]||"favo5"; // fallback, używany tylko dla faktur
-    let token=allegroTokens[kontoId]||"";
+    // Preferuj kontoIdHint (bezpośrednie konto z imp.kontoId), fallback na mapowanie firma→konto
+    // Jeśli firma ma wiele kont (np. F = favo5/staroleska_pl/sinlook_pl) — sprawdź wszystkie
+    const firmaKonta={"F":["favo5","staroleska_pl","sinlook_pl"],"AR":["arlis_pl"],"AP":["albama_eu","pedroshop_pl_365"],"E":["everis_pl"]};
+    const kontoId=kontoIdHint||(firmaKonta[firma]||[kontaMap[firma]||"favo5"])[0];
+    // Zbierz tokeny do sprawdzenia — najpierw kontoIdHint, potem wszystkie konta firmy
+    const kandydaci=[kontoId,...(firmaKonta[firma]||[])].filter((v,i,a)=>a.indexOf(v)===i);
+    let token=""; let aktualneKonto=kontoId;
+    for(const k of kandydaci){ if(allegroTokens[k]){token=allegroTokens[k];aktualneKonto=k;break;} }
     if(!token) return {error:"Brak tokenu dla konta "+kontoId+". Zaloguj się w Admin → Allegro."};
     const url=AUTORESPONDER_URL+"/api/order/checkout-forms/"+orderId.trim();
     let r=await fetch(url,{headers:{"Authorization":"Bearer "+token,"Accept":"application/vnd.allegro.public.v1+json"}});
     if(r.status===401){
-      const ok=await allegroRefresh(kontoId);
+      const ok=await allegroRefresh(aktualneKonto);
       if(!ok) return {error:"Sesja wygasła — zaloguj się ponownie w Admin → Allegro."};
-      token=allegroTokens[kontoId]||"";
+      token=allegroTokens[aktualneKonto]||"";
       r=await fetch(url,{headers:{"Authorization":"Bearer "+token,"Accept":"application/vnd.allegro.public.v1+json"}});
     }
     if(!r.ok) return {error:"Błąd API: "+r.status+" — sprawdź nr zamówienia i konto."};
     const d=await r.json();
-    // Dane do faktury
+    // Dane do faktury — Allegro trzyma je w d.invoice (gdy kupujący zaznaczył "cel firmowy" lub poprosił o fakturę)
     const inv=d.invoice||{};
     const invAddr=inv.address||{};
     const buyer=d.buyer||{};
     const delAddr=(d.delivery&&d.delivery.address)||{};
+    const billingAddr=d.billingAddress||{}; // czasem osobny obiekt
 
-    // Preferuj dane z invoice, fallback na adres dostawy
-    // company to obiekt {name:...}, naturalPerson to obiekt {firstName, lastName} lub null
-    const companyName=invAddr.company&&invAddr.company.name?invAddr.company.name:null;
+    // Helper: wyciągnij NIP z tablicy ids (różne struktury Allegro)
+    function extractNip(ids){
+      if(!Array.isArray(ids)||ids.length===0) return "";
+      const plNip=ids.find(x=>x.type==="PL_NIP");
+      return (plNip||ids[0])?.value||"";
+    }
+
+    // Allegro B2B: invoice.address.company.name + company.ids[PL_NIP]
+    // Allegro B2C-firma: invoice.address.naturalPerson + naturalPerson.ids[PL_NIP] (!)
+    // Allegro B2C: invoice.address.naturalPerson, brak NIP
+    const companyName=invAddr.company?.name||null;
     const np=invAddr.naturalPerson||{};
-    const npName=np.firstName&&np.lastName?(np.firstName+" "+np.lastName):null;
-    const buyerName=buyer.firstName&&buyer.lastName?(buyer.firstName+" "+buyer.lastName):null;
+    const npName=(np.firstName&&np.lastName)?(np.firstName+" "+np.lastName):null;
+    const buyerName=(buyer.firstName&&buyer.lastName)?(buyer.firstName+" "+buyer.lastName):null;
+
+    // NIP — szukaj we wszystkich możliwych miejscach struktury Allegro
+    const nip=
+      invAddr.taxId||                                          // bezpośredni taxId na adresie
+      inv.taxId||                                              // taxId na invoice
+      extractNip(invAddr.company?.ids)||                       // company.ids[PL_NIP]
+      extractNip(invAddr.naturalPerson?.ids)||                 // naturalPerson.ids[PL_NIP] (B2C-firma!)
+      extractNip(invAddr.ids)||                                // invAddr.ids bezpośrednio
+      buyer.taxId||                                            // taxId kupującego
+      "";
+
+    // Nazwa: firma > naturalPerson z invoice > buyer > login
     const nazwa=companyName||npName||buyerName||buyer.login||"";
-    // taxId może być w invAddr lub inv
-    const nipFromIds=invAddr.ids&&invAddr.ids.length>0?invAddr.ids.find(function(x){return x.type==="PL_NIP";})||invAddr.ids[0]:null;
-    const nip=invAddr.taxId||inv.taxId||(nipFromIds?nipFromIds.value:"")||(invAddr.company&&invAddr.company.ids?((invAddr.company.ids.find(function(x){return x.type==="PL_NIP";})||invAddr.company.ids[0]||{}).value||""):"");
-    const ulica=invAddr.street||delAddr.street||"";
-    const kod=invAddr.zipCode||delAddr.zipCode||"";
-    const miasto=invAddr.city||delAddr.city||"";
+
+    // Adres faktury: invoice.address > billingAddress > adres dostawy
+    const ulica=invAddr.street||billingAddr.street||delAddr.street||"";
+    const kod=invAddr.zipCode||billingAddr.zipCode||delAddr.zipCode||"";
+    const miasto=invAddr.city||billingAddr.city||delAddr.city||"";
     // Produkty i kwota
     const items=d.lineItems||[];
     const summary=d.summary||{};
@@ -2354,7 +2380,7 @@ function App() {
     const _kontoId=imp?.kontoId||_kontaMap[_firma]||'favo5';
     if(_allegroId&&!_allegroId.startsWith('manual_')&&!f.nip){
       // Pobierz NIP w tle — nie blokuj otwarcia modalu
-      fetchInvoiceFromAllegro(_allegroId,_firma).then(res=>{
+      fetchInvoiceFromAllegro(_allegroId,_firma,_kontoId).then(res=>{
         if(res&&!res.error){
           setFakModal(m=>m?({...m,form:{...m.form,
             nip:res.nip||m.form.nip,
@@ -7088,7 +7114,7 @@ function App() {
                   {(()=>{
                     const doFetch=async(v,firma)=>{
                         setFvAllegroStatus("loading");
-                        const res=await fetchInvoiceFromAllegro(v,firma);
+                        const res=await fetchInvoiceFromAllegro(v,firma,fvForm.kontoId||'');
                         if(res.error){setFvAllegroStatus("error:"+res.error);return;}
                         setFvForm(f=>({...f,
                           nabywcaNazwa:res.nazwa||f.nabywcaNazwa,
@@ -7137,7 +7163,7 @@ function App() {
                     setTimeout(async()=>{
                       if(!fvAllegroStatus&&fvAllegroId){
                         setFvAllegroStatus("loading");
-                        const res=await fetchInvoiceFromAllegro(fvAllegroId,fvForm.firma);
+                        const res=await fetchInvoiceFromAllegro(fvAllegroId,fvForm.firma,fvForm.kontoId||'');
                         if(res.error){setFvAllegroStatus("error:"+res.error);return;}
                         setFvForm(f=>({...f,
                           nabywcaNazwa:res.nazwa||f.nabywcaNazwa,
