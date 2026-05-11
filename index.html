@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260511.22</title>
+<title>MosquitoApp v20260511.23</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260511.22';
+  window.__MOSK_VERSION='20260511.23';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2347,6 +2347,26 @@ function App() {
       sellDate,
     };
     setFakModal({order:order||null,imp:imp||null,form:f,gusLoading:false,gusError:'',sending:false});
+    // B4 fix: auto-fetch NIP z Allegro jeśli jest allegroOrderId a brak NIP
+    const _allegroId=imp?.allegroOrderId||order?.allegroOrderId||'';
+    const _firma=imp?.firma||order?.firma||'F';
+    const _kontaMap={F:'favo5',AR:'arlis_pl',AP:'albama_eu',E:'everis_pl'};
+    const _kontoId=imp?.kontoId||_kontaMap[_firma]||'favo5';
+    if(_allegroId&&!_allegroId.startsWith('manual_')&&!f.nip){
+      // Pobierz NIP w tle — nie blokuj otwarcia modalu
+      fetchInvoiceFromAllegro(_allegroId,_firma).then(res=>{
+        if(res&&!res.error){
+          setFakModal(m=>m?({...m,form:{...m.form,
+            nip:res.nip||m.form.nip,
+            nazwaFirmy:res.nazwa||m.form.nazwaFirmy||m.form.imie,
+            imie:res.nazwa||m.form.imie,
+            ulica:res.ulica||m.form.ulica,
+            kod:res.kod||m.form.kod,
+            miasto:res.miasto||m.form.miasto,
+          }}):m);
+        }
+      }).catch(()=>{});
+    }
   }
 
   async function gusLookup(){
@@ -2364,8 +2384,13 @@ function App() {
       const adres=s.workingAddress||s.residenceAddress||'';
       // Parsuj adres "ul. Testowa 1, 00-001 Warszawa"
       const adresMatch=adres.match(/^(.+?),\s*(\d{2}-\d{3})\s+(.+)$/);
+      // B3 fix: nie nadpisuj nazwy jeśli już wpisana i s.name wygląda jak osoba fizyczna
+      // (MF API dla os. fiz. zwraca "Kowalska Anna" — bez słów korporacyjnych)
+      const CORP_WORDS=/sp\.? ?z ?o\.?o|s\.a\.|spółk|ltd|gmbh|s\.c\.|spj|s\.j\.|handel|usługi|firma|przedsiębiorstwo|zakład/i;
+      const nameIsCompany=CORP_WORDS.test(s.name||'');
+      const keepExisting=(m)=>m.form.nazwaFirmy&&!nameIsCompany?m.form.nazwaFirmy:(s.name||'');
       setFakModal(m=>({...m,gusLoading:false,form:{...m.form,
-        nazwaFirmy:s.name||'',
+        nazwaFirmy:keepExisting(m),
         ulica:adresMatch?adresMatch[1]:(adres.split(',')[0]||''),
         kod:adresMatch?adresMatch[2]:'',
         miasto:adresMatch?adresMatch[3]:(adres.split(',')[1]?.trim()||''),
@@ -2432,6 +2457,17 @@ function App() {
           const next={...prev,[orderId]:{number:inv.number,date:new Date().toISOString().slice(0,10),id:inv.id}};
           localStorage.setItem('invoices_sent',JSON.stringify(next));
           return next;
+        });
+        // Zapisz fakturowniaId w liście faktur (zakładka FAKTURY) jeśli pasuje po allegroOrderId
+        setFaktury(prev=>{
+          const idx=prev.findIndex(fv=>fv.allegroOrderId===orderId);
+          if(idx>=0){
+            const next=[...prev];
+            next[idx]={...next[idx],fakturowniaId:inv.id,fakturowniaNumber:inv.number};
+            localStorage.setItem('faktury',JSON.stringify(next));
+            return next;
+          }
+          return prev;
         });
       }
       window.open(`https://${cfg.domain}/invoices/${inv.id}`,'_blank');
@@ -3881,12 +3917,17 @@ function App() {
         const md=await mr.json();
         const msgs=md.messages||[];
         const lastMsg=msgs[msgs.length-1];
+        // B1 fix: zbierz WSZYSTKIE wiadomości kupującego
+        const sortedMsgs=msgs.slice().sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
+        const buyerMsgs=sortedMsgs.filter(m=>(m.author?.role||'BUYER')!=='SELLER'&&m.text).map(m=>m.text);
+        const allBuyerText=buyerMsgs.join('\n\n---\n\n');
         messagesArr.push({
           threadId:t.id,
           allegroOrderId:t.relatedObject?.id||"",
           interlocutor:t.interlocutor?.login||"—",
           subject:t.subject||"—",
-          lastMessage:lastMsg?.text||"",
+          lastMessage:allBuyerText||lastMsg?.text||"",
+          allMessages:sortedMsgs.map(m=>({text:m.text||'',role:m.author?.role||'BUYER',date:m.createdAt||''})),
           date:lastMsg?.createdAt||"",
           unread:t.hasUnreadMessages
         });
@@ -5969,7 +6010,16 @@ function App() {
                                   </button>
                                 )}
                                 <button onClick={()=>doImportOrder({
-                                  imp:{klientImie:o.klient?.name||"",klientUlica:"",klientKod:"",klientMiasto:o.klient?.city||"",telefon:o.klient?.phone||"",allegroOrderId:"",kontoId:"",firma:"F",offerNames:"",data:o.createdAt?o.createdAt.slice(0,10):""},
+                                  imp:{klientImie:o.klient?.name||"",klientUlica:"",klientKod:"",klientMiasto:o.klient?.city||"",telefon:o.klient?.phone||"",
+                                    allegroOrderId:allegroMatch?.allegroOrderId||"",
+                                    kontoId:allegroMatch?.kontoId||"",
+                                    firma:KONTO_DO_FIRMY[allegroMatch?.kontoId||""]||"F",
+                                    nabywcaNip:allegroMatch?.nabywcaNip||"",
+                                    nabywcaNazwa:allegroMatch?.nabywcaNazwa||"",
+                                    klientUlica:allegroMatch?.klientUlica||"",
+                                    klientKod:allegroMatch?.klientKod||"",
+                                    offerNames:allegroMatch?.offerNames||"",
+                                    data:o.createdAt?o.createdAt.slice(0,10):""},
                                   kalData:o,
                                   pozycje:[]
                                 })}
@@ -7126,7 +7176,10 @@ function App() {
                               });
                               const d=await r.json();
                               if(d.ok){
-                                setFvForm(f=>({...f,nabywcaNazwa:d.nazwa||f.nabywcaNazwa,nabywcaAdres:d.ulica||f.nabywcaAdres,nabywcaKod:d.kod||f.nabywcaKod,nabywcaMiasto:d.miasto||f.nabywcaMiasto}));
+                                // B3 fix: nie nadpisuj nazwy jeśli wygląda jak osoba fizyczna
+const _corp=/sp\.? ?z ?o\.?o|s\.a\.|spółk|ltd|gmbh|s\.c\.|s\.j\.|handel|usługi|firma|przedsiębiorstwo|zakład/i;
+const _keepName=f.nabywcaNazwa&&!_corp.test(d.nazwa||'')?f.nabywcaNazwa:(d.nazwa||f.nabywcaNazwa);
+setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,nabywcaKod:d.kod||f.nabywcaKod,nabywcaMiasto:d.miasto||f.nabywcaMiasto}));
                                 setGusStatus("✅ "+d.nazwa);
                               } else {setGusStatus("❌ "+(d.error||"Błąd GUS"));}
                             }catch(e){setGusStatus("❌ "+e.message);}
