@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260511.11</title>
+<title>MosquitoApp v20260511.13</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260511.11';
+  window.__MOSK_VERSION='20260511.13';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2377,7 +2377,8 @@ function App() {
     try{
       const f=fakModal.form;
       const order=fakModal.order;
-      const firmaId=order.firma||'F';
+      const imp=fakModal.imp;
+      const firmaId=order?.firma||FIRMA_BY_KONTO[imp?.kontoId]||'F';
       const deptId=FAKTUROWNIA_DEPT[firmaId]||FAKTUROWNIA_DEPT['F'];
       const kwota=parseFloat(f.kwota)||0;
       const buyerCompany=!!f.nip;
@@ -2391,7 +2392,7 @@ function App() {
           payment_type:f.platnosc,
           currency:'PLN',
           department_id:deptId,
-          oid:order.numerZlecenia||'',
+          oid:order?.numerZlecenia||fakModal.imp?.allegroOrderId||'',
           buyer_name:f.nazwaFirmy||f.imie,
           buyer_company:buyerCompany,
           buyer_tax_no:f.nip||'',
@@ -4845,7 +4846,7 @@ function App() {
                     border:`1px solid ${zamOnlyInvoice?'#8a5a1a':'#2a3a2a'}`,
                     color:zamOnlyInvoice?'#dfaf4a':'#4a6a4a',
                     fontWeight:zamOnlyInvoice?700:400}}>
-                  🧾❗{(()=>{const n=allegroImportResults.filter(i=>i.invoiceRequired&&!invoicesSent[i.allegroOrderId]&&(!zamInvoiceFrom||!i.boughtAt||i.boughtAt.slice(0,10)>=zamInvoiceFrom)).length;return n>0?` (${n})`:'';})()}{zamOnlyInvoice?' ✓':''}
+                  🧾❗{(()=>{const n=allegroImportResults.filter(i=>i.invoiceRequired&&!invoicesSent[i.allegroOrderId]).length;return n>0?` (${n})`:'';})()}{zamOnlyInvoice?' ✓':''}
                 </button>
                 {zamOnlyInvoice&&<input type="date" value={zamInvoiceFrom} onChange={e=>setZamInvoiceFrom(e.target.value)}
                   title="Pokaż faktury od daty"
@@ -4856,13 +4857,13 @@ function App() {
               </div>
               <div style={{display:'flex',borderBottom:'2px solid #1a2a1a',marginBottom:0}}>
                 <button onClick={()=>setZamTab('nowe')} style={{padding:'7px 16px',fontSize:13,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',background:zamTab==='nowe'?'#1a3a1a':'#0a1a0a',color:zamTab==='nowe'?'#afffaf':'#3a6a3a',borderBottom:zamTab==='nowe'?'2px solid #3acf6a':'2px solid transparent'}}>
-                  🆕 Nowe ({noweList.length})
+                  🆕 Nowe ({noweList.length}){(()=>{const n=noweList.filter(i=>i.invoiceRequired&&!invoicesSent[i.allegroOrderId]).length;return n>0?` 🧾${n}`:''})()}
                 </button>
                 <button onClick={()=>setZamTab('realizacja')} style={{padding:'7px 16px',fontSize:13,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',background:zamTab==='realizacja'?'#1a2a0a':'#0a1a0a',color:zamTab==='realizacja'?'#afdf6f':'#4a6a2a',borderBottom:zamTab==='realizacja'?'2px solid #8acf3a':'2px solid transparent'}}>
-                  ⚙️ W realizacji ({realizacjaList.length})
+                  ⚙️ W realizacji ({realizacjaList.length}){(()=>{const n=realizacjaList.filter(i=>i.invoiceRequired&&!invoicesSent[i.allegroOrderId]).length;return n>0?` 🧾${n}`:''})()}
                 </button>
                 <button onClick={()=>setZamTab('pozostale')} style={{padding:'7px 16px',fontSize:13,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',background:zamTab==='pozostale'?'#1a2a3a':'#0a1420',color:zamTab==='pozostale'?'#7acfdf':'#2a4a6a',borderBottom:zamTab==='pozostale'?'2px solid #3a8acf':'2px solid transparent'}}>
-                  ✅ Zrealizowane ({zrealizowaneList.length})
+                  ✅ Zrealizowane ({zrealizowaneList.length}){(()=>{const n=zrealizowaneList.filter(i=>i.invoiceRequired&&!invoicesSent[i.allegroOrderId]).length;return n>0?` 🧾${n}`:''})()}
                 </button>
               </div>
               {allegroImportResults.length===0&&<div style={{textAlign:'center',color:'#2a5a3a',padding:'40px 0',fontSize:14}}>Kliknij "Pobierz zamówienia" żeby załadować listę</div>}
