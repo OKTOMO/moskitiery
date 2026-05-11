@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260511.19</title>
+<title>MosquitoApp v20260511.21</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260511.19';
+  window.__MOSK_VERSION='20260511.21';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2398,7 +2398,7 @@ function App() {
           kind:'vat',
           issue_date:new Date().toISOString().slice(0,10),
           sell_date:f.sellDate||new Date().toISOString().slice(0,10),
-          payment_to:f.platnosc==='za_pobraniem'?new Date().toISOString().slice(0,10):new Date(Date.now()+14*86400000).toISOString().slice(0,10),
+          payment_to:f.platnosc==='za_pobraniem'?new Date().toISOString().slice(0,10):(f.sellDate||new Date().toISOString().slice(0,10)),
           payment_type:f.platnosc,
           // Allegro Pay = już opłacone
           status:f.platnosc==='przelew'?'paid':'issued',
@@ -2407,6 +2407,7 @@ function App() {
           currency:'PLN',
           department_id:deptId,
           oid:order?.numerZlecenia||fakModal.imp?.allegroOrderId||'',
+          description:f.uwagi||'',
           buyer_name:buyerFullName,
           buyer_first_name:buyerFirstName,
           buyer_last_name:buyerLastName,
@@ -8146,6 +8147,12 @@ function App() {
               <span className="lbl">Opis usługi/towaru</span>
               <input value={fakModal.form.opis} onChange={e=>setFakModal(m=>({...m,form:{...m.form,opis:e.target.value}}))}
                 style={{width:'100%',padding:'6px 10px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#9acf9a',fontSize:13}}/>
+            </div>
+            <div style={{marginBottom:10}}>
+              <span className="lbl">Uwagi (widoczne na fakturze)</span>
+              <textarea value={fakModal.form.uwagi||''} onChange={e=>setFakModal(m=>({...m,form:{...m.form,uwagi:e.target.value}}))}
+                placeholder="np. Urząd Gminy Przykład, NIP jednostki, nr zamówienia publicznego..."
+                rows={2} style={{width:'100%',padding:'6px 10px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#9acf9a',fontSize:13,resize:'vertical',fontFamily:'monospace'}}/>
             </div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 80px 1fr 1fr',gap:8,marginBottom:14}}>
               <div>
