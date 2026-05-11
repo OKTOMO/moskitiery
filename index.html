@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260511.26</title>
+<title>MosquitoApp v20260511.27</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260511.26';
+  window.__MOSK_VERSION='20260511.27';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2393,6 +2393,8 @@ function App() {
             kwota:(!m.form.kwota||parseFloat(m.form.kwota)===0)&&res.kwotaBrutto>0
               ? String(res.kwotaBrutto)
               : m.form.kwota,
+            // Pozycje z Allegro (osobne linie na fakturze)
+            pozycjeAllegro:res.pozycje&&res.pozycje.length>0?res.pozycje:m.form.pozycjeAllegro,
             // Data sprzedaży z Allegro jeśli brak
             sellDate:m.form.sellDate||res.dataZakupu||m.form.sellDate,
           }}):m);
@@ -2473,7 +2475,14 @@ function App() {
           buyer_street:f.ulica,
           buyer_post_code:f.kod,
           buyer_city:f.miasto,
-          positions:[{name:f.opis,quantity:1,total_price_gross:kwota,tax:parseInt(f.vat)||23}]
+          positions:(f.pozycjeAllegro&&f.pozycjeAllegro.length>0)
+            ? f.pozycjeAllegro.map(p=>({
+                name:p.nazwa||p.name||f.opis,
+                quantity:parseFloat(p.ilosc||p.quantity)||1,
+                total_price_gross:parseFloat(p.cena||p.total_price_gross)||0,
+                tax:parseInt(f.vat)||23
+              }))
+            : [{name:f.opis,quantity:1,total_price_gross:kwota,tax:parseInt(f.vat)||23}]
         }
       };
       const resp=await fetch(`https://${cfg.domain}/invoices.json`,{
