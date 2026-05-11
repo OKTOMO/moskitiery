@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260511.4</title>
+<title>MosquitoApp v20260511.6</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260511.4';
+  window.__MOSK_VERSION='20260511.6';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -899,7 +899,10 @@ function App() {
   const [fakturowniaConfig,setFakturowniaConfig]=React.useState(()=>{
     try{return JSON.parse(localStorage.getItem('fakturownia_config')||'{}');}catch(e){return {};}
   });
-  const [fakModal,setFakModal]=React.useState(null); // {order, imp, form:{...}}
+  const [fakModal,setFakModal]=React.useState(null);
+  const [invoicesSent,setInvoicesSent]=React.useState(()=>{
+    try{return JSON.parse(localStorage.getItem('invoices_sent')||'{}');}catch{return {};}
+  }); // {allegroOrderId: {number, date}} // {order, imp, form:{...}}
   // Walidacja jednostek vs kwota zamówienia
   function walidujJednostki(pozycje, kwotaBrutto){
     if(!kwotaBrutto||!pozycje||pozycje.length===0) return null;
@@ -945,6 +948,7 @@ function App() {
   const [zamOpenBox,setZamOpenBox]=useState({});
   const [zamSearch,setZamSearch]=useState('');
   const [zamKonto,setZamKonto]=useState('');
+  const [zamOnlyInvoice,setZamOnlyInvoice]=useState(false);
   const [mergeSelected,setMergeSelected]=useState(new Set());
   const [batchMailSelected,setBatchMailSelected]=useState([]);
   const [zamTab,setZamTab]=useState('nowe');
@@ -2304,6 +2308,14 @@ function App() {
     if(!cfg.token||!cfg.domain){alert('Uzupełnij konfigurację Fakturowni w Admin → Fakturownia');return;}
     try{
       const inv=await createFakturowniaInvoice(imp,order);
+      const orderId=imp?.allegroOrderId||order?.allegroOrderId||'';
+      if(orderId){
+        setInvoicesSent(prev=>{
+          const next={...prev,[orderId]:{number:inv.number,date:new Date().toISOString().slice(0,10),id:inv.id}};
+          localStorage.setItem('invoices_sent',JSON.stringify(next));
+          return next;
+        });
+      }
       window.open(`https://${cfg.domain}/invoices/${inv.id}`,'_blank');
       alert(`✅ Faktura ${inv.number} utworzona`);
     }catch(e){alert('❌ Błąd Fakturowni: '+e.message);}
@@ -2394,6 +2406,15 @@ function App() {
       });
       if(!resp.ok){const err=await resp.json().catch(()=>({}));throw new Error(JSON.stringify(err));}
       const inv=await resp.json();
+      // Zapisz info o wystawionej fakturze
+      const orderId=fakModal.imp?.allegroOrderId||fakModal.order?.allegroOrderId||fakModal.order?.numerZlecenia||'';
+      if(orderId){
+        setInvoicesSent(prev=>{
+          const next={...prev,[orderId]:{number:inv.number,date:new Date().toISOString().slice(0,10),id:inv.id}};
+          localStorage.setItem('invoices_sent',JSON.stringify(next));
+          return next;
+        });
+      }
       window.open(`https://${cfg.domain}/invoices/${inv.id}`,'_blank');
       alert(`✅ Faktura ${inv.number} utworzona`);
       setFakModal(null);
@@ -4482,6 +4503,7 @@ function App() {
           };
           const filteredAll=allegroImportResults.filter(imp=>{
             if(zamKonto&&imp.kontoId!==zamKonto) return false;
+            if(zamOnlyInvoice&&!imp.invoiceRequired) return false;
             if(zamSearch){const q=zamSearch.toLowerCase();return (imp.klientImie||'').toLowerCase().includes(q)||(imp.klientLogin||'').toLowerCase().includes(q)||(imp.klientMiasto||'').toLowerCase().includes(q)||(imp.offerNames||'').toLowerCase().includes(q);}
             return true;
           });
@@ -4708,16 +4730,17 @@ function App() {
                         color:sh?.mailWyslany?'#7acf7a':'#9a9adf'}}>
                       ✉️{sh?.mailWyslany?' ✅':''}
                     </button>
+                    {(()=>{const invSent=invoicesSent[imp.allegroOrderId];return(
                     <button onClick={()=>{
                         const ord=orders.find(o=>o.allegroOrderId===imp.allegroOrderId);
                         openFakModal(imp,ord||null,true);
-                      }} title={imp.invoiceRequired?"Klient zamówił fakturę — wystaw":"Wystaw fakturę"}
+                      }} title={invSent?`Faktura ${invSent.number} (${invSent.date})`:(imp.invoiceRequired?"Klient zamówił fakturę — wystaw":"Wystaw fakturę")}
                       style={{padding:'4px 8px',fontSize:12,borderRadius:5,cursor:'pointer',
-                        background:imp.invoiceRequired?'#3a2a1a':'#1a1a2a',
-                        border:`1px solid ${imp.invoiceRequired?'#7a5a2a':'#3a3a6a'}`,
-                        color:imp.invoiceRequired?'#dfaf5a':'#8a8acf'}}>
-                      🧾{imp.invoiceRequired?' ❗':''}
-                    </button>
+                        background:invSent?'#0a2a0a':imp.invoiceRequired?'#3a2a1a':'#1a1a2a',
+                        border:`1px solid ${invSent?'#2a7a2a':imp.invoiceRequired?'#7a5a2a':'#3a3a6a'}`,
+                        color:invSent?'#7acf7a':imp.invoiceRequired?'#dfaf5a':'#8a8acf'}}>
+                      {invSent?'🧾✅':imp.invoiceRequired?'🧾❗':'🧾'}
+                    </button>);})()}
                     {isRealizacja&&<button
                       title={_batchSel.includes(imp.allegroOrderId)?"✅ Dodano do wysyłki zbiorczej":"Dodaj do wysyłki zbiorczej"}
                       onClick={()=>{
@@ -4809,6 +4832,15 @@ function App() {
                   <option value="">Wszystkie konta</option>
                   {[...new Set(allegroImportResults.map(i=>i.kontoId))].map(k=><option key={k} value={k}>{k}</option>)}
                 </select>
+                <button onClick={()=>setZamOnlyInvoice(v=>!v)}
+                  title="Pokaż tylko zamówienia z żądaniem faktury"
+                  style={{padding:'5px 10px',fontSize:13,borderRadius:5,cursor:'pointer',
+                    background:zamOnlyInvoice?'#3a2a0a':'#0a1a0a',
+                    border:`1px solid ${zamOnlyInvoice?'#8a5a1a':'#2a3a2a'}`,
+                    color:zamOnlyInvoice?'#dfaf4a':'#4a6a4a',
+                    fontWeight:zamOnlyInvoice?700:400}}>
+                  🧾{zamOnlyInvoice?' ✓':''}
+                </button>
                 <button onClick={()=>{setTab('nowe');setAllegroOrderIdForForm('');setSaved(false);setLastSavedOrder(null);setWiadomosc('');setForm(pustyForm(form.firma));}} style={{padding:'5px 12px',fontSize:13,fontWeight:700,borderRadius:5,cursor:'pointer',background:'#1a3a1a',border:'1px solid #3a7a3a',color:'#afffaf',marginLeft:'auto'}}>
                   ➕ Dodaj ręcznie
                 </button>
