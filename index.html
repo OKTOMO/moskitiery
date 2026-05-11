@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260511.10</title>
+<title>MosquitoApp v20260511.11</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260511.10';
+  window.__MOSK_VERSION='20260511.11';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -4850,7 +4850,6 @@ function App() {
                 {zamOnlyInvoice&&<input type="date" value={zamInvoiceFrom} onChange={e=>setZamInvoiceFrom(e.target.value)}
                   title="Pokaż faktury od daty"
                   style={{padding:'4px 8px',fontSize:12,background:'#1a1000',border:'1px solid #5a3a00',borderRadius:5,color:'#dfaf4a'}}/>}
-                </button>
                 <button onClick={()=>{setTab('nowe');setAllegroOrderIdForForm('');setSaved(false);setLastSavedOrder(null);setWiadomosc('');setForm(pustyForm(form.firma));}} style={{padding:'5px 12px',fontSize:13,fontWeight:700,borderRadius:5,cursor:'pointer',background:'#1a3a1a',border:'1px solid #3a7a3a',color:'#afffaf',marginLeft:'auto'}}>
                   ➕ Dodaj ręcznie
                 </button>
