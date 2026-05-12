@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260511.34</title>
+<title>MosquitoApp v20260511.35</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260511.34';
+  window.__MOSK_VERSION='20260511.35';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2522,7 +2522,20 @@ function App() {
       const orderId=fakModal.imp?.allegroOrderId||fakModal.order?.allegroOrderId||fakModal.order?.numerZlecenia||fakModal.form?._manualOrderId||'';
       if(orderId){
         setInvoicesSent(prev=>{
-          const next={...prev,[orderId]:{number:inv.number,date:new Date().toISOString().slice(0,10),id:inv.id}};
+          const _imp=fakModal.imp; const _ord=fakModal.order; const _f=fakModal.form;
+          const next={...prev,[orderId]:{number:inv.number,date:new Date().toISOString().slice(0,10),id:inv.id,
+            fakturowniaId:inv.id,
+            allegroOrderId:orderId,
+            kontoId:_imp?.kontoId||_ord?.kontoId||'',
+            firma:_ord?.firma||KONTO_DO_FIRMY[_imp?.kontoId||'']||_f?.firma||'F',
+            klientNazwa:_f?.nazwaFirmy||_f?.imie||_imp?.klientImie||_ord?.klientImie||'',
+            klientMiasto:_imp?.klientMiasto||_ord?.klientMiasto||'',
+            klientUlica:_imp?.klientUlica||_ord?.klientUlica||'',
+            klientKod:_imp?.klientKod||_ord?.klientKod||'',
+            nip:_f?.nip||'',
+            kwota:parseFloat(_f?.kwota)||0,
+            offerNames:_imp?.offerNames||'',
+          }};
           localStorage.setItem('invoices_sent',JSON.stringify(next));
           return next;
         });
