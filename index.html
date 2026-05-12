@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260511.38</title>
+<title>MosquitoApp v20260511.40</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260511.38';
+  window.__MOSK_VERSION='20260511.40';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -882,7 +882,9 @@ function App() {
     const delivery=d.delivery||{};
     const shipmentCost=delivery.cost?parseFloat(delivery.cost.amount):0;
     if(shipmentCost>0){
-      const carrierName=delivery.method||delivery.pickupPoint?.name||'Dostawa';
+      const rawCarrier=(typeof delivery.method==='string'?delivery.method:(delivery.method?.name||delivery.method?.id||''))||delivery.pickupPoint?.name||'';
+      // Dodaj spacje przed wielkimi literami (PrzesyłkaAllegro → Przesyłka Allegro)
+      const carrierName=rawCarrier.replace(/([a-ząćęłńóśźż])([A-ZĄĆĘŁŃÓŚŹŻ])/g,'$1 $2')||'Dostawa';
       pozycje.push({nazwa:'Usługa dostawy - '+carrierName,ilosc:1,jm:"szt",cena:shipmentCost,vat:23});
     }
     const dataZakupu=d.boughtAt?d.boughtAt.slice(0,10):(d.updatedAt?d.updatedAt.slice(0,10):"");
