@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260511.35</title>
+<title>MosquitoApp v20260511.36</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260511.35';
+  window.__MOSK_VERSION='20260511.36';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -878,6 +878,13 @@ function App() {
       const ilosc=item.quantity||1;
       return {nazwa:item.offer&&item.offer.name?item.offer.name:"Towar",ilosc:ilosc,jm:"szt",cena:cena*ilosc,vat:23};
     }):[{nazwa:"Towar",ilosc:1,jm:"szt",cena:kwotaBrutto,vat:23}];
+    // Dodaj koszt dostawy jako osobną pozycję jeśli > 0
+    const delivery=d.delivery||{};
+    const shipmentCost=delivery.cost?parseFloat(delivery.cost.amount):0;
+    if(shipmentCost>0){
+      const carrierName=delivery.method||delivery.pickupPoint?.name||'Dostawa';
+      pozycje.push({nazwa:'Usługa dostawy - '+carrierName,ilosc:1,jm:"szt",cena:shipmentCost,vat:23});
+    }
     const dataZakupu=d.boughtAt?d.boughtAt.slice(0,10):(d.updatedAt?d.updatedAt.slice(0,10):"");
     return {nazwa,nip,ulica,kod,miasto,kwotaBrutto,pozycje,orderId,dataZakupu};
   }
@@ -2303,6 +2310,7 @@ function App() {
     const useOss=kraj!=='PL'?1:0;
     const waluta=imp.kwotaWaluta||'PLN';
     const kwota=parseFloat(imp.totalAmount||order?.kwota||0);
+    const deliveryCost=parseFloat(imp.deliveryCost||0);
     const pozNazwy=imp.offerNames||(order?.pozycje?.map(p=>`Moskitiera ${p.szerokosc}×${p.wysokosc}cm ${p.kolorRamki||''}`.trim()).join(', '))||'Moskitiera na wymiar';
     const buyerNip=imp.nabywcaNip||order?.nabywcaNip||'';
     const buyerCompany=!!buyerNip;
@@ -2396,7 +2404,8 @@ function App() {
       vat:23,
       platnosc,
       sellDate,
-      terminPlatnosci:sellDate, // Allegro = opłacone → termin = data sprzedaży
+      terminPlatnosci:sellDate,
+      _deliveryCost:deliveryCost
     };
     setFakModal({order:order||null,imp:imp||null,form:f,gusLoading:false,gusError:'',sending:false});
     // B4 fix: auto-fetch NIP z Allegro jeśli jest allegroOrderId a brak NIP
@@ -2420,7 +2429,15 @@ function App() {
               ? String(res.kwotaBrutto)
               : m.form.kwota,
             // Pozycje z Allegro (osobne linie na fakturze)
-            pozycjeAllegro:res.pozycje&&res.pozycje.length>0?res.pozycje:m.form.pozycjeAllegro,
+            // Dodaj koszt dostawy z imp jeśli auto-fetch nie ma tej pozycji
+      pozycjeAllegro:(()=>{
+        const poz=res.pozycje&&res.pozycje.length>0?res.pozycje:m.form.pozycjeAllegro||[];
+        const _delCost=parseFloat(m.form._deliveryCost||0);
+        if(_delCost>0&&!poz.find(p=>(p.nazwa||'').includes('dostaw'))){
+          return [...poz,{nazwa:'Usługa dostawy',ilosc:1,jm:'szt',cena:_delCost,vat:23}];
+        }
+        return poz;
+      })(),
             // Data sprzedaży z Allegro jeśli brak
             sellDate:m.form.sellDate||res.dataZakupu||m.form.sellDate,
           }}):m);
