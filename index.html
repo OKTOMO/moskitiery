@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260511.37</title>
+<title>MosquitoApp v20260511.38</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260511.37';
+  window.__MOSK_VERSION='20260511.38';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2501,7 +2501,8 @@ function App() {
           issue_date:new Date().toISOString().slice(0,10),
           sell_date:f.sellDate||new Date().toISOString().slice(0,10),
           // Allegro = już opłacone → termin = data sprzedaży; ręczne → terminPlatnosci
-          payment_to:f.platnosc==='za_pobraniem'?new Date().toISOString().slice(0,10):((fakModal.imp||fakModal.order)?(f.sellDate||new Date().toISOString().slice(0,10)):(f.terminPlatnosci||new Date(Date.now()+14*86400000).toISOString().slice(0,10))),
+          // za_pobraniem i Allegro = data sprzedaży; ręczne = terminPlatnosci
+          payment_to:(fakModal.imp||fakModal.order)?(f.sellDate||new Date().toISOString().slice(0,10)):(f.terminPlatnosci||new Date(Date.now()+14*86400000).toISOString().slice(0,10)),
           payment_type:f.platnosc,
           // Allegro Pay = już opłacone
           status:f.platnosc==='przelew'?'paid':'issued',
