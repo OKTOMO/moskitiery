@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260511.32</title>
+<title>MosquitoApp v20260511.33</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260511.32';
+  window.__MOSK_VERSION='20260511.33';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -926,6 +926,16 @@ function App() {
     try{return JSON.parse(localStorage.getItem('fakturownia_config')||'{}');}catch(e){return {};}
   });
   const [fakModal,setFakModal]=React.useState(null);
+  const [kontrahenci,setKontrahenci]=useState(()=>{try{return JSON.parse(localStorage.getItem('kontrahenci')||'[]');}catch{return [];}});
+  function saveKontrahenci(list){setKontrahenci(list);localStorage.setItem('kontrahenci',JSON.stringify(list));}
+  function upsertKontrahent(k){
+    // Zapisz lub zaktualizuj po NIP (lub nazwie jeśli brak NIP)
+    const key=k.nip||k.nazwa;
+    const existing=kontrahenci.findIndex(x=>(x.nip&&x.nip===k.nip)||((!x.nip&&!k.nip)&&x.nazwa===k.nazwa));
+    const next=existing>=0?kontrahenci.map((x,i)=>i===existing?{...x,...k}:x):[...kontrahenci,{...k,id:Date.now()}];
+    saveKontrahenci(next);
+  }
+
   const [invoicesSent,setInvoicesSent]=React.useState(()=>{
     try{return JSON.parse(localStorage.getItem('invoices_sent')||'{}');}catch{return {};}
   }); // {allegroOrderId: {number, date}} // {order, imp, form:{...}}
@@ -5094,6 +5104,31 @@ function App() {
                   return (
                     <div>
                       {/* Nagłówek z przyciskiem nowej faktury */}
+                      {kontrahenci.length>0&&<details style={{marginBottom:12,background:'#0a0a14',border:'1px solid #2a1a4a',borderRadius:6,padding:'6px 10px'}}>
+                        <summary style={{color:'#af7adf',fontSize:13,cursor:'pointer',fontWeight:700}}>📋 Książka kontrahentów ({kontrahenci.length})</summary>
+                        <div style={{marginTop:8,display:'flex',flexDirection:'column',gap:4}}>
+                          {kontrahenci.map(k=>(
+                            <div key={k.id} style={{display:'flex',alignItems:'center',gap:8,padding:'4px 6px',background:'#0e0818',borderRadius:4}}>
+                              <span style={{flex:1,fontSize:12,color:'#c9a0ef'}}>{k.nazwa||'—'}{k.nip&&<span style={{color:'#7a5a9a',marginLeft:6}}>NIP: {k.nip}</span>}{k.miasto&&<span style={{color:'#5a3a7a',marginLeft:6}}>{k.miasto}</span>}</span>
+                              <button onClick={()=>{
+                                setFakModal({order:null,imp:null,
+                                  form:{nip:k.nip||'',nazwaFirmy:k.nazwa||'',imie:k.nazwa||'',ulica:k.ulica||'',kod:k.kod||'',miasto:k.miasto||'',
+                                    kwota:'',opis:'',vat:23,platnosc:'przelew',
+                                    sellDate:new Date().toISOString().slice(0,10),
+                                    terminPlatnosci:new Date(Date.now()+14*86400000).toISOString().slice(0,10),
+                                    firma:currentProfile?.id||'F',kontoId:'',
+                                    _manualOrderId:'manual_fv_'+Date.now()},
+                                  gusLoading:false,gusError:'',sending:false});
+                              }} style={{padding:'2px 8px',fontSize:11,background:'#1a0a2a',border:'1px solid #4a2a6a',borderRadius:4,color:'#cf9fff',cursor:'pointer'}}>
+                                🧾 Faktura
+                              </button>
+                              <button onClick={()=>{if(confirm('Usunąć '+k.nazwa+'?'))saveKontrahenci(kontrahenci.filter(x=>x.id!==k.id));}}
+                                style={{padding:'2px 6px',fontSize:11,background:'#2a0a0a',border:'1px solid #5a2a2a',borderRadius:4,color:'#cf6a6a',cursor:'pointer'}}>🗑</button>
+                            </div>
+                          ))}
+                        </div>
+                      </details>}
+
                       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10,flexWrap:'wrap',gap:8}}>
                         <span style={{color:'#cf9fff',fontWeight:700,fontSize:14}}>🧾 Wystawione faktury</span>
                         <button onClick={()=>{
@@ -8398,6 +8433,27 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
           <div style={{background:'#0d1a0d',border:'1px solid #2a5a2a',borderRadius:12,padding:20,width:'100%',maxWidth:520,maxHeight:'90vh',overflowY:'auto'}}>
             <div style={{fontWeight:700,fontSize:16,color:'#afffaf',marginBottom:14}}>🧾 Wystaw fakturę — {fakModal.order?.numerZlecenia||fakModal.imp?.klientImie||'nowe'}</div>
 
+            {/* Wybierz kontrahenta z książki */}
+            {kontrahenci.length>0&&<div style={{marginBottom:10}}>
+              <span className="lbl">📋 Wybierz kontrahenta</span>
+              <select onChange={e=>{
+                const k=kontrahenci.find(x=>String(x.id)===e.target.value);
+                if(!k) return;
+                setFakModal(m=>({...m,form:{...m.form,
+                  nip:k.nip||'',
+                  nazwaFirmy:k.nazwa||'',
+                  imie:k.nazwa||'',
+                  ulica:k.ulica||'',
+                  kod:k.kod||'',
+                  miasto:k.miasto||'',
+                }}));
+                e.target.value='';
+              }} defaultValue="" style={{width:'100%',padding:'6px 10px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#9acf9a',fontSize:13}}>
+                <option value="">— wybierz kontrahenta —</option>
+                {kontrahenci.map(k=><option key={k.id} value={k.id}>{k.nazwa||k.nip||'—'}{k.nip?' ('+k.nip+')':''}{k.miasto?' · '+k.miasto:''}</option>)}
+              </select>
+            </div>}
+
             {/* NIP + GUS */}
             <div style={{marginBottom:10}}>
               <span className="lbl">NIP nabywcy (firma)</span>
@@ -8407,6 +8463,16 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
                 <button onClick={gusLookup} disabled={fakModal.gusLoading}
                   style={{padding:'6px 12px',borderRadius:4,border:'1px solid #3a7a3a',background:'#0a2a0a',color:'#7acf7a',cursor:'pointer',fontSize:12,whiteSpace:'nowrap'}}>
                   {fakModal.gusLoading?'⏳ Szukam...':'🏛 GUS'}
+                </button>
+                <button onClick={()=>{
+                  const f=fakModal.form;
+                  const nazwa=f.nazwaFirmy||f.imie||'';
+                  if(!nazwa&&!f.nip){alert('Uzupełnij najpierw nazwę lub NIP kontrahenta');return;}
+                  upsertKontrahent({nip:f.nip||'',nazwa,ulica:f.ulica||'',kod:f.kod||'',miasto:f.miasto||''});
+                  alert('✅ Kontrahent zapisany: '+nazwa);
+                }} title="Zapisz dane nabywcy do książki kontrahentów"
+                  style={{padding:'6px 10px',borderRadius:4,border:'1px solid #3a5a7a',background:'#0a1a2a',color:'#7aaacf',cursor:'pointer',fontSize:12,whiteSpace:'nowrap'}}>
+                  💾
                 </button>
               </div>
               {fakModal.gusError&&<div style={{color:'#cf7a7a',fontSize:11,marginTop:3}}>❌ {fakModal.gusError}</div>}
