@@ -1919,10 +1919,28 @@ function App() {
         ilosc: parseInt(p.ilosc)||1,
       }));
       if(poz.length===0){alert('❌ Brak pozycji w zapytaniu '+n);return;}
-      setForm(f=>({...f,pozycje:poz}));
-      setKalNumerForForm(n);
       setKalInputNumer('');
-      alert('✅ Pobrano '+poz.length+' poz. z kalkulatora '+n);
+      // Otwórz modal importu z danymi z kalkulatora — jak przy Allegro
+      const fakeImp={
+        allegroOrderId:'',kontoId:'favo5',
+        klientImie:'',klientLogin:'',klientMiasto:'',klientUlica:'',klientKod:'',telefon:'',
+        offerNames:d.pozycje?.map(p=>p.kolorProfilu?'Moskitiera '+p.kolorProfilu:'Moskitiera').join(', ')||'Moskitiera',
+        boughtAt:new Date().toISOString().slice(0,10),
+        totalAmount:d.totalCost||0,
+        fulfillmentStatus:'NEW',
+        buyerMsg:'',
+      };
+      setWiadomosc('');
+      setImportModal({
+        imp:fakeImp,
+        mode:'parse',
+        kalNum:n,
+        kalLoading:false,
+        kalError:'',
+        kalData:{...d,orderNumber:n,pozycje:d.pozycje||[]},
+        pozycje:poz,
+      });
+      setKalNumerForForm(n);
     }catch(e){
       alert('❌ Błąd: '+e.message);
     }finally{
