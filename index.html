@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260513.1</title>
+<title>MosquitoApp v20260513.2</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1920,9 +1920,13 @@ function App() {
       }));
       if(poz.length===0){alert('❌ Brak pozycji w zapytaniu '+n);return;}
       setKalInputNumer('');
-      // Otwórz modal importu z danymi z kalkulatora — jak przy Allegro
+      // Ustaw firmę z kalkulatora (brand → firma)
+      const BRAND_FIRMA={favo5:'F',favo:'F',arlis:'A',arlis_pl:'A',everis:'E',everis_pl:'E',staroleska:'F',albama:'F'};
+      const firma=BRAND_FIRMA[d.brand||d.brandKey||'']||form.firma||'F';
+      setForm(f=>({...f,firma,pozycje:poz}));
+      // Otwórz modal importu z danymi z kalkulatora
       const fakeImp={
-        allegroOrderId:'',kontoId:'favo5',
+        allegroOrderId:'',kontoId:d.brand||'favo5',
         klientImie:'',klientLogin:'',klientMiasto:'',klientUlica:'',klientKod:'',telefon:'',
         offerNames:d.pozycje?.map(p=>p.kolorProfilu?'Moskitiera '+p.kolorProfilu:'Moskitiera').join(', ')||'Moskitiera',
         boughtAt:new Date().toISOString().slice(0,10),
@@ -1931,6 +1935,7 @@ function App() {
         buyerMsg:'',
       };
       setWiadomosc('');
+      setKalNumerForForm(n);
       setImportModal({
         imp:fakeImp,
         mode:'parse',
@@ -1940,7 +1945,6 @@ function App() {
         kalData:{...d,orderNumber:n,pozycje:d.pozycje||[]},
         pozycje:poz,
       });
-      setKalNumerForForm(n);
     }catch(e){
       alert('❌ Błąd: '+e.message);
     }finally{
@@ -1975,8 +1979,8 @@ function App() {
         ?pozycje.map(p=>forceDrzwi?{...pustaPozDrzwi(),...p,isDrzwi:true}:p)
         :[forceDrzwi?pustaPozDrzwi():pustaPoz()]);
     setForm({
-      data:imp.data,
-      firma:imp.firma,
+      data:imp.data||new Date().toISOString().slice(0,10),
+      firma:imp.firma||form.firma||'F',
       klientImie:imp.klientImie,
       klientUlica:imp.klientUlica,
       klientKod:imp.klientKod,
