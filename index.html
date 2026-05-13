@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260513.8</title>
+<title>MosquitoApp v20260513.10</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1981,6 +1981,9 @@ function App() {
   // Mapowanie nazw RAL z kalkulatora do krótkich nazw w MosquitoApp
   function mapKolorProfilu(raw){
     if(!raw) return "Antracyt";
+    // Bezpośrednie dopasowanie (kalkulator wysyła dokładne nazwy)
+    const DIRECT={"Biały":"Biały","Czarny":"Czarny","Antracyt":"Antracyt","Brąz":"Brąz","Złoty Dąb":"Złoty Dąb","Złoty dąb":"Złoty Dąb","Winchester":"Winchester","Orzech":"Orzech","Ciemny Dąb":"Ciemny Dąb","Ciemny dąb":"Ciemny Dąb","Mahoń":"Mahoń","Turner Oak":"Turner Oak","Turner oak":"Turner Oak"};
+    if(DIRECT[raw]) return DIRECT[raw];
     const r=raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
     // Kolejność ważna — bardziej specyficzne przed ogólnymi
     if(r.includes("turner")||r.includes("woodeck")) return "Turner Oak";
@@ -2095,9 +2098,9 @@ function App() {
     };
     const poz=(kalData&&kalData.pozycje&&kalData.pozycje.length>0)
       ?kalData.pozycje.map(p=>({
-          ...(forceDrzwi?pustaPozDrzwi():{szerokosc:mm2cm(p.szerokosc),wysokosc:mm2cm(p.wysokosc),glebokosc:p.felc?mm2cm(p.felc):String(DOMYSLNA_GLEBOKOS)}),
-          szerokosc:mm2cm(p.szerokosc),
-          wysokosc:mm2cm(p.wysokosc),
+          ...(forceDrzwi?pustaPozDrzwi():{szerokosc:mm2cm(Math.min(p.szerokosc,p.wysokosc)),wysokosc:mm2cm(Math.max(p.szerokosc,p.wysokosc)),glebokosc:p.felc?mm2cm(p.felc):String(DOMYSLNA_GLEBOKOS)}),
+          szerokosc:mm2cm(Math.min(p.szerokosc,p.wysokosc)),
+          wysokosc:mm2cm(Math.max(p.szerokosc,p.wysokosc)),
           glebokosc:forceDrzwi?null:(p.felc?mm2cm(p.felc):String(DOMYSLNA_GLEBOKOS)),
           kolorRamki:mapKolorProfilu(p.kolorProfilu),
           kolorSiatki:mapKolorSiatki(p.kolorSiatki),
