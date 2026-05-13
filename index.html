@@ -2177,14 +2177,24 @@ function App() {
     }catch(e){ /* silent */ }
   }
 
-  function prepareMailPreview(imp){
+  async function fetchMailThread(allegroOrderId){
+    if(!allegroOrderId) return null;
+    try{
+      const r=await fetch(AUTORESPONDER_URL+'/email/thread/'+encodeURIComponent(allegroOrderId),{headers:{'x-api-key':AUTORESPONDER_KEY}});
+      const d=await r.json();
+      return (d.ok && d.messageId) ? d.messageId : null;
+    }catch(e){ return null; }
+  }
+
+  async function prepareMailPreview(imp){
     const order=imp._linkedOrder||orders.find(o=>o.allegroOrderId===imp.allegroOrderId);
     if(!order){alert('❌ Najpierw zaimportuj zamówienie do zleceń (➕ Zlecenie)');return;}
     const emailCfg=JSON.parse(localStorage.getItem('email_produkcji_config')||'{}');
     const to=emailCfg.emailProdukcji||'biuro@superis.pl';
     const subject=`${order.numerZlecenia||''} ${order.klientImie||imp.klientImie||''} ${order.klientMiasto||imp.klientMiasto||''}`.trim();
     const sh=allegroShipments[imp.allegroOrderId];
-    setMailPreview({imp, order, to, subject, hasEtykieta:!!sh});
+    const threadMessageId=await fetchMailThread(imp.allegroOrderId);
+    setMailPreview({imp, order, to, subject, hasEtykieta:!!sh, threadMessageId});
     loadRecentEmails();
   }
 
@@ -2267,7 +2277,7 @@ function App() {
       const r=await fetch(AUTORESPONDER_URL+'/email/send',{
         method:'POST',
         headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},
-        body:JSON.stringify({to,subject,content,attachments})
+        body:JSON.stringify({to,subject,content,attachments,allegroOrderId:imp.allegroOrderId||'',inReplyTo:mailPreview.threadMessageId||undefined})
       });
       const d=await r.json();
       console.log('[MAIL] worker response:',d);
@@ -4706,7 +4716,7 @@ function App() {
                       const to=emailCfg.emailProdukcji||'biuro@superis.pl';
                       const allegroImp2=allegroImportResults.find(i=>i.allegroOrderId===allegroOrderIdForForm);
                       const subject=`${lastSavedOrder.numerZlecenia||''} ${lastSavedOrder.klientImie||allegroImp2?.klientImie||''} ${lastSavedOrder.klientMiasto||allegroImp2?.klientMiasto||''}`.trim();
-                      setMailPreview({imp:{...lastSavedOrder,allegroOrderId:allegroOrderIdForForm},order:lastSavedOrder,to,subject,hasEtykieta:false});
+                      setMailPreview({imp:{...lastSavedOrder,allegroOrderId:allegroOrderIdForForm},order:lastSavedOrder,to,subject,hasEtykieta:false});fetchMailThread(allegroOrderIdForForm).then(tid=>{if(tid)setMailPreview(p=>p?({...p,threadMessageId:tid}):p);});
                       loadRecentEmails();
                     }}
                     style={{flex:1,padding:'9px 8px',fontSize:13,fontWeight:700,borderRadius:6,cursor:'pointer',
@@ -4953,7 +4963,7 @@ function App() {
                         if(!to){alert('Brak adresu email produkcji.\n\nUstaw go w: Admin → Ustawienia → "Email produkcji" → Zapisz w chmurze.\n\nPo zapisaniu na komputerze telefon pobierze ustawienia automatycznie.');return;}
                         const order=orders.find(o=>o.allegroOrderId===imp.allegroOrderId)||imp;
                         const subject=`${order.numerZlecenia||imp.allegroOrderId||''} ${order.klientImie||imp.klientImie||''} ${order.klientMiasto||imp.klientMiasto||''}`.trim();
-                        setMailPreview({imp,order,to,subject,hasEtykieta:!!sh});loadRecentEmails();
+                        setMailPreview({imp,order,to,subject,hasEtykieta:!!sh});loadRecentEmails();fetchMailThread(imp.allegroOrderId).then(tid=>{if(tid)setMailPreview(p=>p?({...p,threadMessageId:tid}):p);});
                       }} title={sh?.mailWyslany?`✅ Mail wysłany ${sh.mailWyslanyAt?new Date(sh.mailWyslanyAt).toLocaleDateString('pl-PL'):''}`:'Wyślij mail na produkcję'}
                       style={{padding:'4px 8px',fontSize:12,borderRadius:5,cursor:'pointer',
                         background:sh?.mailWyslany?'#0a2a0a':'#1a1a3a',
@@ -5661,6 +5671,12 @@ function App() {
                           {em}
                         </button>
                       ))}
+                    </div>
+                  )}
+                  {mailPreview.threadMessageId&&(
+                    <div style={{marginBottom:6,padding:"4px 10px",borderRadius:4,background:"#0a1a2a",border:"1px solid #2a4a6a",fontSize:12,color:"#5a9acf",display:"flex",alignItems:"center",gap:6}}>
+                      🔗 Wyślij jako odpowiedź na poprzedni mail
+                      <span onClick={()=>setMailPreview(p=>({...p,threadMessageId:null}))} style={{cursor:"pointer",color:"#cf4a4a",fontSize:11,marginLeft:"auto"}}>✕ nowy wątek</span>
                     </div>
                   )}
                   <div style={{marginBottom:6}}><span style={{color:"#4a7a9a"}}>Temat:</span> <strong style={{color:"#cfdfaf"}}>{mailPreview.subject}</strong></div>
@@ -8873,6 +8889,7 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
                       setShipmentModal(null);
                       setMailPreview({imp,order,to,subject,hasEtykieta:true});
                       loadRecentEmails();
+                      fetchMailThread(imp.allegroOrderId).then(tid=>{if(tid)setMailPreview(p=>p?({...p,threadMessageId:tid}):p);});
                     }}
                     style={{padding:'5px 12px',borderRadius:6,border:'1px solid #3a3a7a',background:'#1a1a3a',color:'#9a9adf',cursor:'pointer',fontSize:12,fontWeight:700}}>
                     ✉️ Wyślij mail
