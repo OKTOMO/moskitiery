@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260513.5</title>
+<title>MosquitoApp v20260513.7</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -888,7 +888,7 @@ function SzablonFormBody({szablon, firmy, onUpd, onUpdPoz, onAddPoz, onDelPoz, o
         Pozycje faktury
         <span style={{fontSize:11,color:'#9a8a5a',marginLeft:8,fontWeight:400}}>Marża % — wpisz 0 aby użyć ceny bez marży</span>
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'2fr 55px 80px 70px 60px 60px auto',gap:5,marginBottom:4,padding:'0 2px'}}>
+      <div style={{display:'grid',gridTemplateColumns:'2fr 55px 80px 70px 60px 60px auto',gap:5,marginBottom:4,padding:'0 12px'}}>
         {['Nazwa','Ilość','Cena','Marża','VAT','Tryb',''].map((h,i)=>(
           <div key={i} style={{fontSize:10,color:'#9a8a5a',textAlign:'center'}}>{h}</div>
         ))}
@@ -2012,14 +2012,22 @@ function App() {
   async function pobierzKontrahentaNIP(nip, firma){
     if(!nip) return null;
     const cfg=fakturowniaConfig;
-    if(!cfg||!cfg[firma]) return null;
-    const token=cfg[firma].token||cfg.token||'';
-    const domain=cfg[firma].domain||cfg.domain||'everis75.fakturownia.pl';
+    if(!cfg) return null;
+    // Config jest płaski: {domain, token} — nie per-firma
+    const token=cfg.token||'T7CWLNn5cZ6vVx-bKFmk';
+    const domain=cfg.domain||'everis75.fakturownia.pl';
     try{
       const r=await fetch('https://'+domain+'/clients.json?api_token='+token+'&tax_no='+encodeURIComponent(nip));
       const d=await r.json();
       if(Array.isArray(d)&&d.length>0) return d[0];
-    }catch(e){}
+      // Spróbuj też po NIP bez myślników/spacji
+      const nipClean=nip.replace(/[^0-9]/g,'');
+      if(nipClean!==nip){
+        const r2=await fetch('https://'+domain+'/clients.json?api_token='+token+'&tax_no='+encodeURIComponent(nipClean));
+        const d2=await r2.json();
+        if(Array.isArray(d2)&&d2.length>0) return d2[0];
+      }
+    }catch(e){console.error('pobierzKontrahentaNIP error:',e);}
     return null;
   }
 
