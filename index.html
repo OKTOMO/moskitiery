@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260511.47</title>
+<title>MosquitoApp v20260513.1</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -998,6 +998,9 @@ function App() {
   const [mergeSelected,setMergeSelected]=useState(new Set());
   const [batchMailSelected,setBatchMailSelected]=useState([]);
   const [zamTab,setZamTab]=useState('nowe');
+  const [fakSzablony,setFakSzablony]=useState(()=>{try{return JSON.parse(localStorage.getItem('fak_szablony')||'[]');}catch{return [];}});
+  const [szablonEditId,setSzablonEditId]=useState(null); // null=lista, 'new'=nowy, id=edycja
+  const [szablonNipLoading,setSzablonNipLoading]=useState(false);
 
   const [fvAllegroStatus,setFvAllegroStatus]=useState(""); // "loading"|"ok"|"error"|""
   function saveFaktury(f){setFaktury(f);localStorage.setItem("faktury",JSON.stringify(f));}
@@ -1871,6 +1874,25 @@ function App() {
     const r=raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
     if(r.includes("szar")||r.includes("grey")||r.includes("gray")) return "Szara";
     return "Czarna";
+  }
+
+  function saveFakSzablony(list){
+    setFakSzablony(list);
+    localStorage.setItem('fak_szablony', JSON.stringify(list));
+  }
+
+  async function pobierzKontrahentaNIP(nip, firma){
+    if(!nip) return null;
+    const cfg=fakturowniaConfig;
+    if(!cfg||!cfg[firma]) return null;
+    const token=cfg[firma].token||cfg.token||'';
+    const domain=cfg[firma].domain||cfg.domain||'everis75.fakturownia.pl';
+    try{
+      const r=await fetch('https://'+domain+'/clients.json?api_token='+token+'&tax_no='+encodeURIComponent(nip));
+      const d=await r.json();
+      if(Array.isArray(d)&&d.length>0) return d[0];
+    }catch(e){}
+    return null;
   }
 
   async function pobierzZKalkulatora(numer){
@@ -4201,7 +4223,7 @@ function App() {
       </div>
 
       <div style={{display:"flex",borderBottom:"1px solid #1e2a1e",paddingLeft:16,background:"#0e1420",flexWrap:"wrap"}}>
-        {[["zamowienia","📦 Zamówienia"],["nowe","➕ Dodaj"],["al_zam","🛒 Allegro"],["baza","📋 Zlecenia"],["zapytania","📨 KAL"],["stat","📊 Stat"],["produkcja","🏭 Produkcja"],["kalk","🧮 Kalkulator"],["faktury","🧾 Faktury"],["wiadomosci","💬 Wiadomości"]].map(([id,l])=>(
+        {[["zamowienia","📦 Zamówienia"],["nowe","➕ Dodaj"],["al_zam","🛒 Allegro"],["baza","📋 Zlecenia"],["zapytania","📨 KAL"],["stat","📊 Stat"],["produkcja","🏭 Produkcja"],["kalk","🧮 Kalkulator"],["wiadomosci","💬 Wiadomości"]].map(([id,l])=>(
           <button key={id} className={`tab ${tab===id?"on":""}`} onClick={()=>setTab(id)}>{l}</button>
         ))}
         <button className={`tab ${(tab==="allegro"||tab==="ustawienia"||tab==="historia")?"on":""}`} onClick={()=>{
@@ -5154,8 +5176,11 @@ function App() {
                     🧾 Faktury ({fvCount})
                   </button>
                 );})()}
+                <button onClick={()=>{setZamTab('szablony_fak');setSzablonEditId(null);}} style={{padding:'7px 16px',fontSize:13,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',background:zamTab==='szablony_fak'?'#2a1a0a':'#0a0a0a',color:zamTab==='szablony_fak'?'#dfaf4a':'#4a3a1a',borderBottom:zamTab==='szablony_fak'?'2px solid #cf8a1a':'2px solid transparent'}}>
+                  📋 Szablony FV ({fakSzablony.length})
+                </button>
               </div>
-              {allegroImportResults.length===0&&<div style={{textAlign:'center',color:'#2a5a3a',padding:'40px 0',fontSize:14}}>Kliknij "Pobierz zamówienia" żeby załadować listę</div>}
+              {allegroImportResults.length===0&&zamTab!=='szablony_fak'&&<div style={{textAlign:'center',color:'#2a5a3a',padding:'40px 0',fontSize:14}}>Kliknij "Pobierz zamówienia" żeby załadować listę</div>}
               {mergeSelected.size>=2&&(
                 <div style={{background:'#1a2a3a',border:'1px solid #2a4a8a',borderRadius:6,padding:'8px 14px',margin:'8px 0',display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
                   <span style={{color:'#7aaacf',fontWeight:700}}>🔗 Zaznaczono {mergeSelected.size} zamówień</span>
@@ -5172,6 +5197,253 @@ function App() {
                   </span>
                 </div>
               )}
+              {zamTab==='szablony_fak'&&(()=>{
+                const FIRMY_OPTS=[['F','Favour'],['A','Arlis'],['E','Everis']];
+                const pustyPozSzablon=()=>({id:Date.now()+Math.random(),nazwa:'',jm:'szt',ilosc:1,cena:'',vatPct:23,tryb:'netto'});
+                const aktSzablon=szablonEditId==='new'
+                  ? {id:'new',nazwa:'',firma:'F',nip:'',kontrahentNazwa:'',kontrahentEmail:'',pozycje:[pustyPozSzablon()]}
+                  : fakSzablony.find(s=>s.id===szablonEditId)||null;
+
+                // ── LISTA SZABLONÓW ──
+                if(!szablonEditId) return (
+                  <div style={{padding:'12px 0'}}>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+                      <span style={{color:'#dfaf4a',fontWeight:700,fontSize:15}}>📋 Szablony faktur cyklicznych</span>
+                      <button onClick={()=>setSzablonEditId('new')}
+                        style={{padding:'7px 16px',borderRadius:6,border:'1px solid #cf8a1a',background:'#2a1a0a',color:'#dfaf4a',cursor:'pointer',fontWeight:700,fontSize:13}}>
+                        + Nowy szablon
+                      </button>
+                    </div>
+                    {fakSzablony.length===0&&<div style={{textAlign:'center',color:'#4a3a1a',padding:'40px 0',fontSize:14}}>Brak szablonów — kliknij "+ Nowy szablon"</div>}
+                    <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                      {fakSzablony.map(s=>(
+                        <div key={s.id} style={{background:'#1a1a0a',border:'1px solid #3a2a0a',borderRadius:8,padding:'10px 14px',display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontWeight:700,color:'#dfaf4a',fontSize:14}}>{s.nazwa||'(bez nazwy)'}</div>
+                            <div style={{fontSize:12,color:'#7a6a3a',marginTop:2}}>
+                              {FIRMY_OPTS.find(f=>f[0]===s.firma)?.[1]||s.firma} · {s.kontrahentNazwa||s.nip||'—'} · {s.pozycje?.length||0} poz.
+                            </div>
+                          </div>
+                          <button onClick={()=>setSzablonEditId(s.id)}
+                            style={{padding:'5px 12px',borderRadius:5,border:'1px solid #5a4a1a',background:'#2a1a0a',color:'#dfaf4a',cursor:'pointer',fontSize:12,fontWeight:700}}>
+                            ✏️ Edytuj / Wystaw
+                          </button>
+                          <button onClick={()=>{if(confirm('Usunąć szablon "'+s.nazwa+'"?'))saveFakSzablony(fakSzablony.filter(x=>x.id!==s.id));}}
+                            style={{padding:'5px 10px',borderRadius:5,border:'1px solid #5a1a1a',background:'#2a0a0a',color:'#cf6a6a',cursor:'pointer',fontSize:12}}>
+                            🗑
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+
+                // ── EDYCJA / WYSTAWIANIE SZABLONU ──
+                if(!aktSzablon) return null;
+                const isNew=szablonEditId==='new';
+                const updSzablon=fn=>{
+                  if(isNew){
+                    setSzablonEditId(prev=>prev); // keep 'new'
+                    // We'll handle via local var
+                  }
+                };
+                // Local state via ref-like pattern — use setFakSzablony carefully
+                const setPole=(pole,val)=>{
+                  if(isNew){
+                    // Mutate in place via re-render trick
+                    setSzablonEditId(id=>{
+                      // We need a proper local state — use a workaround
+                      return id;
+                    });
+                  }
+                };
+
+                return (
+                  <div style={{padding:'12px 0'}}>
+                    <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
+                      <button onClick={()=>setSzablonEditId(null)}
+                        style={{padding:'5px 12px',borderRadius:5,border:'1px solid #3a2a0a',background:'none',color:'#7a6a3a',cursor:'pointer',fontSize:13}}>
+                        ← Powrót
+                      </button>
+                      <span style={{color:'#dfaf4a',fontWeight:700,fontSize:15}}>{isNew?'Nowy szablon':aktSzablon.nazwa||'Edycja szablonu'}</span>
+                    </div>
+
+                    <div style={{display:'grid',gap:10,marginBottom:12}}>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+                        <div>
+                          <div style={{fontSize:12,color:'#7a6a3a',marginBottom:3}}>Nazwa szablonu</div>
+                          <input value={aktSzablon.nazwa||''} onChange={e=>{
+                            const v=e.target.value;
+                            if(isNew) setSzablonEditId(()=>{aktSzablon.nazwa=v;return 'new';});
+                            else saveFakSzablony(fakSzablony.map(s=>s.id===aktSzablon.id?{...s,nazwa:v}:s));
+                          }} placeholder="np. Favour — moskitiery" style={{width:'100%',padding:'6px 10px',background:'#0a0a00',border:'1px solid #3a2a0a',borderRadius:5,color:'#dfdf9a',fontSize:13,boxSizing:'border-box'}}/>
+                        </div>
+                        <div>
+                          <div style={{fontSize:12,color:'#7a6a3a',marginBottom:3}}>Firma</div>
+                          <select value={aktSzablon.firma||'F'} onChange={e=>{
+                            const v=e.target.value;
+                            if(isNew) setSzablonEditId(()=>{aktSzablon.firma=v;return 'new';});
+                            else saveFakSzablony(fakSzablony.map(s=>s.id===aktSzablon.id?{...s,firma:v}:s));
+                          }} style={{width:'100%',padding:'6px 10px',background:'#0a0a00',border:'1px solid #3a2a0a',borderRadius:5,color:'#dfdf9a',fontSize:13}}>
+                            {FIRMY_OPTS.map(([v,l])=><option key={v} value={v}>{l}</option>)}
+                          </select>
+                        </div>
+                      </div>
+                      <div style={{display:'grid',gridTemplateColumns:'1fr auto 1fr',gap:8,alignItems:'flex-end'}}>
+                        <div>
+                          <div style={{fontSize:12,color:'#7a6a3a',marginBottom:3}}>NIP kontrahenta</div>
+                          <input value={aktSzablon.nip||''} onChange={e=>{
+                            const v=e.target.value;
+                            if(isNew) setSzablonEditId(()=>{aktSzablon.nip=v;return 'new';});
+                            else saveFakSzablony(fakSzablony.map(s=>s.id===aktSzablon.id?{...s,nip:v}:s));
+                          }} placeholder="1234567890" style={{width:'100%',padding:'6px 10px',background:'#0a0a00',border:'1px solid #3a2a0a',borderRadius:5,color:'#dfdf9a',fontSize:13,boxSizing:'border-box'}}/>
+                        </div>
+                        <button onClick={async()=>{
+                          setSzablonNipLoading(true);
+                          const k=await pobierzKontrahentaNIP(aktSzablon.nip, aktSzablon.firma);
+                          setSzablonNipLoading(false);
+                          if(!k){alert('Nie znaleziono kontrahenta o NIP: '+aktSzablon.nip);return;}
+                          const upd={kontrahentNazwa:k.name||'',kontrahentEmail:k.email||''};
+                          if(isNew){Object.assign(aktSzablon,upd);setSzablonEditId(()=>'new');}
+                          else saveFakSzablony(fakSzablony.map(s=>s.id===aktSzablon.id?{...s,...upd}:s));
+                        }} disabled={szablonNipLoading||!aktSzablon.nip}
+                          style={{padding:'6px 12px',borderRadius:5,border:'1px solid #3a5a3a',background:'#0a1a0a',color:'#7acf7a',cursor:'pointer',fontSize:12,whiteSpace:'nowrap'}}>
+                          {szablonNipLoading?'⟳':'🔍 Pobierz'}
+                        </button>
+                        <div>
+                          <div style={{fontSize:12,color:'#7a6a3a',marginBottom:3}}>Nazwa kontrahenta</div>
+                          <input value={aktSzablon.kontrahentNazwa||''} onChange={e=>{
+                            const v=e.target.value;
+                            if(isNew) setSzablonEditId(()=>{aktSzablon.kontrahentNazwa=v;return 'new';});
+                            else saveFakSzablony(fakSzablony.map(s=>s.id===aktSzablon.id?{...s,kontrahentNazwa:v}:s));
+                          }} placeholder="Auto z NIP" style={{width:'100%',padding:'6px 10px',background:'#0a0a00',border:'1px solid #3a2a0a',borderRadius:5,color:'#dfdf9a',fontSize:13,boxSizing:'border-box'}}/>
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{fontSize:12,color:'#7a6a3a',marginBottom:3}}>Email do wysyłki faktury</div>
+                        <input value={aktSzablon.kontrahentEmail||''} onChange={e=>{
+                          const v=e.target.value;
+                          if(isNew) setSzablonEditId(()=>{aktSzablon.kontrahentEmail=v;return 'new';});
+                          else saveFakSzablony(fakSzablony.map(s=>s.id===aktSzablon.id?{...s,kontrahentEmail:v}:s));
+                        }} placeholder="kontrahent@firma.pl" style={{width:'100%',padding:'6px 10px',background:'#0a0a00',border:'1px solid #3a2a0a',borderRadius:5,color:'#dfdf9a',fontSize:13,boxSizing:'border-box'}}/>
+                      </div>
+                    </div>
+
+                    {/* Pozycje */}
+                    <div style={{fontSize:12,color:'#7a6a3a',marginBottom:6,fontWeight:700}}>Pozycje faktury</div>
+                    <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:8}}>
+                      {(aktSzablon.pozycje||[]).map((poz,pi)=>(
+                        <div key={poz.id} style={{background:'#0a0a00',border:'1px solid #2a2a0a',borderRadius:6,padding:'8px 10px',display:'grid',gridTemplateColumns:'2fr 60px 80px 80px 60px auto',gap:6,alignItems:'center'}}>
+                          <input value={poz.nazwa||''} onChange={e=>{
+                            const v=e.target.value;
+                            const upd=pos=>pos.map((p,i)=>i===pi?{...p,nazwa:v}:p);
+                            if(isNew){aktSzablon.pozycje=upd(aktSzablon.pozycje);setSzablonEditId(()=>'new');}
+                            else saveFakSzablony(fakSzablony.map(s=>s.id===aktSzablon.id?{...s,pozycje:upd(s.pozycje)}:s));
+                          }} placeholder="Nazwa usługi/towaru" style={{padding:'4px 8px',background:'#0f0f00',border:'1px solid #2a2a0a',borderRadius:4,color:'#dfdf9a',fontSize:12}}/>
+                          <input value={poz.ilosc||''} onChange={e=>{
+                            const v=e.target.value;
+                            const upd=pos=>pos.map((p,i)=>i===pi?{...p,ilosc:v}:p);
+                            if(isNew){aktSzablon.pozycje=upd(aktSzablon.pozycje);setSzablonEditId(()=>'new');}
+                            else saveFakSzablony(fakSzablony.map(s=>s.id===aktSzablon.id?{...s,pozycje:upd(s.pozycje)}:s));
+                          }} placeholder="Ilość" type="number" style={{padding:'4px 8px',background:'#0f0f00',border:'1px solid #2a2a0a',borderRadius:4,color:'#dfdf9a',fontSize:12}}/>
+                          <input value={poz.cena||''} onChange={e=>{
+                            const v=e.target.value;
+                            const upd=pos=>pos.map((p,i)=>i===pi?{...p,cena:v}:p);
+                            if(isNew){aktSzablon.pozycje=upd(aktSzablon.pozycje);setSzablonEditId(()=>'new');}
+                            else saveFakSzablony(fakSzablony.map(s=>s.id===aktSzablon.id?{...s,pozycje:upd(s.pozycje)}:s));
+                          }} placeholder="Cena" type="number" step="0.01" style={{padding:'4px 8px',background:'#0f0f00',border:'1px solid #2a2a0a',borderRadius:4,color:'#dfdf9a',fontSize:12}}/>
+                          <select value={poz.vatPct??23} onChange={e=>{
+                            const v=parseInt(e.target.value);
+                            const upd=pos=>pos.map((p,i)=>i===pi?{...p,vatPct:v}:p);
+                            if(isNew){aktSzablon.pozycje=upd(aktSzablon.pozycje);setSzablonEditId(()=>'new');}
+                            else saveFakSzablony(fakSzablony.map(s=>s.id===aktSzablon.id?{...s,pozycje:upd(s.pozycje)}:s));
+                          }} style={{padding:'4px 6px',background:'#0f0f00',border:'1px solid #2a2a0a',borderRadius:4,color:'#dfdf9a',fontSize:12}}>
+                            {[0,5,8,23].map(v=><option key={v} value={v}>{v}%</option>)}
+                          </select>
+                          <select value={poz.tryb||'netto'} onChange={e=>{
+                            const v=e.target.value;
+                            const upd=pos=>pos.map((p,i)=>i===pi?{...p,tryb:v}:p);
+                            if(isNew){aktSzablon.pozycje=upd(aktSzablon.pozycje);setSzablonEditId(()=>'new');}
+                            else saveFakSzablony(fakSzablony.map(s=>s.id===aktSzablon.id?{...s,pozycje:upd(s.pozycje)}:s));
+                          }} style={{padding:'4px 6px',background:'#0f0f00',border:'1px solid #2a2a0a',borderRadius:4,color:'#dfdf9a',fontSize:11}}>
+                            <option value="netto">netto</option>
+                            <option value="brutto">brutto</option>
+                          </select>
+                          <button onClick={()=>{
+                            const upd=pos=>pos.filter((_,i)=>i!==pi);
+                            if(isNew){aktSzablon.pozycje=upd(aktSzablon.pozycje);setSzablonEditId(()=>'new');}
+                            else saveFakSzablony(fakSzablony.map(s=>s.id===aktSzablon.id?{...s,pozycje:upd(s.pozycje)}:s));
+                          }} style={{padding:'3px 8px',borderRadius:4,border:'1px solid #4a1a1a',background:'#2a0a0a',color:'#cf6a6a',cursor:'pointer',fontSize:12}}>✕</button>
+                        </div>
+                      ))}
+                    </div>
+                    <button onClick={()=>{
+                      const np=pustyPozSzablon();
+                      if(isNew){aktSzablon.pozycje=[...(aktSzablon.pozycje||[]),np];setSzablonEditId(()=>'new');}
+                      else saveFakSzablony(fakSzablony.map(s=>s.id===aktSzablon.id?{...s,pozycje:[...(s.pozycje||[]),np]}:s));
+                    }} style={{padding:'5px 14px',borderRadius:5,border:'1px dashed #3a2a0a',background:'none',color:'#7a6a3a',cursor:'pointer',fontSize:12,marginBottom:12}}>
+                      + Dodaj pozycję
+                    </button>
+
+                    {/* Przyciski akcji */}
+                    <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+                      {isNew&&<button onClick={()=>{
+                        if(!aktSzablon.nazwa){alert('Podaj nazwę szablonu');return;}
+                        const nowy={...aktSzablon,id:Date.now()};
+                        saveFakSzablony([...fakSzablony,nowy]);
+                        setSzablonEditId(nowy.id);
+                        alert('✅ Szablon zapisany');
+                      }} style={{padding:'8px 18px',borderRadius:6,border:'1px solid #cf8a1a',background:'#2a1a0a',color:'#dfaf4a',cursor:'pointer',fontWeight:700,fontSize:13}}>
+                        💾 Zapisz szablon
+                      </button>}
+                      {!isNew&&<button onClick={()=>{
+                        if(!aktSzablon.nazwa){alert('Podaj nazwę szablonu');return;}
+                        // Zapisuje już na bieżąco — info tylko
+                        alert('✅ Szablon zapisany');
+                      }} style={{padding:'8px 18px',borderRadius:6,border:'1px solid #cf8a1a',background:'#2a1a0a',color:'#dfaf4a',cursor:'pointer',fontWeight:700,fontSize:13}}>
+                        💾 Zapisz zmiany
+                      </button>}
+                      <button onClick={()=>{
+                        // Stwórz fakturę — otwórz modal fakturowni z danymi szablonu
+                        const dzis=new Date().toISOString().slice(0,10);
+                        const termin=new Date(Date.now()+14*86400000).toISOString().slice(0,10);
+                        const DZIALY={F:'1978585',A:'1978589',E:'1978591'};
+                        setFakModal({
+                          imp:{allegroOrderId:'szablon_'+aktSzablon.id,kontoId:'favo5'},
+                          order:null,
+                          form:{
+                            data:dzis,
+                            dataSprzedazy:dzis,
+                            terminPlatnosci:termin,
+                            nabywcaNazwa:aktSzablon.kontrahentNazwa||'',
+                            nabywcaNip:aktSzablon.nip||'',
+                            nabywcaEmail:aktSzablon.kontrahentEmail||'',
+                            nabywcaUlica:'',nabywcaKod:'',nabywcaMiasto:'',
+                            firma:aktSzablon.firma||'F',
+                            dzial:DZIALY[aktSzablon.firma||'F']||'1978585',
+                            pozycje:(aktSzablon.pozycje||[]).map(p=>({
+                              nazwa:p.nazwa||'',
+                              ilosc:parseFloat(p.ilosc)||1,
+                              cena:parseFloat(p.cena)||0,
+                              vatPct:p.vatPct??23,
+                              jm:p.jm||'szt',
+                              trybCen:p.tryb||'netto',
+                            })),
+                            typ:'faktura',
+                            trybCen:'netto',
+                          },
+                          _fromSzablon:aktSzablon.id,
+                        });
+                      }} disabled={isNew}
+                        style={{padding:'8px 18px',borderRadius:6,border:'1px solid #3a7a3a',background:isNew?'#0a0a0a':'#0a1a0a',color:isNew?'#2a4a2a':'#7acf7a',cursor:isNew?'not-allowed':'pointer',fontWeight:700,fontSize:13}}>
+                        🧾 Stwórz fakturę
+                      </button>
+                    </div>
+                    {isNew&&<div style={{fontSize:11,color:'#5a4a2a',marginTop:6}}>Najpierw zapisz szablon, potem możesz wystawić fakturę</div>}
+                  </div>
+                );
+              })()}
+
               {(()=>{
                 // ── Zakładka Faktury w module zamówień ──
                 if(zamTab==='faktury_zam'){
