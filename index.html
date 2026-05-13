@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260511.43</title>
+<title>MosquitoApp v20260511.44</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260511.43';
+  window.__MOSK_VERSION='20260511.44';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -3159,8 +3159,11 @@ function App() {
             // Zagraniczne: pełny adres w street (Allegro nie przyjmuje buildingNumber)
             let parsedStreet=rawStreet, parsedBuilding=undefined;
             if(!isIntl){
-              const m2=rawStreet.match(/^([a-zA-ZąćęłńóśźżĄĆĘŁŃӓŚŹŻ\s\.\-]+?)(\d+.*)$/);
-              if(m2&&m2[1]&&m2[2]){parsedStreet=m2[1].trim();parsedBuilding=m2[2].trim();}
+              // Rozdziel ulice i numer: "Zaklądowa 47" lub "Istebna1241"
+              const m1=rawStreet.match(/^(.+?)\s+(\d+[a-zA-Z]?(?:\/\d+[a-zA-Z]?)?)$/);
+              const m2=!m1&&rawStreet.match(/^([a-zA-ZąćęłńóśźżĄĆĘŁŃŚŹŻ\s\.\-]+?)(\d+.*)$/);
+              const mx=m1||m2;
+              if(mx&&mx[1]&&mx[2]){parsedStreet=mx[1].trim();parsedBuilding=mx[2].trim();}
             }
             return {
             name:imp.klientImie||"",
