@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260511.40</title>
+<title>MosquitoApp v20260511.42</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260511.40';
+  window.__MOSK_VERSION='20260511.42';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -3069,12 +3069,21 @@ function App() {
     const maxWeight=isInternational?15:25;
     // Limity wymiarów — z API jeśli dostępne, fallback do hardcoded
     // UWAGA: odejmij 1 od limitów API żeby uniknąć błędu DIMENSIONS_VALIDATION_ERROR na granicy
-    const isIntlAutomat = isInternational && (isDHLAutomat || (service?.name||'').toLowerCase().includes('automat'));
-    // Fallback wymiarów gdy API nie zwraca limitów — używaj bezpiecznych wartości poniżej typowych limitów
-    // DHL Automat zagraniczny: limit 50x35x31 → używaj 48x33x29
-    const _maxL=service?.maxLength?(service.maxLength-1):(isIntlAutomat?48:64);
-    const _maxW=service?.maxWidth?(service.maxWidth-1):(isIntlAutomat?33:38);
-    const _maxH=service?.maxHeight?(service.maxHeight-1):(isIntlAutomat?29:isDHLAutomat?30:41);
+    // isIntlAutomat: każdy automat/paczkomat dla zamówień zagranicznych
+    const _svcNameLow=(service?.name||'').toLowerCase();
+    const isIntlAutomat = isInternational && (
+      _svcNameLow.includes('automat') ||
+      _svcNameLow.includes('paczkomat') ||
+      _svcNameLow.includes('parcel locker') ||
+      _svcNameLow.includes('pick-up point') ||
+      _svcNameLow.includes('pickup point') ||
+      isDHLAutomat
+    );
+    // Zawsze używaj limitów z API jeśli dostępne (service.maxLength itp.)
+    // Fallback: automaty zagraniczne mają limit ~57x43x33, krajowe większe
+    const _maxL=service?.maxLength?(service.maxLength-1):(isIntlAutomat?56:64);
+    const _maxW=service?.maxWidth?(service.maxWidth-1):(isIntlAutomat?42:38);
+    const _maxH=service?.maxHeight?(service.maxHeight-1):(isIntlAutomat?32:isDHLAutomat?30:41);
     const SIZES={"A":{length:_maxL,width:_maxW,height:Math.min(8,_maxH),weight:5},"B":{length:_maxL,width:_maxW,height:Math.min(19,_maxH),weight:5},"C":{length:_maxL,width:_maxW,height:_maxH,weight:5}};
     const activeSizes=SIZES;
     // Auto-kalkulator paczek
@@ -3143,9 +3152,24 @@ function App() {
             phone:"+48605361191",
             email:firma.email
           },
-          receiver:{
+          receiver:(()=>{
+            // Parsuj ulicę i numer budynku — InPost i inne usługi wymagają osobnych pól
+            const rawStreet=(imp.klientUlica||"").trim();
+            // Wzorzec: "ul. Nazwa 12/3" lub "Nazwa12" (sklejone) lub "Nazwa 12A"
+            // Rozdziel sklejone: "Istebna1241" -> ulica:"Istebna", nr:"1241"
+            const splitStreet=(s)=>{
+              if(!s) return {street:'',building:''};
+              // Spróbuj split po ostatnim numerze z opcjonalną literą i łamaniem
+              const m=s.match(/^(.*?)\s*(\d+[a-zA-Z]?(?:\/\d+[a-zA-Z]?)?)$/);              if(m&&m[1]&&m[2]) return {street:m[1].trim(),building:m[2].trim()};
+              // Sklejone bez spacji: "Istebna1241"
+              const m2=s.match(/^([a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ\s\.\-]+?)(\d+.*)$/);              if(m2&&m2[1]&&m2[2]) return {street:m2[1].trim(),building:m2[2].trim()};
+              return {street:s,building:''};
+            };
+            const {street:parsedStreet,building:parsedBuilding}=splitStreet(rawStreet);
+            return {
             name:imp.klientImie||"",
-            street:imp.klientUlica||"",
+            street:parsedStreet||rawStreet,
+            buildingNumber:parsedBuilding||undefined,
             postalCode:imp.klientKod||"",
             city:imp.klientMiasto||"",
             countryCode:(()=>{
@@ -3168,7 +3192,7 @@ function App() {
             phone:imp.telefon||"",
             email:imp.klientEmail||"",
             ...(isPickupPoint && imp.pickupPointId ? {point:imp.pickupPointId} : {})
-          },
+          };})(),
           packages:finalPackages,
           ...(isPickupPoint && isInPost && !isInternational?{additionalServices:["sendingAtPoint"]}:{}),
           ...(()=>{
@@ -6103,6 +6127,15 @@ function App() {
                       style={{width:"100%",background:"#0e1a0e",border:"1px solid #2a4a2a",borderRadius:5,color:"#afffaf",padding:"6px 10px",fontSize:14}}>
                       {shipmentModal.services.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
+                    {(()=>{
+                      const _svc=shipmentModal.services.find(s=>s.id===shipmentServiceId);
+                      const _nm=(_svc?.name||'').toLowerCase();
+                      const _isIntlAutomat=(shipmentModal.imp?.klientKraj&&shipmentModal.imp.klientKraj!=='PL')&&(_nm.includes('automat')||_nm.includes('paczk'));
+                      if(!_isIntlAutomat) return null;
+                      return <div style={{marginTop:6,padding:'6px 10px',background:'#2a1a0a',border:'1px solid #7a4a0a',borderRadius:5,color:'#dfaf7a',fontSize:12}}>
+                        ⚠️ Automat zagraniczny: limit 57×43×33 cm. Dla większych paczek wybierz <strong>kuriera</strong>.
+                      </div>;
+                    })()}
                   </div>
                 )}
                 <div style={{marginBottom:14}}>
