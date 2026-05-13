@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260513.2</title>
+<title>MosquitoApp v20260513.5</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -764,7 +764,7 @@ function ProduktSlownikPanel({produktSlownik,saveProduktSlownik}){
   return(
     <div style={{maxWidth:700}}>
       <div style={{fontSize:14,color:"#4a8a4a",letterSpacing:".15em",textTransform:"uppercase",marginBottom:14}}>📦 Słownik produktów — etykiety</div>
-      <div style={{fontSize:12,color:"#3a6a3a",marginBottom:16}}>Wpisz fragment nazwy aukcji i skrót na etykiecie. Wielkość liter nie ma znaczenia. Wpisy mają pierwszeństwo przed wbudowanym słownikiem.</div>
+      <div style={{fontSize:12,color:"#5a9a5a",marginBottom:16}}>Wpisz fragment nazwy aukcji i skrót na etykiecie. Wielkość liter nie ma znaczenia. Wpisy mają pierwszeństwo przed wbudowanym słownikiem.</div>
       <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
         <input value={nowaFraza} onChange={e=>setNowaFraza(e.target.value)}
           placeholder="Fragment nazwy aukcji (np. pomada broda boxer)"
@@ -785,13 +785,13 @@ function ProduktSlownikPanel({produktSlownik,saveProduktSlownik}){
         {editIdx!==null&&<button onClick={()=>{setEditIdx(null);setNowaFraza("");setNowySkrot("");}}
           style={{padding:"7px 12px",borderRadius:6,border:"1px solid #3a3a3a",background:"#1a1a1a",color:"#7a7a7a",cursor:"pointer",fontSize:13}}>Anuluj</button>}
       </div>
-      {produktSlownik.length===0&&<div style={{color:"#3a5a3a",fontSize:13,padding:"20px 0"}}>Brak wpisów — dodaj pierwszy produkt powyżej.</div>}
+      {produktSlownik.length===0&&<div style={{color:"#5a8a5a",fontSize:13,padding:"20px 0"}}>Brak wpisów — dodaj pierwszy produkt powyżej.</div>}
       <div style={{display:"flex",flexDirection:"column",gap:4}}>
         {produktSlownik.map((p,i)=>(
           <div key={p.id||i} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",
             background:i%2===0?"#0a140a":"#0c180c",borderRadius:6,border:"1px solid #1a2a1a"}}>
             <div style={{flex:2,fontSize:13,color:"#7ab87a"}}>{p.fraza}</div>
-            <div style={{fontSize:13,color:"#3a6a3a"}}>→</div>
+            <div style={{fontSize:13,color:"#5a9a5a"}}>→</div>
             <div style={{flex:1,fontSize:13,fontWeight:700,color:"#afffaf"}}>{p.skrot}</div>
             <button onClick={()=>{setEditIdx(i);setNowaFraza(p.fraza);setNowySkrot(p.skrot);}}
               style={{padding:"3px 10px",borderRadius:4,border:"1px solid #2a5a2a",background:"#0f1f0f",color:"#5a9a5a",cursor:"pointer",fontSize:12}}>✏️</button>
@@ -800,9 +800,137 @@ function ProduktSlownikPanel({produktSlownik,saveProduktSlownik}){
           </div>
         ))}
       </div>
-      <div style={{marginTop:12,fontSize:11,color:"#2a4a2a"}}>{produktSlownik.length} wpisów</div>
+      <div style={{marginTop:12,fontSize:11,color:"#4a7a4a"}}>{produktSlownik.length} wpisów</div>
     </div>
   );
+}
+
+// ── SZABLON FORM COMPONENT ──
+function PozycjaRow({poz, pi, onUpd, onDel}) {
+  return (
+    <div style={{background:'#141400',border:'1px solid #3a3a10',borderRadius:6,padding:'8px 10px',display:'grid',gridTemplateColumns:'2fr 55px 80px 70px 60px 60px auto',gap:5,alignItems:'center'}}>
+      <input value={poz.nazwa||''} onChange={e=>onUpd(pi,'nazwa',e.target.value)} placeholder="Nazwa usługi/towaru"
+        style={{padding:'4px 8px',background:'#181800',border:'1px solid #3a3a10',borderRadius:4,color:'#f5f0c0',fontSize:12}}/>
+      <input value={poz.ilosc||''} onChange={e=>onUpd(pi,'ilosc',e.target.value)} placeholder="Ilość" type="number"
+        style={{padding:'4px 6px',background:'#181800',border:'1px solid #3a3a10',borderRadius:4,color:'#f5f0c0',fontSize:12}}/>
+      <input value={poz.cena||''} onChange={e=>onUpd(pi,'cena',e.target.value)} placeholder="Cena" type="number" step="0.01"
+        style={{padding:'4px 6px',background:'#181800',border:'1px solid #3a3a10',borderRadius:4,color:'#f5f0c0',fontSize:12}}/>
+      <div style={{position:'relative'}}>
+        <input value={poz.marza||0} onChange={e=>onUpd(pi,'marza',parseFloat(e.target.value)||0)} type="number" min="0" step="1" placeholder="0"
+          style={{padding:'4px 6px',paddingRight:18,background:'#0f0f00',border:'1px solid #2a3a0a',borderRadius:4,color:'#cfff9a',fontSize:12,width:'100%'}}/>
+        <span style={{position:'absolute',right:5,top:'50%',transform:'translateY(-50%)',fontSize:10,color:'#5a7a3a',pointerEvents:'none'}}>%</span>
+      </div>
+      <select value={poz.vatPct??23} onChange={e=>onUpd(pi,'vatPct',parseInt(e.target.value))}
+        style={{padding:'4px 5px',background:'#181800',border:'1px solid #3a3a10',borderRadius:4,color:'#f5f0c0',fontSize:11}}>
+        {[0,5,8,23].map(v=><option key={v} value={v}>{v}%</option>)}
+      </select>
+      <select value={poz.tryb||'netto'} onChange={e=>onUpd(pi,'tryb',e.target.value)}
+        style={{padding:'4px 5px',background:'#181800',border:'1px solid #3a3a10',borderRadius:4,color:'#f5f0c0',fontSize:11}}>
+        <option value="netto">netto</option>
+        <option value="brutto">brutto</option>
+      </select>
+      <button onClick={()=>onDel(pi)} style={{padding:'3px 8px',borderRadius:4,border:'1px solid #4a1a1a',background:'#2a0a0a',color:'#ef9a9a',cursor:'pointer',fontSize:12}}>✕</button>
+    </div>
+  );
+}
+
+function SzablonFormBody({szablon, firmy, onUpd, onUpdPoz, onAddPoz, onDelPoz, onBack, isNew, onSave, szablonNipLoading, setSzablonNipLoading, pobierzNIP, onNIPResult, onStworzFakture}) {
+  return (
+    <div style={{padding:'12px 0'}}>
+      <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
+        <button onClick={onBack} style={{padding:'5px 12px',borderRadius:5,border:'1px solid #3a2a0a',background:'none',color:'#b09a6a',cursor:'pointer',fontSize:13}}>← Powrót</button>
+        <span style={{color:'#f0c060',fontWeight:700,fontSize:15}}>{isNew?'Nowy szablon':szablon.nazwa||'Edycja szablonu'}</span>
+      </div>
+      <div style={{display:'grid',gap:10,marginBottom:12}}>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+          <div>
+            <div style={{fontSize:12,color:'#b09a6a',marginBottom:3}}>Nazwa szablonu</div>
+            <input value={szablon.nazwa||''} onChange={e=>onUpd('nazwa',e.target.value)} placeholder="np. Favour — moskitiery"
+              style={{width:'100%',padding:'6px 10px',background:'#141400',border:'1px solid #4a3a10',borderRadius:5,color:'#f5f0c0',fontSize:13,boxSizing:'border-box'}}/>
+          </div>
+          <div>
+            <div style={{fontSize:12,color:'#b09a6a',marginBottom:3}}>Firma</div>
+            <select value={szablon.firma||'F'} onChange={e=>onUpd('firma',e.target.value)}
+              style={{width:'100%',padding:'6px 10px',background:'#141400',border:'1px solid #4a3a10',borderRadius:5,color:'#f5f0c0',fontSize:13}}>
+              {firmy.map(([v,l])=><option key={v} value={v}>{l}</option>)}
+            </select>
+          </div>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr auto 1fr',gap:8,alignItems:'flex-end'}}>
+          <div>
+            <div style={{fontSize:12,color:'#b09a6a',marginBottom:3}}>NIP kontrahenta</div>
+            <input value={szablon.nip||''} onChange={e=>onUpd('nip',e.target.value)} placeholder="1234567890"
+              style={{width:'100%',padding:'6px 10px',background:'#141400',border:'1px solid #4a3a10',borderRadius:5,color:'#f5f0c0',fontSize:13,boxSizing:'border-box'}}/>
+          </div>
+          <button onClick={async()=>{
+            setSzablonNipLoading(true);
+            const k=await pobierzNIP(szablon.nip, szablon.firma);
+            setSzablonNipLoading(false);
+            if(!k){alert('Nie znaleziono kontrahenta o NIP: '+szablon.nip);return;}
+            onNIPResult({kontrahentNazwa:k.name||'',kontrahentEmail:k.email||''});
+          }} disabled={szablonNipLoading||!szablon.nip}
+            style={{padding:'6px 12px',borderRadius:5,border:'1px solid #3a5a3a',background:'#0a1a0a',color:'#9aef9a',cursor:'pointer',fontSize:12,whiteSpace:'nowrap'}}>
+            {szablonNipLoading?'⟳':'🔍 Pobierz'}
+          </button>
+          <div>
+            <div style={{fontSize:12,color:'#b09a6a',marginBottom:3}}>Nazwa kontrahenta</div>
+            <input value={szablon.kontrahentNazwa||''} onChange={e=>onUpd('kontrahentNazwa',e.target.value)} placeholder="Auto z NIP"
+              style={{width:'100%',padding:'6px 10px',background:'#141400',border:'1px solid #4a3a10',borderRadius:5,color:'#f5f0c0',fontSize:13,boxSizing:'border-box'}}/>
+          </div>
+        </div>
+        <div>
+          <div style={{fontSize:12,color:'#b09a6a',marginBottom:3}}>Email do wysyłki faktury</div>
+          <input value={szablon.kontrahentEmail||''} onChange={e=>onUpd('kontrahentEmail',e.target.value)} placeholder="kontrahent@firma.pl"
+            style={{width:'100%',padding:'6px 10px',background:'#141400',border:'1px solid #4a3a10',borderRadius:5,color:'#f5f0c0',fontSize:13,boxSizing:'border-box'}}/>
+        </div>
+      </div>
+      <div style={{fontSize:12,color:'#b09a6a',marginBottom:4,fontWeight:700}}>
+        Pozycje faktury
+        <span style={{fontSize:11,color:'#9a8a5a',marginLeft:8,fontWeight:400}}>Marża % — wpisz 0 aby użyć ceny bez marży</span>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'2fr 55px 80px 70px 60px 60px auto',gap:5,marginBottom:4,padding:'0 2px'}}>
+        {['Nazwa','Ilość','Cena','Marża','VAT','Tryb',''].map((h,i)=>(
+          <div key={i} style={{fontSize:10,color:'#9a8a5a',textAlign:'center'}}>{h}</div>
+        ))}
+      </div>
+      <div style={{display:'flex',flexDirection:'column',gap:5,marginBottom:8}}>
+        {(szablon.pozycje||[]).map((poz,pi)=>(
+          <PozycjaRow key={poz.id||pi} poz={poz} pi={pi} onUpd={onUpdPoz} onDel={onDelPoz}/>
+        ))}
+      </div>
+      <button onClick={onAddPoz} style={{padding:'5px 14px',borderRadius:5,border:'1px dashed #3a2a0a',background:'none',color:'#b09a6a',cursor:'pointer',fontSize:12,marginBottom:12}}>
+        + Dodaj pozycję
+      </button>
+      <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+        <button onClick={onSave} style={{padding:'8px 18px',borderRadius:6,border:'1px solid #cf8a1a',background:'#2a1a0a',color:'#f0c060',cursor:'pointer',fontWeight:700,fontSize:13}}>
+          💾 {isNew?'Zapisz szablon':'Zapisz zmiany'}
+        </button>
+        {!isNew&&<button onClick={onStworzFakture}
+          style={{padding:'8px 18px',borderRadius:6,border:'1px solid #3a7a3a',background:'#0a1a0a',color:'#9aef9a',cursor:'pointer',fontWeight:700,fontSize:13}}>
+          🧾 Stwórz fakturę
+        </button>}
+      </div>
+    </div>
+  );
+}
+
+function SzablonForm(props) {
+  return <SzablonFormBody {...props}/>;
+}
+
+function NowyRzablon({firmy, pustyPoz, onSave, onBack, szablonNipLoading, setSzablonNipLoading, pobierzNIP}) {
+  const [s, setS] = React.useState({id:'new',nazwa:'',firma:'F',nip:'',kontrahentNazwa:'',kontrahentEmail:'',pozycje:[pustyPoz()]});
+  const upd=(pole,val)=>setS(prev=>({...prev,[pole]:val}));
+  const updPoz=(pi,pole,val)=>setS(prev=>({...prev,pozycje:prev.pozycje.map((p,i)=>i===pi?{...p,[pole]:val}:p)}));
+  const addPoz=()=>setS(prev=>({...prev,pozycje:[...prev.pozycje,pustyPoz()]}));
+  const delPoz=(pi)=>setS(prev=>({...prev,pozycje:prev.pozycje.filter((_,i)=>i!==pi)}));
+  return <SzablonFormBody szablon={s} firmy={firmy} onUpd={upd} onUpdPoz={updPoz} onAddPoz={addPoz} onDelPoz={delPoz}
+    onBack={onBack} isNew={true}
+    onSave={()=>{if(!s.nazwa){alert('Podaj nazwę szablonu');return;}onSave(s);}}
+    szablonNipLoading={szablonNipLoading} setSzablonNipLoading={setSzablonNipLoading} pobierzNIP={pobierzNIP}
+    onNIPResult={(upd2)=>setS(prev=>({...prev,...upd2}))}
+    onStworzFakture={()=>{}}
+  />;
 }
 
 function App() {
@@ -4236,7 +4364,7 @@ function App() {
                     {p.nazwa}
                   </div>
                 ))}
-                <div onClick={()=>{localStorage.removeItem('active_profile');setActiveProfile("");document.getElementById('profile-menu').style.display='none';}} style={{padding:"8px 14px",cursor:"pointer",color:"#3a5a3a",fontSize:14}}>
+                <div onClick={()=>{localStorage.removeItem('active_profile');setActiveProfile("");document.getElementById('profile-menu').style.display='none';}} style={{padding:"8px 14px",cursor:"pointer",color:"#5a8a5a",fontSize:14}}>
                   ← Ekran wyboru
                 </div>
               </div>
@@ -4417,7 +4545,7 @@ function App() {
                           <div style={{fontSize:11,color:'#3a6a4a',marginBottom:3}}>Oczekiwany wynik (JSON pozycji):</div>
                           <textarea value={rule.przyklad_wynik} onChange={e=>updRule(rule.id,'przyklad_wynik',e.target.value)}
                             placeholder={'{"isDrzwi":true,"szerokosc":81,"wysokosc":223,"kolorRamki":"Biały","kolorSiatki":"Czarna","ilosc":1}'}
-                            rows={3} style={{width:'100%',padding:'5px 8px',background:'#0a0e0a',border:'1px solid #1a3a1a',borderRadius:4,color:'#7acf7a',fontSize:12,fontFamily:'monospace',resize:'vertical'}}/>
+                            rows={3} style={{width:'100%',padding:'5px 8px',background:'#0a0e0a',border:'1px solid #1a3a1a',borderRadius:4,color:'#9aef9a',fontSize:12,fontFamily:'monospace',resize:'vertical'}}/>
                         </div>
                       </div>
                     )}
@@ -4567,9 +4695,9 @@ function App() {
                 <span className="lbl">Pozycje ({form.pozycje.length})</span>
                 <div style={{display:"flex",gap:6}}>
                   <button className="btn-sm" onClick={()=>setForm(f=>({...f,pozycje:[...f.pozycje,pustaPoz()]}))}>+ Okno</button>
-                  <button className="btn-sm" style={{background:"#1e2a3e",color:"#90b8df",borderColor:"#2a4a6a"}} onClick={()=>setForm(f=>({...f,pozycje:[...f.pozycje,pustaPozDrzwi()]}))}>+ Drzwi</button>
+                  <button className="btn-sm" style={{background:"#1e2a3e",color:"#90b8df",borderColor:"#4a7a9a"}} onClick={()=>setForm(f=>({...f,pozycje:[...f.pozycje,pustaPozDrzwi()]}))}>+ Drzwi</button>
                 </div>
-                <div style={{fontSize:14,color:"#3a5a3a"}}>
+                <div style={{fontSize:14,color:"#5a8a5a"}}>
                   {form.pozycje.filter(p=>!p.isDrzwi).length>0&&<span>🪟 {form.pozycje.filter(p=>!p.isDrzwi).length} okno</span>}
                   {form.pozycje.some(p=>p.isDrzwi)&&form.pozycje.some(p=>!p.isDrzwi)&&<span> + </span>}
                   {form.pozycje.filter(p=>p.isDrzwi).length>0&&<span style={{color:"#6090cf"}}>🚪 {form.pozycje.filter(p=>p.isDrzwi).length} drzwi</span>}
@@ -4717,7 +4845,7 @@ function App() {
                 const _ts=_ok.reduce((a,p)=>a+(parseFloat(p.ilosc)||1),0);
                 return(<div style={{background:"#0c1a0c",border:"1px solid #2a4a2a",borderRadius:6,padding:"8px 14px",marginBottom:8,fontSize:14}}>
                   <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
-                    <span style={{color:"#3a7a3a",fontWeight:700}}>RAZEM {_ts} szt:</span>
+                    <span style={{color:"#5aaa5a",fontWeight:700}}>RAZEM {_ts} szt:</span>
                     <span style={{color:"#5a9a5a"}}>JEDN: <strong style={{color:"#afffaf"}}>{Math.round(_tj*10)/10} mb</strong></span>
                     <span style={{color:"#5a9a5a"}}>Blaszki: <strong style={{color:"#afffaf"}}>{_ts*8} szt</strong></span>
                     <span style={{color:"#5a9a5a"}}>Linka: <strong style={{color:"#afffaf"}}>{obliczLinkeLaczna(_ok)} mb</strong></span>
@@ -4763,7 +4891,7 @@ function App() {
                     {lastSavedOrder.pozycje&&lastSavedOrder.pozycje.length>0&&(
                       <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
                         {lastSavedOrder.pozycje.map((p,i)=>(
-                          <span key={i} style={{background:'#0f2a0f',border:'1px solid #1a4a1a',borderRadius:3,padding:'1px 6px',fontSize:11,color:'#7acf7a'}}>
+                          <span key={i} style={{background:'#0f2a0f',border:'1px solid #1a4a1a',borderRadius:3,padding:'1px 6px',fontSize:11,color:'#9aef9a'}}>
                             {p.isDrzwi?'🚪':'🧿'} {p.szerokosc}×{p.wysokosc} {p.kolorRamki} {p.ilosc>1?`×${p.ilosc}`:''}
                           </span>
                         ))}
@@ -4850,7 +4978,7 @@ function App() {
             return tb.localeCompare(ta);
           });
           const zrealizowaneList=filteredAll.filter(imp=>getEffectiveStatus(imp)==='Wysłano');
-          const KONTO_COLORS={"favo5":["#2a5a3a","#7fcf7f"],"staroleska_pl":["#2a4a2a","#5abf7a"],"sinlook_pl":["#1a4a3a","#4abf9a"],"arlis_pl":["#2a3a5a","#7abfdf"],"everis_pl":["#3a2a5a","#af8fdf"],"albama_eu":["#4a3a1a","#dfaf5a"],"pedroshop_pl_365":["#3a2a1a","#cf8a4a"]};
+          const KONTO_COLORS={"favo5":["#4a8a5a","#7fcf7f"],"staroleska_pl":["#4a7a4a","#5abf7a"],"sinlook_pl":["#1a4a3a","#4abf9a"],"arlis_pl":["#2a3a5a","#7abfdf"],"everis_pl":["#3a2a5a","#af8fdf"],"albama_eu":["#8a6a3a","#dfaf5a"],"pedroshop_pl_365":["#3a2a1a","#cf8a4a"]};
           const fmtDT=iso=>{if(!iso)return '—';const d=new Date(iso);return d.toLocaleDateString('pl-PL')+' '+d.toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});};
           const toggleBox=(id,box)=>setZamOpenBox(prev=>({...prev,[id]:prev[id]===box?null:box}));
           const renderRow=(imp,idx)=>{
@@ -4914,7 +5042,7 @@ function App() {
                         borderRadius:4,padding:openBox==='msg'?'4px 6px':'0',
                         marginTop:2,wordBreak:'break-word'}}
                       title="Kliknij aby rozwinąć">💬 {imp.buyerMsg}</div>}
-                    {appStatuses[imp.allegroOrderId+'_powod']&&<div style={{fontSize:10,color:'#dfaf4a',fontStyle:'italic',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',marginTop:1}}>⏸ {appStatuses[imp.allegroOrderId+'_powod']}</div>}
+                    {appStatuses[imp.allegroOrderId+'_powod']&&<div style={{fontSize:10,color:'#f0c060',fontStyle:'italic',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',marginTop:1}}>⏸ {appStatuses[imp.allegroOrderId+'_powod']}</div>}
                     {imp.kwotaBrutto&&<div style={{fontSize:11,color:'#afdf7f',fontWeight:700,marginTop:2}}>
                       💰 {parseFloat(imp.kwotaBrutto).toFixed(2)} {imp.kwotaWaluta||'zł'}
                       {imp.deliveryCost>0&&<span style={{color:'#cfaf6f',marginLeft:5}}>+ {parseFloat(imp.deliveryCost).toFixed(2)} {imp.kwotaWaluta||'zł'} dostawa</span>}
@@ -5013,7 +5141,7 @@ function App() {
                           setTimeout(()=>URL.revokeObjectURL(url),5000);
                         }catch(e){alert('❌ '+e.message);}
                       }}
-                      style={{padding:'4px 8px',fontSize:12,borderRadius:5,cursor:'pointer',background:'#1a2a1a',border:'1px solid #3a5a2a',color:'#7acf7a'}}>
+                      style={{padding:'4px 8px',fontSize:12,borderRadius:5,cursor:'pointer',background:'#1a2a1a',border:'1px solid #3a5a2a',color:'#9aef9a'}}>
                       🖨️
                     </button>}
                     {hasEtykieta&&sh&&(sh.pickupOrdered
@@ -5178,27 +5306,27 @@ function App() {
                 </button>
                 {zamOnlyInvoice&&<input type="date" value={zamInvoiceFrom} onChange={e=>setZamInvoiceFrom(e.target.value)}
                   title="Pokaż faktury od daty"
-                  style={{padding:'4px 8px',fontSize:12,background:'#1a1000',border:'1px solid #5a3a00',borderRadius:5,color:'#dfaf4a'}}/>}
+                  style={{padding:'4px 8px',fontSize:12,background:'#1a1000',border:'1px solid #5a3a00',borderRadius:5,color:'#f0c060'}}/>}
                 <button onClick={()=>{setTab('nowe');setAllegroOrderIdForForm('');setSaved(false);setLastSavedOrder(null);setWiadomosc('');setForm(pustyForm(form.firma));}} style={{padding:'5px 12px',fontSize:13,fontWeight:700,borderRadius:5,cursor:'pointer',background:'#1a3a1a',border:'1px solid #3a7a3a',color:'#afffaf',marginLeft:'auto'}}>
                   ➕ Dodaj ręcznie
                 </button>
               </div>
               <div style={{display:'flex',borderBottom:'2px solid #1a2a1a',marginBottom:0}}>
-                <button onClick={()=>setZamTab('nowe')} style={{padding:'7px 16px',fontSize:13,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',background:zamTab==='nowe'?'#1a3a1a':'#0a1a0a',color:zamTab==='nowe'?'#afffaf':'#3a6a3a',borderBottom:zamTab==='nowe'?'2px solid #3acf6a':'2px solid transparent'}}>
+                <button onClick={()=>setZamTab('nowe')} style={{padding:'7px 16px',fontSize:13,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',background:zamTab==='nowe'?'#1a3a1a':'#0f1f0f',color:zamTab==='nowe'?'#afffaf':'#7acf7a',borderBottom:zamTab==='nowe'?'2px solid #3acf6a':'2px solid transparent'}}>
                   🆕 Nowe ({noweList.length}){(()=>{const n=noweList.filter(i=>i.invoiceRequired&&!invoicesSent[i.allegroOrderId]).length;return n>0?` 🧾${n}`:''})()}
                 </button>
-                <button onClick={()=>setZamTab('realizacja')} style={{padding:'7px 16px',fontSize:13,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',background:zamTab==='realizacja'?'#1a2a0a':'#0a1a0a',color:zamTab==='realizacja'?'#afdf6f':'#4a6a2a',borderBottom:zamTab==='realizacja'?'2px solid #8acf3a':'2px solid transparent'}}>
+                <button onClick={()=>setZamTab('realizacja')} style={{padding:'7px 16px',fontSize:13,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',background:zamTab==='realizacja'?'#1a2a0a':'#0f1a0a',color:zamTab==='realizacja'?'#afdf6f':'#8abf4a',borderBottom:zamTab==='realizacja'?'2px solid #8acf3a':'2px solid transparent'}}>
                   ⚙️ W realizacji ({realizacjaList.length}){(()=>{const n=realizacjaList.filter(i=>i.invoiceRequired&&!invoicesSent[i.allegroOrderId]).length;return n>0?` 🧾${n}`:''})()}
                 </button>
-                <button onClick={()=>setZamTab('pozostale')} style={{padding:'7px 16px',fontSize:13,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',background:zamTab==='pozostale'?'#1a2a3a':'#0a1420',color:zamTab==='pozostale'?'#7acfdf':'#2a4a6a',borderBottom:zamTab==='pozostale'?'2px solid #3a8acf':'2px solid transparent'}}>
+                <button onClick={()=>setZamTab('pozostale')} style={{padding:'7px 16px',fontSize:13,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',background:zamTab==='pozostale'?'#1a2a3a':'#0a1828',color:zamTab==='pozostale'?'#7acfdf':'#5a9abf',borderBottom:zamTab==='pozostale'?'2px solid #3a8acf':'2px solid transparent'}}>
                   ✅ Zrealizowane ({zrealizowaneList.length}){(()=>{const n=zrealizowaneList.filter(i=>i.invoiceRequired&&!invoicesSent[i.allegroOrderId]).length;return n>0?` 🧾${n}`:''})()}
                 </button>
                 {(()=>{const fvCount=Object.keys(invoicesSent).filter(k=>invoicesSent[k]?.id).length;return(
-                  <button onClick={()=>setZamTab('faktury_zam')} style={{padding:'7px 16px',fontSize:13,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',background:zamTab==='faktury_zam'?'#2a1a3a':'#0a0a1a',color:zamTab==='faktury_zam'?'#cf9fff':'#4a2a6a',borderBottom:zamTab==='faktury_zam'?'2px solid #9a4acf':'2px solid transparent'}}>
+                  <button onClick={()=>setZamTab('faktury_zam')} style={{padding:'7px 16px',fontSize:13,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',background:zamTab==='faktury_zam'?'#2a1a3a':'#120a20',color:zamTab==='faktury_zam'?'#cf9fff':'#9a6abf',borderBottom:zamTab==='faktury_zam'?'2px solid #9a4acf':'2px solid transparent'}}>
                     🧾 Faktury ({fvCount})
                   </button>
                 );})()}
-                <button onClick={()=>{setZamTab('szablony_fak');setSzablonEditId(null);}} style={{padding:'7px 16px',fontSize:13,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',background:zamTab==='szablony_fak'?'#2a1a0a':'#0a0a0a',color:zamTab==='szablony_fak'?'#dfaf4a':'#4a3a1a',borderBottom:zamTab==='szablony_fak'?'2px solid #cf8a1a':'2px solid transparent'}}>
+                <button onClick={()=>{setZamTab('szablony_fak');setSzablonEditId(null);}} style={{padding:'7px 16px',fontSize:13,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',background:zamTab==='szablony_fak'?'#2a1a0a':'#1a1208',color:zamTab==='szablony_fak'?'#f0c060':'#af8a3a',borderBottom:zamTab==='szablony_fak'?'2px solid #cf8a1a':'2px solid transparent'}}>
                   📋 Szablony FV ({fakSzablony.length})
                 </button>
               </div>
@@ -5221,37 +5349,39 @@ function App() {
               )}
               {zamTab==='szablony_fak'&&(()=>{
                 const FIRMY_OPTS=[['F','Favour'],['A','Arlis'],['E','Everis']];
-                const pustyPozSzablon=()=>({id:Date.now()+Math.random(),nazwa:'',jm:'szt',ilosc:1,cena:'',vatPct:23,tryb:'netto'});
-                const aktSzablon=szablonEditId==='new'
-                  ? {id:'new',nazwa:'',firma:'F',nip:'',kontrahentNazwa:'',kontrahentEmail:'',pozycje:[pustyPozSzablon()]}
+                const pustyPoz=()=>({id:Date.now()+Math.random(),nazwa:'',jm:'szt',ilosc:1,cena:'',marza:0,vatPct:23,tryb:'netto'});
+
+                // Pobierz aktualny szablon z fakSzablony (lub pusty dla nowego)
+                const aktS = szablonEditId==='new'
+                  ? null  // nowy — obsługiwany przez stan lokalny
                   : fakSzablony.find(s=>s.id===szablonEditId)||null;
 
                 // ── LISTA SZABLONÓW ──
                 if(!szablonEditId) return (
                   <div style={{padding:'12px 0'}}>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-                      <span style={{color:'#dfaf4a',fontWeight:700,fontSize:15}}>📋 Szablony faktur cyklicznych</span>
+                      <span style={{color:'#f0c060',fontWeight:700,fontSize:15}}>📋 Szablony faktur cyklicznych</span>
                       <button onClick={()=>setSzablonEditId('new')}
-                        style={{padding:'7px 16px',borderRadius:6,border:'1px solid #cf8a1a',background:'#2a1a0a',color:'#dfaf4a',cursor:'pointer',fontWeight:700,fontSize:13}}>
+                        style={{padding:'7px 16px',borderRadius:6,border:'1px solid #cf8a1a',background:'#2a1a0a',color:'#f0c060',cursor:'pointer',fontWeight:700,fontSize:13}}>
                         + Nowy szablon
                       </button>
                     </div>
-                    {fakSzablony.length===0&&<div style={{textAlign:'center',color:'#4a3a1a',padding:'40px 0',fontSize:14}}>Brak szablonów — kliknij "+ Nowy szablon"</div>}
+                    {fakSzablony.length===0&&<div style={{textAlign:'center',color:'#9a8a5a',padding:'40px 0',fontSize:14}}>Brak szablonów — kliknij "+ Nowy szablon"</div>}
                     <div style={{display:'flex',flexDirection:'column',gap:8}}>
                       {fakSzablony.map(s=>(
-                        <div key={s.id} style={{background:'#1a1a0a',border:'1px solid #3a2a0a',borderRadius:8,padding:'10px 14px',display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+                        <div key={s.id} style={{background:'#222210',border:'1px solid #5a4a20',borderRadius:8,padding:'10px 14px',display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
                           <div style={{flex:1,minWidth:0}}>
-                            <div style={{fontWeight:700,color:'#dfaf4a',fontSize:14}}>{s.nazwa||'(bez nazwy)'}</div>
-                            <div style={{fontSize:12,color:'#7a6a3a',marginTop:2}}>
+                            <div style={{fontWeight:700,color:'#f0c060',fontSize:14}}>{s.nazwa||'(bez nazwy)'}</div>
+                            <div style={{fontSize:12,color:'#b09a6a',marginTop:2}}>
                               {FIRMY_OPTS.find(f=>f[0]===s.firma)?.[1]||s.firma} · {s.kontrahentNazwa||s.nip||'—'} · {s.pozycje?.length||0} poz.
                             </div>
                           </div>
                           <button onClick={()=>setSzablonEditId(s.id)}
-                            style={{padding:'5px 12px',borderRadius:5,border:'1px solid #5a4a1a',background:'#2a1a0a',color:'#dfaf4a',cursor:'pointer',fontSize:12,fontWeight:700}}>
+                            style={{padding:'5px 12px',borderRadius:5,border:'1px solid #5a4a1a',background:'#2a1a0a',color:'#f0c060',cursor:'pointer',fontSize:12,fontWeight:700}}>
                             ✏️ Edytuj / Wystaw
                           </button>
                           <button onClick={()=>{if(confirm('Usunąć szablon "'+s.nazwa+'"?'))saveFakSzablony(fakSzablony.filter(x=>x.id!==s.id));}}
-                            style={{padding:'5px 10px',borderRadius:5,border:'1px solid #5a1a1a',background:'#2a0a0a',color:'#cf6a6a',cursor:'pointer',fontSize:12}}>
+                            style={{padding:'5px 10px',borderRadius:5,border:'1px solid #5a1a1a',background:'#2a0a0a',color:'#ef9a9a',cursor:'pointer',fontSize:12}}>
                             🗑
                           </button>
                         </div>
@@ -5260,212 +5390,51 @@ function App() {
                   </div>
                 );
 
-                // ── EDYCJA / WYSTAWIANIE SZABLONU ──
-                if(!aktSzablon) return null;
-                const isNew=szablonEditId==='new';
-                const updSzablon=fn=>{
-                  if(isNew){
-                    setSzablonEditId(prev=>prev); // keep 'new'
-                    // We'll handle via local var
-                  }
-                };
-                // Local state via ref-like pattern — use setFakSzablony carefully
-                const setPole=(pole,val)=>{
-                  if(isNew){
-                    // Mutate in place via re-render trick
-                    setSzablonEditId(id=>{
-                      // We need a proper local state — use a workaround
-                      return id;
-                    });
-                  }
-                };
+                // ── EDYCJA SZABLONU (istniejący) ──
+                if(aktS) {
+                  const upd=(pole,val)=>saveFakSzablony(fakSzablony.map(s=>s.id===aktS.id?{...s,[pole]:val}:s));
+                  const updPoz=(pi,pole,val)=>saveFakSzablony(fakSzablony.map(s=>s.id===aktS.id?{...s,pozycje:s.pozycje.map((p,i)=>i===pi?{...p,[pole]:val}:p)}:s));
+                  const addPoz=()=>saveFakSzablony(fakSzablony.map(s=>s.id===aktS.id?{...s,pozycje:[...(s.pozycje||[]),pustyPoz()]}:s));
+                  const delPoz=(pi)=>saveFakSzablony(fakSzablony.map(s=>s.id===aktS.id?{...s,pozycje:s.pozycje.filter((_,i)=>i!==pi)}:s));
+                  return <SzablonForm szablon={aktS} firmy={FIRMY_OPTS} onBack={()=>setSzablonEditId(null)}
+                    onUpd={upd} onUpdPoz={updPoz} onAddPoz={addPoz} onDelPoz={delPoz} onSave={()=>alert('✅ Szablon zapisany')}
+                    isNew={false} szablonNipLoading={szablonNipLoading} pobierzNIP={pobierzKontrahentaNIP}
+                    onNIPResult={(upd2)=>saveFakSzablony(fakSzablony.map(s=>s.id===aktS.id?{...s,...upd2}:s))}
+                    setSzablonNipLoading={setSzablonNipLoading}
+                    onStworzFakture={()=>{
+                      const dzis=new Date().toISOString().slice(0,10);
+                      const termin=new Date(Date.now()+14*86400000).toISOString().slice(0,10);
+                      const DZIALY={F:'1978585',A:'1978589',E:'1978591'};
+                      setFakModal({
+                        imp:{allegroOrderId:'szablon_'+aktS.id,kontoId:'favo5'},
+                        order:null,
+                        form:{
+                          data:dzis,dataSprzedazy:dzis,terminPlatnosci:termin,
+                          nabywcaNazwa:aktS.kontrahentNazwa||'',nabywcaNip:aktS.nip||'',nabywcaEmail:aktS.kontrahentEmail||'',
+                          nabywcaUlica:'',nabywcaKod:'',nabywcaMiasto:'',
+                          firma:aktS.firma||'F',dzial:DZIALY[aktS.firma||'F']||'1978585',
+                          pozycje:(aktS.pozycje||[]).map(p=>{
+                            const cenaBase=parseFloat(p.cena)||0;
+                            const marza=parseFloat(p.marza)||0;
+                            const cenaFinal=marza>0?Math.round(cenaBase*(1+marza/100)*100)/100:cenaBase;
+                            return {nazwa:p.nazwa||'',ilosc:parseFloat(p.ilosc)||1,cena:cenaFinal,vatPct:p.vatPct??23,jm:p.jm||'szt',trybCen:p.tryb||'netto'};
+                          }),
+                          typ:'faktura',trybCen:'netto',
+                        },
+                        _fromSzablon:aktS.id,
+                      });
+                    }}
+                  />;
+                }
 
-                return (
-                  <div style={{padding:'12px 0'}}>
-                    <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
-                      <button onClick={()=>setSzablonEditId(null)}
-                        style={{padding:'5px 12px',borderRadius:5,border:'1px solid #3a2a0a',background:'none',color:'#7a6a3a',cursor:'pointer',fontSize:13}}>
-                        ← Powrót
-                      </button>
-                      <span style={{color:'#dfaf4a',fontWeight:700,fontSize:15}}>{isNew?'Nowy szablon':aktSzablon.nazwa||'Edycja szablonu'}</span>
-                    </div>
-
-                    <div style={{display:'grid',gap:10,marginBottom:12}}>
-                      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-                        <div>
-                          <div style={{fontSize:12,color:'#7a6a3a',marginBottom:3}}>Nazwa szablonu</div>
-                          <input value={aktSzablon.nazwa||''} onChange={e=>{
-                            const v=e.target.value;
-                            if(isNew) setSzablonEditId(()=>{aktSzablon.nazwa=v;return 'new';});
-                            else saveFakSzablony(fakSzablony.map(s=>s.id===aktSzablon.id?{...s,nazwa:v}:s));
-                          }} placeholder="np. Favour — moskitiery" style={{width:'100%',padding:'6px 10px',background:'#0a0a00',border:'1px solid #3a2a0a',borderRadius:5,color:'#dfdf9a',fontSize:13,boxSizing:'border-box'}}/>
-                        </div>
-                        <div>
-                          <div style={{fontSize:12,color:'#7a6a3a',marginBottom:3}}>Firma</div>
-                          <select value={aktSzablon.firma||'F'} onChange={e=>{
-                            const v=e.target.value;
-                            if(isNew) setSzablonEditId(()=>{aktSzablon.firma=v;return 'new';});
-                            else saveFakSzablony(fakSzablony.map(s=>s.id===aktSzablon.id?{...s,firma:v}:s));
-                          }} style={{width:'100%',padding:'6px 10px',background:'#0a0a00',border:'1px solid #3a2a0a',borderRadius:5,color:'#dfdf9a',fontSize:13}}>
-                            {FIRMY_OPTS.map(([v,l])=><option key={v} value={v}>{l}</option>)}
-                          </select>
-                        </div>
-                      </div>
-                      <div style={{display:'grid',gridTemplateColumns:'1fr auto 1fr',gap:8,alignItems:'flex-end'}}>
-                        <div>
-                          <div style={{fontSize:12,color:'#7a6a3a',marginBottom:3}}>NIP kontrahenta</div>
-                          <input value={aktSzablon.nip||''} onChange={e=>{
-                            const v=e.target.value;
-                            if(isNew) setSzablonEditId(()=>{aktSzablon.nip=v;return 'new';});
-                            else saveFakSzablony(fakSzablony.map(s=>s.id===aktSzablon.id?{...s,nip:v}:s));
-                          }} placeholder="1234567890" style={{width:'100%',padding:'6px 10px',background:'#0a0a00',border:'1px solid #3a2a0a',borderRadius:5,color:'#dfdf9a',fontSize:13,boxSizing:'border-box'}}/>
-                        </div>
-                        <button onClick={async()=>{
-                          setSzablonNipLoading(true);
-                          const k=await pobierzKontrahentaNIP(aktSzablon.nip, aktSzablon.firma);
-                          setSzablonNipLoading(false);
-                          if(!k){alert('Nie znaleziono kontrahenta o NIP: '+aktSzablon.nip);return;}
-                          const upd={kontrahentNazwa:k.name||'',kontrahentEmail:k.email||''};
-                          if(isNew){Object.assign(aktSzablon,upd);setSzablonEditId(()=>'new');}
-                          else saveFakSzablony(fakSzablony.map(s=>s.id===aktSzablon.id?{...s,...upd}:s));
-                        }} disabled={szablonNipLoading||!aktSzablon.nip}
-                          style={{padding:'6px 12px',borderRadius:5,border:'1px solid #3a5a3a',background:'#0a1a0a',color:'#7acf7a',cursor:'pointer',fontSize:12,whiteSpace:'nowrap'}}>
-                          {szablonNipLoading?'⟳':'🔍 Pobierz'}
-                        </button>
-                        <div>
-                          <div style={{fontSize:12,color:'#7a6a3a',marginBottom:3}}>Nazwa kontrahenta</div>
-                          <input value={aktSzablon.kontrahentNazwa||''} onChange={e=>{
-                            const v=e.target.value;
-                            if(isNew) setSzablonEditId(()=>{aktSzablon.kontrahentNazwa=v;return 'new';});
-                            else saveFakSzablony(fakSzablony.map(s=>s.id===aktSzablon.id?{...s,kontrahentNazwa:v}:s));
-                          }} placeholder="Auto z NIP" style={{width:'100%',padding:'6px 10px',background:'#0a0a00',border:'1px solid #3a2a0a',borderRadius:5,color:'#dfdf9a',fontSize:13,boxSizing:'border-box'}}/>
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{fontSize:12,color:'#7a6a3a',marginBottom:3}}>Email do wysyłki faktury</div>
-                        <input value={aktSzablon.kontrahentEmail||''} onChange={e=>{
-                          const v=e.target.value;
-                          if(isNew) setSzablonEditId(()=>{aktSzablon.kontrahentEmail=v;return 'new';});
-                          else saveFakSzablony(fakSzablony.map(s=>s.id===aktSzablon.id?{...s,kontrahentEmail:v}:s));
-                        }} placeholder="kontrahent@firma.pl" style={{width:'100%',padding:'6px 10px',background:'#0a0a00',border:'1px solid #3a2a0a',borderRadius:5,color:'#dfdf9a',fontSize:13,boxSizing:'border-box'}}/>
-                      </div>
-                    </div>
-
-                    {/* Pozycje */}
-                    <div style={{fontSize:12,color:'#7a6a3a',marginBottom:6,fontWeight:700}}>Pozycje faktury</div>
-                    <div style={{display:'flex',flexDirection:'column',gap:6,marginBottom:8}}>
-                      {(aktSzablon.pozycje||[]).map((poz,pi)=>(
-                        <div key={poz.id} style={{background:'#0a0a00',border:'1px solid #2a2a0a',borderRadius:6,padding:'8px 10px',display:'grid',gridTemplateColumns:'2fr 60px 80px 80px 60px auto',gap:6,alignItems:'center'}}>
-                          <input value={poz.nazwa||''} onChange={e=>{
-                            const v=e.target.value;
-                            const upd=pos=>pos.map((p,i)=>i===pi?{...p,nazwa:v}:p);
-                            if(isNew){aktSzablon.pozycje=upd(aktSzablon.pozycje);setSzablonEditId(()=>'new');}
-                            else saveFakSzablony(fakSzablony.map(s=>s.id===aktSzablon.id?{...s,pozycje:upd(s.pozycje)}:s));
-                          }} placeholder="Nazwa usługi/towaru" style={{padding:'4px 8px',background:'#0f0f00',border:'1px solid #2a2a0a',borderRadius:4,color:'#dfdf9a',fontSize:12}}/>
-                          <input value={poz.ilosc||''} onChange={e=>{
-                            const v=e.target.value;
-                            const upd=pos=>pos.map((p,i)=>i===pi?{...p,ilosc:v}:p);
-                            if(isNew){aktSzablon.pozycje=upd(aktSzablon.pozycje);setSzablonEditId(()=>'new');}
-                            else saveFakSzablony(fakSzablony.map(s=>s.id===aktSzablon.id?{...s,pozycje:upd(s.pozycje)}:s));
-                          }} placeholder="Ilość" type="number" style={{padding:'4px 8px',background:'#0f0f00',border:'1px solid #2a2a0a',borderRadius:4,color:'#dfdf9a',fontSize:12}}/>
-                          <input value={poz.cena||''} onChange={e=>{
-                            const v=e.target.value;
-                            const upd=pos=>pos.map((p,i)=>i===pi?{...p,cena:v}:p);
-                            if(isNew){aktSzablon.pozycje=upd(aktSzablon.pozycje);setSzablonEditId(()=>'new');}
-                            else saveFakSzablony(fakSzablony.map(s=>s.id===aktSzablon.id?{...s,pozycje:upd(s.pozycje)}:s));
-                          }} placeholder="Cena" type="number" step="0.01" style={{padding:'4px 8px',background:'#0f0f00',border:'1px solid #2a2a0a',borderRadius:4,color:'#dfdf9a',fontSize:12}}/>
-                          <select value={poz.vatPct??23} onChange={e=>{
-                            const v=parseInt(e.target.value);
-                            const upd=pos=>pos.map((p,i)=>i===pi?{...p,vatPct:v}:p);
-                            if(isNew){aktSzablon.pozycje=upd(aktSzablon.pozycje);setSzablonEditId(()=>'new');}
-                            else saveFakSzablony(fakSzablony.map(s=>s.id===aktSzablon.id?{...s,pozycje:upd(s.pozycje)}:s));
-                          }} style={{padding:'4px 6px',background:'#0f0f00',border:'1px solid #2a2a0a',borderRadius:4,color:'#dfdf9a',fontSize:12}}>
-                            {[0,5,8,23].map(v=><option key={v} value={v}>{v}%</option>)}
-                          </select>
-                          <select value={poz.tryb||'netto'} onChange={e=>{
-                            const v=e.target.value;
-                            const upd=pos=>pos.map((p,i)=>i===pi?{...p,tryb:v}:p);
-                            if(isNew){aktSzablon.pozycje=upd(aktSzablon.pozycje);setSzablonEditId(()=>'new');}
-                            else saveFakSzablony(fakSzablony.map(s=>s.id===aktSzablon.id?{...s,pozycje:upd(s.pozycje)}:s));
-                          }} style={{padding:'4px 6px',background:'#0f0f00',border:'1px solid #2a2a0a',borderRadius:4,color:'#dfdf9a',fontSize:11}}>
-                            <option value="netto">netto</option>
-                            <option value="brutto">brutto</option>
-                          </select>
-                          <button onClick={()=>{
-                            const upd=pos=>pos.filter((_,i)=>i!==pi);
-                            if(isNew){aktSzablon.pozycje=upd(aktSzablon.pozycje);setSzablonEditId(()=>'new');}
-                            else saveFakSzablony(fakSzablony.map(s=>s.id===aktSzablon.id?{...s,pozycje:upd(s.pozycje)}:s));
-                          }} style={{padding:'3px 8px',borderRadius:4,border:'1px solid #4a1a1a',background:'#2a0a0a',color:'#cf6a6a',cursor:'pointer',fontSize:12}}>✕</button>
-                        </div>
-                      ))}
-                    </div>
-                    <button onClick={()=>{
-                      const np=pustyPozSzablon();
-                      if(isNew){aktSzablon.pozycje=[...(aktSzablon.pozycje||[]),np];setSzablonEditId(()=>'new');}
-                      else saveFakSzablony(fakSzablony.map(s=>s.id===aktSzablon.id?{...s,pozycje:[...(s.pozycje||[]),np]}:s));
-                    }} style={{padding:'5px 14px',borderRadius:5,border:'1px dashed #3a2a0a',background:'none',color:'#7a6a3a',cursor:'pointer',fontSize:12,marginBottom:12}}>
-                      + Dodaj pozycję
-                    </button>
-
-                    {/* Przyciski akcji */}
-                    <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
-                      {isNew&&<button onClick={()=>{
-                        if(!aktSzablon.nazwa){alert('Podaj nazwę szablonu');return;}
-                        const nowy={...aktSzablon,id:Date.now()};
-                        saveFakSzablony([...fakSzablony,nowy]);
-                        setSzablonEditId(nowy.id);
-                        alert('✅ Szablon zapisany');
-                      }} style={{padding:'8px 18px',borderRadius:6,border:'1px solid #cf8a1a',background:'#2a1a0a',color:'#dfaf4a',cursor:'pointer',fontWeight:700,fontSize:13}}>
-                        💾 Zapisz szablon
-                      </button>}
-                      {!isNew&&<button onClick={()=>{
-                        if(!aktSzablon.nazwa){alert('Podaj nazwę szablonu');return;}
-                        // Zapisuje już na bieżąco — info tylko
-                        alert('✅ Szablon zapisany');
-                      }} style={{padding:'8px 18px',borderRadius:6,border:'1px solid #cf8a1a',background:'#2a1a0a',color:'#dfaf4a',cursor:'pointer',fontWeight:700,fontSize:13}}>
-                        💾 Zapisz zmiany
-                      </button>}
-                      <button onClick={()=>{
-                        // Stwórz fakturę — otwórz modal fakturowni z danymi szablonu
-                        const dzis=new Date().toISOString().slice(0,10);
-                        const termin=new Date(Date.now()+14*86400000).toISOString().slice(0,10);
-                        const DZIALY={F:'1978585',A:'1978589',E:'1978591'};
-                        setFakModal({
-                          imp:{allegroOrderId:'szablon_'+aktSzablon.id,kontoId:'favo5'},
-                          order:null,
-                          form:{
-                            data:dzis,
-                            dataSprzedazy:dzis,
-                            terminPlatnosci:termin,
-                            nabywcaNazwa:aktSzablon.kontrahentNazwa||'',
-                            nabywcaNip:aktSzablon.nip||'',
-                            nabywcaEmail:aktSzablon.kontrahentEmail||'',
-                            nabywcaUlica:'',nabywcaKod:'',nabywcaMiasto:'',
-                            firma:aktSzablon.firma||'F',
-                            dzial:DZIALY[aktSzablon.firma||'F']||'1978585',
-                            pozycje:(aktSzablon.pozycje||[]).map(p=>({
-                              nazwa:p.nazwa||'',
-                              ilosc:parseFloat(p.ilosc)||1,
-                              cena:parseFloat(p.cena)||0,
-                              vatPct:p.vatPct??23,
-                              jm:p.jm||'szt',
-                              trybCen:p.tryb||'netto',
-                            })),
-                            typ:'faktura',
-                            trybCen:'netto',
-                          },
-                          _fromSzablon:aktSzablon.id,
-                        });
-                      }} disabled={isNew}
-                        style={{padding:'8px 18px',borderRadius:6,border:'1px solid #3a7a3a',background:isNew?'#0a0a0a':'#0a1a0a',color:isNew?'#2a4a2a':'#7acf7a',cursor:isNew?'not-allowed':'pointer',fontWeight:700,fontSize:13}}>
-                        🧾 Stwórz fakturę
-                      </button>
-                    </div>
-                    {isNew&&<div style={{fontSize:11,color:'#5a4a2a',marginTop:6}}>Najpierw zapisz szablon, potem możesz wystawić fakturę</div>}
-                  </div>
-                );
+                // ── NOWY SZABLON — lokalny stan przez useState w osobnym komponencie ──
+                return <NowyRzablon firmy={FIRMY_OPTS} pustyPoz={pustyPoz}
+                  onSave={(s)=>{saveFakSzablony([...fakSzablony,{...s,id:Date.now()}]);setSzablonEditId(null);}}
+                  onBack={()=>setSzablonEditId(null)}
+                  szablonNipLoading={szablonNipLoading} setSzablonNipLoading={setSzablonNipLoading}
+                  pobierzNIP={pobierzKontrahentaNIP}
+                />;
               })()}
-
               {(()=>{
                 // ── Zakładka Faktury w module zamówień ──
                 if(zamTab==='faktury_zam'){
@@ -5536,7 +5505,7 @@ function App() {
                                 🧾 Faktura
                               </button>
                               <button onClick={()=>{if(confirm('Usunąć '+k.nazwa+'?'))saveKontrahenci(kontrahenci.filter(x=>x.id!==k.id));}}
-                                style={{padding:'2px 6px',fontSize:11,background:'#2a0a0a',border:'1px solid #5a2a2a',borderRadius:4,color:'#cf6a6a',cursor:'pointer'}}>🗑</button>
+                                style={{padding:'2px 6px',fontSize:11,background:'#2a0a0a',border:'1px solid #5a2a2a',borderRadius:4,color:'#ef9a9a',cursor:'pointer'}}>🗑</button>
                             </div>
                           ))}
                         </div>
@@ -5597,7 +5566,7 @@ function App() {
                                 <div style={{display:'flex',gap:5,justifyContent:'center',flexWrap:'wrap'}}>
                                   {cfg.domain&&fv.fakturowniaId&&(
                                     <button onClick={()=>window.open(`https://${cfg.domain}/invoices/${fv.fakturowniaId}`,'_blank')}
-                                      style={{padding:'3px 8px',fontSize:11,background:'#1a2a1a',border:'1px solid #3a6a3a',borderRadius:4,color:'#7acf7a',cursor:'pointer'}}
+                                      style={{padding:'3px 8px',fontSize:11,background:'#1a2a1a',border:'1px solid #3a6a3a',borderRadius:4,color:'#9aef9a',cursor:'pointer'}}
                                       title="Otwórz w Fakturowni">🧾</button>
                                   )}
                                   {fv.allegroOrderId&&!fv.allegroOrderId.startsWith('manual_')&&!fv.allegroAttached&&!fv.fakturowniaId&&(
@@ -5634,7 +5603,7 @@ function App() {
                                   <button onClick={()=>{
                                     if(!confirm('Usunąć oznaczenie faktury '+fv.number+'?')) return;
                                     setInvoicesSent(prev=>{const next={...prev};delete next[fv.allegroOrderId];localStorage.setItem('invoices_sent',JSON.stringify(next));return next;});
-                                  }} style={{padding:'3px 8px',fontSize:11,background:'#2a0a0a',border:'1px solid #5a2a2a',borderRadius:4,color:'#cf6a6a',cursor:'pointer'}}
+                                  }} style={{padding:'3px 8px',fontSize:11,background:'#2a0a0a',border:'1px solid #5a2a2a',borderRadius:4,color:'#ef9a9a',cursor:'pointer'}}
                                   title="Usuń z listy (faktura pozostaje w Fakturowni)">🗑</button>
                                 </div>
                               </td>
@@ -5739,9 +5708,9 @@ function App() {
               </select>
               {/* Legenda kont */}
               <div style={{display:"flex",gap:6,flexWrap:"wrap",marginLeft:"auto"}}>
-                {[["favo5","#2a5a3a","#7fcf7f"],["staroleska_pl","#2a4a2a","#5abf7a"],["sinlook_pl","#1a4a3a","#4abf9a"],
+                {[["favo5","#4a8a5a","#7fcf7f"],["staroleska_pl","#4a7a4a","#5abf7a"],["sinlook_pl","#1a4a3a","#4abf9a"],
                   ["arlis_pl","#2a3a5a","#7abfdf"],["everis_pl","#3a2a5a","#af8fdf"],
-                  ["albama_eu","#4a3a1a","#dfaf5a"],["pedroshop_pl_365","#3a2a1a","#cf8a4a"]
+                  ["albama_eu","#8a6a3a","#dfaf5a"],["pedroshop_pl_365","#3a2a1a","#cf8a4a"]
                 ].map(([k,bg,col])=>{
                   const hasTok=!!(allegroTokens[k]||"");
                   return hasTok?(
@@ -5792,9 +5761,9 @@ function App() {
                         })
                         .map((imp,idx)=>{
                         const KONTO_COLORS={
-                          "favo5":["#2a5a3a","#7fcf7f"],"staroleska_pl":["#2a4a2a","#5abf7a"],"sinlook_pl":["#1a4a3a","#4abf9a"],
+                          "favo5":["#4a8a5a","#7fcf7f"],"staroleska_pl":["#4a7a4a","#5abf7a"],"sinlook_pl":["#1a4a3a","#4abf9a"],
                           "arlis_pl":["#2a3a5a","#7abfdf"],"everis_pl":["#3a2a5a","#af8fdf"],
-                          "albama_eu":["#4a3a1a","#dfaf5a"],"pedroshop_pl_365":["#3a2a1a","#cf8a4a"]
+                          "albama_eu":["#8a6a3a","#dfaf5a"],"pedroshop_pl_365":["#3a2a1a","#cf8a4a"]
                         };
                         const [kBg,kCol]=KONTO_COLORS[imp.kontoId]||["#2a2a2a","#9a9a9a"];
                         const as=appStatuses[imp.allegroOrderId]||"";
@@ -5813,7 +5782,7 @@ function App() {
                                 {isObrobione&&<span style={{fontSize:14}}>✅</span>}
                                 {imp.klientImie||"—"}
                               </div>
-                              {imp.klientLogin&&<div style={{fontSize:12,color:"#3a6a8a",fontFamily:"monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{imp.klientLogin}</div>}
+                              {imp.klientLogin&&<div style={{fontSize:12,color:"#5a9aaa",fontFamily:"monospace",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{imp.klientLogin}</div>}
                               {(()=>{
                                 const linkedOrd=imp._linkedOrder||orders.find(o=>o.allegroOrderId===imp.allegroOrderId);
                                 const nrZl=linkedOrd?.numerZlecenia||imp.numerZlecenia||'';
@@ -5858,7 +5827,7 @@ function App() {
                               {(()=>{
                                 const as=appStatuses[imp.allegroOrderId]||"";
                                 const AS_OPTS=["","Wysłano","W realizacji","Wstrzymano","Problem"];
-                                const AS_COLORS={"Wysłano":["#1a3a1a","#7fcf7f"],"W realizacji":["#1a2a3a","#7abfdf"],"Wstrzymano":["#3a2a1a","#dfaf5a"],"Problem":["#3a1a1a","#df7a7a"]};
+                                const AS_COLORS={"Wysłano":["#1a3a1a","#7fcf7f"],"W realizacji":["#1a2a3a","#7abfdf"],"Wstrzymano":["#3a2a1a","#dfaf5a"],"Problem":["#6a3a3a","#df7a7a"]};
                                 const [bg,col]=AS_COLORS[as]||["#1a1a1a","#5a5a5a"];
                                 return (
                                   <div style={{marginTop:5}}>
@@ -5909,7 +5878,7 @@ function App() {
                                 const allegroLink="https://allegro.pl/orders/"+imp.allegroOrderId;
                                 return (
                                   <div style={{display:"flex",gap:5,flexWrap:"wrap",alignItems:"center"}}>
-                                    {imp.alreadyExists&&<span style={{fontSize:11,color:"#3a5a3a",fontStyle:"italic",whiteSpace:"nowrap"}}>✓ zlec.</span>}
+                                    {imp.alreadyExists&&<span style={{fontSize:11,color:"#5a8a5a",fontStyle:"italic",whiteSpace:"nowrap"}}>✓ zlec.</span>}
                                     {isMosk&&(
                                       <button onClick={()=>importAllegroOrder(imp)}
                                         style={{padding:"5px 12px",fontSize:14,background:"#1a4a2a",border:"1px solid #3a8a4a",borderRadius:5,color:"#afffaf",cursor:"pointer",fontWeight:700,whiteSpace:"nowrap"}}>
@@ -6155,7 +6124,7 @@ function App() {
                       <div style={{marginTop:10,borderTop:"1px solid #1a3a2a",paddingTop:8}}>
                         <div style={{fontSize:11,color:"#3a6a4a",marginBottom:6,fontWeight:700,letterSpacing:".05em"}}>📨 HISTORIA WIADOMOŚCI</div>
                         {importModal.checkoutMsg&&<div style={{marginBottom:6,padding:"6px 10px",background:"#0a1a0a",border:"1px solid #1a4a2a",borderRadius:5}}>
-                          <div style={{fontSize:10,color:"#3a6a3a",marginBottom:2}}>📋 Wiadomość przy zamówieniu:</div>
+                          <div style={{fontSize:10,color:"#5a9a5a",marginBottom:2}}>📋 Wiadomość przy zamówieniu:</div>
                           <div style={{fontSize:13,color:"#cfdf9f",whiteSpace:"pre-wrap",wordBreak:"break-word"}}>{importModal.checkoutMsg}</div>
                         </div>}
                         {(importModal.threadHistory||[]).map((m,i)=>(
@@ -6163,7 +6132,7 @@ function App() {
                             background:m.role==='SELLER'?"#0a0a1a":"#0a1a0a",
                             border:"1px solid "+(m.role==='SELLER'?"#1a1a3a":"#1a3a1a"),
                             textAlign:m.role==='SELLER'?"right":"left"}}>
-                            <div style={{fontSize:10,color:m.role==='SELLER'?"#3a3a7a":"#3a6a3a",marginBottom:2}}>
+                            <div style={{fontSize:10,color:m.role==='SELLER'?"#3a3a7a":"#5a9a5a",marginBottom:2}}>
                               {m.role==='SELLER'?"🏪 Sprzedawca":"👤 Klient"} · {m.date?new Date(m.date).toLocaleString('pl-PL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}
                             </div>
                             <div style={{fontSize:13,color:m.role==='SELLER'?"#8a9adf":"#cfaf6f",whiteSpace:"pre-wrap",wordBreak:"break-word"}}>{m.text}</div>
@@ -6319,7 +6288,7 @@ function App() {
                     const poz=importModal.pozycje||[];
                     const warn=walidujJednostki(poz,importModal.imp?.kwotaBrutto);
                     if(!warn) return null;
-                    return <div style={{marginBottom:10,padding:'8px 12px',background:'#2a1a00',border:'1px solid #7a4a00',borderRadius:6,fontSize:12,color:'#dfaf4a'}}>
+                    return <div style={{marginBottom:10,padding:'8px 12px',background:'#2a1a00',border:'1px solid #7a4a00',borderRadius:6,fontSize:12,color:'#f0c060'}}>
                       ⚠️ Sprawdź ilość: z pozycji wychodzi <b>{warn.jedn} jedn.</b>, ale kwota {warn.kwota} zł sugeruje <b>{warn.jedn3} jedn.</b> (różnica: {warn.diff})
                     </div>;
                   })()}
@@ -6336,7 +6305,7 @@ function App() {
                       disabled={mode==="kal"&&!kalData}
                       style={{padding:"8px 22px",borderRadius:6,border:"1px solid #4a9a5a",
                         background:(mode==="kal"&&!kalData)?"#1a2a1a":"#1a5a2a",
-                        color:(mode==="kal"&&!kalData)?"#3a5a3a":"#7fcf7f",
+                        color:(mode==="kal"&&!kalData)?"#5a8a5a":"#7fcf7f",
                         cursor:(mode==="kal"&&!kalData)?"not-allowed":"pointer",fontWeight:700,fontSize:14}}>
                       ➕ Importuj zlecenie
                     </button>
@@ -6363,12 +6332,12 @@ function App() {
                   {/* PDF zamówienia */}
                   <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 14px',background:'#0a1a0a',borderRadius:8,border:'1px solid #1a3a1a'}}>
                     <div>
-                      <div style={{fontWeight:700,color:'#7acf7a',fontSize:13}}>📋 Zamówienie PDF</div>
+                      <div style={{fontWeight:700,color:'#9aef9a',fontSize:13}}>📋 Zamówienie PDF</div>
                       <div style={{fontSize:11,color:'#4a7a4a'}}>{docsModal.order?.numerZlecenia||'brak numeru'}</div>
                     </div>
                     {docsModal.order
                       ? <button onClick={()=>drukujPDF(docsModal.order)}
-                          style={{padding:'6px 14px',borderRadius:6,border:'1px solid #3a7a3a',background:'#1a3a1a',color:'#7acf7a',cursor:'pointer',fontWeight:700,fontSize:12}}>
+                          style={{padding:'6px 14px',borderRadius:6,border:'1px solid #3a7a3a',background:'#1a3a1a',color:'#9aef9a',cursor:'pointer',fontWeight:700,fontSize:12}}>
                           🖨 Drukuj
                         </button>
                       : <span style={{fontSize:11,color:'#3a5a3a'}}>brak zlecenia</span>
@@ -6377,7 +6346,7 @@ function App() {
                   {/* Etykieta */}
                   <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 14px',background:'#0a1a0a',borderRadius:8,border:'1px solid #1a3a1a'}}>
                     <div>
-                      <div style={{fontWeight:700,color:'#7acf7a',fontSize:13}}>📦 Etykieta wysyłkowa</div>
+                      <div style={{fontWeight:700,color:'#9aef9a',fontSize:13}}>📦 Etykieta wysyłkowa</div>
                       <div style={{fontSize:11,color:'#4a7a4a'}}>{docsModal.sh?.waybill||docsModal.sh?.shipmentId||'brak'}</div>
                     </div>
                     {docsModal.sh?.shipmentId
@@ -6393,7 +6362,7 @@ function App() {
                               window.open(URL.createObjectURL(blob),'_blank');
                             }catch(e){alert('❌ '+e.message);}
                           }}
-                          style={{padding:'6px 14px',borderRadius:6,border:'1px solid #3a7a3a',background:'#1a3a1a',color:'#7acf7a',cursor:'pointer',fontWeight:700,fontSize:12}}>
+                          style={{padding:'6px 14px',borderRadius:6,border:'1px solid #3a7a3a',background:'#1a3a1a',color:'#9aef9a',cursor:'pointer',fontWeight:700,fontSize:12}}>
                           🖨 Drukuj
                         </button>
                       : <button onClick={()=>{setDocsModal(null);openShipmentModal(docsModal.imp);}}
@@ -6410,7 +6379,7 @@ function App() {
                   {/* Faktura */}
                   <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 14px',background:'#0a1a0a',borderRadius:8,border:'1px solid #1a3a1a',opacity:0.5}}>
                     <div>
-                      <div style={{fontWeight:700,color:'#7acf7a',fontSize:13}}>🧾 Faktura</div>
+                      <div style={{fontWeight:700,color:'#9aef9a',fontSize:13}}>🧾 Faktura</div>
                       <div style={{fontSize:11,color:'#4a7a4a'}}>funkcja w przygotowaniu</div>
                     </div>
                     <span style={{fontSize:11,color:'#3a5a3a'}}>wkrótce</span>
@@ -6419,12 +6388,12 @@ function App() {
                 {/* Zamów odbiór — jeśli etykieta istnieje i kurier nie zamówiony */}
                 {docsModal.sh?.shipmentId&&!docsModal.sh?.pickupOrdered&&(
                   <div style={{marginTop:10,padding:'10px 14px',background:'#0a1a0a',borderRadius:8,border:'1px solid #1a3a1a'}}>
-                    <div style={{fontWeight:700,color:'#7acf7a',fontSize:13,marginBottom:8}}>📞 Zamów odbiór kuriera</div>
+                    <div style={{fontWeight:700,color:'#9aef9a',fontSize:13,marginBottom:8}}>📞 Zamów odbiór kuriera</div>
                     <button onClick={()=>{setDocsModal(null);
                       setShipmentModal({imp:docsModal.imp,services:[],createdShipmentId:docsModal.sh.shipmentId,createdCarrierId:docsModal.sh.carrierId||null});
                       const _pAddr=savedPickupAddresses[0]||null;setTimeout(()=>fetchPickupProposals(docsModal.sh.shipmentId,docsModal.imp.kontoId,_pAddr),300);
                     }}
-                      style={{padding:'6px 14px',borderRadius:6,border:'1px solid #3a7a3a',background:'#1a3a1a',color:'#7acf7a',cursor:'pointer',fontSize:12,fontWeight:700}}>
+                      style={{padding:'6px 14px',borderRadius:6,border:'1px solid #3a7a3a',background:'#1a3a1a',color:'#9aef9a',cursor:'pointer',fontSize:12,fontWeight:700}}>
                       📞 Zaplanuj odbiór
                     </button>
                   </div>
@@ -6517,9 +6486,9 @@ function App() {
                         <button key={s} onClick={()=>setShipmentSize(s)}
                           style={{flex:1,padding:"8px 0",fontSize:14,fontWeight:700,cursor:"pointer",borderRadius:6,
                             background:shipmentSize===s?"#2a5a2a":"#1a2a1a",
-                            border:"1px solid "+(shipmentSize===s?"#4a9a4a":"#2a4a2a"),
+                            border:"1px solid "+(shipmentSize===s?"#4a9a4a":"#4a7a4a"),
                             color:shipmentSize===s?"#7fcf7f":"#4a8a4a"}}>
-                          {s}<div style={{fontSize:9,fontWeight:400,marginTop:2,color:shipmentSize===s?"#5a9a5a":"#2a4a2a"}}>{h}</div>
+                          {s}<div style={{fontSize:9,fontWeight:400,marginTop:2,color:shipmentSize===s?"#5a9a5a":"#4a7a4a"}}>{h}</div>
                         </button>
                       ))}
                     </div>
@@ -6553,7 +6522,7 @@ function App() {
                         }
                         return <div style={{background:"#0a1a0a",border:"1px solid #1a3a1a",borderRadius:6,padding:"8px 10px",fontSize:13,color:"#5a9a5a"}}>
                           🤖 Auto: {pkgs.map((p,i)=>`Paczka ${i+1}: ${p.l}×${p.w}×${p.h}cm, ${p.wt}kg (${p.label})`).join(" | ")}
-                          <div style={{fontSize:12,color:"#3a6a3a",marginTop:4}}>Wymiary i etykiety wyliczone automatycznie</div>
+                          <div style={{fontSize:12,color:"#5a9a5a",marginTop:4}}>Wymiary i etykiety wyliczone automatycznie</div>
                         </div>;
                       }
                       return null;
@@ -6568,7 +6537,7 @@ function App() {
                         </div>
                       ))}
                     </div>
-                    <div style={{fontSize:12,color:"#3a5a3a",marginTop:6}}>
+                    <div style={{fontSize:12,color:"#5a8a5a",marginTop:6}}>
                       Wpisz w opisie "2 ss" lub "1 BS" aby auto-wyliczyć wymiary i wagę
                     </div>
                   </div>
@@ -6612,7 +6581,7 @@ function App() {
             {kalOrdersError&&<div style={{marginBottom:12,padding:"8px 14px",background:"#2a1a1a",border:"1px solid #5a2a2a",borderRadius:6,color:"#df8080",fontSize:14}}>{kalOrdersError}</div>}
 
             {!kalOrdersFetched&&!kalOrdersLoading&&(
-              <div style={{textAlign:"center",padding:"60px 0",color:"#2a5a3a",fontSize:14}}>
+              <div style={{textAlign:"center",padding:"60px 0",color:"#4a8a5a",fontSize:14}}>
                 Kliknij "🔄 Odśwież" aby pobrać zapytania z kalkulatora
               </div>
             )}
@@ -6792,12 +6761,12 @@ function App() {
                 <thead>
                   <tr style={{borderBottom:"2px solid #1e3a1e",background:"#0c1a0c"}}>
                     {["☐","Nr zlecenia","Data","Klient","Miasto","Mosk.","Linka","Blaszki","Ramka","Siatka","","✉️",""].map((h,i)=>(
-                      <th key={i} style={{padding:"10px 10px",textAlign:"left",fontSize:14,color:"#3a7a3a",letterSpacing:".1em",textTransform:"uppercase",fontWeight:700}}>{h}</th>
+                      <th key={i} style={{padding:"10px 10px",textAlign:"left",fontSize:14,color:"#5aaa5a",letterSpacing:".1em",textTransform:"uppercase",fontWeight:700}}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredOrders.length===0&&<tr><td colSpan={10} style={{textAlign:"center",padding:28,color:"#2a4a2a",fontSize:14}}>Brak zamówień</td></tr>}
+                  {filteredOrders.length===0&&<tr><td colSpan={10} style={{textAlign:"center",padding:28,color:"#4a7a4a",fontSize:14}}>Brak zamówień</td></tr>}
                   {filteredOrders.map(o=>{
                     const il=o.pozycje.reduce((a,p)=>a+(parseFloat(p.ilosc)||1),0);
                     const hasDrzwi=o.pozycje.some(p=>p.isDrzwi);
@@ -6861,15 +6830,15 @@ function App() {
                             loadRecentEmails();
                           }}>✉️</button>
                           {!o.allegroOrderId&&<button className="btn-pdf" title="Generuj etykietę DPD (własna umowa)"
-                            style={{background:'#2a1a0a',borderColor:'#7a3a0a',color:'#dfaf4a'}}
+                            style={{background:'#2a1a0a',borderColor:'#7a3a0a',color:'#f0c060'}}
                             onClick={()=>{setDpdModal(o);setDpdWaga('5');setDpdCod(false);setDpdCodAmount('');setDpdError('');}}>
                             📦
                           </button>}
                           <button className="btn-del" onClick={()=>{if(confirm("Usunąć "+o.numerZlecenia+"?"))updateOrders(orders.filter(x=>x.id!==o.id))}} title="Usuń" style={{background:"#2a0a0a",borderColor:"#6a2a2a",color:"#df7a7a",padding:"3px 8px",fontSize:13}}>🗑</button>
                         </td>
                         <td style={{padding:"10px 10px",display:"flex",gap:4,alignItems:"center"}}>
-                          <button className="btn-pdf" style={{background:"#2a4a6a"}} onClick={()=>{setForm({data:o.data,firma:o.firma,klientImie:o.klientImie,klientUlica:o.klientUlica||"",klientKod:o.klientKod||"",klientMiasto:o.klientMiasto,telefon:o.telefon,uwagi:o.uwagi,pozycje:o.pozycje.map(p=>({...p}))});setNumerOverride(o.numerZlecenia);setEditingId(o.id);setAllegroOrderIdForForm(o.allegroOrderId||"");setTab("nowe");setSaved(false);}} title="Edytuj zamówienie">✏️</button>
-                          <button className="btn-pdf" style={{background:"#2a1a4a",color:"#bf9fdf",borderColor:"#4a2a6a"}} onClick={()=>{setImportModal(null);setWiadomosc("");setAllegroOrderIdForForm(o.allegroOrderId||"");setForm({data:new Date().toISOString().slice(0,10),firma:o.firma,klientImie:o.klientImie,klientUlica:o.klientUlica||"",klientKod:o.klientKod||"",klientMiasto:o.klientMiasto,telefon:o.telefon,uwagi:"",pozycje:[pustaPoz()]});setNumerOverride("");setEditingId(null);setSaved(false);setTab("nowe");}} title="Nowe zamówienie dla tego samego klienta">👤+</button>
+                          <button className="btn-pdf" style={{background:"#4a7a9a"}} onClick={()=>{setForm({data:o.data,firma:o.firma,klientImie:o.klientImie,klientUlica:o.klientUlica||"",klientKod:o.klientKod||"",klientMiasto:o.klientMiasto,telefon:o.telefon,uwagi:o.uwagi,pozycje:o.pozycje.map(p=>({...p}))});setNumerOverride(o.numerZlecenia);setEditingId(o.id);setAllegroOrderIdForForm(o.allegroOrderId||"");setTab("nowe");setSaved(false);}} title="Edytuj zamówienie">✏️</button>
+                          <button className="btn-pdf" style={{background:"#2a1a4a",color:"#bf9fdf",borderColor:"#7a5aaf"}} onClick={()=>{setImportModal(null);setWiadomosc("");setAllegroOrderIdForForm(o.allegroOrderId||"");setForm({data:new Date().toISOString().slice(0,10),firma:o.firma,klientImie:o.klientImie,klientUlica:o.klientUlica||"",klientKod:o.klientKod||"",klientMiasto:o.klientMiasto,telefon:o.telefon,uwagi:"",pozycje:[pustaPoz()]});setNumerOverride("");setEditingId(null);setSaved(false);setTab("nowe");}} title="Nowe zamówienie dla tego samego klienta">👤+</button>
                           <button className="btn-pdf" style={{background:"#1a1a2a",color:"#9a9adf",borderColor:"#3a3a6a"}}
                             onClick={()=>{const imp=allegroImportResults.find(i=>i.allegroOrderId===o.allegroOrderId);openFakModal(o,imp||null);}}
                             title="Wystaw fakturę w Fakturowni">🧾</button>
@@ -7067,7 +7036,7 @@ function App() {
               <div style={{border:"2px dashed #2a5a2a",borderRadius:8,padding:24,textAlign:"center",marginBottom:12,cursor:"pointer"}}
                 onClick={()=>document.getElementById("impPdfInput").click()}>
                 <div style={{color:"#4a7a4a",fontSize:14}}>📄 Kliknij lub przeciągnij pliki PDF<br/>
-                  <span style={{fontSize:12,color:"#3a5a3a"}}>Możesz wybrać wiele plików naraz</span>
+                  <span style={{fontSize:12,color:"#5a8a5a"}}>Możesz wybrać wiele plików naraz</span>
                 </div>
               </div>
               <input id="impPdfInput" type="file" accept=".pdf" multiple style={{display:"none"}}
@@ -7179,11 +7148,11 @@ function App() {
                     return(
                       <div key={k.id} style={{display:"flex",alignItems:"center",gap:8,padding:"7px 12px",
                         background:token?"#0a140a":"#140a0a",
-                        border:`1px solid ${token?"#1a3a1a":"#3a1a1a"}`,
+                        border:`1px solid ${token?"#1a3a1a":"#6a3a3a"}`,
                         borderRadius:6,opacity:isOwn?1:0.55}}>
                         <div style={{width:8,height:8,borderRadius:"50%",background:token?"#4acf4a":"#cf4a4a",flexShrink:0}}/>
                         <span style={{flex:1,fontWeight:700,color:token?"#7a9a7a":"#8a5a5a",fontSize:14}}>{k.label}</span>
-                        <span style={{fontSize:12,color:"#3a5a3a",fontFamily:"monospace"}}>{k.firma}</span>
+                        <span style={{fontSize:12,color:"#5a8a5a",fontFamily:"monospace"}}>{k.firma}</span>
                         {token
                           ?<div style={{display:"flex",gap:5,alignItems:"center"}}>
                               <span style={{fontSize:13,color:"#4a8a4a"}}>✅</span>
@@ -7207,7 +7176,7 @@ function App() {
                               }}>✕</button>
                             </div>
                           :<button className="btn-sm" onClick={()=>allegroLogin(k.id)}
-                              style={{background:"#3a1a1a",borderColor:"#6a2a2a",color:"#df8a8a",fontSize:13}}>
+                              style={{background:"#6a3a3a",borderColor:"#6a2a2a",color:"#df8a8a",fontSize:13}}>
                               🔑 Zaloguj
                             </button>
                         }
@@ -7215,7 +7184,7 @@ function App() {
                     );
                   })}
                 </div>
-                <div style={{marginTop:8,padding:"6px 10px",background:"#0a0f0a",borderRadius:5,fontSize:13,color:"#3a5a3a"}}>
+                <div style={{marginTop:8,padding:"6px 10px",background:"#0a0f0a",borderRadius:5,fontSize:13,color:"#5a8a5a"}}>
                   {ALLEGRO_KONTA.filter(k=>allegroTokens[k.id]).length}/{ALLEGRO_KONTA.length} kont zalogowanych{ALLEGRO_KONTA.filter(k=>!allegroTokens[k.id]).length>0&&(<span style={{color:"#cf8a4a",marginLeft:8}}>⚠️ Brak: {ALLEGRO_KONTA.filter(k=>!allegroTokens[k.id]).map(k=>k.label).join(", ")}</span>)}
                 </div>
                 <button className="btn" style={{width:"100%",marginTop:8,fontSize:13}} onClick={async()=>{
@@ -7256,7 +7225,7 @@ function App() {
                   <thead>
                     <tr style={{borderBottom:"2px solid #1e3a1e",background:"#0c1a0c"}}>
                       {["Kupujący","Temat","Ostatnia wiadomość","Data",""].map((h,i)=>(
-                        <th key={i} style={{padding:"10px",textAlign:"left",fontSize:14,color:"#3a7a3a",letterSpacing:".1em",textTransform:"uppercase"}}>{h}</th>
+                        <th key={i} style={{padding:"10px",textAlign:"left",fontSize:14,color:"#5aaa5a",letterSpacing:".1em",textTransform:"uppercase"}}>{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -7288,9 +7257,9 @@ function App() {
                 return (
                   <button key={k.id} onClick={function(){if(hasTok){msgLoadThreads(k.id);}else{alert("Brak tokenu dla "+k.id+" — zaloguj się w Admin → Allegro.");}}}
                     style={{padding:"4px 12px",fontSize:14,cursor:"pointer",borderRadius:5,fontWeight:active?700:400,
-                      background:active?"#2a5a3a":(hasTok?"#1a2a1a":"#0e0e0e"),
-                      border:"1px solid "+(active?"#4a9a5a":(hasTok?"#2a4a2a":"#1a1a1a")),
-                      color:active?"#9fef9f":(hasTok?"#6a9a6a":"#2a4a2a"),
+                      background:active?"#4a8a5a":(hasTok?"#1a2a1a":"#0e0e0e"),
+                      border:"1px solid "+(active?"#4a9a5a":(hasTok?"#4a7a4a":"#1a1a1a")),
+                      color:active?"#9fef9f":(hasTok?"#6a9a6a":"#4a7a4a"),
                       opacity:hasTok?1:0.4}}>
                     {k.label}
                   </button>
@@ -7302,7 +7271,7 @@ function App() {
                 <span style={{fontSize:14,color:"#4a8a4a",marginLeft:8}}>Wybierz konto aby załadować wątki</span>
               )}
               <div style={{marginLeft:"auto",display:"flex",gap:6}}>
-                <button onClick={function(){setMsgSubTab("threads");}} style={{padding:"5px 14px",fontSize:14,background:msgSubTab==="threads"?"#2a5a3a":"#1a2a1a",border:"1px solid "+(msgSubTab==="threads"?"#3a7a4a":"#2a4a2a"),borderRadius:5,color:msgSubTab==="threads"?"#7fcf7f":"#4a7a4a",cursor:"pointer",fontWeight:700}}>💬 Wątki</button>
+                <button onClick={function(){setMsgSubTab("threads");}} style={{padding:"5px 14px",fontSize:14,background:msgSubTab==="threads"?"#4a8a5a":"#1a2a1a",border:"1px solid "+(msgSubTab==="threads"?"#3a7a4a":"#4a7a4a"),borderRadius:5,color:msgSubTab==="threads"?"#7fcf7f":"#4a7a4a",cursor:"pointer",fontWeight:700}}>💬 Wątki</button>
                 <button onClick={function(){setMsgSubTab("instructions");if(aiInstructions.length===0)loadInstructions();}} style={{padding:"5px 14px",fontSize:14,background:msgSubTab==="instructions"?"#1a2a4a":"#1a1a2a",border:"1px solid "+(msgSubTab==="instructions"?"#3a4a8a":"#1a2a4a"),borderRadius:5,color:msgSubTab==="instructions"?"#7abfdf":"#3a4a8a",cursor:"pointer",fontWeight:700}}>📋 Instrukcje AI</button>
                 {msgSubTab==="threads"&&<button onClick={function(){setMsgNewShow(true);setMsgNewError("");}} style={{padding:"5px 14px",fontSize:14,background:"#1a3a2a",border:"1px solid #4a8a4a",borderRadius:5,color:"#afffaf",cursor:"pointer",fontWeight:700}}>✉️ Nowa</button>}
               </div>
@@ -7339,7 +7308,7 @@ function App() {
                 )}
                 {msgNewError&&<div style={{color:"#df8080",fontSize:14,marginBottom:8}}>{msgNewError}</div>}
                 <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                  <button onClick={msgSendNew} disabled={msgNewSending} style={{padding:"7px 18px",fontSize:14,background:"#2a5a3a",border:"1px solid #3a7a4a",borderRadius:5,color:"#afffaf",cursor:"pointer",fontWeight:700}}>{msgNewSending?"⟳ Wysyłam":"✉️ Wyślij"}</button>
+                  <button onClick={msgSendNew} disabled={msgNewSending} style={{padding:"7px 18px",fontSize:14,background:"#4a8a5a",border:"1px solid #3a7a4a",borderRadius:5,color:"#afffaf",cursor:"pointer",fontWeight:700}}>{msgNewSending?"⟳ Wysyłam":"✉️ Wyślij"}</button>
                   <span style={{fontSize:14,color:"#4a8a4a",fontStyle:"italic"}}>📎 Zdjęcia można dodać w odpowiedzi po wysłaniu</span>
                   <button onClick={function(){setMsgNewShow(false);setMsgNewAttachments([]);}} style={{padding:"7px 14px",fontSize:14,background:"transparent",border:"1px solid #2a4a2a",borderRadius:5,color:"#5a8a5a",cursor:"pointer"}}>Anuluj</button>
                 </div>
@@ -7359,7 +7328,7 @@ function App() {
                           <span style={{fontWeight:t.hasUnreadMessages?700:600,color:active?"#afeaaf":"#8abf8a",fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.interlocutor&&t.interlocutor.login||"—"}</span>
                         </div>
                         <div style={{fontSize:14,color:"#5a8a5a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.subject||"—"}</div>
-                        <div style={{fontSize:14,color:"#3a5a3a",marginTop:2}}>{t.lastMessageAt?new Date(t.lastMessageAt).toLocaleDateString("pl-PL"):""}</div>
+                        <div style={{fontSize:14,color:"#5a8a5a",marginTop:2}}>{t.lastMessageAt?new Date(t.lastMessageAt).toLocaleDateString("pl-PL"):""}</div>
                       </div>
                     );
                   })}
@@ -7382,7 +7351,7 @@ function App() {
                         msgConvo.map(function(m,i){
                           const isMe=m.author&&m.author.role==="OPERATOR";
                           return React.createElement("div",{key:i,style:{display:"flex",flexDirection:"column",alignItems:isMe?"flex-end":"flex-start",gap:3}},
-                            React.createElement("div",{style:{maxWidth:"72%",background:isMe?"#1a3a2a":"#1a2a3a",border:"1px solid "+(isMe?"#2a5a3a":"#2a3a5a"),borderRadius:isMe?"12px 12px 4px 12px":"12px 12px 12px 4px",padding:"8px 12px",fontSize:14,color:"#d0ead0",lineHeight:1.5}},
+                            React.createElement("div",{style:{maxWidth:"72%",background:isMe?"#1a3a2a":"#1a2a3a",border:"1px solid "+(isMe?"#4a8a5a":"#2a3a5a"),borderRadius:isMe?"12px 12px 4px 12px":"12px 12px 12px 4px",padding:"8px 12px",fontSize:14,color:"#d0ead0",lineHeight:1.5}},
                               m.text||"",
                               m.attachments&&m.attachments.length>0&&React.createElement("div",{style:{marginTop:6,display:"flex",flexWrap:"wrap",gap:4}},
                                 m.attachments.map(function(att,ai){
@@ -7406,7 +7375,7 @@ function App() {
                                 })
                               )
                             ),
-                            React.createElement("span",{style:{fontSize:14,color:"#3a5a3a"}},m.author&&m.author.login||(isMe?"Ty":"Kupujący")," · ",m.createdAt?new Date(m.createdAt).toLocaleString("pl-PL"):"")
+                            React.createElement("span",{style:{fontSize:14,color:"#5a8a5a"}},m.author&&m.author.login||(isMe?"Ty":"Kupujący")," · ",m.createdAt?new Date(m.createdAt).toLocaleString("pl-PL"):"")
                           );
                         })
                       )
@@ -7434,7 +7403,7 @@ function App() {
                             }})
                           ),
                           React.createElement("button",{onClick:handleMsgSuggest,disabled:msgSuggesting||msgConvo.length===0,style:{background:msgSuggesting?"#1a2a2a":"#1a2a3a",border:"1px solid #2a4a6a",borderRadius:6,padding:"8px 12px",fontSize:14,color:"#7abfdf",cursor:msgSuggesting||msgConvo.length===0?"not-allowed":"pointer",whiteSpace:"nowrap",opacity:msgConvo.length===0?0.4:1}},msgSuggesting?"⟳ AI...":"🤖 Sugeruj"),
-                          React.createElement("button",{onClick:msgSend,disabled:msgSending||(msgReply.trim()===""&&msgAttachments.length===0),style:{background:(msgSending||(msgReply.trim()===""&&msgAttachments.length===0))?"#1a2a1a":"#2a5a3a",border:"1px solid #3a7a4a",borderRadius:6,padding:"8px 12px",fontSize:14,color:"#afffaf",cursor:(msgSending||(msgReply.trim()===""&&msgAttachments.length===0))?"not-allowed":"pointer",fontWeight:700,whiteSpace:"nowrap",opacity:(msgReply.trim()===""&&msgAttachments.length===0)?0.4:1}},msgSending?"⟳ Wysyłam":"✉️ Wyślij")
+                          React.createElement("button",{onClick:msgSend,disabled:msgSending||(msgReply.trim()===""&&msgAttachments.length===0),style:{background:(msgSending||(msgReply.trim()===""&&msgAttachments.length===0))?"#1a2a1a":"#4a8a5a",border:"1px solid #3a7a4a",borderRadius:6,padding:"8px 12px",fontSize:14,color:"#afffaf",cursor:(msgSending||(msgReply.trim()===""&&msgAttachments.length===0))?"not-allowed":"pointer",fontWeight:700,whiteSpace:"nowrap",opacity:(msgReply.trim()===""&&msgAttachments.length===0)?0.4:1}},msgSending?"⟳ Wysyłam":"✉️ Wyślij")
                         )
                       ),
                       msgSuggestError&&React.createElement("div",{style:{marginTop:4,color:"#df9080",fontSize:14}},msgSuggestError),
@@ -7480,7 +7449,7 @@ function App() {
 
                 {/* Lista instrukcji */}
                 {aiInstructions.length===0?(
-                  <div style={{textAlign:"center",padding:40,color:"#3a6a8a",fontSize:14}}>
+                  <div style={{textAlign:"center",padding:40,color:"#5a9aaa",fontSize:14}}>
                     Brak instrukcji — kliknij "+ Nowa instrukcja" lub "Załaduj z KV"
                   </div>
                 ):(
@@ -7808,7 +7777,7 @@ function App() {
                         {fvAllegroStatus==="loading"&&<span style={{color:"#dfcf5f"}}>⏳ Pobieranie z Allegro...</span>}
                         {fvAllegroStatus.startsWith("ok:")&&<span style={{color:"#7fcf9f"}}>✅ {fvAllegroStatus.slice(3)}</span>}
                         {fvAllegroStatus.startsWith("error:")&&<span style={{color:"#cf7f7f"}}>❌ {fvAllegroStatus.slice(6)}</span>}
-                        {!fvAllegroStatus&&<span style={{color:"#3a5a3a",fontSize:14}}>UUID z URL zamówienia Allegro · dane zaciągają się po wklejeniu</span>}
+                        {!fvAllegroStatus&&<span style={{color:"#5a8a5a",fontSize:14}}>UUID z URL zamówienia Allegro · dane zaciągają się po wklejeniu</span>}
                       </div>
                     </div>);
                   })()}
@@ -7930,7 +7899,7 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
                         </select></td>
                         <td style={{padding:4,textAlign:"right",color:"#7a9a7a"}}>{netto.toFixed(2)}</td>
                         <td style={{padding:4,textAlign:"right",fontWeight:700,color:"#9fcf9f"}}>{brutto.toFixed(2)} zł</td>
-                        <td style={{padding:4}}>{fvForm.pozycje.length>1&&<button onClick={()=>setFvForm(f=>({...f,pozycje:f.pozycje.filter((_,j)=>j!==i)}))} style={{background:"#3a1a1a",color:"#cf9f9f",border:"none",borderRadius:4,cursor:"pointer",padding:"2px 6px"}}>✕</button>}</td>
+                        <td style={{padding:4}}>{fvForm.pozycje.length>1&&<button onClick={()=>setFvForm(f=>({...f,pozycje:f.pozycje.filter((_,j)=>j!==i)}))} style={{background:"#6a3a3a",color:"#cf9f9f",border:"none",borderRadius:4,cursor:"pointer",padding:"2px 6px"}}>✕</button>}</td>
                       </tr>;
                     })}
                   </tbody>
@@ -8057,7 +8026,7 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
                       },0);
                       return <tr key={fv.id} style={{borderBottom:"1px solid #1e3a1e"}}>
                         <td style={{padding:8,fontWeight:700,color:fv.typ==="proforma"?"#df9f3f":fv.typ==="korekta"?"#cf5f5f":"#dfcf5f"}}>
-                          {fv.typ==="proforma"&&<span style={{fontSize:9,background:"#3a2a0a",color:"#df9f3f",borderRadius:3,padding:"1px 4px",marginRight:4}}>PRO</span>}
+                          {fv.typ==="proforma"&&<span style={{fontSize:9,background:"#7a5a2a",color:"#df9f3f",borderRadius:3,padding:"1px 4px",marginRight:4}}>PRO</span>}
                           {fv.typ==="korekta"&&<span style={{fontSize:9,background:"#3a0a0a",color:"#cf5f5f",borderRadius:3,padding:"1px 4px",marginRight:4}}>KOR</span>}
                           {fv.numer}
                         </td>
@@ -8238,7 +8207,7 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
                   <table style={{width:"100%",fontSize:14}}>
                     <tbody>
                       {[["Czarna 100cm",siatkaCzarna100],["Czarna 140cm",siatkaCzarna140],["Czarna 160cm",siatkaCzarna160],["Szara 100cm",siatkaSzara100],["Szara 140cm",siatkaSzara140],["Szara 160cm",siatkaSzara160]].map(([l,v])=>(
-                        <tr key={l}><td style={{color:"#5a8a5a",paddingBottom:4}}>{l}</td><td style={{textAlign:"right",color:v>0?"#9fcf9f":"#2a4a2a",fontWeight:700}}>{r2(v)} mb</td></tr>
+                        <tr key={l}><td style={{color:"#5a8a5a",paddingBottom:4}}>{l}</td><td style={{textAlign:"right",color:v>0?"#9fcf9f":"#4a7a4a",fontWeight:700}}>{r2(v)} mb</td></tr>
                       ))}
                       <tr style={{borderTop:"1px solid #1e3a1e"}}><td style={{color:"#afffaf",paddingTop:8,fontWeight:700}}>RAZEM</td><td style={{textAlign:"right",color:"#afffaf",fontWeight:700,paddingTop:8}}>{r2(siatkaCzarna100+siatkaCzarna140+siatkaCzarna160+siatkaSzara100+siatkaSzara140+siatkaSzara160)} mb</td></tr>
                     </tbody>
@@ -8330,7 +8299,7 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
                   if(d.ok) alert('✅ Połączenie OK — w KV jest '+d.count+' zamówień');
                   else alert('❌ '+JSON.stringify(d));
                 }}>🔌 Testuj KV</button>
-                <button className="btn" style={{flex:1,fontSize:13,background:"#1a2a3a",borderColor:"#2a4a6a"}} onClick={async()=>{
+                <button className="btn" style={{flex:1,fontSize:13,background:"#1a2a3a",borderColor:"#4a7a9a"}} onClick={async()=>{
                   const key=localStorage.getItem('mosk_worker_key')||'';
                   const {apiKey,binId}=window.jsonbinSettings.getSettings();
                   if(!key||!apiKey||!binId){alert('Wpisz klucz Workera i upewnij się że masz dane JSONBin');return;}
@@ -8344,7 +8313,7 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
                   else alert('❌ '+JSON.stringify(d));
                 }}>📦 Migruj z JSONBin → KV</button>
               </div>
-              <div style={{fontSize:12,color:"#3a5a3a"}}>
+              <div style={{fontSize:12,color:"#5a8a5a"}}>
                 Po migracji odśwież stronę — wszystkie zamówienia pojawią się z KV.
               </div>
             </div>
@@ -8380,7 +8349,7 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
                   </div>
                 );
               })}
-              <div style={{fontSize:12,color:"#3a5a3a",marginTop:8}}>
+              <div style={{fontSize:12,color:"#5a8a5a",marginTop:8}}>
                 Tokeny są przechowywane lokalnie w przeglądarce. Na produkcji zalecamy użycie środowiska testowego najpierw.
               </div>
             </div>
@@ -8455,7 +8424,7 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
                 if(d.ok){localStorage.setItem('dpd_config',JSON.stringify(dpdConfig));alert('✅ Zapisano konfigurację DPD');}
                 else alert('❌ '+JSON.stringify(d));
               }}>💾 Zapisz konfigurację DPD do Workera</button>
-              <div style={{marginTop:10,fontSize:12,color:"#3a5a3a"}}>
+              <div style={{marginTop:10,fontSize:12,color:"#5a8a5a"}}>
                 Nadawca: Favour Magdalena Rudnicka, ul. Obrońców Westerplatte 27A, 08-110 Siedlce
               </div>
             </div>
@@ -8642,7 +8611,7 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
                       <div style={{marginTop:10,borderTop:"1px solid #1a3a2a",paddingTop:8}}>
                         <div style={{fontSize:11,color:"#3a6a4a",marginBottom:6,fontWeight:700,letterSpacing:".05em"}}>📨 HISTORIA WIADOMOŚCI</div>
                         {importModal.checkoutMsg&&<div style={{marginBottom:6,padding:"6px 10px",background:"#0a1a0a",border:"1px solid #1a4a2a",borderRadius:5}}>
-                          <div style={{fontSize:10,color:"#3a6a3a",marginBottom:2}}>📋 Wiadomość przy zamówieniu:</div>
+                          <div style={{fontSize:10,color:"#5a9a5a",marginBottom:2}}>📋 Wiadomość przy zamówieniu:</div>
                           <div style={{fontSize:13,color:"#cfdf9f",whiteSpace:"pre-wrap",wordBreak:"break-word"}}>{importModal.checkoutMsg}</div>
                         </div>}
                         {(importModal.threadHistory||[]).map((m,i)=>(
@@ -8650,7 +8619,7 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
                             background:m.role==='SELLER'?"#0a0a1a":"#0a1a0a",
                             border:"1px solid "+(m.role==='SELLER'?"#1a1a3a":"#1a3a1a"),
                             textAlign:m.role==='SELLER'?"right":"left"}}>
-                            <div style={{fontSize:10,color:m.role==='SELLER'?"#3a3a7a":"#3a6a3a",marginBottom:2}}>
+                            <div style={{fontSize:10,color:m.role==='SELLER'?"#3a3a7a":"#5a9a5a",marginBottom:2}}>
                               {m.role==='SELLER'?"🏪 Sprzedawca":"👤 Klient"} · {m.date?new Date(m.date).toLocaleString('pl-PL',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):''}
                             </div>
                             <div style={{fontSize:13,color:m.role==='SELLER'?"#8a9adf":"#cfaf6f",whiteSpace:"pre-wrap",wordBreak:"break-word"}}>{m.text}</div>
@@ -8811,7 +8780,7 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
                       disabled={mode==="kal"&&!kalData}
                       style={{padding:"8px 22px",borderRadius:6,border:"1px solid #4a9a5a",
                         background:(mode==="kal"&&!kalData)?"#1a2a1a":"#1a5a2a",
-                        color:(mode==="kal"&&!kalData)?"#3a5a3a":"#7fcf7f",
+                        color:(mode==="kal"&&!kalData)?"#5a8a5a":"#7fcf7f",
                         cursor:(mode==="kal"&&!kalData)?"not-allowed":"pointer",fontWeight:700,fontSize:14}}>
                       ➕ Importuj zlecenie
                     </button>
@@ -8901,7 +8870,7 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
                 <input value={fakModal.form.nip} onChange={e=>setFakModal(m=>({...m,form:{...m.form,nip:e.target.value}}))}
                   placeholder="np. 5222317450" style={{flex:1,padding:'6px 10px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#9acf9a',fontSize:13,fontFamily:'monospace'}}/>
                 <button onClick={gusLookup} disabled={fakModal.gusLoading}
-                  style={{padding:'6px 12px',borderRadius:4,border:'1px solid #3a7a3a',background:'#0a2a0a',color:'#7acf7a',cursor:'pointer',fontSize:12,whiteSpace:'nowrap'}}>
+                  style={{padding:'6px 12px',borderRadius:4,border:'1px solid #3a7a3a',background:'#0a2a0a',color:'#9aef9a',cursor:'pointer',fontSize:12,whiteSpace:'nowrap'}}>
                   {fakModal.gusLoading?'⏳ Szukam...':'🏛 GUS'}
                 </button>
                 <button onClick={()=>{
@@ -9012,7 +8981,7 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
                   if(!confirm(`Usunąć oznaczenie faktury ${inv.number}?\n(Faktura pozostanie w Fakturowni — usuń ją tam ręcznie)`)) return;
                   setInvoicesSent(prev=>{const next={...prev};delete next[id];localStorage.setItem('invoices_sent',JSON.stringify(next));return next;});
                   setFakModal(null);
-                }} style={{padding:'8px 14px',borderRadius:6,border:'1px solid #6a2a2a',background:'#2a0a0a',color:'#cf6a6a',cursor:'pointer',fontSize:13,marginRight:'auto'}}>
+                }} style={{padding:'8px 14px',borderRadius:6,border:'1px solid #6a2a2a',background:'#2a0a0a',color:'#ef9a9a',cursor:'pointer',fontSize:13,marginRight:'auto'}}>
                   🗑 Usuń oznaczenie faktury {inv.number}
                 </button>
               );})()}
@@ -9022,7 +8991,7 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
                 const kontoId=fakModal.imp?.kontoId||fakModal.order?.kontoId||({F:'favo5',AR:'arlis_pl',E:'everis_pl',AP:'albama_eu'}[fakModal.imp?.firma||fakModal.order?.firma||'F'])||'favo5';
                 if(!inv||!id||id.startsWith('manual_')) return null;
                 if(inv.allegroAttached||fakModal.allegroAttachStatus==='ok'){
-                  return <span style={{padding:'8px 12px',fontSize:13,color:'#7acf7a',alignSelf:'center'}}>📎✅ Dodano do Allegro</span>;
+                  return <span style={{padding:'8px 12px',fontSize:13,color:'#9aef9a',alignSelf:'center'}}>📎✅ Dodano do Allegro</span>;
                 }
                 return(
                   <button onClick={()=>attachInvoiceToAllegro(id,kontoId,inv)}
@@ -9097,7 +9066,7 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
                   <button key={sz} onClick={()=>setShipmentSize(sz)}
                     style={{padding:"4px 10px",fontSize:12,borderRadius:4,cursor:"pointer",
                       background:shipmentSize===sz?"#2a5a2a":"#1a2a1a",
-                      border:`1px solid ${shipmentSize===sz?"#5a9a5a":"#2a4a2a"}`,color:"#9fcf9f"}}>
+                      border:`1px solid ${shipmentSize===sz?"#5a9a5a":"#4a7a4a"}`,color:"#9fcf9f"}}>
                     {sz==="custom"?"Własny":sz}
                   </button>
                 ));
@@ -9135,7 +9104,7 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
                 {extraParcels.map((ep,ei)=>(
                   <div key={ei} style={{background:'#0c1a0c',border:'1px solid #2a5a2a',borderRadius:6,padding:8,marginBottom:6,fontSize:12}}>
                     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-                      <span style={{color:'#7acf7a',fontWeight:700}}>Paczka {ei+2}: {ep.shipmentId?'✅ Gotowa':'⏳ Niezapisana'}</span>
+                      <span style={{color:'#9aef9a',fontWeight:700}}>Paczka {ei+2}: {ep.shipmentId?'✅ Gotowa':'⏳ Niezapisana'}</span>
                       {!ep.shipmentId&&<button onClick={async()=>{
                         // Utwórz dodatkowy shipment
                         try{
@@ -9162,7 +9131,7 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
                           });
                           alert('✅ Dodatkowa paczka '+(ei+2)+' utworzona');
                         }catch(e){alert('❌ '+e.message);}
-                      }} style={{padding:'3px 10px',fontSize:11,borderRadius:4,border:'1px solid #3a8a3a',background:'#1a3a1a',color:'#7acf7a',cursor:'pointer'}}>
+                      }} style={{padding:'3px 10px',fontSize:11,borderRadius:4,border:'1px solid #3a8a3a',background:'#1a3a1a',color:'#9aef9a',cursor:'pointer'}}>
                         📦 Utwórz
                       </button>}
                       {ep.shipmentId&&<button onClick={async()=>{
@@ -9172,7 +9141,7 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
                         if(!d.pdf){alert('❌ Brak PDF');return;}
                         const blob=new Blob([Uint8Array.from(atob(d.pdf),c=>c.charCodeAt(0))],{type:'application/pdf'});
                         window.open(URL.createObjectURL(blob),'_blank');
-                      }} style={{padding:'3px 10px',fontSize:11,borderRadius:4,border:'1px solid #3a7a3a',background:'#1a3a1a',color:'#7acf7a',cursor:'pointer'}}>🖨 Drukuj</button>}
+                      }} style={{padding:'3px 10px',fontSize:11,borderRadius:4,border:'1px solid #3a7a3a',background:'#1a3a1a',color:'#9aef9a',cursor:'pointer'}}>🖨 Drukuj</button>}
                     </div>
                     <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:4,marginTop:6}}>
                       <input value={ep.description} onChange={e=>setExtraParcels(prev=>prev.map((p,i)=>i===ei?{...p,description:e.target.value}:p))}
@@ -9212,7 +9181,7 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
                       window.open(URL.createObjectURL(blob),'_blank');
                     }catch(e){alert('❌ '+e.message);}
                   }}
-                  style={{padding:'5px 12px',borderRadius:6,border:'1px solid #3a7a3a',background:'#1a3a1a',color:'#7acf7a',cursor:'pointer',fontSize:12,fontWeight:700}}>
+                  style={{padding:'5px 12px',borderRadius:6,border:'1px solid #3a7a3a',background:'#1a3a1a',color:'#9aef9a',cursor:'pointer',fontSize:12,fontWeight:700}}>
                     🖨 Drukuj {extraParcels.filter(ep=>ep.shipmentId).length>0?`etykiety (${1+extraParcels.filter(ep=>ep.shipmentId).length})`:'etykietę'}
                   </button>
                   <button onClick={()=>{
@@ -9240,7 +9209,7 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
                   </button>
                 </div>
                 {pickupLoading&&<div style={{color:'#7abfdf',fontSize:13}}>⟳ Pobieranie terminów...</div>}
-                {pickupResult&&pickupResult.ok&&<div style={{color:'#7acf7a',fontSize:13}}>✅ Odbiór zamówiony!</div>}
+                {pickupResult&&pickupResult.ok&&<div style={{color:'#9aef9a',fontSize:13}}>✅ Odbiór zamówiony!</div>}
                 {pickupResult&&!pickupResult.ok&&<div style={{color:'#cf4a4a',fontSize:12,wordBreak:'break-all'}}>❌ {pickupResult.error||JSON.stringify(pickupResult)}</div>}
                 {!pickupLoading&&!pickupResult&&(
                   <div>
