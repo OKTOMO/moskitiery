@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260513.10</title>
+<title>MosquitoApp v20260513.11</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -4976,7 +4976,31 @@ function App() {
           });
           const noweList=filteredAll.filter(imp=>{const s=getEffectiveStatus(imp);return s==='Nowe'||s==='Wstrzymano'||s==='Problem';});
           const _statusTimes=JSON.parse(localStorage.getItem('app_status_times')||'{}');
-          const realizacjaList=filteredAll.filter(imp=>getEffectiveStatus(imp)==='W realizacji').sort((a,b)=>{
+          // Ręczne zamówienia (bez allegroOrderId) w statusie W realizacji
+          const reczneWRealizacji=orders.filter(o=>{
+            if(o.allegroOrderId) return false; // ma Allegro — już jest w allegroImportResults
+            if(zamKonto) return false; // filtr konta nie dotyczy ręcznych
+            const s=o.status||'nowe';
+            return s==='realizacja'||s==='W realizacji';
+          }).map(o=>({
+            _isManual:true,
+            allegroOrderId:'manual_'+o.id,
+            kontoId:'manual',
+            klientImie:o.klientImie||'',
+            klientMiasto:o.klientMiasto||'',
+            klientUlica:o.klientUlica||'',
+            klientKod:o.klientKod||'',
+            telefon:o.telefon||'',
+            offerNames:o.pozycje?.map(p=>p.szerokosc&&p.wysokosc?`${p.szerokosc}×${p.wysokosc}cm`:'').filter(Boolean).join(', ')||'Zlecenie ręczne',
+            boughtAt:o.data||'',
+            updatedAt:o.data||'',
+            totalAmount:0,
+            fulfillmentStatus:'PROCESSING',
+            buyerMsg:'',
+            _linkedOrder:o,
+            numerZlecenia:o.numerZlecenia||'',
+          }));
+          const realizacjaList=[...filteredAll.filter(imp=>getEffectiveStatus(imp)==='W realizacji'),...reczneWRealizacji].sort((a,b)=>{
             const ta=_statusTimes[a.allegroOrderId]||a.updatedAt||a.boughtAt||a.data||'';
             const tb=_statusTimes[b.allegroOrderId]||b.updatedAt||b.boughtAt||b.data||'';
             return tb.localeCompare(ta);
@@ -4986,7 +5010,7 @@ function App() {
           const fmtDT=iso=>{if(!iso)return '—';const d=new Date(iso);return d.toLocaleDateString('pl-PL')+' '+d.toLocaleTimeString('pl-PL',{hour:'2-digit',minute:'2-digit'});};
           const toggleBox=(id,box)=>setZamOpenBox(prev=>({...prev,[id]:prev[id]===box?null:box}));
           const renderRow=(imp,idx)=>{
-            const [kBg,kCol]=KONTO_COLORS[imp.kontoId]||['#2a2a2a','#9a9a9a'];
+            const [kBg,kCol]=imp._isManual?['#2a2a3a','#9a9adf']:KONTO_COLORS[imp.kontoId]||['#2a2a2a','#9a9a9a'];
             const effStatus=getEffectiveStatus(imp);
             const as=appStatuses[imp.allegroOrderId]||'';
             const sh=allegroShipments[imp.allegroOrderId];
@@ -5020,7 +5044,8 @@ function App() {
                     style={{width:16,height:16,cursor:'pointer',accentColor:'#9a9adf'}}
                   />}
                   <div style={{minWidth:76}}>
-                    <span style={{fontSize:11,padding:'2px 5px',borderRadius:5,background:kBg,color:kCol,fontFamily:'monospace',fontWeight:700,display:'inline-block'}}>{imp.kontoId}</span>
+                    <span style={{fontSize:11,padding:'2px 5px',borderRadius:5,background:kBg,color:kCol,fontFamily:'monospace',fontWeight:700,display:'inline-block'}}>{imp._isManual?'✏️ ręczne':imp.kontoId}</span>
+                    {imp._isManual&&imp.numerZlecenia&&<span style={{fontSize:11,color:'#9a9adf',marginLeft:4}}>{imp.numerZlecenia}</span>}
                     <div style={{fontSize:10,color:'#3a6a4a',marginTop:1}}>{imp.firma==='F'?'Favour':imp.firma==='AR'||imp.firma==='A'?'Arlis':imp.firma==='E'?'Everis':'Albama'}</div>
                   </div>
                   <div style={{minWidth:100,fontSize:11,color:'#5a8abf'}}>{imp.boughtAt?fmtDT(imp.boughtAt):imp.data||'—'}</div>
@@ -6577,6 +6602,16 @@ function App() {
               <input value={kalOrdersSearch} onChange={e=>setKalOrdersSearch(e.target.value)}
                 placeholder="Szukaj po imieniu, numerze KAL..."
                 style={{padding:"5px 10px",fontSize:14,background:"#0e1e0e",border:"1px solid #2a5a3a",borderRadius:6,color:"#a0dfaf",width:240}}/>
+              <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                <input value={kalInputNumer} onChange={e=>setKalInputNumer(e.target.value.toUpperCase())}
+                  onKeyDown={e=>{if(e.key==="Enter")pobierzZKalkulatora();}}
+                  placeholder="FAV-260513-1234"
+                  style={{padding:"5px 10px",fontSize:13,background:"#0a1a0a",border:"1px solid #2a5a3a",borderRadius:6,color:"#a0dfaf",width:160,fontFamily:"monospace"}}/>
+                <button onClick={()=>pobierzZKalkulatora()} disabled={kalImporting}
+                  style={{padding:"5px 12px",borderRadius:6,border:"1px solid #3a7a4a",background:kalImporting?"#0a1a0a":"#1a3a2a",color:"#afffaf",cursor:"pointer",fontWeight:700,fontSize:13,whiteSpace:"nowrap"}}>
+                  {kalImporting?"⟳":"⬇️ Importuj"}
+                </button>
+              </div>
               <span style={{marginLeft:"auto",fontSize:14,color:"#3a7a4a"}}>
                 {kalOrders.filter(o=>o.status!=="zrealizowane").length} otwartych / {kalOrders.length} łącznie
               </span>
