@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260513.7</title>
+<title>MosquitoApp v20260513.8</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -2012,21 +2012,14 @@ function App() {
   async function pobierzKontrahentaNIP(nip, firma){
     if(!nip) return null;
     const cfg=fakturowniaConfig;
-    if(!cfg) return null;
-    // Config jest płaski: {domain, token} — nie per-firma
-    const token=cfg.token||'T7CWLNn5cZ6vVx-bKFmk';
-    const domain=cfg.domain||'everis75.fakturownia.pl';
+    const token=cfg?.token||'T7CWLNn5cZ6vVx-bKFmk';
+    const domain=cfg?.domain||'everis75.fakturownia.pl';
     try{
-      const r=await fetch('https://'+domain+'/clients.json?api_token='+token+'&tax_no='+encodeURIComponent(nip));
+      const r=await fetch(AUTORESPONDER_URL+'/fakturownia/client?nip='+encodeURIComponent(nip)+'&domain='+encodeURIComponent(domain)+'&token='+encodeURIComponent(token),{
+        headers:{'x-api-key':AUTORESPONDER_KEY}
+      });
       const d=await r.json();
-      if(Array.isArray(d)&&d.length>0) return d[0];
-      // Spróbuj też po NIP bez myślników/spacji
-      const nipClean=nip.replace(/[^0-9]/g,'');
-      if(nipClean!==nip){
-        const r2=await fetch('https://'+domain+'/clients.json?api_token='+token+'&tax_no='+encodeURIComponent(nipClean));
-        const d2=await r2.json();
-        if(Array.isArray(d2)&&d2.length>0) return d2[0];
-      }
+      if(d.ok&&d.client) return d.client;
     }catch(e){console.error('pobierzKontrahentaNIP error:',e);}
     return null;
   }
