@@ -3,12 +3,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260511.42</title>
+<title>MosquitoApp v20260511.43</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260511.42';
+  window.__MOSK_VERSION='20260511.43';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -3153,24 +3153,21 @@ function App() {
             email:firma.email
           },
           receiver:(()=>{
-            // Parsuj ulicę i numer budynku — InPost i inne usługi wymagają osobnych pól
             const rawStreet=(imp.klientUlica||"").trim();
-            // Wzorzec: "ul. Nazwa 12/3" lub "Nazwa12" (sklejone) lub "Nazwa 12A"
-            // Rozdziel sklejone: "Istebna1241" -> ulica:"Istebna", nr:"1241"
-            const splitStreet=(s)=>{
-              if(!s) return {street:'',building:''};
-              // Spróbuj split po ostatnim numerze z opcjonalną literą i łamaniem
-              const m=s.match(/^(.*?)\s*(\d+[a-zA-Z]?(?:\/\d+[a-zA-Z]?)?)$/);              if(m&&m[1]&&m[2]) return {street:m[1].trim(),building:m[2].trim()};
-              // Sklejone bez spacji: "Istebna1241"
-              const m2=s.match(/^([a-zA-ZąćęłńóśźżĄĆĘŁŃÓŚŹŻ\s\.\-]+?)(\d+.*)$/);              if(m2&&m2[1]&&m2[2]) return {street:m2[1].trim(),building:m2[2].trim()};
-              return {street:s,building:''};
-            };
-            const {street:parsedStreet,building:parsedBuilding}=splitStreet(rawStreet);
+            const isIntl=!!(imp.klientKraj&&imp.klientKraj!=='PL');
+            // Krajowe: rozdziel sklejone "Istebna1241" — InPost wymaga buildingNumber
+            // Zagraniczne: pełny adres w street (Allegro nie przyjmuje buildingNumber)
+            let parsedStreet=rawStreet, parsedBuilding=undefined;
+            if(!isIntl){
+              const m2=rawStreet.match(/^([a-zA-ZąćęłńóśźżĄĆĘŁŃӓŚŹŻ\s\.\-]+?)(\d+.*)$/);
+              if(m2&&m2[1]&&m2[2]){parsedStreet=m2[1].trim();parsedBuilding=m2[2].trim();}
+            }
             return {
             name:imp.klientImie||"",
-            street:parsedStreet||rawStreet,
-            buildingNumber:parsedBuilding||undefined,
+            street:parsedStreet,
+            ...(parsedBuilding?{buildingNumber:parsedBuilding}:{}),
             postalCode:imp.klientKod||"",
+       ode:imp.klientKod||"",
             city:imp.klientMiasto||"",
             countryCode:(()=>{
               // Użyj klientKraj jeśli jest, inaczej wykryj z kodu pocztowego
