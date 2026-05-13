@@ -353,7 +353,7 @@ DODATKOWE ALIASY:
 KOLOR SIATKI: Czarna lub Szara (domyślnie Czarna)
 
 WAŻNE:
-- Identyczne pozycje (DOKŁADNIE te same wymiary co do 0.1cm, kolor, typ) → scal. Nawet 0.1cm różnicy = OSOBNA pozycja. "64,8x136,5" i "64x136,5" = DWIĘ pozycje.
+- Identyczne pozycje NIE są scalane — każda linia listy to OSOBNA pozycja z ilosc=1, nawet jeśli wymiary są identyczne. Wyjątek: tylko gdy klient JAWNIE pisze "2 szt" lub "x2" przy danej pozycji.
 - klientImie = PEŁNE imię i nazwisko klienta w formacie: Nazwisko Imię (np. "Kowalski Jan"). Jeśli w wiadomości jest tylko jedno słowo — wpisz je. Nigdy nie pomijaj nazwiska jeśli jest podane.
 - klientMiasto ZAWSZE wypełnij jeśli występuje w adresie lub treści — także dla drzwi.
 - Z adresu wyciągnij: klientUlica (ulica + nr domu), klientKod (XX-XXX), klientMiasto (miejscowość)
@@ -1306,6 +1306,8 @@ function App() {
   const [numerOverride,setNumerOverride]=useState("");
   const [editingId,setEditingId]=useState(null);
   const [kalNumerForForm,setKalNumerForForm]=useState(""); // osobny numer z kalkulatora
+  const [kalInputNumer,setKalInputNumer]=useState(""); // pole wpisywania nr kalkulatora
+  const [kalImporting,setKalImporting]=useState(false);
   const [saved,setSaved]=useState(false);
   const [search,setSearch]=useState("");
   const [filterMonth,setFilterMonth]=useState("");
@@ -1628,7 +1630,7 @@ function App() {
     const pozycje=[];
     // Format 1: 84x215 - 2 szt / 84x215 2szt / 84x215
     // 34x128x2 — trzecia liczba BEZ słowa "szt" i BEZ spacji/myślnika przed nią to grubość ramy — ignoruj
-    const dimRe1=/(\d{2,3}[,.]?\d*)\s*[xX\u00d7\u0445]\s*(\d{2,3}[,.]?\d*)(?:\s*[-–]\s*(\d+)\s*(?:szt(?:uk[ia]?)?)?|\s+(\d+)\s*szt(?:uk[ia]?)?|[xX]\s*(\d+)\s+szt(?:uk[ia]?)?|\s*[xX]\s+(\d+))?/gi;
+    const dimRe1=/(\d{2,3}[,.]?\d*)\s*(?:cm)?\s*[xX\u00d7\u0445]\s*(\d{2,3}[,.]?\d*)\s*(?:cm)?(?:\s*[-–]\s*(\d+)\s*(?:szt(?:uk[ia]?)?)?|\s+(\d+)\s*szt(?:uk[ia]?)?|[xX]\s*(\d+)\s+szt(?:uk[ia]?)?|\s*[xX]\s+(\d+))?/gi;
     // Format 2: 878mm/996mm x2 sztuki / 878mm/996mm
     const dimRe2=/(\d{3,4})\s*mm\s*[\/\\]\s*(\d{3,4})\s*mm\s*[xX]?\s*(\d+)?\s*(?:szt(?:uk[ia]?)?)?/gi;
     let m;
@@ -1869,6 +1871,41 @@ function App() {
     const r=raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"");
     if(r.includes("szar")||r.includes("grey")||r.includes("gray")) return "Szara";
     return "Czarna";
+  }
+
+  async function pobierzZKalkulatora(numer){
+    const n=(numer||kalInputNumer).trim().toUpperCase();
+    if(!n){alert('Wpisz numer zapytania z kalkulatora');return;}
+    setKalImporting(true);
+    try{
+      const r=await fetch(AUTORESPONDER_URL+'/kalkulator/order/'+encodeURIComponent(n.toLowerCase()),{headers:{'x-api-key':AUTORESPONDER_KEY}});
+      const d=await r.json();
+      if(!r.ok||d.error){alert('❌ Nie znaleziono: '+n);return;}
+      // Wypełnij pozycje z kalkulatora
+      const mm2cmStr = v => {
+        const n2 = parseFloat(v||0);
+        if(!n2) return '';
+        const cm = n2/10;
+        return cm%1===0 ? String(Math.round(cm)) : String(Math.round(cm*10)/10);
+      };
+      const poz=(d.pozycje||[]).map(p=>({
+        szerokosc: mm2cmStr(p.szerokosc),
+        wysokosc:  mm2cmStr(p.wysokosc),
+        glebokosc: p.felc?mm2cmStr(p.felc):String(DOMYSLNA_GLEBOKOS),
+        kolorRamki: p.kolorProfilu||'Antracyt',
+        kolorSiatki: p.kolorSiatki||'Czarna',
+        ilosc: parseInt(p.ilosc)||1,
+      }));
+      if(poz.length===0){alert('❌ Brak pozycji w zapytaniu '+n);return;}
+      setForm(f=>({...f,pozycje:poz}));
+      setKalNumerForForm(n);
+      setKalInputNumer('');
+      alert('✅ Pobrano '+poz.length+' poz. z kalkulatora '+n);
+    }catch(e){
+      alert('❌ Błąd: '+e.message);
+    }finally{
+      setKalImporting(false);
+    }
   }
 
   async function doImportOrder(modal){
@@ -4420,6 +4457,19 @@ function App() {
                   <div>
                     <span className="lbl">Data</span>
                     <input type="date" value={form.data} onChange={e=>setForm(f=>({...f,data:e.target.value}))}/>
+                  </div>
+                  <div style={{display:'flex',gap:6,alignItems:'flex-end',marginBottom:4}}>
+                    <div style={{flex:1}}>
+                      <span className="lbl">📨 Nr z kalkulatora</span>
+                      <input value={kalInputNumer} onChange={e=>setKalInputNumer(e.target.value.toUpperCase())}
+                        onKeyDown={e=>{if(e.key==='Enter')pobierzZKalkulatora();}}
+                        placeholder="FAV-260513-4372"
+                        style={{fontFamily:'monospace',fontSize:13}}/>
+                    </div>
+                    <button onClick={()=>pobierzZKalkulatora()} disabled={kalImporting}
+                      style={{padding:'7px 12px',borderRadius:6,border:'1px solid #3a7a3a',background:kalImporting?'#0a1a0a':'#1a3a1a',color:kalImporting?'#4a7a4a':'#7acf7a',cursor:'pointer',fontWeight:700,fontSize:13,whiteSpace:'nowrap',marginBottom:1}}>
+                      {kalImporting?'⟳ Pobieranie...':'⬇️ Pobierz'}
+                    </button>
                   </div>
                   <div>
                     <span className="lbl">Klient (nazwisko imię)</span>
