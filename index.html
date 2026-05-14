@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260514.12</title>
+<title>MosquitoApp v20260514.13</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -2803,6 +2803,9 @@ function App() {
             nip:_f?.nip||'',
             kwota:parseFloat(_f?.kwota)||0,
             offerNames:_imp?.offerNames||'',
+            nabywcaEmail:_f?.nabywcaEmail||'',
+            _fromSzablon:fakModal._fromSzablon||'',
+            pozycjeAllegro:_f?.pozycjeAllegro||[],
           }};
           localStorage.setItem('invoices_sent',JSON.stringify(next));
           return next;
@@ -5517,6 +5520,9 @@ function App() {
                         kwota:v.kwota||imp?.totalAmount||0,
                         klientUlica:v.klientUlica||imp?.klientUlica||'',
                         klientKod:v.klientKod||imp?.klientKod||'',
+                        nabywcaEmail:v.nabywcaEmail||'',
+                        _fromSzablon:v._fromSzablon||'',
+                        pozycjeAllegro:v.pozycjeAllegro||[],
                       };
                     })
                     .sort((a,b)=>(b.date||'').localeCompare(a.date||''));
