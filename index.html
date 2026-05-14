@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260513.12</title>
+<title>MosquitoApp v20260513.13</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -2014,16 +2014,26 @@ function App() {
 
   async function pobierzKontrahentaNIP(nip, firma){
     if(!nip) return null;
+    const nipClean=nip.replace(/[^0-9]/g,'');
+    // Próba 1: KRS/CEIDG przez workera (publiczne API, bez klucza)
+    try{
+      const r=await fetch(AUTORESPONDER_URL+'/gus/nip?nip='+encodeURIComponent(nipClean),{
+        headers:{'x-api-key':AUTORESPONDER_KEY}
+      });
+      const d=await r.json();
+      if(d.ok&&d.nazwa) return {name:d.nazwa, email:'', street:d.ulica||'', zip_code:d.kod||'', city:d.miasto||''};
+    }catch(e){console.error('GUS NIP error:',e);}
+    // Próba 2: Fakturownia (jeśli kontrahent już istnieje)
     const cfg=fakturowniaConfig;
     const token=cfg?.token||'T7CWLNn5cZ6vVx-bKFmk';
     const domain=cfg?.domain||'everis75.fakturownia.pl';
     try{
-      const r=await fetch(AUTORESPONDER_URL+'/fakturownia/client?nip='+encodeURIComponent(nip)+'&domain='+encodeURIComponent(domain)+'&token='+encodeURIComponent(token),{
+      const r=await fetch(AUTORESPONDER_URL+'/fakturownia/client?nip='+encodeURIComponent(nipClean)+'&domain='+encodeURIComponent(domain)+'&token='+encodeURIComponent(token),{
         headers:{'x-api-key':AUTORESPONDER_KEY}
       });
       const d=await r.json();
       if(d.ok&&d.client) return d.client;
-    }catch(e){console.error('pobierzKontrahentaNIP error:',e);}
+    }catch(e){console.error('Fakturownia NIP error:',e);}
     return null;
   }
 
