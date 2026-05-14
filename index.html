@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260514.18</title>
+<title>MosquitoApp v20260514.19</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -5054,7 +5054,7 @@ function App() {
             const openBox=zamOpenBox[imp.allegroOrderId];
             const isMosk=(()=>{const t=((imp.offerNames||'')+(imp.buyerMsg||'')).toLowerCase();return t.includes('moskitiera')||t.includes('mosquito');})();
             return (
-              <div key={idx} style={{borderBottom:'1px solid #0f1f2f',background:isWyslano?(idx%2===0?'#040c04':'#081508'):isRealizacja?(idx%2===0?'#091509':'#112311'):isZapisaneBezetykiety?(idx%2===0?'#1a1400':'#201900'):(idx%2===0?'#090e1a':'#111828'),opacity:isWyslano?0.6:1}}>
+              <div key={idx} id={'imp_'+imp.allegroOrderId} style={{borderBottom:'1px solid #0f1f2f',background:isWyslano?(idx%2===0?'#040c04':'#081508'):isRealizacja?(idx%2===0?'#091509':'#112311'):isZapisaneBezetykiety?(idx%2===0?'#1a1400':'#201900'):(idx%2===0?'#090e1a':'#111828'),opacity:isWyslano?0.6:1}}>
                 <div style={{display:'flex',alignItems:'center',gap:8,padding:'9px 12px',flexWrap:'wrap'}}>
                   <input type="checkbox" checked={mergeSelected.has(imp.allegroOrderId)}
                     onChange={e=>{
@@ -5087,6 +5087,7 @@ function App() {
                       {isWyslano?'✅ ':isRealizacja?'⚙️ ':isZapisaneBezetykiety?'📋 ':''}{imp.klientImie||'—'}
                     </div>
                     {imp.klientLogin&&<div style={{fontSize:10,color:'#3a6a8a',fontFamily:'monospace'}}>{imp.klientLogin}</div>}
+                    {(()=>{const thr=msgThreads.find(t=>t.relatedObject?.id===imp.allegroOrderId);if(!thr)return null;return <div onClick={e=>{e.stopPropagation();setTab('wiadomosci');setTimeout(()=>msgLoadConvo(thr),100);}} style={{fontSize:10,cursor:'pointer',color:thr.hasUnreadMessages?'#7fcf7f':'#4a7a4a',fontStyle:'italic',marginTop:1}} title="Kliknij aby przejść do wiadomości">{thr.hasUnreadMessages?'💬🔴':'💬'} wiadomość od {thr.interlocutor?.login||'klienta'}</div>;})()}
                     {imp.klientMiasto&&<div style={{fontSize:10,color:'#4a7a6a'}}>{imp.klientMiasto}{imp.klientKraj&&imp.klientKraj!=='PL'&&<span style={{color:'#cf9a4a',marginLeft:4}}>🌍 {imp.klientKraj}</span>}</div>}
                   </div>
                   <div style={{flex:2,minWidth:130}}>
@@ -7396,7 +7397,10 @@ function App() {
                         <td style={{padding:"10px",color:"#b0cfb0",fontWeight:600,fontSize:14,maxWidth:150,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{msg.subject}</td>
                         <td style={{padding:"10px",color:"#c0dfc0",fontSize:14,maxWidth:250,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{msg.lastMessage}</td>
                         <td style={{padding:"10px",color:"#9abf9a",fontSize:14,fontWeight:600}}>{msg.date?new Date(msg.date).toLocaleDateString("pl-PL"):""}</td>
-                        <td style={{padding:"10px"}}><button className="btn-sm" onClick={()=>allegroUseMessage(msg)} title="Użyj tej wiadomości jako zamówienie">→ Użyj</button></td>
+                        <td style={{padding:"10px",minWidth:120}}>
+                          {(()=>{const imp=allegroImportResults.find(i=>i.allegroOrderId===msg.allegroOrderId);return imp?<div style={{marginBottom:4,fontSize:11,color:'#9acfdf',fontFamily:'monospace',cursor:'pointer'}} onClick={()=>{setTab('al_zam');setTimeout(()=>{const el=document.getElementById('imp_'+msg.allegroOrderId);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},200);}} title="Przejdź do zamówienia">📦 {imp.klientImie||msg.allegroOrderId}</div>:msg.allegroOrderId?<div style={{fontSize:10,color:'#3a5a3a',fontFamily:'monospace'}} title={msg.allegroOrderId}>📦 {msg.allegroOrderId.slice(-8)}</div>:null;})()}
+                          <button className="btn-sm" onClick={()=>allegroUseMessage(msg)} title="Użyj tej wiadomości jako zamówienie">→ Użyj</button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
