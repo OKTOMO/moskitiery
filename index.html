@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260514.4</title>
+<title>MosquitoApp v20260514.5</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -2738,8 +2738,14 @@ function App() {
           sell_date:f.sellDate||new Date().toISOString().slice(0,10),
           // Allegro = już opłacone → termin = data sprzedaży; ręczne → terminPlatnosci
           // za_pobraniem i Allegro = data sprzedaży; ręczne = terminPlatnosci
-          payment_to:(fakModal.imp||fakModal.order)?(f.sellDate||new Date().toISOString().slice(0,10)):(f.terminPlatnosci||new Date(Date.now()+14*86400000).toISOString().slice(0,10)),
-          payment_type:f.platnosc,
+          payment_to:(()=>{
+            const base=f.sellDate||new Date().toISOString().slice(0,10);
+            const pl=f.platnosc||'przelew_14';
+            const days=pl==='przelew_3'?3:pl==='przelew_7'?7:pl==='przelew_14'?14:pl==='przelew_30'?30:0;
+            if(days>0){const d=new Date(base);d.setDate(d.getDate()+days);return d.toISOString().slice(0,10);}
+            return f.terminPlatnosci||base;
+          })(),
+          payment_type:f.platnosc.startsWith('przelew')?'transfer':f.platnosc==='gotowka'?'cash':f.platnosc==='karta'?'card':'cod',
           // Allegro Pay = już opłacone
           status:f.platnosc==='przelew'?'paid':'issued',
           paid:f.platnosc==='przelew'?String(parseFloat(f.kwota||0).toFixed(2)):'0',
@@ -5460,7 +5466,7 @@ function App() {
                           nip:s.nip||'',nabywcaNip:s.nip||'',nabywcaEmail:s.kontrahentEmail||'',
                           nabywcaUlica:s.kontrahentUlica||'',nabywcaKod:s.kontrahentKod||'',nabywcaMiasto:s.kontrahentMiasto||'',
                           firma:s.firma||'F',dzial:DZIALY[s.firma||'F']||'1978585',
-                          kwota:'0',opis:'',vat:23,platnosc:'przelew',
+                          opis:'',vat:23,platnosc:'przelew_14',
                           sellDate:dzis,ulica:s.kontrahentUlica||'',kod:s.kontrahentKod||'',miasto:s.kontrahentMiasto||'',
                           pozycjeAllegro:(s.pozycje||[]).map(p=>{
                             const cenaBase=parseFloat(p.cena)||0;
@@ -5468,6 +5474,12 @@ function App() {
                             const cenaFinal=marza>0?Math.round(cenaBase*(1+marza/100)*100)/100:cenaBase;
                             return {name:p.nazwa||'',quantity:parseFloat(p.ilosc)||1,cena:cenaFinal,price:cenaFinal,tax:p.vatPct??23,tryb:p.tryb||'netto',unit:p.jm||'szt'};
                           }),
+                          kwota:String(Math.round((s.pozycje||[]).reduce((sum,p)=>{
+                            const cb=parseFloat(p.cena)||0;const mz=parseFloat(p.marza)||0;
+                            const cf=mz>0?Math.round(cb*(1+mz/100)*100)/100:cb;
+                            const qty=parseFloat(p.ilosc)||1;const vat=p.vatPct??23;
+                            return sum+(p.tryb==='brutto'?cf*qty:Math.round(cf*qty*(1+vat/100)*100)/100);
+                          },0)*100)/100),
                           typ:'faktura',trybCen:'netto',
                         },
                         _fromSzablon:s.id,
@@ -9026,7 +9038,11 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
                 <span className="lbl">Płatność</span>
                 <select value={fakModal.form.platnosc} onChange={e=>setFakModal(m=>({...m,form:{...m.form,platnosc:e.target.value}}))}
                   style={{width:'100%',padding:'6px 6px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#9acf9a',fontSize:13}}>
-                  <option value="przelew">Przelew</option>
+                  <option value="przelew_3">Przelew 3 dni</option>
+                  <option value="przelew_7">Przelew 7 dni</option>
+                  <option value="przelew_14">Przelew 14 dni</option>
+                  <option value="przelew_30">Przelew 30 dni</option>
+                  <option value="przelew">Przelew (płatne od razu)</option>
                   <option value="gotowka">Gotówka</option>
                   <option value="karta">Karta</option>
                   <option value="za_pobraniem">Pobranie</option>
