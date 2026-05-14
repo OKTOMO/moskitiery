@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260513.13</title>
+<title>MosquitoApp v20260513.14</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -5450,8 +5450,9 @@ function App() {
                         order:null,
                         form:{
                           data:dzis,dataSprzedazy:dzis,terminPlatnosci:termin,
-                          nabywcaNazwa:aktS.kontrahentNazwa||'',nabywcaNip:aktS.nip||'',nabywcaEmail:aktS.kontrahentEmail||'',
-                          nabywcaUlica:'',nabywcaKod:'',nabywcaMiasto:'',
+                          nabywcaNazwa:aktS.kontrahentNazwa||'',nazwaFirmy:aktS.kontrahentNazwa||'',imie:aktS.kontrahentNazwa||'',
+                          nip:aktS.nip||'',nabywcaNip:aktS.nip||'',nabywcaEmail:aktS.kontrahentEmail||'',
+                          nabywcaUlica:aktS.kontrahentUlica||'',nabywcaKod:aktS.kontrahentKod||'',nabywcaMiasto:aktS.kontrahentMiasto||'',
                           firma:aktS.firma||'F',dzial:DZIALY[aktS.firma||'F']||'1978585',
                           pozycje:(aktS.pozycje||[]).map(p=>{
                             const cenaBase=parseFloat(p.cena)||0;
