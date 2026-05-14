@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260514.11</title>
+<title>MosquitoApp v20260514.12</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -5783,8 +5783,9 @@ function App() {
                   style={{padding:'7px 18px',background:'#1a1a1a',border:'1px solid #3a3a3a',borderRadius:4,color:'#aaa',cursor:'pointer',fontSize:13}}>Anuluj</button>
                 <button onClick={async()=>{
                   const mm=fakMailModal;
+                  const cfg=fakturowniaConfig;
                   if(!mm.to.trim()){alert('Podaj adres email');return;}
-                  if(!cfg.token||!cfg.domain){alert('Brak konfiguracji Fakturowni');return;}
+                  if(!cfg||!cfg.token||!cfg.domain){alert('Brak konfiguracji Fakturowni');return;}
                   try{
                     setFakMailModal(m=>({...m,sending:true}));
                     const pdfR=await fetch(AUTORESPONDER_URL+'/fakturownia/pdf?invoiceId='+mm.fv.fakturowniaId+'&token='+encodeURIComponent(cfg.token)+'&domain='+encodeURIComponent(cfg.domain),{headers:{'x-api-key':getWorkerKey()}});
