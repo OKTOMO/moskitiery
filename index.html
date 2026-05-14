@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260513.14</title>
+<title>MosquitoApp v20260514.1</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -5454,11 +5454,13 @@ function App() {
                           nip:aktS.nip||'',nabywcaNip:aktS.nip||'',nabywcaEmail:aktS.kontrahentEmail||'',
                           nabywcaUlica:aktS.kontrahentUlica||'',nabywcaKod:aktS.kontrahentKod||'',nabywcaMiasto:aktS.kontrahentMiasto||'',
                           firma:aktS.firma||'F',dzial:DZIALY[aktS.firma||'F']||'1978585',
-                          pozycje:(aktS.pozycje||[]).map(p=>{
+                          kwota:'0',opis:'',vat:23,platnosc:'przelew',
+                          sellDate:dzis,
+                          pozycjeAllegro:(aktS.pozycje||[]).map(p=>{
                             const cenaBase=parseFloat(p.cena)||0;
                             const marza=parseFloat(p.marza)||0;
                             const cenaFinal=marza>0?Math.round(cenaBase*(1+marza/100)*100)/100:cenaBase;
-                            return {nazwa:p.nazwa||'',ilosc:parseFloat(p.ilosc)||1,cena:cenaFinal,vatPct:p.vatPct??23,jm:p.jm||'szt',trybCen:p.tryb||'netto'};
+                            return {name:p.nazwa||'',quantity:parseFloat(p.ilosc)||1,price:cenaFinal,tax:p.vatPct??23,unit:p.jm||'szt',total_price_gross:cenaFinal*(parseFloat(p.ilosc)||1)*(1+(p.vatPct??23)/100)};
                           }),
                           typ:'faktura',trybCen:'netto',
                         },
