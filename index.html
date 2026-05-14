@@ -9036,7 +9036,7 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
               </div>
               <div>
                 <span className="lbl">Płatność</span>
-                <select value={fakModal.form.platnosc} onChange={e=>{const val=e.target.value;const days=val==='przelew_3'?3:val==='przelew_7'?7:val==='przelew_14'?14:val==='przelew_30'?30:0;const base=fakModal.form.sellDate||new Date().toISOString().slice(0,10);const termin=days>0?new Date(new Date(base).getTime()+days*86400000).toISOString().slice(0,10):'';setFakModal(m=>({...m,form:{...m.form,platnosc:val,...(termin?{terminPlatnosci:termin}:{})}}));}}
+                <select value={fakModal.form.platnosc} onChange={e=>{const val=e.target.value;const days=val==="przelew_3"?3:val==="przelew_7"?7:val==="przelew_14"?14:val==="przelew_30"?30:0;const base=fakModal.form.sellDate||new Date().toISOString().slice(0,10);const termin=days>0?new Date(new Date(base).getTime()+days*86400000).toISOString().slice(0,10):"";setFakModal(m=>({...m,form:{...m.form,platnosc:val,...(termin?{terminPlatnosci:termin}:{})}}));}}
                   style={{width:'100%',padding:'6px 6px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#9acf9a',fontSize:13}}>
                   <option value="przelew_3">Przelew 3 dni</option>
                   <option value="przelew_7">Przelew 7 dni</option>
