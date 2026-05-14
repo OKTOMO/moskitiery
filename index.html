@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260514.8</title>
+<title>MosquitoApp v20260514.10</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1063,6 +1063,7 @@ function App() {
     try{return JSON.parse(localStorage.getItem('fakturownia_config')||'{}');}catch(e){return {};}
   });
   const [fakModal,setFakModal]=React.useState(null);
+  const [fakMailModal,setFakMailModal]=React.useState(null);
   const [kontrahenci,setKontrahenci]=useState(()=>{try{return JSON.parse(localStorage.getItem('kontrahenci')||'[]');}catch{return [];}});
   function saveKontrahenci(list){setKontrahenci(list);localStorage.setItem('kontrahenci',JSON.stringify(list));}
   function upsertKontrahent(k){
@@ -5618,7 +5619,7 @@ function App() {
                                 {fv.klientMiasto&&<div style={{fontSize:11,color:'#5a3a7a'}}>{fv.klientMiasto}</div>}
                               </td>
                               <td style={{padding:'7px 10px',color:'#7a5a9a',fontSize:12,maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}
-                                title={fv.offerNames}>{fv.offerNames||fv.numerZlecenia||'—'}</td>
+                                title={fv.offerNames||(fv.pozycjeAllegro||[]).map(p=>p.name).filter(Boolean).join(', ')}>{fv.offerNames||(fv.pozycjeAllegro||[]).map(p=>p.name).filter(Boolean).join(', ')||fv.numerZlecenia||'—'}</td>
                               <td style={{padding:'7px 10px',textAlign:'center',fontWeight:700,color:'#9fcf9f'}}>{fv.kwota>0?fv.kwota.toFixed(2)+' zł':'—'}</td>
                               <td style={{padding:'7px 10px',textAlign:'center'}}>
                                 <span style={{fontSize:11,padding:'2px 7px',borderRadius:10,background:'#1a0a2a',border:'1px solid #4a2a6a',color:'#af7adf'}}>{FIRMA_LABEL[fv.firma]||fv.firma||'—'}</span>
@@ -5660,6 +5661,12 @@ function App() {
                                       }catch(e){alert('❌ '+e.message);}
                                     }} style={{padding:'3px 8px',fontSize:11,background:'#0a1a2a',border:'1px solid #2a4a7a',borderRadius:4,color:'#7ab8df',cursor:'pointer'}}
                                     title="Dołącz PDF do zamówienia Allegro">📎</button>
+                                  )}
+                                  {cfg.domain&&fv.fakturowniaId&&(                                    <button onClick={()=>{
+                                      const emailAddr=fv.nabywcaEmail||(fakSzablony.find(s=>s.id===fv._fromSzablon)||{}).kontrahentEmail||'';
+                                      setFakMailModal({fv,to:emailAddr,subject:'Faktura '+fv.number,tresc:'W załączeniu przesyłam fakturę '+fv.number+'.'});
+                                    }} style={{padding:'3px 8px',fontSize:11,background:'#0a1a2a',border:'1px solid #2a5a7a',borderRadius:4,color:'#7acfef',cursor:'pointer'}}
+                                    title="Wyślij fakturę mailem">✉️</button>
                                   )}
                                   <button onClick={()=>{
                                     if(!confirm('Usunąć oznaczenie faktury '+fv.number+'?')) return;
@@ -5744,6 +5751,63 @@ function App() {
           );
         })()}
 
+        {fakMailModal&&(
+          <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',zIndex:3000,display:'flex',alignItems:'center',justifyContent:'center'}}
+            onClick={e=>{if(e.target===e.currentTarget)setFakMailModal(null);}}>
+            <div style={{background:'#0d1f0d',border:'1px solid #2a5a2a',borderRadius:8,padding:24,width:480,maxWidth:'95vw',fontFamily:'monospace'}}>
+              <div style={{color:'#9adf9a',fontWeight:700,fontSize:15,marginBottom:16}}>✉️ Wyślij fakturę — {fakMailModal.fv.number}</div>
+              <div style={{marginBottom:10}}>
+                <div style={{color:'#7a9a7a',fontSize:12,marginBottom:4}}>Do:</div>
+                <input value={fakMailModal.to} onChange={e=>setFakMailModal(m=>({...m,to:e.target.value}))}
+                  style={{width:'100%',padding:'6px 8px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#cfefcf',fontSize:13,boxSizing:'border-box'}}
+                  placeholder="email@firma.pl"/>
+              </div>
+              <div style={{marginBottom:10}}>
+                <div style={{color:'#7a9a7a',fontSize:12,marginBottom:4}}>Temat:</div>
+                <input value={fakMailModal.subject} onChange={e=>setFakMailModal(m=>({...m,subject:e.target.value}))}
+                  style={{width:'100%',padding:'6px 8px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#cfefcf',fontSize:13,boxSizing:'border-box'}}/>
+              </div>
+              <div style={{marginBottom:16}}>
+                <div style={{color:'#7a9a7a',fontSize:12,marginBottom:4}}>Treść:</div>
+                <textarea value={fakMailModal.tresc} onChange={e=>setFakMailModal(m=>({...m,tresc:e.target.value}))}
+                  rows={4} style={{width:'100%',padding:'6px 8px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#cfefcf',fontSize:13,boxSizing:'border-box',resize:'vertical'}}/>
+              </div>
+              <div style={{fontSize:11,color:'#5a8a5a',marginBottom:14}}>📎 PDF faktury zostanie pobrany z Fakturowni i dołączony automatycznie</div>
+              <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
+                <button onClick={()=>setFakMailModal(null)}
+                  style={{padding:'7px 18px',background:'#1a1a1a',border:'1px solid #3a3a3a',borderRadius:4,color:'#aaa',cursor:'pointer',fontSize:13}}>Anuluj</button>
+                <button onClick={async()=>{
+                  const {fv,to,subject,tresc}=fakMailModal;
+                  if(!to.trim()){alert('Podaj adres email');return;}
+                  if(!cfg.token||!cfg.domain){alert('Brak konfiguracji Fakturowni');return;}
+                  try{
+                    setFakMailModal(m=>({...m,sending:true}));
+                    const pdfResp=await fetch('https://'+cfg.domain+'/invoices/'+fv.fakturowniaId+'.pdf?api_token='+cfg.token);
+                    if(!pdfResp.ok) throw new Error('Błąd pobierania PDF: '+pdfResp.status);
+                    const pdfBuf=await pdfResp.arrayBuffer();
+                    const bytes=new Uint8Array(pdfBuf);
+                    let bin='';for(let i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]);
+                    const pdfB64=btoa(bin);
+                    const attachments=[{name:'faktura_'+fv.number.replace(/\//g,'-')+'.pdf',content:pdfB64,mimeType:'application/pdf'}];
+                    const content=tresc?'<p style="font-family:monospace;font-size:14px;color:#333">'+tresc.replace(/
+/g,'<br>')+'</p>':'';
+                    const r=await fetch(AUTORESPONDER_URL+'/email/send',{
+                      method:'POST',
+                      headers:{'Content-Type':'application/json','x-api-key':getWorkerKey()},
+                      body:JSON.stringify({to:to.trim(),subject,content,attachments,allegroOrderId:''})
+                    });
+                    const d=await r.json();
+                    if(d.ok){alert('✅ Mail z fakturą wysłany do '+to.trim());setFakMailModal(null);}
+                    else throw new Error(d.error||JSON.stringify(d));
+                  }catch(e){setFakMailModal(m=>({...m,sending:false}));alert('❌ '+e.message);}
+                }} disabled={fakMailModal.sending}
+                  style={{padding:'7px 18px',background:fakMailModal.sending?'#2a4a2a':'#1a5a1a',border:'1px solid #3a9a3a',borderRadius:4,color:'#9aef9a',cursor:fakMailModal.sending?'default':'pointer',fontSize:13,fontWeight:700}}>
+                  {fakMailModal.sending?'Wysyłanie…':'📤 Wyślij z PDF'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {/* ══ ZAMÓWIENIA ══ */}
         {tab==="al_zam" && (
           <div>
