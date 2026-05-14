@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260514.19</title>
+<title>MosquitoApp v20260514.20</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1065,6 +1065,8 @@ function App() {
   const [fakModal,setFakModal]=React.useState(null);
   const [fakMailModal,setFakMailModal]=React.useState(null);
   const [fvEditOpis,setFvEditOpis]=React.useState(null);
+  const [marzaKolumny,setMarzaKolumny]=React.useState(()=>{try{const s=localStorage.getItem('marza_kolumny');return s?JSON.parse(s):null;}catch{return null;}}()||[1,2,3,4].map(i=>({id:i,nazwa:'Produkt '+i,cenaNetto:'',rabat:'',vat:0.23,doplataDo:7.5,karton:0,prowizja:0.11,reklama:0.1,ryczalt:0.03,marza:0.15,cenaSprzBrutto:'',tryb:'cel'})));
+  const saveMarzaKolumny=(kol)=>{setMarzaKolumny(kol);try{localStorage.setItem('marza_kolumny',JSON.stringify(kol));}catch(e){}};
   const [kontrahenci,setKontrahenci]=useState(()=>{try{return JSON.parse(localStorage.getItem('kontrahenci')||'[]');}catch{return [];}});
   function saveKontrahenci(list){setKontrahenci(list);localStorage.setItem('kontrahenci',JSON.stringify(list));}
   function upsertKontrahent(k){
@@ -4408,7 +4410,7 @@ function App() {
       </div>
 
       <div style={{display:"flex",borderBottom:"1px solid #1e2a1e",paddingLeft:16,background:"#0e1420",flexWrap:"wrap"}}>
-        {[["zamowienia","📦 Zamówienia"],["nowe","➕ Dodaj"],["al_zam","🛒 Allegro"],["baza","📋 Zlecenia"],["zapytania","📨 KAL"],["stat","📊 Stat"],["produkcja","🏭 Produkcja"],["kalk","🧮 Kalkulator"],["wiadomosci","💬 Wiadomości"]].map(([id,l])=>(
+        {[["zamowienia","📦 Zamówienia"],["nowe","➕ Dodaj"],["al_zam","🛒 Allegro"],["baza","📋 Zlecenia"],["zapytania","📨 KAL"],["stat","📊 Stat"],["produkcja","🏭 Produkcja"],["kalk","🧮 Kalkulator"],["wiadomosci","💬 Wiadomości"],["marza","💹 Marża"]].map(([id,l])=>(
           <button key={id} className={`tab ${tab===id?"on":""}`} onClick={()=>setTab(id)}>{l}</button>
         ))}
         <button className={`tab ${(tab==="allegro"||tab==="ustawienia"||tab==="historia")?"on":""}`} onClick={()=>{
@@ -7641,6 +7643,147 @@ function App() {
             )}
           </div>
         )}
+
+        {/* ══ MARŻA ══ */}
+        {tab==="marza"&&(()=>{
+          const updKol=(id,pole,val)=>saveMarzaKolumny(marzaKolumny.map(k=>k.id===id?{...k,[pole]:val}:k));
+          const nowaKolumna=()=>({id:Date.now(),nazwa:'Produkt '+(marzaKolumny.length+1),cenaNetto:'',rabat:'',vat:0.23,doplataDo:7.5,karton:0,prowizja:0.11,reklama:0.1,ryczalt:0.03,marza:0.15,cenaSprzBrutto:'',tryb:'cel'});
+          const calc=(k)=>{
+            const netto=parseFloat(k.cenaNetto)||0;
+            const rabat=parseFloat(k.rabat)||0;
+            const vat=parseFloat(k.vat)||0.23;
+            const doplata=parseFloat(k.doplataDo)||0;
+            const karton=parseFloat(k.karton)||0;
+            const prowizja=parseFloat(k.prowizja)||0.11;
+            const reklama=parseFloat(k.reklama)||0.1;
+            const ryczalt=parseFloat(k.ryczalt)||0.03;
+            const marzaDocel=parseFloat(k.marza)||0.15;
+            const nettoPoRabacie=Math.round(netto*(1-rabat)*100)/100;
+            if(k.tryb==='cel'){
+              if(!netto) return null;
+              const brutto=Math.round((nettoPoRabacie+doplata+karton)/(1-prowizja-reklama-(1+vat)*ryczalt-marzaDocel)*(1+vat)*100)/100;
+              const sprzNetto=Math.round(brutto/(1+vat)*100)/100;
+              const prowizjaZl=Math.round(sprzNetto*prowizja*100)/100;
+              const reklamaZl=Math.round(sprzNetto*reklama*100)/100;
+              const ryczaltZl=Math.round(sprzNetto*ryczalt*100)/100;
+              const zyskNetto=Math.round((sprzNetto-nettoPoRabacie-doplata-karton-prowizjaZl-reklamaZl-ryczaltZl)*100)/100;
+              const marzaNetto=sprzNetto>0?Math.round(zyskNetto/sprzNetto*10000)/10000:0;
+              const roas=reklamaZl>0?Math.round(brutto/reklamaZl*100)/100:null;
+              return {nettoPoRabacie,brutto,sprzNetto,prowizjaZl,reklamaZl,ryczaltZl,zyskNetto,marzaNetto,roas,ok:Math.abs(marzaNetto-marzaDocel)<0.005};
+            } else {
+              const brutto=parseFloat(k.cenaSprzBrutto)||0;
+              if(!netto||!brutto) return null;
+              const sprzNetto=Math.round(brutto/(1+vat)*100)/100;
+              const prowizjaZl=Math.round(sprzNetto*prowizja*100)/100;
+              const reklamaZl=Math.round(sprzNetto*reklama*100)/100;
+              const ryczaltZl=Math.round(sprzNetto*ryczalt*100)/100;
+              const nettoPoRabacieB=Math.round(netto*(1-rabat)*100)/100;
+              const zyskNetto=Math.round((sprzNetto-nettoPoRabacieB-doplata-karton-prowizjaZl-reklamaZl-ryczaltZl)*100)/100;
+              const marzaNetto=sprzNetto>0?Math.round(zyskNetto/sprzNetto*10000)/10000:0;
+              const roas=reklamaZl>0?Math.round(brutto/reklamaZl*100)/100:null;
+              return {nettoPoRabacie:nettoPoRabacieB,brutto,sprzNetto,prowizjaZl,reklamaZl,ryczaltZl,zyskNetto,marzaNetto,roas,ok:marzaNetto>=marzaDocel};
+            }
+          };
+          const iS={width:'100%',padding:'4px 6px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:3,color:'#cfefcf',fontSize:12,boxSizing:'border-box',textAlign:'right'};
+          const thS={padding:'6px 8px',fontSize:11,color:'#5a8a5a',whiteSpace:'nowrap',borderBottom:'1px solid #0f1f0f',background:'#0a160a'};
+          const trS=(bold,hilite)=>({padding:'5px 8px',fontSize:12,fontWeight:bold?700:400,color:hilite==='green'?'#050e05':hilite==='yellow'?'#0a0a00':'#cfefcf',background:hilite==='green'?'#3acf5a':hilite==='yellow'?'#cfcf20':'transparent',textAlign:'right',borderBottom:'1px solid #0a140a',whiteSpace:'nowrap'});
+          const rows=[
+            {s:'DANE WEJŚCIOWE',hdr:true},
+            {s:'Cena zakupu NETTO (zł)',p:'cenaNetto',t:'num'},
+            {s:'Rabat dostawcy (%)',p:'rabat',t:'pct'},
+            {s:'VAT sprzedaży (%)',p:'vat',t:'pct'},
+            {s:'Dopłata do wysyłki (zł)',p:'doplataDo',t:'num'},
+            {s:'Karton / opakowanie (zł)',p:'karton',t:'num'},
+            {s:'Prowizja Allegro (%)',p:'prowizja',t:'pct'},
+            {s:'Reklama ADS (%)',p:'reklama',t:'pct'},
+            {s:'Ryczałt podatkowy (%)',p:'ryczalt',t:'pct'},
+            {s:'Docelowa marża (%)',p:'marza',t:'pct'},
+            {s:'→ Cena sprzedaży BRUTTO (zł)',p:'cenaSprzBrutto',t:'num',trybOnly:'rev'},
+            {s:'WYNIKI',hdr:true},
+            {s:'Cena zakupu po rabacie NETTO',w:'nettoPoRabacie',f:'zl'},
+            {s:'CENA SPRZEDAŻY BRUTTO',w:'brutto',f:'zl',bold:true,hi:'green',trybOnly:'cel'},
+            {s:'Cena sprzedaży NETTO',w:'sprzNetto',f:'zl'},
+            {s:'Prowizja Allegro (zł)',w:'prowizjaZl',f:'zl'},
+            {s:'Reklama ADS (zł)',w:'reklamaZl',f:'zl'},
+            {s:'Ryczałt (zł)',w:'ryczaltZl',f:'zl'},
+            {s:'Wysyłka + opakowanie',w:'wysylka',f:'zl'},
+            {s:'Zysk NETTO (zł)',w:'zyskNetto',f:'zl',bold:true},
+            {s:'Marża NETTO (%)',w:'marzaNetto',f:'pct',bold:true},
+            {s:'ROAS',w:'roas',f:'x'},
+            {s:'Status',w:'status',f:'status',bold:true},
+          ];
+          return (
+            <div style={{padding:'12px 16px',fontFamily:'monospace'}}>
+              <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14,flexWrap:'wrap'}}>
+                <span style={{fontSize:14,fontWeight:700,color:'#9fcf9f',letterSpacing:'.08em'}}>💹 KALKULATOR MARŻOWOŚCI</span>
+                <button onClick={()=>saveMarzaKolumny([...marzaKolumny,nowaKolumna()])}
+                  style={{padding:'3px 10px',fontSize:12,background:'#1a3a1a',border:'1px solid #3a7a3a',borderRadius:4,color:'#9aef9a',cursor:'pointer'}}>+ Kolumna</button>
+                <button onClick={()=>{if(confirm('Wyczyścić wszystkie dane?'))saveMarzaKolumny([1,2,3,4].map(i=>({id:i,nazwa:'Produkt '+i,cenaNetto:'',rabat:'',vat:0.23,doplataDo:7.5,karton:0,prowizja:0.11,reklama:0.1,ryczalt:0.03,marza:0.15,cenaSprzBrutto:'',tryb:'cel'})));}}
+                  style={{padding:'3px 10px',fontSize:12,background:'#2a1a1a',border:'1px solid #5a2a2a',borderRadius:4,color:'#ef9a9a',cursor:'pointer'}}>🗑 Wyczyść</button>
+              </div>
+              <div style={{overflowX:'auto'}}>
+                <table style={{borderCollapse:'collapse',minWidth:500}}>
+                  <thead>
+                    <tr>
+                      <th style={{...thS,minWidth:210,textAlign:'left'}}>Pole</th>
+                      {marzaKolumny.map(k=>(
+                        <th key={k.id} style={{...thS,minWidth:130,position:'relative',paddingBottom:28}}>
+                          <input value={k.nazwa} onChange={e=>updKol(k.id,'nazwa',e.target.value)}
+                            style={{...iS,textAlign:'center',fontWeight:700,color:'#cfcf60',background:'#1a1a0a',border:'1px solid #4a4a1a',marginBottom:4}}/>
+                          <div style={{display:'flex',gap:4,justifyContent:'center',marginTop:4}}>
+                            <button onClick={()=>updKol(k.id,'tryb','cel')}
+                              style={{padding:'2px 7px',fontSize:10,background:k.tryb!=='rev'?'#1a3a1a':'#0a1a0a',border:'1px solid '+(k.tryb!=='rev'?'#3a8a3a':'#1a3a1a'),borderRadius:3,color:k.tryb!=='rev'?'#9aef9a':'#3a6a3a',cursor:'pointer'}}>🎯 Cel</button>
+                            <button onClick={()=>updKol(k.id,'tryb','rev')}
+                              style={{padding:'2px 7px',fontSize:10,background:k.tryb==='rev'?'#1a2a3a':'#0a1a0a',border:'1px solid '+(k.tryb==='rev'?'#3a5a8a':'#1a2a3a'),borderRadius:3,color:k.tryb==='rev'?'#9acfef':'#3a5a6a',cursor:'pointer'}}>🔍 Analiza</button>
+                            {marzaKolumny.length>1&&<button onClick={()=>saveMarzaKolumny(marzaKolumny.filter(x=>x.id!==k.id))}
+                              style={{padding:'2px 6px',fontSize:10,background:'#2a0a0a',border:'1px solid #5a1a1a',borderRadius:3,color:'#ef6a6a',cursor:'pointer'}}>✕</button>}
+                          </div>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row,ri)=>{
+                      if(row.hdr) return (
+                        <tr key={ri}><td colSpan={marzaKolumny.length+1} style={{padding:'5px 8px',fontWeight:700,fontSize:11,color:'#cf8a8a',background:'#140a0a',borderBottom:'1px solid #2a0a0a',letterSpacing:'.08em'}}>{row.s}</td></tr>
+                      );
+                      return (
+                        <tr key={ri}>
+                          <td style={{...thS,textAlign:'left',color:row.w?'#7a9a7a':'#9abf9a'}}>{row.s}</td>
+                          {marzaKolumny.map(k=>{
+                            const r=calc(k);
+                            if(row.trybOnly&&row.trybOnly!==k.tryb) return <td key={k.id} style={trS(false,null)}><span style={{color:'#2a3a2a',fontSize:11}}>—</span></td>;
+                            if(row.p){
+                              const raw=k[row.p]??'';
+                              const disp=row.t==='pct'&&raw!==''?+(parseFloat(raw)*100).toFixed(4)+'':''+raw;
+                              return <td key={k.id} style={trS()}>
+                                <input value={disp}
+                                  onChange={e=>{const v=e.target.value;updKol(k.id,row.p,row.t==='pct'?(parseFloat(v)||0)/100:v);}}
+                                  style={iS} placeholder={row.t==='pct'?'%':'0'}/>
+                              </td>;
+                            }
+                            if(!r) return <td key={k.id} style={trS()}><span style={{color:'#2a4a2a',fontSize:11}}>wpisz dane</span></td>;
+                            if(row.w==='wysylka') return <td key={k.id} style={trS(row.bold,row.hi)}>{((parseFloat(k.doplataDo)||0)+(parseFloat(k.karton)||0)).toFixed(2)}</td>;
+                            if(row.w==='status'){
+                              return <td key={k.id} style={{...trS(true),color:r.ok?'#3acf5a':'#cfaf3a',background:r.ok?'#0a2a0a':'#1a1a0a'}}>
+                                {r.ok?'OK '+(Math.round((parseFloat(k.marza)||0)*100))+'% ✓':'⚠ '+(r.marzaNetto*100).toFixed(1)+'%'}
+                              </td>;
+                            }
+                            if(row.w==='roas') return <td key={k.id} style={trS(row.bold)}>{r.roas!=null?r.roas.toFixed(1)+'×':'—'}</td>;
+                            const v=r[row.w];
+                            return <td key={k.id} style={trS(row.bold,row.hi)}>
+                              {row.f==='pct'?(v*100).toFixed(2)+'%':v!=null?v.toFixed(2):'—'}
+                            </td>;
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ══ KALKULATOR ══ */}
         {tab==="historia" && (
