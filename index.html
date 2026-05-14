@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260513.11</title>
+<title>MosquitoApp v20260513.12</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -3425,7 +3425,7 @@ function App() {
             const _INS={HU:{c:"HUF",r:390},CZ:{c:"CZK",r:24},SK:{c:"EUR",r:4.25},RO:{c:"RON",r:4.25}};
             const _kraj=(imp.klientKraj||'PL').toUpperCase();
             const _ins=_INS[_kraj];
-            const _kwota=parseFloat(imp.kwotaBrutto)||100;
+            const _kwota=Math.max(parseFloat(imp.kwotaBrutto)||0, 50); // min 50 PLN jako podstawa ubezpieczenia
             if(isCOD && codAmount>0){
               // Zagraniczne COD — przelicz na lokalną walutę
               if(_ins){
@@ -3448,11 +3448,12 @@ function App() {
               return {insurance:{amount:(_r*50).toFixed(2),currency:_cur}};
             }
             // DHL Automat krajowy i ORLEN krajowy nie obsługują insurance
-            // DHL Automat zagraniczny też często nie obsługuje insurance — pomijamy
             if(isDHLAutomat||isORLEN) return {};
+            // Zagraniczne — zawsze dodaj ubezpieczenie (wymagane przez Allegro)
             if(_ins) return {
-              insurance:{amount:(_ins.r*50).toFixed(2),currency:_ins.c}
+              insurance:{amount:(_kwota*_ins.r).toFixed(2),currency:_ins.c}
             };
+            // Krajowe bez specjalnych wymagań
             return {};
           })()
         }
