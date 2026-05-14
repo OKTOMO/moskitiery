@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260514.14</title>
+<title>MosquitoApp v20260514.16</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -5516,7 +5516,7 @@ function App() {
                       return {...v, allegroOrderId:orderId,
                         klientNazwa:v.klientNazwa||imp?.klientImie||imp?.nabywcaNazwa||'',
                         klientMiasto:v.klientMiasto||imp?.klientMiasto||'',
-                        offerNames:v.offerNames||imp?.offerNames||'',
+                        offerNames:v.offerNames||imp?.offerNames||(v.pozycjeAllegro||[]).map(p=>p.name).filter(Boolean).join(', ')||'',
                         kontoId:v.kontoId||imp?.kontoId||'',
                         firma:v.firma||KONTO_DO_FIRMY[imp?.kontoId||'']||'F',
                         kwota:v.kwota||imp?.totalAmount||0,
@@ -5527,7 +5527,7 @@ function App() {
                         pozycjeAllegro:v.pozycjeAllegro||[],
                       };
                     })
-                    .sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+                    .sort((a,b)=>{const da=a.date||'0';const db=b.date||'0';if(db!==da)return db.localeCompare(da);return (b.fakturowniaId||0)-(a.fakturowniaId||0);});
 
                   // Otwórz modal faktury z danymi klienta (pusta kwota/opis do uzupełnienia)
                   const openFvFromClient=(fv)=>{
@@ -5696,6 +5696,7 @@ function App() {
                     </div>
                   );
                 }
+                if(zamTab==='szablony_fak') return null;
                 const active=zamTab==='nowe'?noweList:zamTab==='realizacja'?realizacjaList:zrealizowaneList;
                 if(active.length===0&&allegroImportResults.length>0) return <div style={{textAlign:'center',color:'#3a5a3a',padding:'40px 0'}}>{zamTab==='nowe'?'🎉 Brak nowych zamówień!':zamTab==='realizacja'?'Brak zamówień w realizacji':'Brak zrealizowanych'}</div>;
                 return <div>
