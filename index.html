@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260514.13</title>
+<title>MosquitoApp v20260514.14</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -2582,7 +2582,7 @@ function App() {
       body:JSON.stringify(payload)
     });
     if(!resp.ok){const err=await resp.json().catch(()=>({}));throw new Error(JSON.stringify(err));}
-    return await resp.json();
+    const _r=await resp.json();return _r.invoice||_r;
   }
 
   async function handleFakturownia(imp,order){
@@ -2785,7 +2785,8 @@ function App() {
         body:JSON.stringify(payload)
       });
       if(!resp.ok){const err=await resp.json().catch(()=>({}));throw new Error(JSON.stringify(err));}
-      const inv=await resp.json();
+      const _resp=await resp.json();
+      const inv=_resp.invoice||_resp;
       // Zapisz info o wystawionej fakturze
       const orderId=fakModal.imp?.allegroOrderId||fakModal.order?.allegroOrderId||fakModal.order?.numerZlecenia||fakModal.form?._manualOrderId||'';
       if(orderId){
@@ -2825,6 +2826,7 @@ function App() {
       window.open(`https://${cfg.domain}/invoices/${inv.id}`,'_blank');
       alert(`✅ Faktura ${inv.number} utworzona`);
       setFakModal(null);
+      setZamTab('faktury_zam');
     }catch(e){
       setFakModal(m=>({...m,sending:false}));
       alert('❌ Błąd: '+e.message);
