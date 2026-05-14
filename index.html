@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260514.10</title>
+<title>MosquitoApp v20260514.11</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -2608,6 +2608,9 @@ function App() {
             kwota:parseFloat(_f?.kwota)||0,
             numerZlecenia:_ord?.numerZlecenia||'',
             offerNames:_imp?.offerNames||'',
+            nabywcaEmail:_f?.nabywcaEmail||'',
+            _fromSzablon:fakModal._fromSzablon||'',
+            pozycjeAllegro:_f?.pozycjeAllegro||[],
           }};
           localStorage.setItem('invoices_sent',JSON.stringify(next));
           return next;
@@ -5784,13 +5787,10 @@ function App() {
                   if(!cfg.token||!cfg.domain){alert('Brak konfiguracji Fakturowni');return;}
                   try{
                     setFakMailModal(m=>({...m,sending:true}));
-                    const pdfResp=await fetch('https://'+cfg.domain+'/invoices/'+mm.fv.fakturowniaId+'.pdf?api_token='+cfg.token);
-                    if(!pdfResp.ok) throw new Error('Błąd pobierania PDF: '+pdfResp.status);
-                    const pdfBuf=await pdfResp.arrayBuffer();
-                    const bytes=new Uint8Array(pdfBuf);
-                    let bin='';
-                    for(let i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]);
-                    const pdfB64=btoa(bin);
+                    const pdfR=await fetch(AUTORESPONDER_URL+'/fakturownia/pdf?invoiceId='+mm.fv.fakturowniaId+'&token='+encodeURIComponent(cfg.token)+'&domain='+encodeURIComponent(cfg.domain),{headers:{'x-api-key':getWorkerKey()}});
+                    const pdfD=await pdfR.json();
+                    if(!pdfD.ok) throw new Error('Błąd pobierania PDF: '+(pdfD.error||pdfR.status));
+                    const pdfB64=pdfD.pdf;
                     const fname='faktura_'+mm.fv.number.split('/').join('-')+'.pdf';
                     const attachments=[{name:fname,content:pdfB64,mimeType:'application/pdf'}];
                     const body_content=mm.tresc?'<p>'+mm.tresc.split('\n').join('<br>')+'</p>':'';
