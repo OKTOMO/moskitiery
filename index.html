@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260514.5</title>
+<title>MosquitoApp v20260514.6</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -9036,7 +9036,7 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
               </div>
               <div>
                 <span className="lbl">Płatność</span>
-                <select value={fakModal.form.platnosc} onChange={e=>setFakModal(m=>({...m,form:{...m.form,platnosc:e.target.value}}))}
+                <select value={fakModal.form.platnosc} onChange={e=>{const val=e.target.value;const days=val==='przelew_3'?3:val==='przelew_7'?7:val==='przelew_14'?14:val==='przelew_30'?30:0;const base=fakModal.form.sellDate||new Date().toISOString().slice(0,10);const termin=days>0?new Date(new Date(base).getTime()+days*86400000).toISOString().slice(0,10):'';setFakModal(m=>({...m,form:{...m.form,platnosc:val,...(termin?{terminPlatnosci:termin}:{})}}));}}
                   style={{width:'100%',padding:'6px 6px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#9acf9a',fontSize:13}}>
                   <option value="przelew_3">Przelew 3 dni</option>
                   <option value="przelew_7">Przelew 7 dni</option>
