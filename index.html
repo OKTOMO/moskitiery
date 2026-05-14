@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260514.17</title>
+<title>MosquitoApp v20260514.18</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -2606,7 +2606,7 @@ function App() {
             klientNazwa:_f?.nazwaFirmy||_f?.imie||_imp?.klientImie||_ord?.klientImie||'',
             klientMiasto:_imp?.klientMiasto||_ord?.klientMiasto||'',
             nip:_f?.nip||'',
-            kwota:parseFloat(_f?.kwota)||0,
+            kwota:(()=>{const poz=_f?.pozycjeAllegro||[];if(poz.length>0){return Math.round(poz.reduce((s,p)=>{const c=parseFloat(p.cena||p.price)||0;const q=parseFloat(p.ilosc||p.quantity)||1;const v=parseInt(p.tax||p.vatPct)||23;return s+(p.tryb==='brutto'?c*q:Math.round(c*q*(1+v/100)*100)/100);},0)*100)/100;}return parseFloat(_f?.kwota)||0;})(),
             numerZlecenia:_ord?.numerZlecenia||'',
             offerNames:_imp?.offerNames||'',
             nabywcaEmail:_f?.nabywcaEmail||'',
@@ -2803,7 +2803,7 @@ function App() {
             klientUlica:_imp?.klientUlica||_ord?.klientUlica||'',
             klientKod:_imp?.klientKod||_ord?.klientKod||'',
             nip:_f?.nip||'',
-            kwota:parseFloat(_f?.kwota)||0,
+            kwota:(()=>{const poz=_f?.pozycjeAllegro||[];if(poz.length>0){return Math.round(poz.reduce((s,p)=>{const c=parseFloat(p.cena||p.price)||0;const q=parseFloat(p.ilosc||p.quantity)||1;const v=parseInt(p.tax||p.vatPct)||23;return s+(p.tryb==='brutto'?c*q:Math.round(c*q*(1+v/100)*100)/100);},0)*100)/100;}return parseFloat(_f?.kwota)||0;})(),
             offerNames:_imp?.offerNames||'',
             nabywcaEmail:_f?.nabywcaEmail||'',
             _fromSzablon:fakModal._fromSzablon||'',
