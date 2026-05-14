@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260514.6</title>
+<title>MosquitoApp v20260514.7</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -5458,7 +5458,7 @@ function App() {
                       const termin=new Date(Date.now()+14*86400000).toISOString().slice(0,10);
                       const DZIALY={F:'1978585',A:'1978589',E:'1978591'};
                       setFakModal({
-                        imp:{allegroOrderId:'szablon_'+s.id,kontoId:'favo5'},
+                        imp:{allegroOrderId:'szablon_'+s.id,kontoId:{F:'favo5',AR:'arlis_pl',AP:'albama_eu',E:'everis_pl'}[s.firma||'F']||'favo5'},
                         order:null,
                         form:{
                           data:dzis,dataSprzedazy:dzis,terminPlatnosci:termin,
