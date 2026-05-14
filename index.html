@@ -5662,8 +5662,10 @@ function App() {
                                     }} style={{padding:'3px 8px',fontSize:11,background:'#0a1a2a',border:'1px solid #2a4a7a',borderRadius:4,color:'#7ab8df',cursor:'pointer'}}
                                     title="Dołącz PDF do zamówienia Allegro">📎</button>
                                   )}
-                                  {cfg.domain&&fv.fakturowniaId&&(                                    <button onClick={()=>{
-                                      const emailAddr=fv.nabywcaEmail||(fakSzablony.find(s=>s.id===fv._fromSzablon)||{}).kontrahentEmail||'';
+                                  {cfg.domain&&fv.fakturowniaId&&(
+                                    <button onClick={()=>{
+                                      const s=fakSzablony.find(x=>x.id===fv._fromSzablon)||{};
+                                      const emailAddr=fv.nabywcaEmail||s.kontrahentEmail||'';
                                       setFakMailModal({fv,to:emailAddr,subject:'Faktura '+fv.number,tresc:'W załączeniu przesyłam fakturę '+fv.number+'.'});
                                     }} style={{padding:'3px 8px',fontSize:11,background:'#0a1a2a',border:'1px solid #2a5a7a',borderRadius:4,color:'#7acfef',cursor:'pointer'}}
                                     title="Wyślij fakturę mailem">✉️</button>
@@ -5755,7 +5757,7 @@ function App() {
           <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',zIndex:3000,display:'flex',alignItems:'center',justifyContent:'center'}}
             onClick={e=>{if(e.target===e.currentTarget)setFakMailModal(null);}}>
             <div style={{background:'#0d1f0d',border:'1px solid #2a5a2a',borderRadius:8,padding:24,width:480,maxWidth:'95vw',fontFamily:'monospace'}}>
-              <div style={{color:'#9adf9a',fontWeight:700,fontSize:15,marginBottom:16}}>✉️ Wyślij fakturę — {fakMailModal.fv.number}</div>
+              <div style={{color:'#9adf9a',fontWeight:700,fontSize:15,marginBottom:16}}>✉️ Wyślij fakturę &mdash; {fakMailModal.fv.number}</div>
               <div style={{marginBottom:10}}>
                 <div style={{color:'#7a9a7a',fontSize:12,marginBottom:4}}>Do:</div>
                 <input value={fakMailModal.to} onChange={e=>setFakMailModal(m=>({...m,to:e.target.value}))}
@@ -5777,38 +5779,39 @@ function App() {
                 <button onClick={()=>setFakMailModal(null)}
                   style={{padding:'7px 18px',background:'#1a1a1a',border:'1px solid #3a3a3a',borderRadius:4,color:'#aaa',cursor:'pointer',fontSize:13}}>Anuluj</button>
                 <button onClick={async()=>{
-                  const {fv,to,subject,tresc}=fakMailModal;
-                  if(!to.trim()){alert('Podaj adres email');return;}
+                  const mm=fakMailModal;
+                  if(!mm.to.trim()){alert('Podaj adres email');return;}
                   if(!cfg.token||!cfg.domain){alert('Brak konfiguracji Fakturowni');return;}
                   try{
                     setFakMailModal(m=>({...m,sending:true}));
-                    const pdfResp=await fetch('https://'+cfg.domain+'/invoices/'+fv.fakturowniaId+'.pdf?api_token='+cfg.token);
+                    const pdfResp=await fetch('https://'+cfg.domain+'/invoices/'+mm.fv.fakturowniaId+'.pdf?api_token='+cfg.token);
                     if(!pdfResp.ok) throw new Error('Błąd pobierania PDF: '+pdfResp.status);
                     const pdfBuf=await pdfResp.arrayBuffer();
                     const bytes=new Uint8Array(pdfBuf);
-                    let bin='';for(let i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]);
+                    let bin='';
+                    for(let i=0;i<bytes.length;i++) bin+=String.fromCharCode(bytes[i]);
                     const pdfB64=btoa(bin);
-                    const attachments=[{name:'faktura_'+fv.number.replace(/\//g,'-')+'.pdf',content:pdfB64,mimeType:'application/pdf'}];
-                    const content=tresc?'<p style="font-family:monospace;font-size:14px;color:#333">'+tresc.replace(/
-/g,'<br>')+'</p>':'';
+                    const fname='faktura_'+mm.fv.number.split('/').join('-')+'.pdf';
+                    const attachments=[{name:fname,content:pdfB64,mimeType:'application/pdf'}];
+                    const body_content=mm.tresc?'<p>'+mm.tresc.split('\n').join('<br>')+'</p>':'';
                     const r=await fetch(AUTORESPONDER_URL+'/email/send',{
                       method:'POST',
                       headers:{'Content-Type':'application/json','x-api-key':getWorkerKey()},
-                      body:JSON.stringify({to:to.trim(),subject,content,attachments,allegroOrderId:''})
+                      body:JSON.stringify({to:mm.to.trim(),subject:mm.subject,content:body_content,attachments,allegroOrderId:''})
                     });
                     const d=await r.json();
-                    if(d.ok){alert('✅ Mail z fakturą wysłany do '+to.trim());setFakMailModal(null);}
+                    if(d.ok){alert('✅ Mail z fakturą wysłany do '+mm.to.trim());setFakMailModal(null);}
                     else throw new Error(d.error||JSON.stringify(d));
                   }catch(e){setFakMailModal(m=>({...m,sending:false}));alert('❌ '+e.message);}
-                }} disabled={fakMailModal.sending}
+                }} disabled={!!(fakMailModal.sending)}
                   style={{padding:'7px 18px',background:fakMailModal.sending?'#2a4a2a':'#1a5a1a',border:'1px solid #3a9a3a',borderRadius:4,color:'#9aef9a',cursor:fakMailModal.sending?'default':'pointer',fontSize:13,fontWeight:700}}>
-                  {fakMailModal.sending?'Wysyłanie…':'📤 Wyślij z PDF'}
+                  {fakMailModal.sending?'Wysyłanie...':'Wyslij z PDF'}
                 </button>
               </div>
             </div>
           </div>
         )}
-        {/* ══ ZAMÓWIENIA ══ */}
+        {/* ═══ ZAMÓWIENIA ═══ */}
         {tab==="al_zam" && (
           <div>
             {/* Nagłówek + przycisk pobierz */}
