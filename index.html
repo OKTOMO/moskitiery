@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260514.3</title>
+<title>MosquitoApp v20260514.4</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -5446,29 +5446,31 @@ function App() {
                     onNIPResult={(upd2)=>saveFakSzablony(fakSzablony.map(s=>s.id===aktS.id?{...s,...upd2}:s))}
                     setSzablonNipLoading={setSzablonNipLoading}
                     onStworzFakture={()=>{
+                      // Pobierz świeże dane szablonu (nie stary aktS z closure)
+                      const s=fakSzablony.find(x=>x.id===szablonEditId)||aktS;
                       const dzis=new Date().toISOString().slice(0,10);
                       const termin=new Date(Date.now()+14*86400000).toISOString().slice(0,10);
                       const DZIALY={F:'1978585',A:'1978589',E:'1978591'};
                       setFakModal({
-                        imp:{allegroOrderId:'szablon_'+aktS.id,kontoId:'favo5'},
+                        imp:{allegroOrderId:'szablon_'+s.id,kontoId:'favo5'},
                         order:null,
                         form:{
                           data:dzis,dataSprzedazy:dzis,terminPlatnosci:termin,
-                          nabywcaNazwa:aktS.kontrahentNazwa||'',nazwaFirmy:aktS.kontrahentNazwa||'',imie:aktS.kontrahentNazwa||'',
-                          nip:aktS.nip||'',nabywcaNip:aktS.nip||'',nabywcaEmail:aktS.kontrahentEmail||'',
-                          nabywcaUlica:aktS.kontrahentUlica||'',nabywcaKod:aktS.kontrahentKod||'',nabywcaMiasto:aktS.kontrahentMiasto||'',
-                          firma:aktS.firma||'F',dzial:DZIALY[aktS.firma||'F']||'1978585',
+                          nabywcaNazwa:s.kontrahentNazwa||'',nazwaFirmy:s.kontrahentNazwa||'',imie:s.kontrahentNazwa||'',
+                          nip:s.nip||'',nabywcaNip:s.nip||'',nabywcaEmail:s.kontrahentEmail||'',
+                          nabywcaUlica:s.kontrahentUlica||'',nabywcaKod:s.kontrahentKod||'',nabywcaMiasto:s.kontrahentMiasto||'',
+                          firma:s.firma||'F',dzial:DZIALY[s.firma||'F']||'1978585',
                           kwota:'0',opis:'',vat:23,platnosc:'przelew',
-                          sellDate:dzis,
-                          pozycjeAllegro:(aktS.pozycje||[]).map(p=>{
+                          sellDate:dzis,ulica:s.kontrahentUlica||'',kod:s.kontrahentKod||'',miasto:s.kontrahentMiasto||'',
+                          pozycjeAllegro:(s.pozycje||[]).map(p=>{
                             const cenaBase=parseFloat(p.cena)||0;
                             const marza=parseFloat(p.marza)||0;
                             const cenaFinal=marza>0?Math.round(cenaBase*(1+marza/100)*100)/100:cenaBase;
-                            return {name:p.nazwa||'',quantity:parseFloat(p.ilosc)||1,price:cenaFinal,tax:p.vatPct??23,unit:p.jm||'szt',total_price_gross:cenaFinal*(parseFloat(p.ilosc)||1)*(1+(p.vatPct??23)/100)};
+                            return {name:p.nazwa||'',quantity:parseFloat(p.ilosc)||1,cena:cenaFinal,price:cenaFinal,tax:p.vatPct??23,tryb:p.tryb||'netto',unit:p.jm||'szt'};
                           }),
                           typ:'faktura',trybCen:'netto',
                         },
-                        _fromSzablon:aktS.id,
+                        _fromSzablon:s.id,
                       });
                     }}
                   />;
