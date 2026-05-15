@@ -1065,7 +1065,8 @@ function App() {
   const [fakModal,setFakModal]=React.useState(null);
   const [fakMailModal,setFakMailModal]=React.useState(null);
   const [fvEditOpis,setFvEditOpis]=React.useState(null);
-  const [marzaKolumny,setMarzaKolumny]=React.useState(()=>{try{const s=localStorage.getItem('marza_kolumny');return s?JSON.parse(s):null;}catch{return null;}}()||[1,2,3,4].map(i=>({id:i,nazwa:'Produkt '+i,cenaNetto:'',rabat:'',vat:0.23,doplataDo:7.5,karton:0,prowizja:0.11,reklama:0.1,ryczalt:0.03,marza:0.15,cenaSprzBrutto:'',tryb:'cel'})));
+  const _marzaDomyslne=[1,2,3,4].map(function(i){return {id:i,nazwa:'Produkt '+i,cenaNetto:'',rabat:'',vat:0.23,doplataDo:7.5,karton:0,prowizja:0.11,reklama:0.1,ryczalt:0.03,marza:0.15,cenaSprzBrutto:'',tryb:'cel'};});
+  const [marzaKolumny,setMarzaKolumny]=React.useState(function(){try{var s=localStorage.getItem('marza_kolumny');return s?JSON.parse(s):_marzaDomyslne;}catch(e){return _marzaDomyslne;}});
   const saveMarzaKolumny=(kol)=>{setMarzaKolumny(kol);try{localStorage.setItem('marza_kolumny',JSON.stringify(kol));}catch(e){}};
   const [kontrahenci,setKontrahenci]=useState(()=>{try{return JSON.parse(localStorage.getItem('kontrahenci')||'[]');}catch{return [];}});
   function saveKontrahenci(list){setKontrahenci(list);localStorage.setItem('kontrahenci',JSON.stringify(list));}
