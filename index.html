@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260514.20</title>
+<title>MosquitoApp v20260514.21</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -4410,7 +4410,7 @@ function App() {
       </div>
 
       <div style={{display:"flex",borderBottom:"1px solid #1e2a1e",paddingLeft:16,background:"#0e1420",flexWrap:"wrap"}}>
-        {[["zamowienia","📦 Zamówienia"],["nowe","➕ Dodaj"],["al_zam","🛒 Allegro"],["baza","📋 Zlecenia"],["zapytania","📨 KAL"],["stat","📊 Stat"],["produkcja","🏭 Produkcja"],["kalk","🧮 Kalkulator"],["wiadomosci","💬 Wiadomości"],["marza","💹 Marża"]].map(([id,l])=>(
+        {[["zamowienia","📦 Zamówienia"],["nowe","➕ Dodaj"],["al_zam","🛒 Allegro"],["baza","📋 Zlecenia"],["zapytania","📨 KAL"],["stat","📊 Stat"],["produkcja","🏭 Produkcja"],["kalk","🧮 Kalkulator"],["wiadomosci",(()=>{const uc=msgThreads.filter(t=>t.hasUnreadMessages).length;return uc>0?`💬 Wiadomości (${uc})`:"💬 Wiadomości";})()],["marza","💹 Marża"]].map(([id,l])=>(
           <button key={id} className={`tab ${tab===id?"on":""}`} onClick={()=>setTab(id)}>{l}</button>
         ))}
         <button className={`tab ${(tab==="allegro"||tab==="ustawienia"||tab==="historia")?"on":""}`} onClick={()=>{
@@ -5280,11 +5280,11 @@ function App() {
                       📦{_batchSel.includes(imp.allegroOrderId)?'✓':''}
                     </button>}
                     <button onClick={()=>toggleBox(imp.allegroOrderId,'chat')} title="Napisz wiadomość do klienta"
-                      style={{padding:'4px 7px',fontSize:12,borderRadius:5,cursor:'pointer',
-                        background:openBox==='chat'?'#1a3a3a':'#1a2a2a',
-                        border:`1px solid ${openBox==='chat'?'#3a8a8a':'#2a5a5a'}`,
-                        color:openBox==='chat'?'#7adfdf':'#5abfbf'}}>
-                      💬
+                      style={{padding:'4px 7px',fontSize:12,borderRadius:5,cursor:'pointer',position:'relative',
+                        background:openBox==='chat'?'#1a3a3a':(msgThreads.find(t=>t.relatedObject?.id===imp.allegroOrderId)?.hasUnreadMessages?'#0a2a1a':'#1a2a2a'),
+                        border:`1px solid ${openBox==='chat'?'#3a8a8a':(msgThreads.find(t=>t.relatedObject?.id===imp.allegroOrderId)?.hasUnreadMessages?'#3a8a5a':'#2a5a5a')}`,
+                        color:openBox==='chat'?'#7adfdf':(msgThreads.find(t=>t.relatedObject?.id===imp.allegroOrderId)?.hasUnreadMessages?'#7acf9a':'#5abfbf')}}>
+                      💬{msgThreads.find(t=>t.relatedObject?.id===imp.allegroOrderId)?.hasUnreadMessages&&<span style={{position:'absolute',top:-4,right:-4,background:'#ef4a4a',color:'#fff',borderRadius:'50%',fontSize:9,width:14,height:14,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700}}>1</span>}
                     </button>
                     <button onClick={()=>{
                       const ord=orders.find(o=>o.allegroOrderId===imp.allegroOrderId);
@@ -7515,7 +7515,7 @@ function App() {
                         React.createElement("div",{style:{textAlign:"center",color:"#4a8a4a",fontSize:14}},"⟳ ładowanie wiadomości...")
                       ):(
                         msgConvo.map(function(m,i){
-                          const isMe=m.author&&m.author.role==="OPERATOR";
+                          const isMe=m.author&&(m.author.role==="OPERATOR"||m.author.role==="SELLER");
                           return React.createElement("div",{key:i,style:{display:"flex",flexDirection:"column",alignItems:isMe?"flex-end":"flex-start",gap:3}},
                             React.createElement("div",{style:{maxWidth:"72%",background:isMe?"#1a3a2a":"#1a2a3a",border:"1px solid "+(isMe?"#4a8a5a":"#2a3a5a"),borderRadius:isMe?"12px 12px 4px 12px":"12px 12px 12px 4px",padding:"8px 12px",fontSize:14,color:"#d0ead0",lineHeight:1.5}},
                               m.text||"",
