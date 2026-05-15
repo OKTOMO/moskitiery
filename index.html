@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260514.23</title>
+<title>MosquitoApp v20260514.25</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1522,6 +1522,7 @@ function App() {
   const [aiActiveInstrId,setAiActiveInstrId]=useState(()=>localStorage.getItem("ai_active_instr_id")||"");
   const [withDrzwi, setWithDrzwi] = React.useState(false);
   const [dpdModal, setDpdModal] = React.useState(null); // {order}
+  const [doslijModal, setDoslijModal] = React.useState(null); // {order, zawartosc, waga, sending}
   const [lastSavedOrder, setLastSavedOrder] = React.useState(null);
   const [nadajDPD, setNadajDPD] = React.useState(false);
   const [kvMasterKey, setKvMasterKey] = React.useState(()=>localStorage.getItem('mosk_worker_key')||'');
@@ -4271,7 +4272,7 @@ function App() {
     const r1=await fetch(AUTORESPONDER_URL+"/messaging/attachments?kontoId="+msgKontoRef.current,{
       method:"POST",
       headers:{"x-api-key":AUTORESPONDER_KEY,"Content-Type":"application/vnd.allegro.public.v1+json"},
-      body:JSON.stringify({filename:file.name,size:file.size})
+      body:JSON.stringify({filename:file.name})
     });
     if(!r1.ok){
       let errText="";
@@ -7023,6 +7024,7 @@ function App() {
                           {o.pozycje.some(p=>!p.isDrzwi)&&<button className="btn-pdf" onClick={()=>drukujPDF(o)} title="Drukuj PDF — okna">🪟 PDF</button>}
                           {o.pozycje.some(p=>p.isDrzwi)&&<button className="btn-pdf" style={{background:"#1a2a4a"}} onClick={()=>drukujPDF_drzwi(o)} title="Drukuj PDF — drzwi">🚪 PDF</button>}
                           <button className="btn-pdf" style={{background:o.dpdWaybill?"#0a2a1a":"#1a1a2a",borderColor:o.dpdWaybill?"#2a6a4a":"#3a3a5a",color:o.dpdWaybill?"#6acf9a":"#8a8abf",fontSize:12}} onClick={()=>{setDpdModal(o);setDpdWaga("5");}} title={o.dpdWaybill?"DPD: "+o.dpdWaybill:"Nadeślij DPD"}>{o.dpdWaybill?"📦 "+o.dpdWaybill.slice(-6):"📦 DPD"}</button>
+                          {o.dpdWaybill&&<button className="btn-pdf" style={{background:"#1a2a3a",borderColor:"#3a5a7a",color:"#7abfdf",fontSize:12}} onClick={()=>setDoslijModal({order:o,zawartosc:'',waga:'2',sending:false})} title="Dodatkowa wysyłka do tego klienta">📦+ Doślij</button>}
                           <button className="btn-pdf" style={{background:"#1a1a3a",borderColor:"#3a3a7a",color:"#9a9adf"}} title="Wyślij na produkcję" onClick={async()=>{
                             let emailCfg=JSON.parse(localStorage.getItem('email_produkcji_config')||'{}');
                             let to=emailCfg.emailProdukcji||'';
@@ -9152,6 +9154,65 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
           })()}
 
       {/* ── MODAL DPD ── */}
+      {doslijModal&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',zIndex:3000,display:'flex',alignItems:'center',justifyContent:'center'}}
+          onClick={e=>{if(e.target===e.currentTarget)setDoslijModal(null);}}>
+          <div style={{background:'#0d1f0d',border:'1px solid #2a5a2a',borderRadius:8,padding:24,width:460,maxWidth:'95vw',fontFamily:'monospace'}}>
+            <div style={{fontWeight:700,fontSize:15,color:'#9adf9a',marginBottom:16}}>📦+ Dodatkowa wysyłka — {doslijModal.order.numerZlecenia}</div>
+            <div style={{fontSize:12,color:'#5a8a5a',marginBottom:12}}>
+              Klient: <span style={{color:'#9fcf9f'}}>{doslijModal.order.klientImie}</span> · {doslijModal.order.klientUlica}, {doslijModal.order.klientKod} {doslijModal.order.klientMiasto}
+            </div>
+            <div style={{marginBottom:10}}>
+              <div style={{color:'#7a9a7a',fontSize:12,marginBottom:4}}>Zawartość paczki:</div>
+              <input value={doslijModal.zawartosc} onChange={e=>setDoslijModal(m=>({...m,zawartosc:e.target.value}))}
+                style={{width:'100%',padding:'6px 8px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#cfefcf',fontSize:13,boxSizing:'border-box'}}
+                placeholder="np. 2× profil aluminiowy 100cm"/>
+            </div>
+            <div style={{marginBottom:16}}>
+              <div style={{color:'#7a9a7a',fontSize:12,marginBottom:4}}>Waga (kg):</div>
+              <input value={doslijModal.waga} onChange={e=>setDoslijModal(m=>({...m,waga:e.target.value}))} type="number" min="0.1" step="0.1"
+                style={{width:120,padding:'6px 8px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#cfefcf',fontSize:13}}/>
+            </div>
+            <div style={{fontSize:11,color:'#4a7a4a',marginBottom:16}}>Przewoźnik: <strong style={{color:'#7acf9a'}}>{doslijModal.order.inpostWaybill?'InPost':'DPD'}</strong> · adres z oryginalnego zlecenia</div>
+            <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
+              <button onClick={()=>setDoslijModal(null)} style={{padding:'7px 18px',background:'#1a1a1a',border:'1px solid #3a3a3a',borderRadius:4,color:'#aaa',cursor:'pointer',fontSize:13}}>Anuluj</button>
+              <button disabled={doslijModal.sending} onClick={async()=>{
+                const {order,zawartosc,waga}=doslijModal;
+                if(!zawartosc.trim()){alert('Podaj zawartość paczki');return;}
+                setDoslijModal(m=>({...m,sending:true}));
+                try{
+                  const useInpost=!!order.inpostWaybill;
+                  let waybillId='',pdfB64='';
+                  if(!useInpost){
+                    // DPD
+                    const r=await fetch(AUTORESPONDER_URL+'/dpd/label',{
+                      method:'POST',headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},
+                      body:JSON.stringify({odbiorca:{imie:order.klientImie,ulica:order.klientUlica,kod:order.klientKod,miasto:order.klientMiasto},waga:parseFloat(waga)||2,telefon:order.telefon||'',referencja:(order.numerZlecenia||'')+'_DOSLIJ'})
+                    });
+                    const d=await r.json();
+                    if(!d.ok){let e=d.error||'Błąd DPD';if(d.xml){const m=d.xml.match(/<faultstring>([^<]+)<\/faultstring>/);if(m)e+=': '+m[1];}throw new Error(e);}
+                    waybillId=d.waybillId;pdfB64=d.pdf;
+                  } else {
+                    alert('InPost — dodatkowa wysyłka wymaga ręcznego nadania przez panel InPost');
+                    setDoslijModal(null);return;
+                  }
+                  // Otwórz PDF
+                  const blob=new Blob([Uint8Array.from(atob(pdfB64),c=>c.charCodeAt(0))],{type:'application/pdf'});
+                  window.open(URL.createObjectURL(blob),'_blank');
+                  // Zapisz w historii zlecenia
+                  updateOrders(orders.map(x=>x.id===order.id?{...x,
+                    doslania:[...((x.doslania)||[]),{data:new Date().toLocaleDateString('pl-PL'),zawartosc,waga,waybillId}]
+                  }:x));
+                  alert('✅ Etykieta dodatkowej wysyłki wygenerowana! Nr: '+waybillId);
+                  setDoslijModal(null);
+                }catch(e){setDoslijModal(m=>({...m,sending:false}));alert('❌ '+e.message);}
+              }} style={{padding:'7px 18px',background:doslijModal.sending?'#1a3a1a':'#1a5a1a',border:'1px solid #3a9a3a',borderRadius:4,color:'#9aef9a',cursor:doslijModal.sending?'default':'pointer',fontSize:13,fontWeight:700}}>
+                {doslijModal.sending?'Generuję...':'📦 Generuj etykietę'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {dpdModal&&(
         <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.75)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center"}}
           onClick={e=>{if(e.target===e.currentTarget){setDpdModal(null);}}}>
