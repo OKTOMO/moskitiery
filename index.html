@@ -4410,8 +4410,8 @@ function App() {
       </div>
 
       <div style={{display:"flex",borderBottom:"1px solid #1e2a1e",paddingLeft:16,background:"#0e1420",flexWrap:"wrap"}}>
-        {[["zamowienia","📦 Zamówienia"],["nowe","➕ Dodaj"],["al_zam","🛒 Allegro"],["baza","📋 Zlecenia"],["zapytania","📨 KAL"],["stat","📊 Stat"],["produkcja","🏭 Produkcja"],["kalk","🧮 Kalkulator"],["wiadomosci",(()=>{const uc=msgThreads.filter(t=>t.hasUnreadMessages).length;return uc>0?`💬 Wiadomości (${uc})`:"💬 Wiadomości";})()],["marza","💹 Marża"]].map(([id,l])=>(
-          <button key={id} className={`tab ${tab===id?"on":""}`} onClick={()=>setTab(id)}>{l}</button>
+        {[["zamowienia","📦 Zamówienia"],["nowe","➕ Dodaj"],["al_zam","🛒 Allegro"],["baza","📋 Zlecenia"],["zapytania","📨 KAL"],["stat","📊 Stat"],["produkcja","🏭 Produkcja"],["kalk","🧮 Kalkulator"],["wiadomosci","💬 Wiadomości"],["marza","💹 Marża"]].map(([id,l])=>(
+          <button key={id} className={`tab ${tab===id?"on":""}`} onClick={()=>setTab(id)} style={{position:"relative"}}>{l}{id==="wiadomosci"&&msgThreads.filter(t=>t.hasUnreadMessages).length>0&&<span style={{position:"absolute",top:-4,right:-4,background:"#ef4a4a",color:"#fff",borderRadius:"50%",fontSize:9,width:15,height:15,display:"inline-flex",alignItems:"center",justifyContent:"center",fontWeight:700,pointerEvents:"none"}}>{msgThreads.filter(t=>t.hasUnreadMessages).length}</span>}</button>
         ))}
         <button className={`tab ${(tab==="allegro"||tab==="ustawienia"||tab==="historia")?"on":""}`} onClick={()=>{
          const pin=localStorage.getItem("admin_pin");
