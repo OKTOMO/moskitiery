@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260514.21</title>
+<title>MosquitoApp v20260514.22</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1725,6 +1725,18 @@ function App() {
       console.error("fetchAllegroOrders:",e);
     }
     setAllegroImportLoading(false);
+    // Pobierz wątki wiadomości w tle żeby pokazać licznik nieprzeczytanych
+    try{
+      const activeKontos=Object.keys(allegroTokens).filter(k=>allegroTokens[k]);
+      const allThreads=[];
+      for(const k of activeKontos){
+        try{
+          const tr=await fetch(AUTORESPONDER_URL+'/messaging/threads?kontoId='+k+'&limit=50',{headers:{'x-api-key':AUTORESPONDER_KEY}});
+          if(tr.ok){const td=await tr.json();allThreads.push(...(td.threads||[]));}
+        }catch(e){}
+      }
+      if(allThreads.length>0) setMsgThreads(allThreads);
+    }catch(e){}
   }
 
   // ── Parsowanie wymiarów z nazwy oferty Allegro ──
