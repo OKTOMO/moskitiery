@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260514.25</title>
+<title>MosquitoApp v20260514.26</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1131,6 +1131,7 @@ function App() {
   const [mergeSelected,setMergeSelected]=useState(new Set());
   const [batchMailSelected,setBatchMailSelected]=useState([]);
   const [zamTab,setZamTab]=useState('nowe');
+  const [zarzTab,setZarzTab]=useState('stat');
   const [fakSzablony,setFakSzablony]=useState(()=>{try{return JSON.parse(localStorage.getItem('fak_szablony')||'[]');}catch{return [];}});
   const [szablonEditId,setSzablonEditId]=useState(null); // null=lista, 'new'=nowy, id=edycja
   const [szablonNipLoading,setSzablonNipLoading]=useState(false);
@@ -4462,7 +4463,7 @@ function App() {
       </div>
 
       <div style={{display:"flex",borderBottom:"1px solid #1e2a1e",paddingLeft:16,background:"#0e1420",flexWrap:"wrap"}}>
-        {[["zamowienia","📦 Zamówienia"],["nowe","➕ Dodaj"],["al_zam","🛒 Allegro"],["baza","📋 Zlecenia"],["zapytania","📨 KAL"],["stat","📊 Stat"],["produkcja","🏭 Produkcja"],["kalk","🧮 Kalkulator"],["wiadomosci","💬 Wiadomości"],["marza","💹 Marża"]].map(([id,l])=>(
+        {[["zamowienia","📦 Zamówienia"],["zarzadzanie","📊 Zarządzanie"],["kalk","🧮 Kalkulator"],["marza","💹 Marża"]].map(([id,l])=>(
           <button key={id} className={`tab ${tab===id?"on":""}`} onClick={()=>setTab(id)} style={{position:"relative"}}>{l}{id==="wiadomosci"&&msgThreads.filter(t=>t.hasUnreadMessages).length>0&&<span style={{position:"absolute",top:-4,right:-4,background:"#ef4a4a",color:"#fff",borderRadius:"50%",fontSize:9,width:15,height:15,display:"inline-flex",alignItems:"center",justifyContent:"center",fontWeight:700,pointerEvents:"none"}}>{msgThreads.filter(t=>t.hasUnreadMessages).length}</span>}</button>
         ))}
         <button className={`tab ${(tab==="allegro"||tab==="ustawienia"||tab==="historia")?"on":""}`} onClick={()=>{
@@ -5889,7 +5890,20 @@ function App() {
           </div>
         )}
         {/* ═══ ZAMÓWIENIA ═══ */}
-        {tab==="al_zam" && (
+        {tab==="zarzadzanie"&&(
+          <div style={{display:'flex',gap:4,padding:'10px 16px 0',borderBottom:'1px solid #0f2f0f',background:'#050f05',flexWrap:'wrap'}}>
+            {[['stat','📈 Statystyki'],['produkcja','🏭 Produkcja'],['baza','📋 Zlecenia'],['al_zam','🛒 Allegro']].map(function(item){const id=item[0],l=item[1];return(
+              <button key={id} onClick={function(){setZarzTab(id);}}
+                style={{padding:'6px 16px',fontSize:12,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',
+                  background:zarzTab===id?'#1a3a1a':'#0a1a0a',
+                  color:zarzTab===id?'#9fcf9f':'#5a8a5a',
+                  borderBottom:zarzTab===id?'2px solid #4acf4a':'2px solid transparent'}}>
+                {l}
+              </button>
+            );})}
+          </div>
+        )}
+        {(tab==="al_zam"||tab==="zarzadzanie"&&zarzTab==="al_zam") && (
           <div>
             {/* Nagłówek + przycisk pobierz */}
             <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}>
@@ -6903,7 +6917,7 @@ function App() {
           </div>
         )}
 
-        {tab==="baza" && (
+        {(tab==="baza"||tab==="zarzadzanie"&&zarzTab==="baza") && (
           <div>
             <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
               <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Szukaj..." style={{width:220}}/>
@@ -7290,7 +7304,7 @@ function App() {
         )}
 
         {/* ══ STATYSTYKI ══ */}
-        {tab==="stat" && (
+        {(tab==="stat"||tab==="zarzadzanie"&&zarzTab==="stat") && (
           <div>
             <div style={{fontSize:14,color:"#4a8a4a",letterSpacing:".15em",textTransform:"uppercase",marginBottom:14}}>Łącznie ({orders.length} zamówień)</div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}} className="grid2">
@@ -7839,6 +7853,8 @@ function App() {
             </div>
           );
         })()}
+
+        </div>{/* koniec zarzadzanie */}
 
         {/* ══ KALKULATOR ══ */}
         {tab==="historia" && (
@@ -8412,7 +8428,7 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
 
 
         {/* ══ PRODUKCJA ══ */}
-        {tab==="produkcja" && (()=>{
+        {(tab==="produkcja"||tab==="zarzadzanie"&&zarzTab==="produkcja") && (()=>{
           const RAL_KOLORY = ["Biały","Brąz","Antracyt","Czarny"];
           const STRUKTURA_KOLORY = ["Złoty Dąb","Ciemny Dąb","Turner Oak","Orzech","Winchester","Mahoń"];
 
