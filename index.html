@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260514.22</title>
+<title>MosquitoApp v20260514.23</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -1732,7 +1732,11 @@ function App() {
       for(const k of activeKontos){
         try{
           const tr=await fetch(AUTORESPONDER_URL+'/messaging/threads?kontoId='+k+'&limit=50',{headers:{'x-api-key':AUTORESPONDER_KEY}});
-          if(tr.ok){const td=await tr.json();allThreads.push(...(td.threads||[]));}
+          if(tr.ok){const td=await tr.json();allThreads.push(...(td.threads||[]).map(function(t){return {...t,_type:'thread'};}));}
+        }catch(e){}
+        try{
+          const dr=await fetch(AUTORESPONDER_URL+'/sale/disputes?kontoId='+k+'&limit=20',{headers:{'x-api-key':AUTORESPONDER_KEY}});
+          if(dr.ok){const dd=await dr.json();allThreads.push(...(dd.disputes||[]).map(function(dsp){return {id:dsp.id,_type:'dispute',interlocutor:{login:dsp.buyer?.login||'klient'},subject:dsp.subject||'Dyskusja',hasUnreadMessages:dsp.messagesStatus==='BUYER_REPLIED',lastMessageAt:dsp.lastMessageAt||'',relatedObject:dsp.checkoutForm?{id:dsp.checkoutForm.id}:null};}));}
         }catch(e){}
       }
       if(allThreads.length>0) setMsgThreads(allThreads);
@@ -4206,7 +4210,31 @@ function App() {
         setMsgLoading(false);return;
       }
       const d=await r.json();
-      setMsgThreads(d.threads||[]);
+      const threads=(d.threads||[]).map(function(t){return {...t,_type:'thread'};});
+      // Pobierz dyskusje/reklamacje
+      let disputes=[];
+      try{
+        const dr=await fetch(AUTORESPONDER_URL+'/sale/disputes?kontoId='+k+'&limit=20',{headers:{'x-api-key':AUTORESPONDER_KEY}});
+        if(dr.ok){
+          const dd=await dr.json();
+          disputes=(dd.disputes||[]).map(function(dsp){return {
+            id:dsp.id,
+            _type:'dispute',
+            _disputeSubject:dsp.subject||'Dyskusja',
+            _disputeStatus:dsp.status||'',
+            interlocutor:{login:dsp.buyer?.login||dsp.buyer?.email||'klient'},
+            subject:dsp.subject||'Dyskusja/Reklamacja',
+            hasUnreadMessages:dsp.messagesStatus==='BUYER_REPLIED'||dsp.unreadMessages>0,
+            lastMessageAt:dsp.lastMessageAt||dsp.createdAt||'',
+            relatedObject:dsp.checkoutForm?{id:dsp.checkoutForm.id,type:'DISPUTE'}:null,
+          };});
+        }
+      }catch(e){}
+      // Scal i sortuj po dacie ostatniej wiadomości
+      const all=[...threads,...disputes].sort(function(a,b){
+        return new Date(b.lastMessageAt||0)-new Date(a.lastMessageAt||0);
+      });
+      setMsgThreads(all);
     }catch(e){setMsgError("Błąd połączenia: "+e.message);}
     setMsgLoading(false);
   }
@@ -4218,11 +4246,21 @@ function App() {
     setMsgActiveThread(thread);
     setMsgConvoLoading(true); setMsgConvo([]); setMsgReply(""); setMsgAttachments([]); setMsgSendOk(false); setMsgSendError("");
     try{
-      const r=await fetch(AUTORESPONDER_URL+"/messaging/threads/"+thread.id+"/messages?kontoId="+k,{
-        headers:{"x-api-key":AUTORESPONDER_KEY}
-      });
+      const isDispute=thread._type==='dispute';
+      const url=isDispute
+        ?AUTORESPONDER_URL+"/sale/disputes/"+thread.id+"/messages?kontoId="+k
+        :AUTORESPONDER_URL+"/messaging/threads/"+thread.id+"/messages?kontoId="+k;
+      const r=await fetch(url,{headers:{"x-api-key":AUTORESPONDER_KEY}});
       if(r.status===401&&!retried){const ok=await allegroRefresh(k);if(ok){msgLoadConvo(thread,true);return;}}
-      if(r.ok){const d=await r.json();setMsgConvo(d.messages||[]);}
+      if(r.ok){
+        const d=await r.json();
+        if(isDispute){
+          // Dyskusje: {messages:[{id,text,author:{role},createdAt,attachments}]}
+          setMsgConvo((d.messages||[]).map(function(m){return {...m,author:{role:m.author?.role==='BUYER'?'BUYER':'SELLER'}};}));
+        } else {
+          setMsgConvo(d.messages||[]);
+        }
+      }
     }catch(e){}
     setMsgConvoLoading(false);
   }
@@ -7500,14 +7538,16 @@ function App() {
                 <div style={{overflowY:"auto",flex:1}}>
                   {msgThreads.map(function(t){
                     const active=msgActiveThread&&msgActiveThread.id===t.id;
+                    const isDispute=t._type==='dispute';
                     return (
-                      <div key={t.id} onClick={function(){msgLoadConvo(t);}} style={{padding:"12px 14px",borderBottom:"1px solid #0f1f0f",cursor:"pointer",background:active?"#1a3a1a":(t.hasUnreadMessages?"#0e1e0e":"transparent"),transition:"background .15s"}}>
-                        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
-                          {t.hasUnreadMessages&&<span style={{width:7,height:7,borderRadius:"50%",background:"#7fcf7f",display:"inline-block",flexShrink:0}}/>}
-                          <span style={{fontWeight:t.hasUnreadMessages?700:600,color:active?"#afeaaf":"#8abf8a",fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.interlocutor&&t.interlocutor.login||"—"}</span>
+                      <div key={t.id} onClick={function(){msgLoadConvo(t);}} style={{padding:"10px 14px",borderBottom:"1px solid #0f1f0f",cursor:"pointer",background:active?(isDispute?"#2a1a0a":"#1a3a1a"):(t.hasUnreadMessages?(isDispute?"#1a0e00":"#0e1e0e"):"transparent"),transition:"background .15s",borderLeft:isDispute?"3px solid #cf8a3a":"3px solid transparent"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}>
+                          {t.hasUnreadMessages&&<span style={{width:7,height:7,borderRadius:"50%",background:isDispute?"#cf8a3a":"#7fcf7f",display:"inline-block",flexShrink:0}}/>}
+                          {isDispute&&<span style={{fontSize:10,background:"#3a1a00",color:"#cf8a3a",border:"1px solid #5a3a1a",borderRadius:3,padding:"0 4px",flexShrink:0}}>⚠ dyskusja</span>}
+                          <span style={{fontWeight:t.hasUnreadMessages?700:600,color:active?(isDispute?"#efcf9f":"#afeaaf"):(isDispute?"#cf9a6a":"#8abf8a"),fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.interlocutor&&t.interlocutor.login||"—"}</span>
                         </div>
-                        <div style={{fontSize:14,color:"#5a8a5a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.subject||"—"}</div>
-                        <div style={{fontSize:14,color:"#5a8a5a",marginTop:2}}>{t.lastMessageAt?new Date(t.lastMessageAt).toLocaleDateString("pl-PL"):""}</div>
+                        <div style={{fontSize:12,color:isDispute?"#8a6a3a":"#5a8a5a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.subject||"—"}</div>
+                        <div style={{fontSize:11,color:"#3a5a3a",marginTop:2}}>{t.lastMessageAt?new Date(t.lastMessageAt).toLocaleDateString("pl-PL"):""}</div>
                       </div>
                     );
                   })}
