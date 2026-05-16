@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260514.30</title>
+<title>MosquitoApp v20260514.32</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -5559,6 +5559,7 @@ function App() {
                             if(!rd.ok) throw new Error('Błąd Fakturowni: '+rd.status);
                             const invList=rd.invoices||[];
                             let added=0;
+                            if(invList.length>0) console.log('Fakturownia sample invoice:', JSON.stringify(invList[0]));
                             setInvoicesSent(prev=>{
                               const next={...prev};
                               (invList||[]).forEach(function(inv){
@@ -5569,20 +5570,39 @@ function App() {
                                   const nip=(inv.buyer_tax_no||'').replace(/[^0-9]/g,'');
                                   const matchedImp=allegroImportResults.find(function(i){return (i.nip||'').replace(/[^0-9]/g,'')===nip&&nip;});
                                   const orderId=matchedImp?matchedImp.allegroOrderId:('fakturownia_'+inv.id);
+                                  // Zachowaj istniejące dane ręczne (opis, email itd.)
+                                  const existing=next[orderId]||{};
                                   next[orderId]={
+                                    ...existing,
                                     id:inv.id,
                                     fakturowniaId:inv.id,
                                     number:inv.number,
-                                    date:inv.created_at?inv.created_at.slice(0,10):'',
-                                    kwota:parseFloat(inv.price_gross)||0,
+                                    date:(inv.created_at||inv.issue_date||'').slice(0,10),
+                                    kwota:parseFloat((inv.price_gross||inv.gross_price||'0').toString().replace(',','.'))||0,
                                     nip:nip,
-                                    klientNazwa:inv.buyer_name||'',
-                                    klientMiasto:inv.buyer_city||'',
+                                    klientNazwa:inv.buyer_name||inv.client_name||existing.klientNazwa||'',
+                                    klientMiasto:inv.buyer_city||existing.klientMiasto||'',
                                     firma:(inv.department_id===1978591?'E':inv.department_id===1978589?'AR':inv.department_id===1978585?'F':'F'),
-                                    offerNames:inv.description||'',
+                                    offerNames:inv.description||existing.offerNames||'',
+                                    // Zachowaj ręczny opis
+                                    opiszReczny:existing.opiszReczny||'',
+                                    nabywcaEmail:existing.nabywcaEmail||inv.buyer_email||'',
                                     _synced:true,
                                   };
                                   added++;
+                                } else {
+                                  // Faktura już istnieje — tylko uzupełnij brakujące dane, nie nadpisuj ręcznych
+                                  const existKey=Object.keys(next).find(function(k){return next[k].id===inv.id||next[k].fakturowniaId===inv.id;});
+                                  if(existKey){
+                                    const ex=next[existKey];
+                                    next[existKey]={
+                                      ...ex,
+                                      number:ex.number||inv.number,
+                                      kwota:ex.kwota||parseFloat((inv.price_gross||'0').toString().replace(',','.'))||0,
+                                      klientNazwa:ex.klientNazwa||inv.buyer_name||'',
+                                      klientMiasto:ex.klientMiasto||inv.buyer_city||'',
+                                    };
+                                  }
                                 }
                               });
                               localStorage.setItem('invoices_sent',JSON.stringify(next));
