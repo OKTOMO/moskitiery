@@ -1063,11 +1063,6 @@ function App() {
     try{return JSON.parse(localStorage.getItem('fakturownia_config')||'{}');}catch(e){return {};}
   });
   const [fakModal,setFakModal]=React.useState(null);
-  const [fakMailModal,setFakMailModal]=React.useState(null);
-  const [fvEditOpis,setFvEditOpis]=React.useState(null);
-  const _marzaDomyslne=[1,2,3,4].map(function(i){return {id:i,nazwa:'Produkt '+i,cenaNetto:'',rabat:'',vat:0.23,doplataDo:7.5,karton:0,prowizja:0.11,reklama:0.1,ryczalt:0.03,marza:0.15,cenaSprzBrutto:'',tryb:'cel'};});
-  const [marzaKolumny,setMarzaKolumny]=React.useState(function(){try{var s=localStorage.getItem('marza_kolumny');return s?JSON.parse(s):_marzaDomyslne;}catch(e){return _marzaDomyslne;}});
-  const saveMarzaKolumny=(kol)=>{setMarzaKolumny(kol);try{localStorage.setItem('marza_kolumny',JSON.stringify(kol));}catch(e){}};
   const [kontrahenci,setKontrahenci]=useState(()=>{try{return JSON.parse(localStorage.getItem('kontrahenci')||'[]');}catch{return [];}});
   function saveKontrahenci(list){setKontrahenci(list);localStorage.setItem('kontrahenci',JSON.stringify(list));}
   function upsertKontrahent(k){
@@ -1131,7 +1126,6 @@ function App() {
   const [mergeSelected,setMergeSelected]=useState(new Set());
   const [batchMailSelected,setBatchMailSelected]=useState([]);
   const [zamTab,setZamTab]=useState('nowe');
-  const [zarzTab,setZarzTab]=useState('stat');
   const [fakSzablony,setFakSzablony]=useState(()=>{try{return JSON.parse(localStorage.getItem('fak_szablony')||'[]');}catch{return [];}});
   const [szablonEditId,setSzablonEditId]=useState(null); // null=lista, 'new'=nowy, id=edycja
   const [szablonNipLoading,setSzablonNipLoading]=useState(false);
@@ -1523,7 +1517,6 @@ function App() {
   const [aiActiveInstrId,setAiActiveInstrId]=useState(()=>localStorage.getItem("ai_active_instr_id")||"");
   const [withDrzwi, setWithDrzwi] = React.useState(false);
   const [dpdModal, setDpdModal] = React.useState(null); // {order}
-  const [doslijModal, setDoslijModal] = React.useState(null); // {order, zawartosc, waga, sending}
   const [lastSavedOrder, setLastSavedOrder] = React.useState(null);
   const [nadajDPD, setNadajDPD] = React.useState(false);
   const [kvMasterKey, setKvMasterKey] = React.useState(()=>localStorage.getItem('mosk_worker_key')||'');
@@ -1727,22 +1720,6 @@ function App() {
       console.error("fetchAllegroOrders:",e);
     }
     setAllegroImportLoading(false);
-    // Pobierz wątki wiadomości w tle żeby pokazać licznik nieprzeczytanych
-    try{
-      const activeKontos=Object.keys(allegroTokens).filter(k=>allegroTokens[k]);
-      const allThreads=[];
-      for(const k of activeKontos){
-        try{
-          const tr=await fetch(AUTORESPONDER_URL+'/messaging/threads?kontoId='+k+'&limit=50',{headers:{'x-api-key':AUTORESPONDER_KEY}});
-          if(tr.ok){const td=await tr.json();allThreads.push(...(td.threads||[]).map(function(t){return {...t,_type:'thread'};}));}
-        }catch(e){}
-        try{
-          const dr=await fetch(AUTORESPONDER_URL+'/sale/disputes?kontoId='+k+'&limit=20',{headers:{'x-api-key':AUTORESPONDER_KEY}});
-          if(dr.ok){const dd=await dr.json();allThreads.push(...(dd.disputes||[]).map(function(dsp){return {id:dsp.id,_type:'dispute',interlocutor:{login:dsp.buyer?.login||'klient'},subject:dsp.subject||'Dyskusja',hasUnreadMessages:dsp.messagesStatus==='BUYER_REPLIED',lastMessageAt:dsp.lastMessageAt||'',relatedObject:dsp.checkoutForm?{id:dsp.checkoutForm.id}:null};}));}
-        }catch(e){}
-      }
-      if(allThreads.length>0) setMsgThreads(allThreads);
-    }catch(e){}
   }
 
   // ── Parsowanie wymiarów z nazwy oferty Allegro ──
@@ -2604,7 +2581,7 @@ function App() {
       body:JSON.stringify(payload)
     });
     if(!resp.ok){const err=await resp.json().catch(()=>({}));throw new Error(JSON.stringify(err));}
-    const _r=await resp.json();return _r.invoice||_r;
+    return await resp.json();
   }
 
   async function handleFakturownia(imp,order){
@@ -2627,12 +2604,9 @@ function App() {
             klientNazwa:_f?.nazwaFirmy||_f?.imie||_imp?.klientImie||_ord?.klientImie||'',
             klientMiasto:_imp?.klientMiasto||_ord?.klientMiasto||'',
             nip:_f?.nip||'',
-            kwota:(()=>{const poz=_f?.pozycjeAllegro||[];if(poz.length>0){return Math.round(poz.reduce((s,p)=>{const c=parseFloat(p.cena||p.price)||0;const q=parseFloat(p.ilosc||p.quantity)||1;const v=parseInt(p.tax||p.vatPct)||23;return s+(p.tryb==='brutto'?c*q:Math.round(c*q*(1+v/100)*100)/100);},0)*100)/100;}return parseFloat(_f?.kwota)||0;})(),
+            kwota:parseFloat(_f?.kwota)||0,
             numerZlecenia:_ord?.numerZlecenia||'',
             offerNames:_imp?.offerNames||'',
-            nabywcaEmail:_f?.nabywcaEmail||'',
-            _fromSzablon:fakModal._fromSzablon||'',
-            pozycjeAllegro:_f?.pozycjeAllegro||[],
           }};
           localStorage.setItem('invoices_sent',JSON.stringify(next));
           return next;
@@ -2808,8 +2782,7 @@ function App() {
         body:JSON.stringify(payload)
       });
       if(!resp.ok){const err=await resp.json().catch(()=>({}));throw new Error(JSON.stringify(err));}
-      const _resp=await resp.json();
-      const inv=_resp.invoice||_resp;
+      const inv=await resp.json();
       // Zapisz info o wystawionej fakturze
       const orderId=fakModal.imp?.allegroOrderId||fakModal.order?.allegroOrderId||fakModal.order?.numerZlecenia||fakModal.form?._manualOrderId||'';
       if(orderId){
@@ -2825,11 +2798,8 @@ function App() {
             klientUlica:_imp?.klientUlica||_ord?.klientUlica||'',
             klientKod:_imp?.klientKod||_ord?.klientKod||'',
             nip:_f?.nip||'',
-            kwota:(()=>{const poz=_f?.pozycjeAllegro||[];if(poz.length>0){return Math.round(poz.reduce((s,p)=>{const c=parseFloat(p.cena||p.price)||0;const q=parseFloat(p.ilosc||p.quantity)||1;const v=parseInt(p.tax||p.vatPct)||23;return s+(p.tryb==='brutto'?c*q:Math.round(c*q*(1+v/100)*100)/100);},0)*100)/100;}return parseFloat(_f?.kwota)||0;})(),
+            kwota:parseFloat(_f?.kwota)||0,
             offerNames:_imp?.offerNames||'',
-            nabywcaEmail:_f?.nabywcaEmail||'',
-            _fromSzablon:fakModal._fromSzablon||'',
-            pozycjeAllegro:_f?.pozycjeAllegro||[],
           }};
           localStorage.setItem('invoices_sent',JSON.stringify(next));
           return next;
@@ -2849,7 +2819,6 @@ function App() {
       window.open(`https://${cfg.domain}/invoices/${inv.id}`,'_blank');
       alert(`✅ Faktura ${inv.number} utworzona`);
       setFakModal(null);
-      setZamTab('faktury_zam');
     }catch(e){
       setFakModal(m=>({...m,sending:false}));
       alert('❌ Błąd: '+e.message);
@@ -4213,31 +4182,7 @@ function App() {
         setMsgLoading(false);return;
       }
       const d=await r.json();
-      const threads=(d.threads||[]).map(function(t){return {...t,_type:'thread'};});
-      // Pobierz dyskusje/reklamacje
-      let disputes=[];
-      try{
-        const dr=await fetch(AUTORESPONDER_URL+'/sale/disputes?kontoId='+k+'&limit=20',{headers:{'x-api-key':AUTORESPONDER_KEY}});
-        if(dr.ok){
-          const dd=await dr.json();
-          disputes=(dd.disputes||[]).map(function(dsp){return {
-            id:dsp.id,
-            _type:'dispute',
-            _disputeSubject:dsp.subject||'Dyskusja',
-            _disputeStatus:dsp.status||'',
-            interlocutor:{login:dsp.buyer?.login||dsp.buyer?.email||'klient'},
-            subject:dsp.subject||'Dyskusja/Reklamacja',
-            hasUnreadMessages:dsp.messagesStatus==='BUYER_REPLIED'||dsp.unreadMessages>0,
-            lastMessageAt:dsp.lastMessageAt||dsp.createdAt||'',
-            relatedObject:dsp.checkoutForm?{id:dsp.checkoutForm.id,type:'DISPUTE'}:null,
-          };});
-        }
-      }catch(e){}
-      // Scal i sortuj po dacie ostatniej wiadomości
-      const all=[...threads,...disputes].sort(function(a,b){
-        return new Date(b.lastMessageAt||0)-new Date(a.lastMessageAt||0);
-      });
-      setMsgThreads(all);
+      setMsgThreads(d.threads||[]);
     }catch(e){setMsgError("Błąd połączenia: "+e.message);}
     setMsgLoading(false);
   }
@@ -4249,21 +4194,11 @@ function App() {
     setMsgActiveThread(thread);
     setMsgConvoLoading(true); setMsgConvo([]); setMsgReply(""); setMsgAttachments([]); setMsgSendOk(false); setMsgSendError("");
     try{
-      const isDispute=thread._type==='dispute';
-      const url=isDispute
-        ?AUTORESPONDER_URL+"/sale/disputes/"+thread.id+"/messages?kontoId="+k
-        :AUTORESPONDER_URL+"/messaging/threads/"+thread.id+"/messages?kontoId="+k;
-      const r=await fetch(url,{headers:{"x-api-key":AUTORESPONDER_KEY}});
+      const r=await fetch(AUTORESPONDER_URL+"/messaging/threads/"+thread.id+"/messages?kontoId="+k,{
+        headers:{"x-api-key":AUTORESPONDER_KEY}
+      });
       if(r.status===401&&!retried){const ok=await allegroRefresh(k);if(ok){msgLoadConvo(thread,true);return;}}
-      if(r.ok){
-        const d=await r.json();
-        if(isDispute){
-          // Dyskusje: {messages:[{id,text,author:{role},createdAt,attachments}]}
-          setMsgConvo((d.messages||[]).map(function(m){return {...m,author:{role:m.author?.role==='BUYER'?'BUYER':'SELLER'}};}));
-        } else {
-          setMsgConvo(d.messages||[]);
-        }
-      }
+      if(r.ok){const d=await r.json();setMsgConvo(d.messages||[]);}
     }catch(e){}
     setMsgConvoLoading(false);
   }
@@ -4274,7 +4209,7 @@ function App() {
     const r1=await fetch(AUTORESPONDER_URL+"/messaging/attachments?kontoId="+msgKontoRef.current,{
       method:"POST",
       headers:{"x-api-key":AUTORESPONDER_KEY,"Content-Type":"application/vnd.allegro.public.v1+json"},
-      body:JSON.stringify({filename:file.name})
+      body:JSON.stringify({filename:file.name,size:file.size})
     });
     if(!r1.ok){
       let errText="";
@@ -4464,8 +4399,8 @@ function App() {
       </div>
 
       <div style={{display:"flex",borderBottom:"1px solid #1e2a1e",paddingLeft:16,background:"#0e1420",flexWrap:"wrap"}}>
-        {[["zamowienia","📦 Zamówienia"],["zarzadzanie","📊 Zarządzanie"],["kalk","🧮 Kalkulator"],["marza","💹 Marża"]].map(([id,l])=>(
-          <button key={id} className={`tab ${tab===id?"on":""}`} onClick={()=>setTab(id)} style={{position:"relative"}}>{l}{id==="wiadomosci"&&msgThreads.filter(t=>t.hasUnreadMessages).length>0&&<span style={{position:"absolute",top:-4,right:-4,background:"#ef4a4a",color:"#fff",borderRadius:"50%",fontSize:9,width:15,height:15,display:"inline-flex",alignItems:"center",justifyContent:"center",fontWeight:700,pointerEvents:"none"}}>{msgThreads.filter(t=>t.hasUnreadMessages).length}</span>}</button>
+        {[["zamowienia","📦 Zamówienia"],["nowe","➕ Dodaj"],["al_zam","🛒 Allegro"],["baza","📋 Zlecenia"],["zapytania","📨 KAL"],["stat","📊 Stat"],["produkcja","🏭 Produkcja"],["kalk","🧮 Kalkulator"],["wiadomosci","💬 Wiadomości"]].map(([id,l])=>(
+          <button key={id} className={`tab ${tab===id?"on":""}`} onClick={()=>setTab(id)}>{l}</button>
         ))}
         <button className={`tab ${(tab==="allegro"||tab==="ustawienia"||tab==="historia")?"on":""}`} onClick={()=>{
          const pin=localStorage.getItem("admin_pin");
@@ -5110,7 +5045,7 @@ function App() {
             const openBox=zamOpenBox[imp.allegroOrderId];
             const isMosk=(()=>{const t=((imp.offerNames||'')+(imp.buyerMsg||'')).toLowerCase();return t.includes('moskitiera')||t.includes('mosquito');})();
             return (
-              <div key={idx} id={'imp_'+imp.allegroOrderId} style={{borderBottom:'1px solid #0f1f2f',background:isWyslano?(idx%2===0?'#040c04':'#081508'):isRealizacja?(idx%2===0?'#091509':'#112311'):isZapisaneBezetykiety?(idx%2===0?'#1a1400':'#201900'):(idx%2===0?'#090e1a':'#111828'),opacity:isWyslano?0.6:1}}>
+              <div key={idx} style={{borderBottom:'1px solid #0f1f2f',background:isWyslano?(idx%2===0?'#040c04':'#081508'):isRealizacja?(idx%2===0?'#091509':'#112311'):isZapisaneBezetykiety?(idx%2===0?'#1a1400':'#201900'):(idx%2===0?'#090e1a':'#111828'),opacity:isWyslano?0.6:1}}>
                 <div style={{display:'flex',alignItems:'center',gap:8,padding:'9px 12px',flexWrap:'wrap'}}>
                   <input type="checkbox" checked={mergeSelected.has(imp.allegroOrderId)}
                     onChange={e=>{
@@ -5143,7 +5078,6 @@ function App() {
                       {isWyslano?'✅ ':isRealizacja?'⚙️ ':isZapisaneBezetykiety?'📋 ':''}{imp.klientImie||'—'}
                     </div>
                     {imp.klientLogin&&<div style={{fontSize:10,color:'#3a6a8a',fontFamily:'monospace'}}>{imp.klientLogin}</div>}
-                    {(()=>{const thr=msgThreads.find(t=>t.relatedObject?.id===imp.allegroOrderId);if(!thr)return null;return <div onClick={e=>{e.stopPropagation();setTab('wiadomosci');setTimeout(()=>msgLoadConvo(thr),100);}} style={{fontSize:10,cursor:'pointer',color:thr.hasUnreadMessages?'#7fcf7f':'#4a7a4a',fontStyle:'italic',marginTop:1}} title="Kliknij aby przejść do wiadomości">{thr.hasUnreadMessages?'💬🔴':'💬'} wiadomość od {thr.interlocutor?.login||'klienta'}</div>;})()}
                     {imp.klientMiasto&&<div style={{fontSize:10,color:'#4a7a6a'}}>{imp.klientMiasto}{imp.klientKraj&&imp.klientKraj!=='PL'&&<span style={{color:'#cf9a4a',marginLeft:4}}>🌍 {imp.klientKraj}</span>}</div>}
                   </div>
                   <div style={{flex:2,minWidth:130}}>
@@ -5334,11 +5268,11 @@ function App() {
                       📦{_batchSel.includes(imp.allegroOrderId)?'✓':''}
                     </button>}
                     <button onClick={()=>toggleBox(imp.allegroOrderId,'chat')} title="Napisz wiadomość do klienta"
-                      style={{padding:'4px 7px',fontSize:12,borderRadius:5,cursor:'pointer',position:'relative',
-                        background:openBox==='chat'?'#1a3a3a':(msgThreads.find(t=>t.relatedObject?.id===imp.allegroOrderId)?.hasUnreadMessages?'#0a2a1a':'#1a2a2a'),
-                        border:`1px solid ${openBox==='chat'?'#3a8a8a':(msgThreads.find(t=>t.relatedObject?.id===imp.allegroOrderId)?.hasUnreadMessages?'#3a8a5a':'#2a5a5a')}`,
-                        color:openBox==='chat'?'#7adfdf':(msgThreads.find(t=>t.relatedObject?.id===imp.allegroOrderId)?.hasUnreadMessages?'#7acf9a':'#5abfbf')}}>
-                      💬{msgThreads.find(t=>t.relatedObject?.id===imp.allegroOrderId)?.hasUnreadMessages&&<span style={{position:'absolute',top:-4,right:-4,background:'#ef4a4a',color:'#fff',borderRadius:'50%',fontSize:9,width:14,height:14,display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700}}>1</span>}
+                      style={{padding:'4px 7px',fontSize:12,borderRadius:5,cursor:'pointer',
+                        background:openBox==='chat'?'#1a3a3a':'#1a2a2a',
+                        border:`1px solid ${openBox==='chat'?'#3a8a8a':'#2a5a5a'}`,
+                        color:openBox==='chat'?'#7adfdf':'#5abfbf'}}>
+                      💬
                     </button>
                     <button onClick={()=>{
                       const ord=orders.find(o=>o.allegroOrderId===imp.allegroOrderId);
@@ -5574,19 +5508,15 @@ function App() {
                       return {...v, allegroOrderId:orderId,
                         klientNazwa:v.klientNazwa||imp?.klientImie||imp?.nabywcaNazwa||'',
                         klientMiasto:v.klientMiasto||imp?.klientMiasto||'',
-                        offerNames:v.offerNames||imp?.offerNames||(v.pozycjeAllegro||[]).map(p=>p.name).filter(Boolean).join(', ')||'',
+                        offerNames:v.offerNames||imp?.offerNames||'',
                         kontoId:v.kontoId||imp?.kontoId||'',
                         firma:v.firma||KONTO_DO_FIRMY[imp?.kontoId||'']||'F',
                         kwota:v.kwota||imp?.totalAmount||0,
                         klientUlica:v.klientUlica||imp?.klientUlica||'',
                         klientKod:v.klientKod||imp?.klientKod||'',
-                        nabywcaEmail:v.nabywcaEmail||'',
-                        _fromSzablon:v._fromSzablon||'',
-                        pozycjeAllegro:v.pozycjeAllegro||[],
-                        opiszReczny:v.opiszReczny||'',
                       };
                     })
-                    .sort((a,b)=>{const da=a.date||'0';const db=b.date||'0';if(db!==da)return db.localeCompare(da);return (b.fakturowniaId||0)-(a.fakturowniaId||0);});
+                    .sort((a,b)=>(b.date||'').localeCompare(a.date||''));
 
                   // Otwórz modal faktury z danymi klienta (pusta kwota/opis do uzupełnienia)
                   const openFvFromClient=(fv)=>{
@@ -5688,18 +5618,8 @@ function App() {
                                 {fv.nip&&<div style={{fontSize:11,color:'#7a5a9a'}}>NIP: {fv.nip}</div>}
                                 {fv.klientMiasto&&<div style={{fontSize:11,color:'#5a3a7a'}}>{fv.klientMiasto}</div>}
                               </td>
-                              <td style={{padding:'4px 10px',color:'#7a5a9a',fontSize:12,maxWidth:220}} onClick={e=>e.stopPropagation()}>
-                                {fvEditOpis===fv.allegroOrderId
-                                  ? <input autoFocus defaultValue={fv.opiszReczny||fv.offerNames||(fv.pozycjeAllegro||[]).map(p=>p.name).filter(Boolean).join(', ')||''}
-                                      style={{width:'100%',padding:'2px 6px',background:'#0a1a0a',border:'1px solid #4a2a6a',borderRadius:3,color:'#cfefcf',fontSize:12,boxSizing:'border-box'}}
-                                      onBlur={e=>{const val=e.target.value.trim();setInvoicesSent(prev=>{const next={...prev,[fv.allegroOrderId]:{...prev[fv.allegroOrderId],opiszReczny:val}};localStorage.setItem('invoices_sent',JSON.stringify(next));return next;});setFvEditOpis(null);}}
-                                      onKeyDown={e=>{if(e.key==='Enter')e.target.blur();if(e.key==='Escape')setFvEditOpis(null);}}/>
-                                  : <span title="Kliknij aby edytować opis" style={{cursor:'text',display:'block',minHeight:20,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}
-                                      onClick={()=>setFvEditOpis(fv.allegroOrderId)}>
-                                      {fv.opiszReczny||fv.offerNames||(fv.pozycjeAllegro||[]).map(p=>p.name).filter(Boolean).join(', ')||React.createElement('span',{style:{color:'#3a2a4a',fontStyle:'italic'}},'kliknij aby dodać opis')}
-                                    </span>
-                                }
-                              </td>
+                              <td style={{padding:'7px 10px',color:'#7a5a9a',fontSize:12,maxWidth:200,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}
+                                title={fv.offerNames||(fv.pozycjeAllegro||[]).map(p=>p.name).filter(Boolean).join(', ')}>{fv.offerNames||(fv.pozycjeAllegro||[]).map(p=>p.name).filter(Boolean).join(', ')||fv.numerZlecenia||'—'}</td>
                               <td style={{padding:'7px 10px',textAlign:'center',fontWeight:700,color:'#9fcf9f'}}>{fv.kwota>0?fv.kwota.toFixed(2)+' zł':'—'}</td>
                               <td style={{padding:'7px 10px',textAlign:'center'}}>
                                 <span style={{fontSize:11,padding:'2px 7px',borderRadius:10,background:'#1a0a2a',border:'1px solid #4a2a6a',color:'#af7adf'}}>{FIRMA_LABEL[fv.firma]||fv.firma||'—'}</span>
@@ -5742,14 +5662,6 @@ function App() {
                                     }} style={{padding:'3px 8px',fontSize:11,background:'#0a1a2a',border:'1px solid #2a4a7a',borderRadius:4,color:'#7ab8df',cursor:'pointer'}}
                                     title="Dołącz PDF do zamówienia Allegro">📎</button>
                                   )}
-                                  {cfg.domain&&fv.fakturowniaId&&(
-                                    <button onClick={()=>{
-                                      const s=fakSzablony.find(x=>x.id===fv._fromSzablon)||{};
-                                      const emailAddr=fv.nabywcaEmail||s.kontrahentEmail||'';
-                                      setFakMailModal({fv,to:emailAddr,subject:'Faktura '+fv.number,tresc:'W załączeniu przesyłam fakturę '+fv.number+'.'});
-                                    }} style={{padding:'3px 8px',fontSize:11,background:'#0a1a2a',border:'1px solid #2a5a7a',borderRadius:4,color:'#7acfef',cursor:'pointer'}}
-                                    title="Wyślij fakturę mailem">✉️</button>
-                                  )}
                                   <button onClick={()=>{
                                     if(!confirm('Usunąć oznaczenie faktury '+fv.number+'?')) return;
                                     setInvoicesSent(prev=>{const next={...prev};delete next[fv.allegroOrderId];localStorage.setItem('invoices_sent',JSON.stringify(next));return next;});
@@ -5765,7 +5677,6 @@ function App() {
                     </div>
                   );
                 }
-                if(zamTab==='szablony_fak') return null;
                 const active=zamTab==='nowe'?noweList:zamTab==='realizacja'?realizacjaList:zrealizowaneList;
                 if(active.length===0&&allegroImportResults.length>0) return <div style={{textAlign:'center',color:'#3a5a3a',padding:'40px 0'}}>{zamTab==='nowe'?'🎉 Brak nowych zamówień!':zamTab==='realizacja'?'Brak zamówień w realizacji':'Brak zrealizowanych'}</div>;
                 return <div>
@@ -5834,77 +5745,8 @@ function App() {
           );
         })()}
 
-        {fakMailModal&&(
-          <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.7)',zIndex:3000,display:'flex',alignItems:'center',justifyContent:'center'}}
-            onClick={e=>{if(e.target===e.currentTarget)setFakMailModal(null);}}>
-            <div style={{background:'#0d1f0d',border:'1px solid #2a5a2a',borderRadius:8,padding:24,width:480,maxWidth:'95vw',fontFamily:'monospace'}}>
-              <div style={{color:'#9adf9a',fontWeight:700,fontSize:15,marginBottom:16}}>✉️ Wyślij fakturę &mdash; {fakMailModal.fv.number}</div>
-              <div style={{marginBottom:10}}>
-                <div style={{color:'#7a9a7a',fontSize:12,marginBottom:4}}>Do:</div>
-                <input value={fakMailModal.to} onChange={e=>setFakMailModal(m=>({...m,to:e.target.value}))}
-                  style={{width:'100%',padding:'6px 8px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#cfefcf',fontSize:13,boxSizing:'border-box'}}
-                  placeholder="email@firma.pl"/>
-              </div>
-              <div style={{marginBottom:10}}>
-                <div style={{color:'#7a9a7a',fontSize:12,marginBottom:4}}>Temat:</div>
-                <input value={fakMailModal.subject} onChange={e=>setFakMailModal(m=>({...m,subject:e.target.value}))}
-                  style={{width:'100%',padding:'6px 8px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#cfefcf',fontSize:13,boxSizing:'border-box'}}/>
-              </div>
-              <div style={{marginBottom:16}}>
-                <div style={{color:'#7a9a7a',fontSize:12,marginBottom:4}}>Treść:</div>
-                <textarea value={fakMailModal.tresc} onChange={e=>setFakMailModal(m=>({...m,tresc:e.target.value}))}
-                  rows={4} style={{width:'100%',padding:'6px 8px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#cfefcf',fontSize:13,boxSizing:'border-box',resize:'vertical'}}/>
-              </div>
-              <div style={{fontSize:11,color:'#5a8a5a',marginBottom:14}}>📎 PDF faktury zostanie pobrany z Fakturowni i dołączony automatycznie</div>
-              <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
-                <button onClick={()=>setFakMailModal(null)}
-                  style={{padding:'7px 18px',background:'#1a1a1a',border:'1px solid #3a3a3a',borderRadius:4,color:'#aaa',cursor:'pointer',fontSize:13}}>Anuluj</button>
-                <button onClick={async()=>{
-                  const mm=fakMailModal;
-                  const cfg=fakturowniaConfig;
-                  if(!mm.to.trim()){alert('Podaj adres email');return;}
-                  if(!cfg||!cfg.token||!cfg.domain){alert('Brak konfiguracji Fakturowni');return;}
-                  try{
-                    setFakMailModal(m=>({...m,sending:true}));
-                    const pdfR=await fetch(AUTORESPONDER_URL+'/fakturownia/pdf?invoiceId='+mm.fv.fakturowniaId+'&token='+encodeURIComponent(cfg.token)+'&domain='+encodeURIComponent(cfg.domain),{headers:{'x-api-key':getWorkerKey()}});
-                    const pdfD=await pdfR.json();
-                    if(!pdfD.ok) throw new Error('Błąd pobierania PDF: '+(pdfD.error||pdfR.status));
-                    const pdfB64=pdfD.pdf;
-                    const fname='faktura_'+mm.fv.number.split('/').join('-')+'.pdf';
-                    const attachments=[{name:fname,content:pdfB64,mimeType:'application/pdf'}];
-                    const body_content=mm.tresc?'<p>'+mm.tresc.split('\n').join('<br>')+'</p>':'';
-                    const r=await fetch(AUTORESPONDER_URL+'/email/send',{
-                      method:'POST',
-                      headers:{'Content-Type':'application/json','x-api-key':getWorkerKey()},
-                      body:JSON.stringify({to:mm.to.trim(),subject:mm.subject,content:body_content,attachments,allegroOrderId:''})
-                    });
-                    const d=await r.json();
-                    if(d.ok){alert('✅ Mail z fakturą wysłany do '+mm.to.trim());setFakMailModal(null);}
-                    else throw new Error(d.error||JSON.stringify(d));
-                  }catch(e){setFakMailModal(m=>({...m,sending:false}));alert('❌ '+e.message);}
-                }} disabled={!!(fakMailModal.sending)}
-                  style={{padding:'7px 18px',background:fakMailModal.sending?'#2a4a2a':'#1a5a1a',border:'1px solid #3a9a3a',borderRadius:4,color:'#9aef9a',cursor:fakMailModal.sending?'default':'pointer',fontSize:13,fontWeight:700}}>
-                  {fakMailModal.sending?'Wysyłanie...':'Wyslij z PDF'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-        {/* ═══ ZAMÓWIENIA ═══ */}
-        {tab==="zarzadzanie"&&(
-          <div style={{display:'flex',gap:4,padding:'10px 16px 0',borderBottom:'1px solid #0f2f0f',background:'#050f05',flexWrap:'wrap'}}>
-            {[['stat','📈 Statystyki'],['produkcja','🏭 Produkcja'],['baza','📋 Zlecenia'],['al_zam','🛒 Allegro']].map(function(item){const id=item[0],l=item[1];return(
-              <button key={id} onClick={function(){setZarzTab(id);}}
-                style={{padding:'6px 16px',fontSize:12,fontWeight:700,cursor:'pointer',border:'none',borderRadius:'6px 6px 0 0',
-                  background:zarzTab===id?'#1a3a1a':'#0a1a0a',
-                  color:zarzTab===id?'#9fcf9f':'#5a8a5a',
-                  borderBottom:zarzTab===id?'2px solid #4acf4a':'2px solid transparent'}}>
-                {l}
-              </button>
-            );})}
-          </div>
-        )}
-        {(tab==="al_zam"||tab==="zarzadzanie"&&zarzTab==="al_zam") && (
+        {/* ══ ZAMÓWIENIA ══ */}
+        {tab==="al_zam" && (
           <div>
             {/* Nagłówek + przycisk pobierz */}
             <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16,flexWrap:"wrap"}}>
@@ -6918,7 +6760,7 @@ function App() {
           </div>
         )}
 
-        {(tab==="baza"||tab==="zarzadzanie"&&zarzTab==="baza") && (
+        {tab==="baza" && (
           <div>
             <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
               <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Szukaj..." style={{width:220}}/>
@@ -7039,7 +6881,6 @@ function App() {
                           {o.pozycje.some(p=>!p.isDrzwi)&&<button className="btn-pdf" onClick={()=>drukujPDF(o)} title="Drukuj PDF — okna">🪟 PDF</button>}
                           {o.pozycje.some(p=>p.isDrzwi)&&<button className="btn-pdf" style={{background:"#1a2a4a"}} onClick={()=>drukujPDF_drzwi(o)} title="Drukuj PDF — drzwi">🚪 PDF</button>}
                           <button className="btn-pdf" style={{background:o.dpdWaybill?"#0a2a1a":"#1a1a2a",borderColor:o.dpdWaybill?"#2a6a4a":"#3a3a5a",color:o.dpdWaybill?"#6acf9a":"#8a8abf",fontSize:12}} onClick={()=>{setDpdModal(o);setDpdWaga("5");}} title={o.dpdWaybill?"DPD: "+o.dpdWaybill:"Nadeślij DPD"}>{o.dpdWaybill?"📦 "+o.dpdWaybill.slice(-6):"📦 DPD"}</button>
-                          {o.dpdWaybill&&<button className="btn-pdf" style={{background:"#1a2a3a",borderColor:"#3a5a7a",color:"#7abfdf",fontSize:12}} onClick={()=>setDoslijModal({order:o,zawartosc:'',waga:'2',sending:false})} title="Dodatkowa wysyłka do tego klienta">📦+ Doślij</button>}
                           <button className="btn-pdf" style={{background:"#1a1a3a",borderColor:"#3a3a7a",color:"#9a9adf"}} title="Wyślij na produkcję" onClick={async()=>{
                             let emailCfg=JSON.parse(localStorage.getItem('email_produkcji_config')||'{}');
                             let to=emailCfg.emailProdukcji||'';
@@ -7305,7 +7146,7 @@ function App() {
         )}
 
         {/* ══ STATYSTYKI ══ */}
-        {(tab==="stat"||tab==="zarzadzanie"&&zarzTab==="stat") && (
+        {tab==="stat" && (
           <div>
             <div style={{fontSize:14,color:"#4a8a4a",letterSpacing:".15em",textTransform:"uppercase",marginBottom:14}}>Łącznie ({orders.length} zamówień)</div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:20}} className="grid2">
@@ -7467,10 +7308,7 @@ function App() {
                         <td style={{padding:"10px",color:"#b0cfb0",fontWeight:600,fontSize:14,maxWidth:150,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{msg.subject}</td>
                         <td style={{padding:"10px",color:"#c0dfc0",fontSize:14,maxWidth:250,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{msg.lastMessage}</td>
                         <td style={{padding:"10px",color:"#9abf9a",fontSize:14,fontWeight:600}}>{msg.date?new Date(msg.date).toLocaleDateString("pl-PL"):""}</td>
-                        <td style={{padding:"10px",minWidth:120}}>
-                          {(()=>{const imp=allegroImportResults.find(i=>i.allegroOrderId===msg.allegroOrderId);return imp?<div style={{marginBottom:4,fontSize:11,color:'#9acfdf',fontFamily:'monospace',cursor:'pointer'}} onClick={()=>{setTab('al_zam');setTimeout(()=>{const el=document.getElementById('imp_'+msg.allegroOrderId);if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},200);}} title="Przejdź do zamówienia">📦 {imp.klientImie||msg.allegroOrderId}</div>:msg.allegroOrderId?<div style={{fontSize:10,color:'#3a5a3a',fontFamily:'monospace'}} title={msg.allegroOrderId}>📦 {msg.allegroOrderId.slice(-8)}</div>:null;})()}
-                          <button className="btn-sm" onClick={()=>allegroUseMessage(msg)} title="Użyj tej wiadomości jako zamówienie">→ Użyj</button>
-                        </td>
+                        <td style={{padding:"10px"}}><button className="btn-sm" onClick={()=>allegroUseMessage(msg)} title="Użyj tej wiadomości jako zamówienie">→ Użyj</button></td>
                       </tr>
                     ))}
                   </tbody>
@@ -7555,16 +7393,14 @@ function App() {
                 <div style={{overflowY:"auto",flex:1}}>
                   {msgThreads.map(function(t){
                     const active=msgActiveThread&&msgActiveThread.id===t.id;
-                    const isDispute=t._type==='dispute';
                     return (
-                      <div key={t.id} onClick={function(){msgLoadConvo(t);}} style={{padding:"10px 14px",borderBottom:"1px solid #0f1f0f",cursor:"pointer",background:active?(isDispute?"#2a1a0a":"#1a3a1a"):(t.hasUnreadMessages?(isDispute?"#1a0e00":"#0e1e0e"):"transparent"),transition:"background .15s",borderLeft:isDispute?"3px solid #cf8a3a":"3px solid transparent"}}>
-                        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}>
-                          {t.hasUnreadMessages&&<span style={{width:7,height:7,borderRadius:"50%",background:isDispute?"#cf8a3a":"#7fcf7f",display:"inline-block",flexShrink:0}}/>}
-                          {isDispute&&<span style={{fontSize:10,background:"#3a1a00",color:"#cf8a3a",border:"1px solid #5a3a1a",borderRadius:3,padding:"0 4px",flexShrink:0}}>⚠ dyskusja</span>}
-                          <span style={{fontWeight:t.hasUnreadMessages?700:600,color:active?(isDispute?"#efcf9f":"#afeaaf"):(isDispute?"#cf9a6a":"#8abf8a"),fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.interlocutor&&t.interlocutor.login||"—"}</span>
+                      <div key={t.id} onClick={function(){msgLoadConvo(t);}} style={{padding:"12px 14px",borderBottom:"1px solid #0f1f0f",cursor:"pointer",background:active?"#1a3a1a":(t.hasUnreadMessages?"#0e1e0e":"transparent"),transition:"background .15s"}}>
+                        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3}}>
+                          {t.hasUnreadMessages&&<span style={{width:7,height:7,borderRadius:"50%",background:"#7fcf7f",display:"inline-block",flexShrink:0}}/>}
+                          <span style={{fontWeight:t.hasUnreadMessages?700:600,color:active?"#afeaaf":"#8abf8a",fontSize:14,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.interlocutor&&t.interlocutor.login||"—"}</span>
                         </div>
-                        <div style={{fontSize:12,color:isDispute?"#8a6a3a":"#5a8a5a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.subject||"—"}</div>
-                        <div style={{fontSize:11,color:"#3a5a3a",marginTop:2}}>{t.lastMessageAt?new Date(t.lastMessageAt).toLocaleDateString("pl-PL"):""}</div>
+                        <div style={{fontSize:14,color:"#5a8a5a",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.subject||"—"}</div>
+                        <div style={{fontSize:14,color:"#5a8a5a",marginTop:2}}>{t.lastMessageAt?new Date(t.lastMessageAt).toLocaleDateString("pl-PL"):""}</div>
                       </div>
                     );
                   })}
@@ -7585,7 +7421,7 @@ function App() {
                         React.createElement("div",{style:{textAlign:"center",color:"#4a8a4a",fontSize:14}},"⟳ ładowanie wiadomości...")
                       ):(
                         msgConvo.map(function(m,i){
-                          const isMe=m.author&&(m.author.role==="OPERATOR"||m.author.role==="SELLER");
+                          const isMe=m.author&&m.author.role==="OPERATOR";
                           return React.createElement("div",{key:i,style:{display:"flex",flexDirection:"column",alignItems:isMe?"flex-end":"flex-start",gap:3}},
                             React.createElement("div",{style:{maxWidth:"72%",background:isMe?"#1a3a2a":"#1a2a3a",border:"1px solid "+(isMe?"#4a8a5a":"#2a3a5a"),borderRadius:isMe?"12px 12px 4px 12px":"12px 12px 12px 4px",padding:"8px 12px",fontSize:14,color:"#d0ead0",lineHeight:1.5}},
                               m.text||"",
@@ -7713,149 +7549,6 @@ function App() {
             )}
           </div>
         )}
-
-        {/* ══ MARŻA ══ */}
-        {tab==="marza"&&(()=>{
-          const updKol=(id,pole,val)=>saveMarzaKolumny(marzaKolumny.map(k=>k.id===id?{...k,[pole]:val}:k));
-          const nowaKolumna=()=>({id:Date.now(),nazwa:'Produkt '+(marzaKolumny.length+1),cenaNetto:'',rabat:'',vat:0.23,doplataDo:7.5,karton:0,prowizja:0.11,reklama:0.1,ryczalt:0.03,marza:0.15,cenaSprzBrutto:'',tryb:'cel'});
-          const calc=(k)=>{
-            const netto=parseFloat(k.cenaNetto)||0;
-            const rabat=parseFloat(k.rabat)||0;
-            const vat=parseFloat(k.vat)||0.23;
-            const doplata=parseFloat(k.doplataDo)||0;
-            const karton=parseFloat(k.karton)||0;
-            const prowizja=parseFloat(k.prowizja)||0.11;
-            const reklama=parseFloat(k.reklama)||0.1;
-            const ryczalt=parseFloat(k.ryczalt)||0.03;
-            const marzaDocel=parseFloat(k.marza)||0.15;
-            const nettoPoRabacie=Math.round(netto*(1-rabat)*100)/100;
-            if(k.tryb==='cel'){
-              if(!netto) return null;
-              const brutto=Math.round((nettoPoRabacie+doplata+karton)/(1-prowizja-reklama-(1+vat)*ryczalt-marzaDocel)*(1+vat)*100)/100;
-              const sprzNetto=Math.round(brutto/(1+vat)*100)/100;
-              const prowizjaZl=Math.round(sprzNetto*prowizja*100)/100;
-              const reklamaZl=Math.round(sprzNetto*reklama*100)/100;
-              const ryczaltZl=Math.round(sprzNetto*ryczalt*100)/100;
-              const zyskNetto=Math.round((sprzNetto-nettoPoRabacie-doplata-karton-prowizjaZl-reklamaZl-ryczaltZl)*100)/100;
-              const marzaNetto=sprzNetto>0?Math.round(zyskNetto/sprzNetto*10000)/10000:0;
-              const roas=reklamaZl>0?Math.round(brutto/reklamaZl*100)/100:null;
-              return {nettoPoRabacie,brutto,sprzNetto,prowizjaZl,reklamaZl,ryczaltZl,zyskNetto,marzaNetto,roas,ok:Math.abs(marzaNetto-marzaDocel)<0.005};
-            } else {
-              const brutto=parseFloat(k.cenaSprzBrutto)||0;
-              if(!netto||!brutto) return null;
-              const sprzNetto=Math.round(brutto/(1+vat)*100)/100;
-              const prowizjaZl=Math.round(sprzNetto*prowizja*100)/100;
-              const reklamaZl=Math.round(sprzNetto*reklama*100)/100;
-              const ryczaltZl=Math.round(sprzNetto*ryczalt*100)/100;
-              const nettoPoRabacieB=Math.round(netto*(1-rabat)*100)/100;
-              const zyskNetto=Math.round((sprzNetto-nettoPoRabacieB-doplata-karton-prowizjaZl-reklamaZl-ryczaltZl)*100)/100;
-              const marzaNetto=sprzNetto>0?Math.round(zyskNetto/sprzNetto*10000)/10000:0;
-              const roas=reklamaZl>0?Math.round(brutto/reklamaZl*100)/100:null;
-              return {nettoPoRabacie:nettoPoRabacieB,brutto,sprzNetto,prowizjaZl,reklamaZl,ryczaltZl,zyskNetto,marzaNetto,roas,ok:marzaNetto>=marzaDocel};
-            }
-          };
-          const iS={width:'100%',padding:'4px 6px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:3,color:'#cfefcf',fontSize:12,boxSizing:'border-box',textAlign:'right'};
-          const thS={padding:'6px 8px',fontSize:11,color:'#5a8a5a',whiteSpace:'nowrap',borderBottom:'1px solid #0f1f0f',background:'#0a160a'};
-          const trS=(bold,hilite)=>({padding:'5px 8px',fontSize:12,fontWeight:bold?700:400,color:hilite==='green'?'#050e05':hilite==='yellow'?'#0a0a00':'#cfefcf',background:hilite==='green'?'#3acf5a':hilite==='yellow'?'#cfcf20':'transparent',textAlign:'right',borderBottom:'1px solid #0a140a',whiteSpace:'nowrap'});
-          const rows=[
-            {s:'DANE WEJŚCIOWE',hdr:true},
-            {s:'Cena zakupu NETTO (zł)',p:'cenaNetto',t:'num'},
-            {s:'Rabat dostawcy (%)',p:'rabat',t:'pct'},
-            {s:'VAT sprzedaży (%)',p:'vat',t:'pct'},
-            {s:'Dopłata do wysyłki (zł)',p:'doplataDo',t:'num'},
-            {s:'Karton / opakowanie (zł)',p:'karton',t:'num'},
-            {s:'Prowizja Allegro (%)',p:'prowizja',t:'pct'},
-            {s:'Reklama ADS (%)',p:'reklama',t:'pct'},
-            {s:'Ryczałt podatkowy (%)',p:'ryczalt',t:'pct'},
-            {s:'Docelowa marża (%)',p:'marza',t:'pct'},
-            {s:'→ Cena sprzedaży BRUTTO (zł)',p:'cenaSprzBrutto',t:'num',trybOnly:'rev'},
-            {s:'WYNIKI',hdr:true},
-            {s:'Cena zakupu po rabacie NETTO',w:'nettoPoRabacie',f:'zl'},
-            {s:'CENA SPRZEDAŻY BRUTTO',w:'brutto',f:'zl',bold:true,hi:'green',trybOnly:'cel'},
-            {s:'Cena sprzedaży NETTO',w:'sprzNetto',f:'zl'},
-            {s:'Prowizja Allegro (zł)',w:'prowizjaZl',f:'zl'},
-            {s:'Reklama ADS (zł)',w:'reklamaZl',f:'zl'},
-            {s:'Ryczałt (zł)',w:'ryczaltZl',f:'zl'},
-            {s:'Wysyłka + opakowanie',w:'wysylka',f:'zl'},
-            {s:'Zysk NETTO (zł)',w:'zyskNetto',f:'zl',bold:true},
-            {s:'Marża NETTO (%)',w:'marzaNetto',f:'pct',bold:true},
-            {s:'ROAS',w:'roas',f:'x'},
-            {s:'Status',w:'status',f:'status',bold:true},
-          ];
-          return (
-            <div style={{padding:'12px 16px',fontFamily:'monospace'}}>
-              <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14,flexWrap:'wrap'}}>
-                <span style={{fontSize:14,fontWeight:700,color:'#9fcf9f',letterSpacing:'.08em'}}>💹 KALKULATOR MARŻOWOŚCI</span>
-                <button onClick={()=>saveMarzaKolumny([...marzaKolumny,nowaKolumna()])}
-                  style={{padding:'3px 10px',fontSize:12,background:'#1a3a1a',border:'1px solid #3a7a3a',borderRadius:4,color:'#9aef9a',cursor:'pointer'}}>+ Kolumna</button>
-                <button onClick={()=>{if(confirm('Wyczyścić wszystkie dane?'))saveMarzaKolumny([1,2,3,4].map(i=>({id:i,nazwa:'Produkt '+i,cenaNetto:'',rabat:'',vat:0.23,doplataDo:7.5,karton:0,prowizja:0.11,reklama:0.1,ryczalt:0.03,marza:0.15,cenaSprzBrutto:'',tryb:'cel'})));}}
-                  style={{padding:'3px 10px',fontSize:12,background:'#2a1a1a',border:'1px solid #5a2a2a',borderRadius:4,color:'#ef9a9a',cursor:'pointer'}}>🗑 Wyczyść</button>
-              </div>
-              <div style={{overflowX:'auto'}}>
-                <table style={{borderCollapse:'collapse',minWidth:500}}>
-                  <thead>
-                    <tr>
-                      <th style={{...thS,minWidth:210,textAlign:'left'}}>Pole</th>
-                      {marzaKolumny.map(k=>(
-                        <th key={k.id} style={{...thS,minWidth:130,position:'relative',paddingBottom:28}}>
-                          <input value={k.nazwa} onChange={e=>updKol(k.id,'nazwa',e.target.value)}
-                            style={{...iS,textAlign:'center',fontWeight:700,color:'#cfcf60',background:'#1a1a0a',border:'1px solid #4a4a1a',marginBottom:4}}/>
-                          <div style={{display:'flex',gap:4,justifyContent:'center',marginTop:4}}>
-                            <button onClick={()=>updKol(k.id,'tryb','cel')}
-                              style={{padding:'2px 7px',fontSize:10,background:k.tryb!=='rev'?'#1a3a1a':'#0a1a0a',border:'1px solid '+(k.tryb!=='rev'?'#3a8a3a':'#1a3a1a'),borderRadius:3,color:k.tryb!=='rev'?'#9aef9a':'#3a6a3a',cursor:'pointer'}}>🎯 Cel</button>
-                            <button onClick={()=>updKol(k.id,'tryb','rev')}
-                              style={{padding:'2px 7px',fontSize:10,background:k.tryb==='rev'?'#1a2a3a':'#0a1a0a',border:'1px solid '+(k.tryb==='rev'?'#3a5a8a':'#1a2a3a'),borderRadius:3,color:k.tryb==='rev'?'#9acfef':'#3a5a6a',cursor:'pointer'}}>🔍 Analiza</button>
-                            {marzaKolumny.length>1&&<button onClick={()=>saveMarzaKolumny(marzaKolumny.filter(x=>x.id!==k.id))}
-                              style={{padding:'2px 6px',fontSize:10,background:'#2a0a0a',border:'1px solid #5a1a1a',borderRadius:3,color:'#ef6a6a',cursor:'pointer'}}>✕</button>}
-                          </div>
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row,ri)=>{
-                      if(row.hdr) return (
-                        <tr key={ri}><td colSpan={marzaKolumny.length+1} style={{padding:'5px 8px',fontWeight:700,fontSize:11,color:'#cf8a8a',background:'#140a0a',borderBottom:'1px solid #2a0a0a',letterSpacing:'.08em'}}>{row.s}</td></tr>
-                      );
-                      return (
-                        <tr key={ri}>
-                          <td style={{...thS,textAlign:'left',color:row.w?'#7a9a7a':'#9abf9a'}}>{row.s}</td>
-                          {marzaKolumny.map(k=>{
-                            const r=calc(k);
-                            if(row.trybOnly&&row.trybOnly!==k.tryb) return <td key={k.id} style={trS(false,null)}><span style={{color:'#2a3a2a',fontSize:11}}>—</span></td>;
-                            if(row.p){
-                              const raw=k[row.p]??'';
-                              const disp=row.t==='pct'&&raw!==''?+(parseFloat(raw)*100).toFixed(4)+'':''+raw;
-                              return <td key={k.id} style={trS()}>
-                                <input value={disp}
-                                  onChange={e=>{const v=e.target.value;updKol(k.id,row.p,row.t==='pct'?(parseFloat(v)||0)/100:v);}}
-                                  style={iS} placeholder={row.t==='pct'?'%':'0'}/>
-                              </td>;
-                            }
-                            if(!r) return <td key={k.id} style={trS()}><span style={{color:'#2a4a2a',fontSize:11}}>wpisz dane</span></td>;
-                            if(row.w==='wysylka') return <td key={k.id} style={trS(row.bold,row.hi)}>{((parseFloat(k.doplataDo)||0)+(parseFloat(k.karton)||0)).toFixed(2)}</td>;
-                            if(row.w==='status'){
-                              return <td key={k.id} style={{...trS(true),color:r.ok?'#3acf5a':'#cfaf3a',background:r.ok?'#0a2a0a':'#1a1a0a'}}>
-                                {r.ok?'OK '+(Math.round((parseFloat(k.marza)||0)*100))+'% ✓':'⚠ '+(r.marzaNetto*100).toFixed(1)+'%'}
-                              </td>;
-                            }
-                            if(row.w==='roas') return <td key={k.id} style={trS(row.bold)}>{r.roas!=null?r.roas.toFixed(1)+'×':'—'}</td>;
-                            const v=r[row.w];
-                            return <td key={k.id} style={trS(row.bold,row.hi)}>
-                              {row.f==='pct'?(v*100).toFixed(2)+'%':v!=null?v.toFixed(2):'—'}
-                            </td>;
-                          })}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          );
-        })()}
-
-        </div>{/* koniec zarzadzanie */}
 
         {/* ══ KALKULATOR ══ */}
         {tab==="historia" && (
@@ -8429,7 +8122,7 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
 
 
         {/* ══ PRODUKCJA ══ */}
-        {(tab==="produkcja"||tab==="zarzadzanie"&&zarzTab==="produkcja") && (()=>{
+        {tab==="produkcja" && (()=>{
           const RAL_KOLORY = ["Biały","Brąz","Antracyt","Czarny"];
           const STRUKTURA_KOLORY = ["Złoty Dąb","Ciemny Dąb","Turner Oak","Orzech","Winchester","Mahoń"];
 
@@ -9171,65 +8864,6 @@ setFvForm(f=>({...f,nabywcaNazwa:_keepName,nabywcaAdres:d.ulica||f.nabywcaAdres,
           })()}
 
       {/* ── MODAL DPD ── */}
-      {doslijModal&&(
-        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',zIndex:3000,display:'flex',alignItems:'center',justifyContent:'center'}}
-          onClick={e=>{if(e.target===e.currentTarget)setDoslijModal(null);}}>
-          <div style={{background:'#0d1f0d',border:'1px solid #2a5a2a',borderRadius:8,padding:24,width:460,maxWidth:'95vw',fontFamily:'monospace'}}>
-            <div style={{fontWeight:700,fontSize:15,color:'#9adf9a',marginBottom:16}}>📦+ Dodatkowa wysyłka — {doslijModal.order.numerZlecenia}</div>
-            <div style={{fontSize:12,color:'#5a8a5a',marginBottom:12}}>
-              Klient: <span style={{color:'#9fcf9f'}}>{doslijModal.order.klientImie}</span> · {doslijModal.order.klientUlica}, {doslijModal.order.klientKod} {doslijModal.order.klientMiasto}
-            </div>
-            <div style={{marginBottom:10}}>
-              <div style={{color:'#7a9a7a',fontSize:12,marginBottom:4}}>Zawartość paczki:</div>
-              <input value={doslijModal.zawartosc} onChange={e=>setDoslijModal(m=>({...m,zawartosc:e.target.value}))}
-                style={{width:'100%',padding:'6px 8px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#cfefcf',fontSize:13,boxSizing:'border-box'}}
-                placeholder="np. 2× profil aluminiowy 100cm"/>
-            </div>
-            <div style={{marginBottom:16}}>
-              <div style={{color:'#7a9a7a',fontSize:12,marginBottom:4}}>Waga (kg):</div>
-              <input value={doslijModal.waga} onChange={e=>setDoslijModal(m=>({...m,waga:e.target.value}))} type="number" min="0.1" step="0.1"
-                style={{width:120,padding:'6px 8px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#cfefcf',fontSize:13}}/>
-            </div>
-            <div style={{fontSize:11,color:'#4a7a4a',marginBottom:16}}>Przewoźnik: <strong style={{color:'#7acf9a'}}>{doslijModal.order.inpostWaybill?'InPost':'DPD'}</strong> · adres z oryginalnego zlecenia</div>
-            <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
-              <button onClick={()=>setDoslijModal(null)} style={{padding:'7px 18px',background:'#1a1a1a',border:'1px solid #3a3a3a',borderRadius:4,color:'#aaa',cursor:'pointer',fontSize:13}}>Anuluj</button>
-              <button disabled={doslijModal.sending} onClick={async()=>{
-                const {order,zawartosc,waga}=doslijModal;
-                if(!zawartosc.trim()){alert('Podaj zawartość paczki');return;}
-                setDoslijModal(m=>({...m,sending:true}));
-                try{
-                  const useInpost=!!order.inpostWaybill;
-                  let waybillId='',pdfB64='';
-                  if(!useInpost){
-                    // DPD
-                    const r=await fetch(AUTORESPONDER_URL+'/dpd/label',{
-                      method:'POST',headers:{'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},
-                      body:JSON.stringify({odbiorca:{imie:order.klientImie,ulica:order.klientUlica,kod:order.klientKod,miasto:order.klientMiasto},waga:parseFloat(waga)||2,telefon:order.telefon||'',referencja:(order.numerZlecenia||'')+'_DOSLIJ'})
-                    });
-                    const d=await r.json();
-                    if(!d.ok){let e=d.error||'Błąd DPD';if(d.xml){const m=d.xml.match(/<faultstring>([^<]+)<\/faultstring>/);if(m)e+=': '+m[1];}throw new Error(e);}
-                    waybillId=d.waybillId;pdfB64=d.pdf;
-                  } else {
-                    alert('InPost — dodatkowa wysyłka wymaga ręcznego nadania przez panel InPost');
-                    setDoslijModal(null);return;
-                  }
-                  // Otwórz PDF
-                  const blob=new Blob([Uint8Array.from(atob(pdfB64),c=>c.charCodeAt(0))],{type:'application/pdf'});
-                  window.open(URL.createObjectURL(blob),'_blank');
-                  // Zapisz w historii zlecenia
-                  updateOrders(orders.map(x=>x.id===order.id?{...x,
-                    doslania:[...((x.doslania)||[]),{data:new Date().toLocaleDateString('pl-PL'),zawartosc,waga,waybillId}]
-                  }:x));
-                  alert('✅ Etykieta dodatkowej wysyłki wygenerowana! Nr: '+waybillId);
-                  setDoslijModal(null);
-                }catch(e){setDoslijModal(m=>({...m,sending:false}));alert('❌ '+e.message);}
-              }} style={{padding:'7px 18px',background:doslijModal.sending?'#1a3a1a':'#1a5a1a',border:'1px solid #3a9a3a',borderRadius:4,color:'#9aef9a',cursor:doslijModal.sending?'default':'pointer',fontSize:13,fontWeight:700}}>
-                {doslijModal.sending?'Generuję...':'📦 Generuj etykietę'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
       {dpdModal&&(
         <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.75)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center"}}
           onClick={e=>{if(e.target===e.currentTarget){setDpdModal(null);}}}>
