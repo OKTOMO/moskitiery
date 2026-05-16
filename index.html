@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260514.26</title>
+<title>MosquitoApp v20260514.27</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -2793,9 +2793,10 @@ function App() {
                 const qty=parseFloat(p.ilosc||p.quantity)||1;
                 const cenaJedn=parseFloat(p.cena||p.price||p.total_price_gross)||0;
                 const vat=parseInt(p.tax||p.vatPct||f.vat)||23;
-                // total_price_gross = cena netto * ilość * (1 + vat/100)
-                const gross=p.tryb==='brutto'||p.trybCen==='brutto'
-                  ? cenaJedn*qty
+                // ceny z Allegro są brutto; tryb 'netto' tylko gdy jawnie ustawiony w szablonie
+                const isBrutto=p.tryb!=='netto'&&f.trybCen!=='netto';
+                const gross=isBrutto
+                  ? Math.round(cenaJedn*qty*100)/100
                   : Math.round(cenaJedn*qty*(1+vat/100)*100)/100;
                 return {name:p.nazwa||p.name||f.opis, quantity:qty, total_price_gross:gross, tax:vat};
               })
