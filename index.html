@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260514.28</title>
+<title>MosquitoApp v20260514.29</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -5552,7 +5552,7 @@ function App() {
                         <button onClick={async()=>{
                           if(!cfg.token||!cfg.domain){alert('Brak konfiguracji Fakturowni');return;}
                           try{
-                            const r=await fetch('https://'+cfg.domain+'/invoices.json?api_token='+cfg.token+'&per_page=100&page=1&order=created_at&kind=vat');
+                            const r=await fetch('https://'+cfg.domain+'/invoices.json?api_token='+cfg.token+'&per_page=100&page=1&order=created_at');
                             if(!r.ok) throw new Error('Błąd Fakturowni: '+r.status);
                             const invList=await r.json();
                             let added=0;
