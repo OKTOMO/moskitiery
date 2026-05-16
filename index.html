@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260514.32</title>
+<title>MosquitoApp v20260514.34</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -5577,14 +5577,15 @@ function App() {
                                     id:inv.id,
                                     fakturowniaId:inv.id,
                                     number:inv.number,
-                                    date:(inv.created_at||inv.issue_date||'').slice(0,10),
-                                    kwota:parseFloat((inv.price_gross||inv.gross_price||'0').toString().replace(',','.'))||0,
+                                    date:(inv.sell_date||inv.issue_date||inv.created_at||'').slice(0,10),
+                                    kwota:Math.abs(parseFloat((inv.price_gross||'0').toString().replace(',','.'))||0),
                                     nip:nip,
                                     klientNazwa:inv.buyer_name||inv.client_name||existing.klientNazwa||'',
                                     klientMiasto:inv.buyer_city||existing.klientMiasto||'',
                                     firma:(inv.department_id===1978591?'E':inv.department_id===1978589?'AR':inv.department_id===1978585?'F':'F'),
-                                    offerNames:inv.description||existing.offerNames||'',
-                                    // Zachowaj ręczny opis
+                                    kontoId:(inv.department_id===1978591?'everis_pl':inv.department_id===1978589?'arlis_pl':inv.department_id===1978585?'favo5':'favo5'),
+                                    offerNames:inv.description||inv.seller_name||existing.offerNames||'',
+                                    kind:inv.kind||'vat',
                                     opiszReczny:existing.opiszReczny||'',
                                     nabywcaEmail:existing.nabywcaEmail||inv.buyer_email||'',
                                     _synced:true,
@@ -5598,7 +5599,7 @@ function App() {
                                     next[existKey]={
                                       ...ex,
                                       number:ex.number||inv.number,
-                                      kwota:ex.kwota||parseFloat((inv.price_gross||'0').toString().replace(',','.'))||0,
+                                      kwota:ex.kwota||Math.abs(parseFloat((inv.price_gross||'0').toString().replace(',','.'))||0),
                                       klientNazwa:ex.klientNazwa||inv.buyer_name||'',
                                       klientMiasto:ex.klientMiasto||inv.buyer_city||'',
                                     };
@@ -5675,8 +5676,9 @@ function App() {
                             const imp=allegroImportResults.find(x=>x.allegroOrderId===fv.allegroOrderId);
                             const FIRMA_LABEL={F:'Favour',AR:'Arlis',E:'Everis',AP:'Albama'};
                             return <tr key={fv.allegroOrderId} style={{borderBottom:'1px solid #1a0a2a',background:zebra?'#0c0614':'#0e0818',cursor:'pointer'}} title="Kliknij aby wystawić nową fakturę dla tego klienta" onClick={(e)=>{if(e.target.tagName==='BUTTON'||e.target.closest('button')) return; openFvFromClient(fv);}}>
-                              <td style={{padding:'7px 10px',fontWeight:700,color:'#dfcf5f'}}>
+                              <td style={{padding:'7px 10px',fontWeight:700,color:fv.kind==='correction'?'#ef7a3f':'#dfcf5f'}}>
                                 {fv.number}
+                                {fv.kind==='correction'&&<span style={{marginLeft:4,fontSize:10,color:'#ef7a3f',background:'#2a0a00',border:'1px solid #5a1a00',borderRadius:3,padding:'1px 4px'}}>KOR</span>}
                                 {fv.allegroAttached&&<span title="Dołączono do Allegro" style={{marginLeft:5,fontSize:11}}>📎✅</span>}
                               </td>
                               <td style={{padding:'7px 10px',color:'#8a6aaa'}}>{fv.date?new Date(fv.date).toLocaleDateString('pl-PL'):''}</td>
@@ -5718,7 +5720,7 @@ function App() {
                                       try{
                                         const r=await fetch(WORKER_URL+'/allegro/invoice/attach',{
                                           method:'POST',headers:{'Content-Type':'application/json','x-api-key':getWorkerKey()},
-                                          body:JSON.stringify({kontoId:fv.kontoId,allegroOrderId:fv.allegroOrderId,fakturowniaInvoiceId:fv.fakturowniaId,fakturowniaToken:cfg.token,fakturowniaDomain:cfg.domain})
+                                          body:JSON.stringify({kontoId:fv.kontoId||{F:'favo5',AR:'arlis_pl',E:'everis_pl',AP:'albama_eu'}[fv.firma]||'favo5',allegroOrderId:fv.allegroOrderId,fakturowniaInvoiceId:fv.fakturowniaId,fakturowniaToken:cfg.token,fakturowniaDomain:cfg.domain})
                                         });
                                         const d=await r.json().catch(()=>({}));
                                         if(d.ok){
