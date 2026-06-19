@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260619.160 (prekompilowany)</title>
+<title>MosquitoApp v20260619.161 (prekompilowany)</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260619.160';
+  window.__MOSK_VERSION='20260619.161';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -9122,10 +9122,10 @@ function App() {
       const hasZlecenie = !!orders.find(o => o.allegroOrderId === imp.allegroOrderId);
       const _linkedOrd = orders.find(o => o.allegroOrderId === imp.allegroOrderId);
       const hasMailWyslany = !!sh?.mailWyslany;
-      const isZapisaneBezetykiety = hasZlecenie && !hasEtykieta && !hasMailWyslany && !isRealizacja && !isWyslano;
       const hasEtykieta = !!sh;
       const isRealizacja = effStatus === 'W realizacji';
       const isWyslano = effStatus === 'Wysłano';
+      const isZapisaneBezetykiety = hasZlecenie && !hasEtykieta && !hasMailWyslany && !isRealizacja && !isWyslano;
       const openBox = zamOpenBox[imp.allegroOrderId];
       const _alert = sprawdzJednostki(imp);
       const isMosk = (() => {
