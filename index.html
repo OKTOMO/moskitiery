@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260621.165 (prekompilowany)</title>
+<title>MosquitoApp v20260621.166 (prekompilowany)</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260621.165';
+  window.__MOSK_VERSION='20260621.166';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -416,18 +416,18 @@ KLUCZOWA ZASADA: klient BARDZO CZĘSTO podaje 4 liczby dla jednych drzwi — to 
 
 Jak rozpoznać 4 wymiary jednych drzwi:
 - klient pisze np. "98,5 i 102,5 cm szerokość, 216,5 i 220,5 cm wysokość" → JEDNA pozycja
-- klient pisze "A=214, B=81,5, D=92" gdzie A=wysokość(214), B i D=szerokości(81.5 i 92) → szerokosc=81.5, szer2=92, wys=214 JEDNA pozycja — KLUCZOWE: zawsze sortuj wartości numerycznie, nie bierz A i D jako pary!
 - klient pisze "98,5/102,5 x 216,5/220,5" → JEDNA pozycja
 - klient oznacza wymiary literami A,B,C,D — ZAWSZE chodzi o JEDNE drzwi
 
-KLUCZOWE: litery A,B,C,D nie mają stałego znaczenia — klient może używać ich dowolnie i w DOWOLNEJ KOLEJNOŚCI.
-OBOWIĄZKOWO użyj WSZYSTKICH podanych wartości (jeśli jest ich 4 — użyj wszystkich 4, nie tylko pierwszej i ostatniej).
-Algorytm: zbierz wszystkie podane liczby do jednej listy, posortuj. Dwie najmniejsze = szerokości (szerokosc=mniejsza, szer2=większa), dwie największe = wysokości (wysokosc=mniejsza, wys2=większa).
-Przykład: "A-79,5 B-223 C-93 D-237" → lista: [79.5,223,93,237] → posortowane: [79.5,93,223,237] → szerokości={79.5,93}, wysokości={223,237}
-→ szerokosc=79.5, szer2=93, wysokosc=223, wys2=237
-Przykład: "A – 99,5 cm, B – 218 cm, C – 109 cm, D – 231 cm" → lista: [99.5,218,109,231] → posortowane: [99.5,109,218,231] → szerokości={99.5,109}, wysokości={218,231}
-→ szerokosc=99.5, szer2=109, wysokosc=218, wys2=231
+KLUCZOWE — MAPOWANIE LITER przy 4 wymiarach A,B,C,D:
+Gdy klient podaje 4 wymiary oznaczone literami A,B,C,D, użyj TYLKO A i B jako wymiarów drzwi:
+A = szerokość, B = wysokość.
+C i D to wymiary POMOCNICZE (np. do sprawdzenia kolizji przy montażu) — NIE wchodzą do pól szerokosc/wysokosc/szer2/wys2. Zamiast tego wpisz je do pola uwagi w formacie: "C: {wartość C}cm, D: {wartość D}cm".
+NIE sortuj wartości po wielkości, NIE traktuj C/D jako drugiego pomiaru tej samej szerokości/wysokości.
+Przykład: "A-103cm, B-215,5cm, C-113cm, D-225cm" → szerokosc=103, wysokosc=215.5, uwagi="C: 113cm, D: 225cm"
+Przykład: "A – 99,5 cm, B – 218 cm, C – 109 cm, D – 231 cm" → szerokosc=99.5, wysokosc=218, uwagi="C: 109cm, D: 231cm"
 
+Jeśli klient podaje TYLKO 2 wymiary (bez liter, lub z literami A,B / albo dwie liczby x dwie liczby typu "98,5/102,5 x 216,5/220,5" — czyli dwa pomiary tej samej szerokości i dwa tej samej wysokości), to wtedy stosuj zwykłą logikę szerokosc/szer2, wysokosc/wys2 (mniejsza/większa wartość) jak opisano niżej w sekcji WYMIARY.
 Przypisanie wartości dla JEDNEJ pozycji drzwi:
 - szerokosc = MNIEJSZA wartość spośród szerokości
 - szer2 = WIĘKSZA wartość spośród szerokości (null jeśli podano tylko jedną)
