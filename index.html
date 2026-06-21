@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260621.164 (prekompilowany)</title>
+<title>MosquitoApp v20260621.165 (prekompilowany)</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260621.164';
+  window.__MOSK_VERSION='20260621.165';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -500,6 +500,9 @@ WAŻNE:
   * ODEJMIJ dokładnie 4cm od szerokości i 4cm od wysokości — wpisz wynik bezpośrednio do szerokosc i wysokosc
   * Przykład: "85 x 227 na gotowo" → szerokosc=81, wysokosc=223
   * Przykład: "90 x 210 nie powiększać" → szerokosc=86, wysokosc=206
+  * Przykład: "wymiary na zero: 77cm/230cm" → szerokosc=73, wysokosc=226
+  * Przykład: "wymiar na zero 85cm/200cm" → szerokosc=81, wysokosc=196
+  * Format ze slashem "X cm/Y cm" lub dwukropkiem po frazie wyzwalającej TAKŻE wyzwala odjęcie 4cm — nie tylko format "X x Y"
   * NIE wpisuj oryginalnego wymiaru nigdzie — ani do szer2, wys2, ani do uwagi
   * Ustaw isDrzwi:true
   * TYLKO przy tych konkretnych zwrotach — bez nich NIE odejmuj nic
@@ -3729,25 +3732,8 @@ function App() {
     setAllegroImportShow(false);
     if (forceDrzwi || poz.some(p => p.isDrzwi)) setParseTyp("drzwi");else setParseTyp("okno");
     setTab("nowe");
-    // Zmień status na W REALIZACJI — lokalnie od razu, API w tle
-    if (imp.allegroOrderId) {
-      setOrderAppStatus(imp.allegroOrderId, "W realizacji");
-      if (imp.kontoId) {
-        const wKey = localStorage.getItem("mosk_worker_key") || "";
-        fetch(AUTORESPONDER_URL + "/order/status", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-api-key": wKey || AUTORESPONDER_KEY
-          },
-          body: JSON.stringify({
-            allegroOrderId: imp.allegroOrderId,
-            kontoId: imp.kontoId,
-            status: "PROCESSING"
-          })
-        }).catch(e => console.warn("Status update failed:", e));
-      }
-    }
+    // Status na "W realizacji" jest ustawiany dopiero po faktycznym ZAPISANIU i wysłaniu zlecenia,
+    // nie przy samym imporcie/otwarciu formularza — patrz sendMailConfirmed.
   }
 
   // ── SHIPMENT functions ──
