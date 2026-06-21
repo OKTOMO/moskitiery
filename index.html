@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260619.162 (prekompilowany)</title>
+<title>MosquitoApp v20260621.164 (prekompilowany)</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260619.162';
+  window.__MOSK_VERSION='20260621.164';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -3727,7 +3727,7 @@ function App() {
     setSaved(false);
     setImportModal(null);
     setAllegroImportShow(false);
-    if (forceDrzwi) setParseTyp("drzwi");
+    if (forceDrzwi || poz.some(p => p.isDrzwi)) setParseTyp("drzwi");else setParseTyp("okno");
     setTab("nowe");
     // Zmień status na W REALIZACJI — lokalnie od razu, API w tle
     if (imp.allegroOrderId) {
@@ -6179,6 +6179,9 @@ function App() {
     setLog(log);
     setImpPdfRunning(false);
   }
+  function f_pozycjeMajaWymiary(poz) {
+    return Array.isArray(poz) && poz.some(p => p.szerokosc && parseFloat(p.szerokosc) > 0 && p.wysokosc && parseFloat(p.wysokosc) > 0);
+  }
   function mapPozycje(poz, fD, fO) {
     if (!poz?.length) return [];
     return poz.map(p => {
@@ -6299,7 +6302,26 @@ function App() {
           }));
         } else {
           const r = await parseAI(wiadomosc, adres, isDrzwiMode ? "drzwi" : "okno", _offerNames, _rulesWithPrice2);
-          const pozycje = mapPozycje(r.pozycje, isDrzwiMode, !isDrzwiMode);
+          let pozycje = mapPozycje(r.pozycje, isDrzwiMode, !isDrzwiMode);
+          // Scalanie wymiarów: jeśli AI nie znalazło wymiarów w tej turze (np. wiadomość zawierała tylko kolor),
+          // zachowaj wymiary z istniejącego formularza zamiast je czyścić — dotyczy okien (np. DDZ)
+          if (!isDrzwiMode && pozycje.length && f_pozycjeMajaWymiary(form.pozycje)) {
+            pozycje = pozycje.map(function (p, i) {
+              const stara = form.pozycje[i];
+              if (!stara) return p;
+              const brakWymiarowAI = (!p.szerokosc || parseFloat(p.szerokosc) === 0) && (!p.wysokosc || parseFloat(p.wysokosc) === 0);
+              const staraMaWymiary = stara.szerokosc && parseFloat(stara.szerokosc) > 0 && stara.wysokosc && parseFloat(stara.wysokosc) > 0;
+              if (brakWymiarowAI && staraMaWymiary) {
+                return {
+                  ...p,
+                  szerokosc: stara.szerokosc,
+                  wysokosc: stara.wysokosc,
+                  glebokosc: p.glebokosc || stara.glebokosc
+                };
+              }
+              return p;
+            });
+          }
           setForm(f => ({
             ...f,
             klientImie: f._kalNum && f.klientImie ? f.klientImie : r.klientImie || f.klientImie,
