@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260622.168 (prekompilowany)</title>
+<title>MosquitoApp v20260622.169 (prekompilowany)</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260622.168';
+   window.__MOSK_VERSION='20260622.169';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -9279,7 +9279,7 @@ function App() {
           fontFamily: 'monospace',
           marginTop: 1
         }
-      }, "📞 ", (imp.telefon || '').replace(/[^0-9]/g, '').replace(/(\d{3})(\d{3})(\d{3})/, '$1 $2 $3')), (() => {
+      }, "📞 ", formatTel(imp.telefon)), (() => {
         const _ord = orders.find(o => o.allegroOrderId === imp.allegroOrderId);
         const _nr = _ord?.numerZlecenia || imp.numerZlecenia;
         return _nr ? /*#__PURE__*/React.createElement("div", {
@@ -13569,7 +13569,7 @@ function App() {
       style: {
         color: "#5a8a7a"
       }
-    }, imp.telefon), /*#__PURE__*/React.createElement("div", {
+    }, "📞 ", formatTel(imp.telefon)), /*#__PURE__*/React.createElement("div", {
       style: {
         marginTop: 6,
         fontSize: 14,
@@ -22788,7 +22788,7 @@ function App() {
       style: {
         color: "#5a8a7a"
       }
-    }, imp.telefon), /*#__PURE__*/React.createElement("div", {
+    }, "📞 ", formatTel(imp.telefon)), /*#__PURE__*/React.createElement("div", {
       style: {
         marginTop: 6,
         fontSize: 14,
