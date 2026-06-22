@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260621.166 (prekompilowany)</title>
+<title>MosquitoApp v20260622.167 (prekompilowany)</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-  window.__MOSK_VERSION='20260621.166';
+   window.__MOSK_VERSION='20260622.167';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -240,7 +240,7 @@ function formatTel(tel) {
   let d = digits;
   if (d.length === 11 && d.startsWith('48')) d = d.slice(2);
   if (d.length !== 9) return tel;
-  return '48 ' + d.slice(0, 3) + ' ' + d.slice(3, 6) + ' ' + d.slice(6, 9);
+  return '+48 ' + d.slice(0, 3) + ' ' + d.slice(3, 6) + ' ' + d.slice(6, 9);
 }
 function normalizujGlebokosc(g) {
   const v = parseFloat(g);
@@ -11401,7 +11401,8 @@ function App() {
         }, lead.pozycje.map(function (p, i) {
           const _s = String(p.szerokosc || '').replace('.', ',');
           const _w = String(p.wysokosc || '').replace('.', ',');
-          return _s || _w ? _s + '×' + _w + ' cm' + (p.kolorProfilu ? ' ' + p.kolorProfilu : p.kolorSiatki ? ' siatka:' + p.kolorSiatki : '') + (parseInt(p.ilosc || 1) > 1 ? ' ×' + p.ilosc : '') : null;
+          const _kol = [p.kolorProfilu, p.kolorSiatki].filter(Boolean).join('/');
+          return _s || _w ? _s + '×' + _w + ' cm' + (_kol ? ' ' + _kol : '') + (parseInt(p.ilosc || 1) > 1 ? ' ×' + p.ilosc : '') : null;
         }).filter(Boolean).join(' | '), parseFloat(lead.totalCost) > 0 && /*#__PURE__*/React.createElement("span", {
           style: {
             color: '#dfbf3a',
