@@ -4120,10 +4120,10 @@ function App() {
           html: generateOrderHtml(order),
           name: subject + '.pdf'
         });
-        for (const {
-          html,
-          name
-        } of pdfHtmls) {
+        for (let _pdfIdx = 0; _pdfIdx < pdfHtmls.length; _pdfIdx++) {
+          const {html, name} = pdfHtmls[_pdfIdx];
+          // Pauza między PDF-ami żeby nie trafić w rate limit Cloudflare Browser Rendering
+          if (_pdfIdx > 0) await new Promise(r => setTimeout(r, 5000));
           console.log('[PDF] wysyłam HTML do workera:', name, 'długość:', html.length);
           // Retry z backoffem przy 429 - dłuższe odstępy
           let pd = null;
@@ -12459,7 +12459,10 @@ function App() {
             return c;
           });
           const linkedOrds = selImps.map(i => orders.find(o => o.allegroOrderId === i.allegroOrderId)).filter(Boolean);
-          const subject = opisyFinal.length > 0 ? opisyFinal.join(', ') : `${linkedOrds.map(o => o.numerZlecenia || '').filter(Boolean).join(', ')}`.trim();
+          const _firstOrd = linkedOrds[0] || selImps[0];
+          const _imie = _firstOrd?.klientImie || selImps[0]?.klientImie || '';
+          const _miasto = _firstOrd?.klientMiasto || selImps[0]?.klientMiasto || '';
+          const subject = (opisyFinal.length > 0 ? opisyFinal.join(', ') : linkedOrds.map(o => o.numerZlecenia || '').filter(Boolean).join(', ')) + (_imie ? ' ' + _imie : '') + (_miasto ? ' ' + _miasto : '');
           const hasSh = selImps.some(i => allegroShipments[i.allegroOrderId]);
           _setBatchSel([]);
           setMailPreview({
