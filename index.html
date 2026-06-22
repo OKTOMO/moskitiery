@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260622.167 (prekompilowany)</title>
+<title>MosquitoApp v20260622.168 (prekompilowany)</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260622.167';
+   window.__MOSK_VERSION='20260622.168';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -11438,7 +11438,7 @@ function App() {
         }, /*#__PURE__*/React.createElement("div", {
           style: {
             display: 'grid',
-            gridTemplateColumns: '1fr 1fr 40px 1fr',
+            gridTemplateColumns: '1fr 1fr 30px 1fr 1fr 1fr',
             gap: 4,
             padding: '3px 8px',
             background: '#0a1f1a',
@@ -11449,7 +11449,7 @@ function App() {
             marginBottom: 3,
             letterSpacing: '.05em'
           }
-        }, ['Szer.', 'Wys.', 'Szt.', 'Kolor'].map(function (h) {
+        }, ['Szer.', 'Wys.', 'Szt.', 'Profil', 'Siatka', 'Blaszka'].map(function (h) {
           return /*#__PURE__*/React.createElement("span", {
             key: h
           }, h);
@@ -11458,7 +11458,7 @@ function App() {
             key: i,
             style: {
               display: 'grid',
-              gridTemplateColumns: '1fr 1fr 40px 1fr',
+              gridTemplateColumns: '1fr 1fr 30px 1fr 1fr 1fr',
               gap: 4,
               padding: '5px 8px',
               background: i % 2 === 0 ? '#080f18' : '#0a1420',
@@ -11486,7 +11486,17 @@ function App() {
               color: '#dfcf7a',
               fontSize: 11
             }
-          }, p.kolorProfilu || (p.kolorSiatki ? 'siatka: ' + p.kolorSiatki : '—')));
+          }, p.kolorProfilu || '—'), /*#__PURE__*/React.createElement("span", {
+            style: {
+              color: '#9fcfaf',
+              fontSize: 11
+            }
+          }, p.kolorSiatki || '—'), /*#__PURE__*/React.createElement("span", {
+            style: {
+              color: '#cfaf7a',
+              fontSize: 11
+            }
+          }, p.iloscBlaszek || p.blaszka || '—'));
         })), /*#__PURE__*/React.createElement("div", {
           style: {
             display: 'flex',
