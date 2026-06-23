@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260623.175</title>
+<title>MosquitoApp v20260623.176</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260623.175';
+   window.__MOSK_VERSION='20260623.176';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -24459,12 +24459,13 @@ function App() {
     style: {
       padding: '8px 18px',
       borderRadius: 6,
-      border: '1px solid #2a4a2a',
+      border: '1px solid ' + (invoicesSent[fakModal.imp?.allegroOrderId || fakModal.order?.allegroOrderId || fakModal.order?.numerZlecenia] ? '#2a7a2a' : '#2a4a2a'),
       background: 'none',
-      color: '#5a7a5a',
-      cursor: 'pointer'
+      color: invoicesSent[fakModal.imp?.allegroOrderId || fakModal.order?.allegroOrderId || fakModal.order?.numerZlecenia] ? '#7acf7a' : '#5a7a5a',
+      cursor: 'pointer',
+      fontWeight: invoicesSent[fakModal.imp?.allegroOrderId || fakModal.order?.allegroOrderId || fakModal.order?.numerZlecenia] ? 700 : 400
     }
-  }, "Anuluj"), /*#__PURE__*/React.createElement("button", {
+  }, invoicesSent[fakModal.imp?.allegroOrderId || fakModal.order?.allegroOrderId || fakModal.order?.numerZlecenia] ? '✅ Zamknij' : 'Anuluj'), /*#__PURE__*/React.createElement("button", {
     onClick: wyslijFakture,
     disabled: fakModal.sending || fakModal.pozLoading || !fakModal.form.kwota && !(fakModal.form.pozycjeAllegro && fakModal.form.pozycjeAllegro.length > 0),
     style: {
