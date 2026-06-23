@@ -406,6 +406,8 @@ DLA OKIEN (isDrzwi:false):
   * Jeśli klient pisze "felc 12", "wnęka 15", "C=20" → glebokosc = ta liczba (mm)
   * Format kalkulatora "SZEROKOŚĆ FELCA C(cm):1.7" lub "FELCA C(cm):2" → przelicz cm na mm: 1.7→17, 2→20
   * Format "GŁĘBOKOŚĆ C(mm):20" → glebokosc = 20
+  * WAŻNE: Format "Okno 1: 226,3cm x 84cm x 2cm" oznacza szerokość x wysokość x głębokość — NIE ilość! Trzecia liczba to zawsze głębokość felca (przelicz na mm: 2cm=20mm), ilosc=1 dla każdego okna.
+  * Przykład: "Okno 1: 226,3cm x 84cm x 2cm\nOkno 2: 226,3cm x 84cm x 2cm\nOkno 3: 136cm x 103cm x 2cm" → TRZY osobne pozycje, każda ilosc=1, glebokosc=20
   * Jeśli klient podaje TYLKO grubość ramy okiennej/profilu PCV (np. "rama 70mm", "profil 5cm") → glebokosc = null
   * Jeśli klient nie podaje głębokości wcale → glebokosc = null
   * UWAGA: liczby 10–35 to mm, liczby 1–3,5 to cm (przelicz ×10). Liczba >35 to prawie na pewno cm — przelicz ÷10 i zaokrąglij do mm.
