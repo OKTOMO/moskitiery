@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260622.171</title>
+<title>MosquitoApp v20260622.172</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260622.171';
+   window.__MOSK_VERSION='20260622.172';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -8991,6 +8991,10 @@ function App() {
       if (lastSavedOrder) {
         setDpdModal(lastSavedOrder);
         setDpdWaga('5');
+        const _isCod = lastSavedOrder.isCOD || (lastSavedOrder.platnosc && lastSavedOrder.platnosc.includes('pobranie'));
+        const _codAmt = lastSavedOrder.codAmount || lastSavedOrder.kwotaBrutto || '';
+        setDpdCod(!!_isCod);
+        setDpdCodAmount(_isCod && _codAmt ? String(parseFloat(_codAmt).toFixed(2)) : '');
       } else alert('Najpierw zapisz zamówienie');
     },
     style: {
@@ -15489,6 +15493,10 @@ function App() {
       onClick: function () {
         setDpdModal(o);
         setDpdWaga("5");
+        const _isCod = o.isCOD || (o.platnosc && o.platnosc.includes('pobranie'));
+        const _codAmt = o.codAmount || o.kwotaBrutto || '';
+        setDpdCod(!!_isCod);
+        setDpdCodAmount(_isCod && _codAmt ? String(parseFloat(_codAmt).toFixed(2)) : '');
       },
       title: o.dpdWaybill ? "DPD: " + o.dpdWaybill : "Nadeślij DPD"
     }, o.dpdWaybill ? "📦 " + o.dpdWaybill.slice(-6) : "📦 DPD"), /*#__PURE__*/React.createElement("button", {
