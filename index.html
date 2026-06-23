@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260622.174</title>
+<title>MosquitoApp v20260623.175</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260622.174';
+   window.__MOSK_VERSION='20260623.175';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -24415,7 +24415,21 @@ function App() {
       E: 'everis_pl',
       AP: 'albama_eu'
     }[fakModal.imp?.firma || fakModal.order?.firma || 'F'] || 'favo5';
-    if (!inv || !id || id.startsWith('manual_')) return null;
+    if (!inv || !id || id.startsWith('manual_')) {
+      return inv ? /*#__PURE__*/React.createElement("button", {
+        onClick: () => setFakModal(null),
+        style: {
+          padding: '8px 18px',
+          borderRadius: 6,
+          border: '1px solid #2a7a2a',
+          background: '#0a2a0a',
+          color: '#7acf7a',
+          cursor: 'pointer',
+          fontSize: 13,
+          fontWeight: 700
+        }
+      }, "✅ Zamknij") : null;
+    }
     if (inv.allegroAttached || fakModal.allegroAttachStatus === 'ok') {
       return /*#__PURE__*/React.createElement("span", {
         style: {
