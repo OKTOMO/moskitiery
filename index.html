@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260622.173</title>
+<title>MosquitoApp v20260622.174</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260622.173';
+   window.__MOSK_VERSION='20260622.174';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -9286,6 +9286,23 @@ function App() {
           marginTop: 1
         }
       }, "📞 ", formatTel(imp.telefon)), (() => {
+        const _invS = invoicesSent[imp.allegroOrderId];
+        if (!_invS && !imp.invoiceRequired) return null;
+        return /*#__PURE__*/React.createElement("div", {
+          style: {
+            fontSize: 10,
+            marginTop: 2,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 3,
+            padding: '1px 5px',
+            borderRadius: 3,
+            background: _invS ? '#0a2a0a' : '#2a1a00',
+            border: '1px solid ' + (_invS ? '#2a7a2a' : '#7a5a2a'),
+            color: _invS ? '#7acf7a' : '#dfaf5a'
+          }
+        }, _invS ? '🧾 FV ' + (_invS.number || '✓') : '🧾❗ brak FV');
+      })(), (() => {
         const _ord = orders.find(o => o.allegroOrderId === imp.allegroOrderId);
         const _nr = _ord?.numerZlecenia || imp.numerZlecenia;
         return _nr ? /*#__PURE__*/React.createElement("div", {
