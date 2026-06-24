@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260624.179</title>
+<title>MosquitoApp v20260624.182</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260624.179';
+   window.__MOSK_VERSION='20260624.182';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2098,7 +2098,9 @@ function App() {
     const key = now.getFullYear() + '_' + (now.getMonth() + 1);
     return parseInt(localStorage.getItem('stat_maty_mala_extra_' + key) || '0');
   });
-  const [statKosmExtra, setStatKosmExtra] = useState({});
+  const [statKosmExtra, setStatKosmExtra] = useState(function () {
+    try { return JSON.parse(localStorage.getItem('stat_kosm_extra') || '{}'); } catch(e) { return {}; }
+  });
   const [zamSearch, setZamSearch] = useState('');
   const [zamKonto, setZamKonto] = useState('');
   const [zamOnlyInvoice, setZamOnlyInvoice] = useState(false);
@@ -13219,8 +13221,10 @@ function App() {
       gap: 4,
       paddingLeft: 32
     }
-  }, recentEmails.slice(0, 6).map((em, i) => /*#__PURE__*/React.createElement("button", {
+  }, recentEmails.slice(0, 6).map((em, i) => /*#__PURE__*/React.createElement("div", {
     key: i,
+    style: {display:'flex', alignItems:'center', gap:2}
+  }, /*#__PURE__*/React.createElement("button", {
     type: "button",
     onClick: () => setMailPreview(p => ({
       ...p,
@@ -13236,7 +13240,30 @@ function App() {
       cursor: "pointer",
       fontFamily: "monospace"
     }
-  }, em))), mailPreview.threadMessageId && /*#__PURE__*/React.createElement("div", {
+  }, em), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    title: "Usuń z historii",
+    onClick: async () => {
+      try {
+        await fetch(AUTORESPONDER_URL + '/email/recent/delete', {
+          method: 'POST',
+          headers: {'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},
+          body: JSON.stringify({email: em})
+        });
+      } catch(e) {}
+      setRecentEmails(prev => prev.filter(e => e !== em));
+    },
+    style: {
+      padding: "1px 4px",
+      fontSize: 10,
+      borderRadius: 3,
+      border: "1px solid #4a2a2a",
+      background: "#1a0a0a",
+      color: "#cf6a6a",
+      cursor: "pointer",
+      lineHeight: 1
+    }
+  }, "✕")))), mailPreview.threadMessageId && /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: 6,
       padding: "4px 10px",
@@ -16734,15 +16761,17 @@ function App() {
         });
       });
     });
+    const _kosmKey = statMonth + '_' + statYear;
+    const _kosmEx = statKosmExtra[_kosmKey] || {};
     const gr1Szt = KAT.reduce(function (s, k, i) {
       return s + (k.gr === 1 ? katSzt[i] : 0);
-    }, 0);
+    }, 0) + (parseInt(_kosmEx.gr1) || 0);
     const gr2Szt = KAT.reduce(function (s, k, i) {
       return s + (k.gr === 2 ? katSzt[i] : 0);
-    }, 0);
+    }, 0) + (parseInt(_kosmEx.gr2) || 0);
     const pomSzt = KAT.reduce(function (s, k, i) {
       return s + (k.gr === 3 ? katSzt[i] : 0);
-    }, 0);
+    }, 0) + (parseInt(_kosmEx.pom) || 0);
     const gr1Fakt = Math.floor(gr1Szt * 17.5 / 19.5);
     const gr2Fakt = Math.floor(gr2Szt * 22.5 / 24.0);
     const gr1Wart = (gr1Fakt * 19.5).toFixed(2);
@@ -16962,9 +16991,8 @@ function App() {
         fontSize: 11,
         color: '#3a6a3a'
       }
-    }, " + ręcznie:"), /*#__PURE__*/React.createElement("input", {
+    }, "korekta:"), /*#__PURE__*/React.createElement("input", {
       type: "number",
-      min: "0",
       value: statMatyDuzaExtra,
       onChange: function (e) {
         var v = parseInt(e.target.value) || 0;
@@ -17033,9 +17061,8 @@ function App() {
         fontSize: 11,
         color: '#3a6a3a'
       }
-    }, " + ręcznie:"), /*#__PURE__*/React.createElement("input", {
+    }, "korekta:"), /*#__PURE__*/React.createElement("input", {
       type: "number",
-      min: "0",
       value: statMatyMalaExtra,
       onChange: function (e) {
         var v = parseInt(e.target.value) || 0;
@@ -17208,34 +17235,46 @@ function App() {
         paddingTop: 8,
         fontSize: 12
       }
-    }, [['Gr I', gr1Szt, gr1Fakt, '19,50', gr1Wart, '#7a9adf'], ['Gr II', gr2Szt, gr2Fakt, '24,00', gr2Wart, '#af7adf'], ['Pomadki', pomSzt, pomSzt, '1,85', pomWart, '#df9a7a']].map(function (r) {
+    }, [['Gr I', gr1Szt, gr1Fakt, '19,50', gr1Wart, '#7a9adf', 'gr1'], ['Gr II', gr2Szt, gr2Fakt, '24,00', gr2Wart, '#af7adf', 'gr2'], ['Pomadki', pomSzt, pomSzt, '1,85', pomWart, '#df9a7a', 'pom']].map(function (r) {
+      const _exVal = parseInt((_kosmEx)[r[6]]) || 0;
       return /*#__PURE__*/React.createElement("div", {
         key: r[0],
         style: {
           display: 'flex',
           justifyContent: 'space-between',
+          alignItems: 'center',
           padding: '3px 0',
           borderBottom: '1px solid #1a1a3a'
         }
       }, /*#__PURE__*/React.createElement("span", {
-        style: {
-          color: r[5],
-          minWidth: 55
-        }
+        style: {color: r[5], minWidth: 55}
       }, r[0]), /*#__PURE__*/React.createElement("span", {
+        style: {color: '#5a5aaf', display:'flex', alignItems:'center', gap:4}
+      }, r[1], " szt", /*#__PURE__*/React.createElement("input", {
+        type: "number",
+        value: _exVal,
+        title: "Korekta ręczna (np. -2 przy zwrocie)",
+        onChange: function(e) {
+          const v = parseInt(e.target.value) || 0;
+          const key = statMonth + '_' + statYear;
+          setStatKosmExtra(function(prev) {
+            const next = {...prev, [key]: {...(prev[key]||{}), [r[6]]: v}};
+            localStorage.setItem('stat_kosm_extra', JSON.stringify(next));
+            return next;
+          });
+        },
         style: {
-          color: '#5a5aaf'
+          width: 50, fontSize: 11, padding: '1px 3px',
+          borderRadius: 3, border: '1px solid #3a3a6a',
+          background: '#0a0a1a', color: _exVal < 0 ? '#cf7a7a' : _exVal > 0 ? '#7acf7a' : '#5a5a8a',
+          textAlign: 'center'
         }
-      }, r[1], " szt"), /*#__PURE__*/React.createElement("span", {
-        style: {
-          color: '#9a9adf'
-        }
+      })), /*#__PURE__*/React.createElement("span", {
+        style: {color: '#9a9adf'}
       }, "→ ", r[2], " szt @", r[3]), /*#__PURE__*/React.createElement("span", {
-        style: {
-          color: '#afffaf',
-          fontWeight: 700
-        }
+        style: {color: '#afffaf', fontWeight: 700}
       }, r[4], " zł"));
+    })
     }), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
