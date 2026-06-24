@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260624.182</title>
+<title>MosquitoApp v20260624.184</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260624.182b';
+   window.__MOSK_VERSION='20260624.184';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -5708,7 +5708,8 @@ function App() {
             const _svcName = (service?.name || '').toLowerCase();
             const _isAutomat = _svcName.includes('automat') || _svcName.includes('paczkomat') || _svcName.includes('parcel locker') || _svcName.includes('box');
             const _isDHLCzechy = _svcName.includes('dhl') && (_kraj === 'CZ' || _svcName.includes('czech'));
-            if (isDHLAutomat || isORLEN || _isDHLCzechy) return {};
+            const _isInternational = _svcName.includes('international') || _kraj === 'SK' || _kraj === 'CZ' || _kraj === 'DE' || _kraj === 'AT' || _kraj === 'HU';
+            if (isDHLAutomat || isORLEN || _isDHLCzechy || _isInternational) return {};
             // Zagraniczne paczkomaty - nie zawsze obsługują ubezpieczenie
             if (_ins && !_isAutomat) return {
               insurance: {
@@ -7468,7 +7469,7 @@ function App() {
       color: '#df7a7a',
       cursor: 'pointer'
     }
-  }, "🔄 Sprawdź ponownie")), [["zamowienia", "📦 Zamówienia"], ["al_zam", "🛒 Allegro"], ["baza", "📋 Zlecenia"], ["zapytania", "📨 KAL"], ["stat", "📊 Stat"], ["produkcja", "🏭 Produkcja"], ["kalk", "🧮 Kalkulator"], ["wystaw", "🏪 Wystaw"]].map(([id, l]) => /*#__PURE__*/React.createElement("button", {
+  }, "🔄 Sprawdź ponownie")), [["zamowienia", "📦 Zamówienia"], ["al_zam", "🛒 Allegro"], ["baza", "📋 Zlecenia"], ["zapytania", "📨 KAL"], ["stat", "📊 Stat"], ["produkcja", "🏭 Produkcja"], ["kalk", "🧮 Kalkulator"], ["wycena", "🔢 Wycena"], ["wystaw", "🏪 Wystaw"]].map(([id, l]) => /*#__PURE__*/React.createElement("button", {
     key: id,
     className: `tab ${tab === id ? "on" : ""}`,
     onClick: () => setTab(id)
@@ -19052,7 +19053,55 @@ function App() {
         fontWeight: 700
       }
     }, p.ilosc))))))));
-  })()), tab === "wystaw" && /*#__PURE__*/React.createElement("div", {
+  })()), tab === "wycena" && /*#__PURE__*/React.createElement("div", {
+    style: {padding: 20, maxWidth: 600}
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {fontWeight: 700, fontSize: 16, color: '#7acfdf', marginBottom: 16}
+  }, "🔢 Szybka wycena — 3 zł/m²"), /*#__PURE__*/React.createElement("textarea", {
+    id: "wycena-input",
+    placeholder: "Wklej wymiary, np:\n103/126 2 szt\n63/93 1 szt\n124/133 1 szt\n72/209 1 szt",
+    style: {
+      width: '100%', minHeight: 120, background: '#0a1a1a', color: '#7acfdf',
+      border: '1px solid #2a4a4a', borderRadius: 6, padding: 10,
+      fontSize: 13, fontFamily: 'monospace', boxSizing: 'border-box', marginBottom: 10
+    },
+    onChange: function(e) {
+      var lines = e.target.value.split('\n').filter(function(l) { return l.trim(); });
+      var results = [];
+      var total = 0;
+      var cena = 3.0;
+      lines.forEach(function(line) {
+        var m = line.match(/(\d+[.,]?\d*)\s*[\/x×]\s*(\d+[.,]?\d*)\s*(\d+)?\s*(?:szt|sz|x)?/i);
+        if (!m) return;
+        var szer = parseFloat(m[1].replace(',','.')) / 100;
+        var wys = parseFloat(m[2].replace(',','.')) / 100;
+        var szt = parseInt(m[3]) || 1;
+        var pow = szer * wys;
+        var wart = pow * szt * cena;
+        total += wart;
+        results.push({szer: m[1], wys: m[2], szt: szt, pow: pow.toFixed(4), wart: wart.toFixed(2)});
+      });
+      var out = document.getElementById('wycena-output');
+      if (!out) return;
+      if (results.length === 0) { out.innerHTML = ''; return; }
+      var html = '<table style="width:100%;border-collapse:collapse;font-size:13px">';
+      html += '<tr style="background:#0a2a2a;color:#5a9aaf"><th style="padding:5px 8px;text-align:left">Wymiar</th><th>Szt</th><th>m²/szt</th><th>Wartość</th></tr>';
+      results.forEach(function(r, i) {
+        html += '<tr style="background:' + (i%2===0?'#060e10':'#08141a') + ';color:#7acfdf">';
+        html += '<td style="padding:5px 8px;font-family:monospace">' + r.szer + '/' + r.wys + ' cm</td>';
+        html += '<td style="text-align:center">' + r.szt + '</td>';
+        html += '<td style="text-align:center">' + r.pow + '</td>';
+        html += '<td style="text-align:right;font-weight:700">' + r.wart + ' zł</td>';
+        html += '</tr>';
+      });
+      html += '<tr style="background:#0a2a1a;font-weight:700;color:#7acf7a"><td colspan="3" style="padding:6px 8px">RAZEM</td><td style="text-align:right;padding:6px 8px;font-size:15px">' + total.toFixed(2) + ' zł</td></tr>';
+      html += '</table>';
+      out.innerHTML = html;
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    id: "wycena-output",
+    style: {marginTop: 8}
+  })), tab === "wystaw" && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: '16px'
     }
