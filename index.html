@@ -7,7 +7,7 @@
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260624.182';
+   window.__MOSK_VERSION='20260624.182b';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -17236,7 +17236,6 @@ function App() {
         fontSize: 12
       }
     }, [['Gr I', gr1Szt, gr1Fakt, '19,50', gr1Wart, '#7a9adf', 'gr1'], ['Gr II', gr2Szt, gr2Fakt, '24,00', gr2Wart, '#af7adf', 'gr2'], ['Pomadki', pomSzt, pomSzt, '1,85', pomWart, '#df9a7a', 'pom']].map(function (r) {
-      const _exVal = parseInt((_kosmEx)[r[6]]) || 0;
       return /*#__PURE__*/React.createElement("div", {
         key: r[0],
         style: {
@@ -17252,7 +17251,7 @@ function App() {
         style: {color: '#5a5aaf', display:'flex', alignItems:'center', gap:4}
       }, r[1], " szt", /*#__PURE__*/React.createElement("input", {
         type: "number",
-        value: _exVal,
+        value: parseInt(((_kosmEx)||{})[r[6]]||0),
         title: "Korekta ręczna (np. -2 przy zwrocie)",
         onChange: function(e) {
           const v = parseInt(e.target.value) || 0;
@@ -17266,7 +17265,7 @@ function App() {
         style: {
           width: 50, fontSize: 11, padding: '1px 3px',
           borderRadius: 3, border: '1px solid #3a3a6a',
-          background: '#0a0a1a', color: _exVal < 0 ? '#cf7a7a' : _exVal > 0 ? '#7acf7a' : '#5a5a8a',
+          background: '#0a0a1a', color: parseInt(((_kosmEx)||{})[r[6]]||0) < 0 ? '#cf7a7a' : parseInt(((_kosmEx)||{})[r[6]]||0) > 0 ? '#7acf7a' : '#5a5a8a',
           textAlign: 'center'
         }
       })), /*#__PURE__*/React.createElement("span", {
