@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260623.177</title>
+<title>MosquitoApp v20260624.179</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260623.177';
+   window.__MOSK_VERSION='20260624.179';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -4113,9 +4113,10 @@ function App() {
         }
         // Mix jako dwa osobne zlecenia - dodaj PDF drzwi z _mixDrzwiOrder
         if (!hasDrzwi && mixDrzwiOrder && mixDrzwiOrder.pozycje && mixDrzwiOrder.pozycje.length > 0 && !removedFiles.includes('drzwi')) {
+          const _drzwiNr = mixDrzwiOrder.numerZlecenia || subject;
           pdfHtmls.push({
             html: drukujPDF_drzwi(mixDrzwiOrder, true),
-            name: subject + ' DRZWI.pdf'
+            name: _drzwiNr + ' DRZWI.pdf'
           });
         }
         if (pdfHtmls.length === 0) pdfHtmls.push({
@@ -9017,7 +9018,12 @@ function App() {
       const emailCfg = JSON.parse(localStorage.getItem('email_produkcji_config') || '{}');
       const to = emailCfg.emailProdukcji || 'biuro@superis.pl';
       const allegroImp2 = allegroImportResults.find(i => i.allegroOrderId === allegroOrderIdForForm);
-      const subject = `${lastSavedOrder.numerZlecenia || ''} ${lastSavedOrder.klientImie || allegroImp2?.klientImie || ''} ${lastSavedOrder.klientMiasto || allegroImp2?.klientMiasto || ''}`.trim();
+      const _mixDrzwi = lastSavedOrder._mixDrzwiOrder;
+      const _nrOkna = lastSavedOrder.numerZlecenia || '';
+      const _nrDrzwi = _mixDrzwi?.numerZlecenia || '';
+      const _imie = lastSavedOrder.klientImie || allegroImp2?.klientImie || '';
+      const _miasto = lastSavedOrder.klientMiasto || allegroImp2?.klientMiasto || '';
+      const subject = ([_nrOkna, _nrDrzwi].filter(Boolean).join(' + ') + ' ' + _imie + ' ' + _miasto).trim();
       setMailPreview({
         imp: {
           ...lastSavedOrder,
