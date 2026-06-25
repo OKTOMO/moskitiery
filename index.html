@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260624.185</title>
+<title>MosquitoApp v20260625.187</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260624.185';
+   window.__MOSK_VERSION='20260625.187';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -4098,7 +4098,7 @@ function App() {
           } : order;
           pdfHtmls.push({
             html: generateOrderHtml(orderOkna),
-            name: subject + '.pdf'
+            name: (order.numerZlecenia || subject) + ' ' + (order.klientImie || '') + (order.klientMiasto ? ' ' + order.klientMiasto : '') + '.pdf'
           });
         }
         if (hasDrzwi) {
@@ -4110,15 +4110,17 @@ function App() {
           } : order;
           pdfHtmls.push({
             html: drukujPDF_drzwi(orderDrzwi, true),
-            name: subject + ' DRZWI.pdf'
+            name: (order.numerZlecenia || subject) + ' DRZWI ' + (order.klientImie || '') + (order.klientMiasto ? ' ' + order.klientMiasto : '') + '.pdf'
           });
         }
         // Mix jako dwa osobne zlecenia - dodaj PDF drzwi z _mixDrzwiOrder
         if (!hasDrzwi && mixDrzwiOrder && mixDrzwiOrder.pozycje && mixDrzwiOrder.pozycje.length > 0 && !removedFiles.includes('drzwi')) {
           const _drzwiNr = mixDrzwiOrder.numerZlecenia || subject;
+          const _drzwiImie = mixDrzwiOrder.klientImie || order.klientImie || '';
+          const _drzwiMiasto = mixDrzwiOrder.klientMiasto || order.klientMiasto || '';
           pdfHtmls.push({
             html: drukujPDF_drzwi(mixDrzwiOrder, true),
-            name: _drzwiNr + ' DRZWI.pdf'
+            name: _drzwiNr + ' DRZWI ' + _drzwiImie + (_drzwiMiasto ? ' ' + _drzwiMiasto : '') + '.pdf'
           });
         }
         if (pdfHtmls.length === 0) pdfHtmls.push({
@@ -6024,7 +6026,7 @@ function App() {
   }, [docsModal, fakModal, dpdModal, importModal]);
   function updateOrders(next) {
     setOrders(next);
-    cloudSave(next);
+    setTimeout(() => cloudSave(next), 0);
   }
   async function freshOrders() {
     try {
