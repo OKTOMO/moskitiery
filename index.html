@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260625.188</title>
+<title>MosquitoApp v20260625.189</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260625.188';
+   window.__MOSK_VERSION='20260625.189';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -11770,7 +11770,45 @@ function App() {
               cursor: 'pointer'
             }
           }, "📱 QR SMS");
-        }())));
+        }()), /*#__PURE__*/React.createElement("button", {
+          onClick: function(e) {
+            e.stopPropagation();
+            const firma = lead.brand === 'fav' ? 'F' : lead.brand === 'arl' ? 'A' : lead.brand === 'str' ? 'S' : lead.brand === 'evr' ? 'E' : 'F';
+            const pozycje = (lead.pozycje || []).map(function(p) {
+              return {
+                ...pustaPoz(),
+                szerokosc: String(p.szerokosc || ''),
+                wysokosc: String(p.wysokosc || ''),
+                kolorRamki: p.kolorProfilu || 'Antracyt',
+                kolorSiatki: p.kolorSiatki || 'Czarna',
+                ilosc: parseInt(p.ilosc) || 1
+              };
+            });
+            setForm({
+              ...pustyForm(firma),
+              klientImie: lead.name || '',
+              klientUlica: lead.street || '',
+              klientKod: lead.zip || '',
+              klientMiasto: lead.city || '',
+              telefon: lead.phone || '',
+              uwagi: lead.notes || '',
+              pozycje: pozycje.length > 0 ? pozycje : [pustaPoz()]
+            });
+            setWiadomosc('');
+            setSaved(false);
+            setTab('zamowienia');
+          },
+          style: {
+            padding: '5px 12px',
+            fontSize: 12,
+            background: '#1a2a1a',
+            border: '1px solid #3a7a3a',
+            borderRadius: 5,
+            color: '#7acf7a',
+            cursor: 'pointer',
+            fontWeight: 600
+          }
+        }, "📋 Utwórz zlecenie"))));
       });
     })()), (() => {
       // ── Zakładka Faktury w module zamówień ──
