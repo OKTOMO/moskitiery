@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260625.189</title>
+<title>MosquitoApp v20260627.191</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260627.190';
+   window.__MOSK_VERSION='20260627.191';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -11785,21 +11785,31 @@ function App() {
                 ilosc: parseInt(p.ilosc) || 1
               };
             });
+            const imp = {
+              allegroOrderId: 'lead_' + lead.id,
+              kontoId: firma,
+              klientImie: lead.name || '',
+              klientUlica: lead.street || '',
+              klientKod: lead.zip || '',
+              klientMiasto: lead.city || '',
+              telefon: lead.phone || '',
+              email: lead.email || '',
+              totalAmount: lead.totalCost || 0,
+              fulfillmentStatus: 'NEW',
+              _isManual: true
+            };
             setTimeout(function() {
-              setForm({
-                ...pustyForm(firma),
-                klientImie: lead.name || '',
-                klientUlica: lead.street || '',
-                klientKod: lead.zip || '',
-                klientMiasto: lead.city || '',
-                telefon: lead.phone || '',
-                uwagi: lead.notes || '',
+              setTab('zamowienia');
+              setZamTab('nowe');
+              setImportModal({
+                imp,
+                mode: 'manual',
+                kalNum: '',
+                kalLoading: false,
+                kalError: '',
+                kalData: null,
                 pozycje: pozycje.length > 0 ? pozycje : [pustaPoz()]
               });
-              setWiadomosc('');
-              setSaved(false);
-              setZamTab('nowe');
-              setTab('zamowienia');
             }, 50);
           },
           style: {
