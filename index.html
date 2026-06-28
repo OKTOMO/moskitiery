@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260627.191</title>
+<title>MosquitoApp v20260627.193</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260627.191';
+   window.__MOSK_VERSION='20260627.193';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -11775,16 +11775,21 @@ function App() {
             e.stopPropagation();
             e.preventDefault();
             const firma = lead.brand === 'fav' ? 'F' : lead.brand === 'arl' ? 'A' : lead.brand === 'str' ? 'S' : lead.brand === 'evr' ? 'E' : 'F';
-            const pozycje = (lead.pozycje || []).map(function(p) {
-              return {
-                ...pustaPoz(),
-                szerokosc: String(p.szerokosc || ''),
-                wysokosc: String(p.wysokosc || ''),
-                kolorRamki: p.kolorProfilu || 'Antracyt',
-                kolorSiatki: p.kolorSiatki || 'Czarna',
-                ilosc: parseInt(p.ilosc) || 1
-              };
+            // Buduj wiadomość z danych leada - format który AI rozumie
+            const linie = (lead.pozycje || []).map(function(p, i) {
+              var szer = p.szerokosc || '';
+              var wys = p.wysokosc || '';
+              var szt = parseInt(p.ilosc) || 1;
+              var kol = p.kolorProfilu || '';
+              var siat = p.kolorSiatki || '';
+              var txt = 'Okno ' + (i+1) + ': ' + szer + 'x' + wys + ' cm';
+              if (szt > 1) txt += ' ' + szt + ' szt';
+              if (kol) txt += '\nKolor ramy: ' + kol;
+              if (siat) txt += '\nSiatka: ' + siat;
+              return txt;
             });
+            if (lead.notes) linie.push('Uwagi: ' + lead.notes);
+            const buyerMsg = linie.join('\n');
             const imp = {
               allegroOrderId: 'lead_' + lead.id,
               kontoId: firma,
@@ -11796,19 +11801,28 @@ function App() {
               email: lead.email || '',
               totalAmount: lead.totalCost || 0,
               fulfillmentStatus: 'NEW',
+              buyerMsg: buyerMsg,
               _isManual: true
             };
             setTimeout(function() {
               setTab('zamowienia');
               setZamTab('nowe');
+              // Wypełnij pole adresowe danymi klienta
+              const adresTxt = [
+                lead.name || '',
+                lead.street || '',
+                (lead.zip && lead.city) ? (lead.zip + ' ' + lead.city) : (lead.city || ''),
+                lead.phone ? 'Tel: ' + lead.phone : ''
+              ].filter(Boolean).join('\n');
+              setAdres(adresTxt);
               setImportModal({
                 imp,
-                mode: 'manual',
+                mode: 'msg',
                 kalNum: '',
                 kalLoading: false,
                 kalError: '',
                 kalData: null,
-                pozycje: pozycje.length > 0 ? pozycje : [pustaPoz()]
+                pozycje: [pustaPoz()]
               });
             }, 50);
           },
