@@ -2111,6 +2111,8 @@ function App() {
   const [offSaving, setOffSaving] = useState(false);
   const [offSaveMsg, setOffSaveMsg] = useState('');
   const [offMode, setOffMode] = useState('visual');
+  const [offSaveMode, setOffSaveMode] = useState('textonly');
+  const [offPreviewSecs, setOffPreviewSecs] = useState(new Set());
   const [offStructures, setOffStructures] = useState({});
   const [offCheckingAll, setOffCheckingAll] = useState(false);
   const [zamSearch, setZamSearch] = useState('');
@@ -4125,18 +4127,40 @@ function App() {
   async function offSaveDescriptions() {
     const wKey = localStorage.getItem('mosk_worker_key') || '';
     if (!offDescription.trim()) { alert('Wklej opis do zaktualizowania'); return; }
-    let desc;
-    try { desc = JSON.parse(offDescription); } catch(e) { alert('Błąd JSON: ' + e.message); return; }
+    let template;
+    try { template = JSON.parse(offDescription); } catch(e) { alert('Błąd JSON: ' + e.message); return; }
     if (!offSelected.size) { alert('Zaznacz przynajmniej jedną aukcję'); return; }
-    if (!confirm('Zaktualizować opis w ' + offSelected.size + ' aukcji(ach) na koncie ' + offKonto + '?')) return;
+    const modeLabel = offSaveMode === 'textonly' ? 'TYLKO TEKSTY (zdjęcia każdej aukcji zostają)' : 'PEŁNY OPIS (zastąpi wszystko)';
+    if (!confirm('Zaktualizować ' + offSelected.size + ' aukcji?\nTryb: ' + modeLabel)) return;
     setOffSaving(true); setOffSaveMsg('');
+    // Wyciągnij teksty z szablonu (w kolejności wystąpienia)
+    const templateTexts = [];
+    (template.sections || []).forEach(function(sec){ (sec.items||[]).forEach(function(item){ if(item.type==='TEXT') templateTexts.push(item.content||''); }); });
     let ok = 0, err = 0; const errMsgs = [];
     for (const id of offSelected) {
       try {
+        let descToSave = template;
+        if (offSaveMode === 'textonly') {
+          // Pobierz aktualny opis aukcji, podmień tylko TEXT, zachowaj IMAGE
+          const fetchR = await fetch(AUTORESPONDER_URL + '/allegro/offer/' + id + '?kontoId=' + offKonto, {
+            headers: {'x-api-key': wKey || AUTORESPONDER_KEY}
+          });
+          const fetchD = await fetchR.json();
+          if (fetchD.ok && fetchD.offer && fetchD.offer.description && fetchD.offer.description.sections) {
+            let tIdx = 0;
+            const newSections = fetchD.offer.description.sections.map(function(sec){
+              return { items: sec.items.map(function(item){
+                if (item.type === 'TEXT') { return { type:'TEXT', content: templateTexts[tIdx++] !== undefined ? templateTexts[tIdx-1] : item.content }; }
+                return item; // IMAGE i inne bez zmian
+              })};
+            });
+            descToSave = { sections: newSections };
+          }
+        }
         const r = await fetch(AUTORESPONDER_URL + '/allegro/offer/' + id + '/description', {
           method: 'PUT',
           headers: {'Content-Type': 'application/json', 'x-api-key': wKey || AUTORESPONDER_KEY},
-          body: JSON.stringify({kontoId: offKonto, description: desc})
+          body: JSON.stringify({kontoId: offKonto, description: descToSave})
         });
         const d = await r.json();
         if (d.ok) ok++;
@@ -4145,10 +4169,10 @@ function App() {
           const msg = d.error || JSON.stringify(d).slice(0,120);
           const scopeHint = (msg.includes('403') || msg.includes('forbidden') || msg.includes('scope') || msg.toLowerCase().includes('access denied'))
             ? ' [brak scope allegro:api:sale:offers:write?]' : '';
-          errMsgs.push(id + ': ' + msg + scopeHint);
+          errMsgs.push(id.slice(-6) + ': ' + msg + scopeHint);
           console.warn('Blad oferty ' + id, d);
         }
-      } catch(e) { err++; errMsgs.push(id + ': ' + e.message); }
+      } catch(e) { err++; errMsgs.push(id.slice(-6) + ': ' + e.message); }
     }
     const base = ok > 0 ? '✅ Zaktualizowano: ' + ok : '';
     const errPart = err > 0 ? (base ? '  ❌ Bledy: ' : '❌ ') + errMsgs.join(' | ') : '';
@@ -20415,14 +20439,29 @@ function App() {
             /*#__PURE__*/React.createElement("div",{style:{fontSize:10,color:'#3a6a4a',marginBottom:6,fontWeight:700}}, "SEKCJA "+(si+1)+" / "+parsed.sections.length),
             sec.items.map(function(item, ii){
               if (item.type === 'TEXT') {
-                return /*#__PURE__*/React.createElement("div",{key:ii,style:{marginBottom:6}},
-                  /*#__PURE__*/React.createElement("div",{style:{fontSize:10,color:'#3a7a5a',marginBottom:3}}, "📝 Tekst (HTML):"),
-                  /*#__PURE__*/React.createElement("textarea",{
-                    value: item.content || '',
-                    onChange: function(e){ updateOffVisualItem(si, ii, e.target.value); },
-                    style:{width:'100%',minHeight:90,background:'#080f10',color:'#c0e8c0',border:'1px solid #1a4a2a',borderRadius:4,padding:8,fontSize:12,fontFamily:'sans-serif',boxSizing:'border-box',lineHeight:1.4}
-                  })
-                );
+                return (function(){
+                  var previewKey = si+':'+ii;
+                  var inPreview = offPreviewSecs.has(previewKey);
+                  return /*#__PURE__*/React.createElement("div",{key:ii,style:{marginBottom:6}},
+                    React.createElement("div",{style:{display:'flex',alignItems:'center',gap:6,marginBottom:3}},
+                      React.createElement("span",{style:{fontSize:10,color:'#3a7a5a'}}, "📝 Tekst (HTML):"),
+                      React.createElement("button",{
+                        onClick:function(){var s=new Set(offPreviewSecs);s.has(previewKey)?s.delete(previewKey):s.add(previewKey);setOffPreviewSecs(s);},
+                        style:{fontSize:10,padding:'1px 7px',borderRadius:3,border:'1px solid '+(inPreview?'#5a9a5a':'#2a4a3a'),background:inPreview?'#0a2a0a':'transparent',color:inPreview?'#7acf7a':'#3a6a4a',cursor:'pointer'}
+                      }, inPreview?'✏️ Edytuj':'👁 Podgląd')
+                    ),
+                    inPreview
+                      ? React.createElement("div",{
+                          dangerouslySetInnerHTML:{__html: item.content||''},
+                          style:{minHeight:60,background:'#0a0f0a',border:'1px solid #1a4a2a',borderRadius:4,padding:'8px 10px',fontSize:13,color:'#c8e8c8',lineHeight:1.5,overflowX:'auto'}
+                        })
+                      : React.createElement("textarea",{
+                          value: item.content || '',
+                          onChange: function(e){ updateOffVisualItem(si, ii, e.target.value); },
+                          style:{width:'100%',minHeight:90,background:'#080f10',color:'#c0e8c0',border:'1px solid #1a4a2a',borderRadius:4,padding:8,fontSize:12,fontFamily:'sans-serif',boxSizing:'border-box',lineHeight:1.4}
+                        })
+                  );
+                })();
               }
               if (item.type === 'IMAGE') {
                 return /*#__PURE__*/React.createElement("div",{key:ii,style:{fontSize:10,color:'#3a6a7a',padding:'4px 0',wordBreak:'break-all'}},
@@ -20440,7 +20479,25 @@ function App() {
         placeholder:'{"sections":[{"items":[{"type":"TEXT","content":"<p>Opis</p>"}]}]}',
         style:{width:'100%',minHeight:300,background:'#080f10',color:'#7acfdf',border:'1px solid #2a4a4a',borderRadius:5,padding:10,fontSize:12,fontFamily:'monospace',boxSizing:'border-box',marginBottom:8}
       }),
-    /*#__PURE__*/React.createElement("div",{style:{display:'flex',gap:8,alignItems:'center',marginTop:8}},
+    /*#__PURE__*/React.createElement("div",{style:{marginTop:10,marginBottom:8,padding:'8px 10px',background:'#080f08',border:'1px solid #1a3a1a',borderRadius:5}},
+      React.createElement("div",{style:{fontSize:11,color:'#5a8a5a',marginBottom:6,fontWeight:700}}, "Tryb zapisu:"),
+      React.createElement("div",{style:{display:'flex',gap:8,flexWrap:'wrap'}},
+        [
+          ['textonly','📝 Tylko teksty','Podmienia tekst, zdjęcia każdej aukcji zostają. Bezpieczne przy różnej liczbie sekcji.'],
+          ['full','🔄 Pełny opis','Zastępuje CAŁY opis wzorcem — teksty i zdjęcia. Używaj gdy aukcje mają tę samą strukturę.']
+        ].map(function(m){return React.createElement("label",{
+          key:m[0],
+          style:{display:'flex',alignItems:'flex-start',gap:6,cursor:'pointer',padding:'5px 8px',borderRadius:4,border:'1px solid '+(offSaveMode===m[0]?'#3a8a3a':'#1a3a1a'),background:offSaveMode===m[0]?'#0a2a0a':'transparent',flex:'1 1 180px'}
+        },
+          React.createElement("input",{type:'radio',name:'offSaveMode',value:m[0],checked:offSaveMode===m[0],onChange:function(){setOffSaveMode(m[0]);},style:{marginTop:2}}),
+          React.createElement("div",null,
+            React.createElement("div",{style:{fontSize:12,color:offSaveMode===m[0]?'#7acf7a':'#4a7a4a',fontWeight:700}}, m[1]),
+            React.createElement("div",{style:{fontSize:10,color:'#3a6a3a',marginTop:2}}, m[2])
+          )
+        );})
+      )
+    ),
+    /*#__PURE__*/React.createElement("div",{style:{display:'flex',gap:8,alignItems:'center',marginTop:4}},
       /*#__PURE__*/React.createElement("button",{
         onClick:offSaveDescriptions, disabled:offSaving,
         style:{padding:'8px 18px',fontSize:13,background:'#1a3a1a',border:'1px solid #3a8a3a',borderRadius:5,color:'#7acf7a',cursor:'pointer',fontWeight:700}
