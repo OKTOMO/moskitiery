@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260628.198</title>
+<title>MosquitoApp v20260628.199</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260628.198';
+   window.__MOSK_VERSION='20260628.199';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -4086,16 +4086,19 @@ function App() {
   async function offLoadDescription(offerId) {
     const wKey = localStorage.getItem('mosk_worker_key') || '';
     setOffPreview(null);
+    setOffErr('Ładuję opis...');
     try {
       const r = await fetch(AUTORESPONDER_URL + '/allegro/offer/' + offerId + '?kontoId=' + offKonto, {
         headers: {'x-api-key': wKey || AUTORESPONDER_KEY}
       });
       const d = await r.json();
+      console.log('[OFF] opis response:', JSON.stringify(d).slice(0,500));
       if (d.ok && d.offer) {
         setOffPreview(d.offer);
-        setOffDescription(d.offer.description ? JSON.stringify(d.offer.description, null, 2) : '');
-      } else { setOffErr(d.error || 'Błąd'); }
-    } catch(e) { setOffErr(e.message); }
+        setOffDescription(d.offer.description ? JSON.stringify(d.offer.description, null, 2) : '// Brak opisu w tej aukcji');
+        setOffErr('');
+      } else { setOffErr('Błąd: ' + (d.error || JSON.stringify(d).slice(0,100))); }
+    } catch(e) { setOffErr('Błąd sieci: ' + e.message); }
   }
 
   async function offSaveDescriptions() {
