@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260627.193</title>
+<title>MosquitoApp v20260628.194</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260627.193';
+   window.__MOSK_VERSION='20260628.194';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -20238,7 +20238,117 @@ function App() {
       textAlign: 'center',
       padding: '20px 0'
     }
-  }, "🔜 Wystawianie nowych produktów na Allegro — wkrótce")), tab === "kalk" && /*#__PURE__*/React.createElement("div", {
+  }, "🔜 Wystawianie nowych produktów na Allegro — wkrótce"), (() => {
+    const [offKonto, setOffKonto] = React.useState('arlis_pl');
+    const [offList, setOffList] = React.useState([]);
+    const [offLoading, setOffLoading] = React.useState(false);
+    const [offErr, setOffErr] = React.useState('');
+    const [offSelected, setOffSelected] = React.useState(new Set());
+    const [offDescription, setOffDescription] = React.useState('');
+    const [offPreview, setOffPreview] = React.useState(null);
+    const [offSaving, setOffSaving] = React.useState(false);
+    const [offSaveMsg, setOffSaveMsg] = React.useState('');
+    const wKey = localStorage.getItem('mosk_worker_key') || '';
+
+    async function loadOffers() {
+      setOffLoading(true); setOffErr(''); setOffList([]);
+      try {
+        const r = await fetch(AUTORESPONDER_URL + '/allegro/offers?kontoId=' + offKonto + '&limit=50', {
+          headers: {'x-api-key': wKey || AUTORESPONDER_KEY}
+        });
+        const d = await r.json();
+        if (!d.ok) { setOffErr(d.error || 'Błąd'); return; }
+        setOffList(d.offers || []);
+      } catch(e) { setOffErr(e.message); }
+      finally { setOffLoading(false); }
+    }
+
+    async function loadDescription(offerId) {
+      setOffPreview(null);
+      try {
+        const r = await fetch(AUTORESPONDER_URL + '/allegro/offer/' + offerId + '?kontoId=' + offKonto, {
+          headers: {'x-api-key': wKey || AUTORESPONDER_KEY}
+        });
+        const d = await r.json();
+        if (d.ok && d.offer?.description) {
+          setOffPreview(d.offer);
+          setOffDescription(JSON.stringify(d.offer.description, null, 2));
+        } else {
+          setOffDescription('');
+          setOffPreview({name: d.offer?.name || '', description: null});
+        }
+      } catch(e) { setOffErr(e.message); }
+    }
+
+    async function saveDescriptions() {
+      if (!offDescription.trim()) { alert('Wklej opis do zaktualizowania'); return; }
+      let desc;
+      try { desc = JSON.parse(offDescription); } catch(e) { alert('Błąd JSON: ' + e.message); return; }
+      if (!offSelected.size) { alert('Zaznacz przynajmniej jedną aukcję'); return; }
+      if (!confirm('Zaktualizować opis w ' + offSelected.size + ' aukcji(ach) na koncie ' + offKonto + '?')) return;
+      setOffSaving(true); setOffSaveMsg('');
+      let ok = 0, err = 0;
+      for (const id of offSelected) {
+        try {
+          const r = await fetch(AUTORESPONDER_URL + '/allegro/offer/' + id + '/description', {
+            method: 'PUT',
+            headers: {'Content-Type': 'application/json', 'x-api-key': wKey || AUTORESPONDER_KEY},
+            body: JSON.stringify({kontoId: offKonto, description: desc})
+          });
+          const d = await r.json();
+          if (d.ok) ok++; else { err++; console.warn('Błąd oferty ' + id, d.error); }
+        } catch(e) { err++; }
+      }
+      setOffSaveMsg('✅ Zaktualizowano: ' + ok + (err ? ' ❌ Błędy: ' + err : ''));
+      setOffSaving(false);
+    }
+
+    return /*#__PURE__*/React.createElement("div", {style:{marginTop:16,borderTop:'1px solid #1a3a1a',paddingTop:16}},
+      /*#__PURE__*/React.createElement("div", {style:{fontWeight:700,fontSize:14,color:'#7acfdf',marginBottom:12}}, "✏️ Edycja opisów ofert Allegro"),
+      /*#__PURE__*/React.createElement("div", {style:{display:'flex',gap:8,marginBottom:12,flexWrap:'wrap'}},
+        ['arlis_pl','favo5','staroleska_pl','everis_pl'].map(k => /*#__PURE__*/React.createElement("button", {
+          key:k, onClick:()=>{setOffKonto(k);setOffList([]);setOffSelected(new Set());setOffPreview(null);},
+          style:{padding:'4px 12px',fontSize:12,borderRadius:4,border:'1px solid '+(offKonto===k?'#5a9a5a':'#2a4a2a'),background:offKonto===k?'#1a3a1a':'#0a1a0a',color:offKonto===k?'#7acf7a':'#4a7a4a',cursor:'pointer'}
+        }, k))
+      ),
+      /*#__PURE__*/React.createElement("button", {
+        onClick:loadOffers, disabled:offLoading,
+        style:{padding:'6px 16px',fontSize:13,background:'#1a2a3a',border:'1px solid #3a6a8a',borderRadius:5,color:'#7acfdf',cursor:'pointer',marginBottom:12}
+      }, offLoading?'⏳ Ładuję...':'🔄 Pobierz aukcje'),
+      offErr&&/*#__PURE__*/React.createElement("div",{style:{color:'#cf7a7a',fontSize:12,marginBottom:8}}, "❌ "+offErr),
+      offList.length>0&&/*#__PURE__*/React.createElement("div",{style:{marginBottom:12}},
+        /*#__PURE__*/React.createElement("div",{style:{fontSize:11,color:'#5a9a5a',marginBottom:6}}, offList.length+" aukcji — kliknij aby zobaczyć opis, zaznacz checkbox aby zaktualizować"),
+        offList.map(o=>/*#__PURE__*/React.createElement("div",{
+          key:o.id,
+          style:{display:'flex',alignItems:'center',gap:8,padding:'5px 8px',background:offSelected.has(o.id)?'#0a2a0a':'#080f10',border:'1px solid '+(offSelected.has(o.id)?'#2a6a2a':'#1a2a2a'),borderRadius:4,marginBottom:4,cursor:'pointer'}
+        },
+          /*#__PURE__*/React.createElement("input",{
+            type:"checkbox", checked:offSelected.has(o.id),
+            onChange:e=>{e.stopPropagation();const s=new Set(offSelected);s.has(o.id)?s.delete(o.id):s.add(o.id);setOffSelected(s);}
+          }),
+          /*#__PURE__*/React.createElement("span",{
+            style:{flex:1,fontSize:12,color:'#7acfdf',cursor:'pointer'},
+            onClick:()=>loadDescription(o.id)
+          }, o.name),
+          /*#__PURE__*/React.createElement("span",{style:{fontSize:10,color:'#3a6a6a',fontFamily:'monospace'}}, o.id)
+        ))
+      ),
+      offPreview&&/*#__PURE__*/React.createElement("div",{style:{marginBottom:8,fontSize:11,color:'#5a9a5a'}}, "📄 Opis: ",/*#__PURE__*/React.createElement("b",null,offPreview.name)),
+      /*#__PURE__*/React.createElement("div",{style:{fontSize:12,color:'#5a7a5a',marginBottom:4}}, "Opis w formacie JSON (bloki Allegro) — wklej lub edytuj:"),
+      /*#__PURE__*/React.createElement("textarea",{
+        value:offDescription, onChange:e=>setOffDescription(e.target.value),
+        placeholder:'{\n  "sections": [\n    {\n      "items": [\n        {"type": "TEXT", "content": "<p>Twój opis</p>"}\n      ]\n    }\n  ]\n}',
+        style:{width:'100%',minHeight:200,background:'#080f10',color:'#7acfdf',border:'1px solid #2a4a4a',borderRadius:5,padding:10,fontSize:12,fontFamily:'monospace',boxSizing:'border-box',marginBottom:8}
+      }),
+      /*#__PURE__*/React.createElement("div",{style:{display:'flex',gap:8,alignItems:'center'}},
+        /*#__PURE__*/React.createElement("button",{
+          onClick:saveDescriptions, disabled:offSaving,
+          style:{padding:'8px 18px',fontSize:13,background:'#1a3a1a',border:'1px solid #3a8a3a',borderRadius:5,color:'#7acf7a',cursor:'pointer',fontWeight:700}
+        }, offSaving?'⏳ Zapisuję...':'💾 Zaktualizuj zaznaczone ('+offSelected.size+')'),
+        offSaveMsg&&/*#__PURE__*/React.createElement("span",{style:{fontSize:12,color:'#7acf7a'}}, offSaveMsg)
+      )
+    );
+  })())), tab === "kalk" && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: '16px'
     }
