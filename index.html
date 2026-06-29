@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260628.204</title>
+<title>MosquitoApp v20260629.200</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260628.204';
+   window.__MOSK_VERSION='20260629.200';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -16834,6 +16834,10 @@ function App() {
     const matyArlis = zamMies.filter(function (i) {
       return isMata(i) && (i.kontoId === 'arlis_pl' || i.kontoId === 'arlis');
     });
+    const calcMatyWart = function(list) {
+      return list.filter(isMataDuza).reduce(function(s,i){return s+(parseInt((i.pozycje&&i.pozycje.length>0?i.pozycje.reduce(function(a,p){return a+(parseInt(p.ilosc)||1);},0):1))||1)*AVG_DUZA;},0)
+           + list.filter(isMataMala).reduce(function(s,i){return s+(parseInt((i.pozycje&&i.pozycje.length>0?i.pozycje.reduce(function(a,p){return a+(parseInt(p.ilosc)||1);},0):1))||1)*AVG_MALA;},0);
+    };
     // ── KOSMETYKI — definicja kategorii ──
     const KAT = [{
       nazwa: 'Pomada broda',
@@ -17308,7 +17312,7 @@ function App() {
       style: {
         color: '#9fcf9f'
       }
-    }, matyFavo.length, " zam. / ", sumWart(matyFavo).toFixed(2), " zł")), /*#__PURE__*/React.createElement("div", {
+    }, matyFavo.length, " zam. / ", calcMatyWart(matyFavo).toFixed(2), " zł")), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         justifyContent: 'space-between',
@@ -17318,7 +17322,7 @@ function App() {
       style: {
         color: '#9fcf9f'
       }
-    }, matyArlis.length, " zam. / ", sumWart(matyArlis).toFixed(2), " zł")))), /*#__PURE__*/React.createElement("div", {
+    }, matyArlis.length, " zam. / ", calcMatyWart(matyArlis).toFixed(2), " zł")))), /*#__PURE__*/React.createElement("div", {
       style: {
         background: '#0a0a1a',
         border: '1px solid #2a2a5a',
@@ -26015,20 +26019,4 @@ function App() {
       border: "1px solid #2a4a2a",
       color: "#5a8a5a"
     }
-  }, "Anuluj"), /*#__PURE__*/React.createElement("button", {
-    onClick: sendMailConfirmed,
-    style: {
-      flex: 2,
-      padding: "8px",
-      fontSize: 14,
-      fontWeight: 700,
-      borderRadius: 6,
-      cursor: "pointer",
-      background: "#1a2a4a",
-      border: "1px solid #2a4a8a",
-      color: "#9aafdf"
-    }
-  }, "✉️ Wyślij")))));
-}
-ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(React.StrictMode, null, React.createElement(App)));</script>
-</body></html>
+  }, "Anuluj"), /*#__PURE__*/React.createElement("button"
