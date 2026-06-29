@@ -19270,11 +19270,22 @@ function App() {
       var results = [];
       var totalObwodCM = 0;
       lines.forEach(function(line) {
-        var m = line.match(/(\d+[.,]?\d*)\s*[\/x×]\s*(\d+[.,]?\d*)\s*(\d+)?\s*(?:szt|sz|x)?/i);
-        if (!m) return;
-        var szer = parseFloat(m[1].replace(',','.'));
-        var wys = parseFloat(m[2].replace(',','.'));
-        var szt = parseInt(m[3]) || 1;
+        var szer, wys, szt = 1;
+        // Format: "wys N x szer N" lub "szer N x wys N" (z opcjonalnym "wymiar")
+        var mWysSzer = line.match(/wys\s+(\d+[.,]?\d*)\s*[x×]\s*szer\s+(\d+[.,]?\d*)/i);
+        var mSzerWys = line.match(/szer\s+(\d+[.,]?\d*)\s*[x×]\s*wys\s+(\d+[.,]?\d*)/i);
+        if (mWysSzer) { wys = parseFloat(mWysSzer[1].replace(',','.')); szer = parseFloat(mWysSzer[2].replace(',','.')); }
+        else if (mSzerWys) { szer = parseFloat(mSzerWys[1].replace(',','.')); wys = parseFloat(mSzerWys[2].replace(',','.')); }
+        else {
+          // Klasyczny format: N/N lub N x N (bez słów między)
+          var mStd = line.match(/(\d+[.,]?\d*)\s*[\/x×]\s*(\d+[.,]?\d*)/i);
+          if (!mStd) return;
+          szer = parseFloat(mStd[1].replace(',','.'));
+          wys = parseFloat(mStd[2].replace(',','.'));
+        }
+        // Liczba sztuk: szukaj liczby po "x N szt" lub samego N szt
+        var mSzt = line.match(/(\d+)\s*(?:szt\.?|sz\.?|sztuk)/i) || line.match(/x\s*(\d+)\s*$/i);
+        if (mSzt) szt = parseInt(mSzt[1]) || 1;
         var obwodCM = (szer + wys) * 2;
         var obwodTotal = obwodCM * szt;
         var unitsRaw = obwodTotal / 10;
