@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260629.206</title>
+<title>MosquitoApp v20260629.207</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260629.206';
+   window.__MOSK_VERSION='20260629.207';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -4552,7 +4552,7 @@ function App() {
       imie: src.klientImie || '',
       kwota: src.totalAmount || src.kwota || '',
       opis: imp?.offerNames || order?.pozycje?.map(p => `Moskitiera ${p.szerokosc}×${p.wysokosc}cm`).join(', ') || 'Moskitiera na wymiar',
-      vat: 23,
+      vat: (function(n){ return /^[A-Z]{2}/.test(n) && n !== 'PL' ? 0 : 23; })((src.nabywcaNip||src.klientKraj||'').replace(/[^A-Za-z]/g,'')),
       platnosc,
       sellDate,
       terminPlatnosci: sellDate,
@@ -24394,7 +24394,7 @@ function App() {
     React.createElement("span", {className:"lbl"}, "Kraj nabywcy"),
     React.createElement("input", {
       value: fakModal.form.krajNabywcy || 'PL',
-      onChange: e => setFakModal(m => ({...m, form:{...m.form, krajNabywcy:e.target.value.toUpperCase()}})),
+      onChange: e => setFakModal(m => ({...m, form:{...m.form, krajNabywcy:e.target.value.toUpperCase(), vat:e.target.value.toUpperCase()!=='PL'&&e.target.value.trim()!==''?0:23}})),
       maxLength: 2,
       placeholder: "PL / CZ / DE...",
       style:{width:'100%',padding:'6px 10px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#9acf9a',fontSize:13}
