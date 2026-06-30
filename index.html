@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260629.207</title>
+<title>MosquitoApp v20260629.208</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260629.207';
+   window.__MOSK_VERSION='20260629.208';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -4757,7 +4757,7 @@ function App() {
           positions: f.pozycjeAllegro && f.pozycjeAllegro.length > 0 ? f.pozycjeAllegro.map(p => {
             const qty = parseFloat(p.ilosc || p.quantity) || 1;
             const cenaJedn = parseFloat(p.cena || p.price || p.total_price_gross) || 0;
-            const vat = parseInt(p.tax || p.vatPct || f.vat) || 23;
+            const vat = (v => v === 0 ? 0 : v || 23)(parseInt(p.tax != null ? p.tax : p.vatPct != null ? p.vatPct : f.vat));
             // ceny z Allegro są brutto; tryb 'netto' tylko gdy jawnie ustawiony w szablonie
             const isBrutto = p.tryb !== 'netto' && f.trybCen !== 'netto';
             const gross = isBrutto ? Math.round(cenaJedn * qty * 100) / 100 : Math.round(cenaJedn * qty * (1 + vat / 100) * 100) / 100;
@@ -4771,7 +4771,7 @@ function App() {
             name: f.opis,
             quantity: 1,
             total_price_gross: kwota,
-            tax: parseInt(f.vat) || 23
+            tax: f.vat === 0 ? 0 : parseInt(f.vat) || 23
           }]
         }
       };
