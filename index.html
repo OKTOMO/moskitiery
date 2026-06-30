@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260629.200</title>
+<title>MosquitoApp v20260629.201</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260629.200';
+   window.__MOSK_VERSION='20260629.201';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -4556,7 +4556,9 @@ function App() {
       platnosc,
       sellDate,
       terminPlatnosci: sellDate,
-      _deliveryCost: parseFloat(imp?.deliveryCost || 0)
+      _deliveryCost: parseFloat(imp?.deliveryCost || 0),
+      waluta: (function(n){ return n.startsWith('CZ')?'CZK':n.startsWith('DE')||n.startsWith('AT')||n.startsWith('FR')||n.startsWith('IT')||n.startsWith('ES')||n.startsWith('NL')?'EUR':'PLN'; })(src.nabywcaNip||''),
+      krajNabywcy: (function(n){ return /^[A-Z]{2}/.test(n)?n.slice(0,2):'PL'; })(src.nabywcaNip||src.klientKraj||'')
     };
     const _allegroId = imp?.allegroOrderId || order?.allegroOrderId || '';
     const _hasMeaningfulId = _allegroId && !_allegroId.startsWith('manual_');
@@ -4739,7 +4741,7 @@ function App() {
           status: f.platnosc === 'przelew' ? 'paid' : 'issued',
           paid: f.platnosc === 'przelew' ? String(parseFloat(f.kwota || 0).toFixed(2)) : '0',
           paid_date: f.platnosc === 'przelew' ? f.sellDate || new Date().toISOString().slice(0, 10) : null,
-          currency: 'PLN',
+          currency: f.waluta || 'PLN',
           department_id: deptId,
           oid: order?.numerZlecenia || fakModal.imp?.allegroOrderId || '',
           description: f.uwagi || '',
@@ -4751,6 +4753,7 @@ function App() {
           buyer_street: f.ulica,
           buyer_post_code: f.kod,
           buyer_city: f.miasto,
+          buyer_country: f.krajNabywcy || 'PL',
           positions: f.pozycjeAllegro && f.pozycjeAllegro.length > 0 ? f.pozycjeAllegro.map(p => {
             const qty = parseFloat(p.ilosc || p.quantity) || 1;
             const cenaJedn = parseFloat(p.cena || p.price || p.total_price_gross) || 0;
@@ -24373,6 +24376,30 @@ function App() {
       fontSize: 13
     }
   })))), /*#__PURE__*/React.createElement("div", {
+    style: { display:'flex', gap:10, marginBottom:10 }
+  },
+  React.createElement("div", { style:{flex:1} },
+    React.createElement("span", {className:"lbl"}, "Waluta"),
+    React.createElement("select", {
+      value: fakModal.form.waluta || 'PLN',
+      onChange: e => setFakModal(m => ({...m, form:{...m.form, waluta:e.target.value}})),
+      style:{width:'100%',padding:'6px 10px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#9acf9a',fontSize:13}
+    },
+      React.createElement("option",{value:'PLN'},"PLN — złoty"),
+      React.createElement("option",{value:'CZK'},"CZK — korona czeska"),
+      React.createElement("option",{value:'EUR'},"EUR — euro")
+    )
+  ),
+  React.createElement("div", { style:{flex:1} },
+    React.createElement("span", {className:"lbl"}, "Kraj nabywcy"),
+    React.createElement("input", {
+      value: fakModal.form.krajNabywcy || 'PL',
+      onChange: e => setFakModal(m => ({...m, form:{...m.form, krajNabywcy:e.target.value.toUpperCase()}})),
+      maxLength: 2,
+      placeholder: "PL / CZ / DE...",
+      style:{width:'100%',padding:'6px 10px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#9acf9a',fontSize:13}
+    })
+  )), /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: 10
     }
