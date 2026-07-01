@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260629.210</title>
+<title>MosquitoApp v20260629.211</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260629.210';
+   window.__MOSK_VERSION='20260629.211';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -19276,8 +19276,8 @@ function App() {
     }
     lines.forEach(function(line){
       var l=line.trim();
-      var mH=l.match(/wysoko[sś][sśc][ćc]\w*\s*[-:]\s*(\d+[.,]?\d*)\s*(?:cm)?/i);
-      var mW=l.match(/szeroko[sś][sśc][ćc]\w*\s*[-:]\s*(\d+[.,]?\d*)\s*(?:cm)?/i);
+      var mH=l.match(/wysoko\S*\s*[-:–]\s*(\d+[.,]?\d*)\s*(?:cm)?/i);
+      var mW=l.match(/szeroko\S*\s*[-:–]\s*(\d+[.,]?\d*)\s*(?:cm)?/i);
       if(mH){if(pendingWys!==null&&pendingSzer!==null)flushPending();pendingWys=parseFloat(mH[1].replace(',','.'));return;}
       if(mW){pendingSzer=parseFloat(mW[1].replace(',','.'));if(pendingWys!==null&&pendingSzer!==null)flushPending();return;}
       if(pendingWys!==null||pendingSzer!==null)flushPending();
