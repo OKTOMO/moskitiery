@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260629.209</title>
+<title>MosquitoApp v20260629.210</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260629.209';
+   window.__MOSK_VERSION='20260629.210';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -19284,9 +19284,9 @@ function App() {
       var szer,wys,szt=1;
       var mWS=l.match(/wys\s+(\d+[.,]?\d*)\s*[x×]\s*szer\s+(\d+[.,]?\d*)/i);
       var mSW=l.match(/szer\s+(\d+[.,]?\d*)\s*[x×]\s*wys\s+(\d+[.,]?\d*)/i);
-      if(mWS){wys=parseFloat(mWS[1].replace(',','.'));szer=parseFloat(mWS[2].replace(',','.');}
-      else if(mSW){szer=parseFloat(mSW[1].replace(',','.'));wys=parseFloat(mSW[2].replace(',','.');}
-      else{var mS=l.match(/(\d+[.,]?\d*)\s*[\/x×]\s*(\d+[.,]?\d*)/i);if(!mS)return;szer=parseFloat(mS[1].replace(',','.'));wys=parseFloat(mS[2].replace(',','.');}
+      if(mWS){wys=parseFloat(mWS[1].replace(',','.'));szer=parseFloat(mWS[2].replace(',','.'));}
+      else if(mSW){szer=parseFloat(mSW[1].replace(',','.'));wys=parseFloat(mSW[2].replace(',','.'));}
+      else{var mS=l.match(/(\d+[.,]?\d*)\s*[\/x×]\s*(\d+[.,]?\d*)/i);if(!mS)return;szer=parseFloat(mS[1].replace(',','.'));wys=parseFloat(mS[2].replace(',','.'));}
       var mSzt=l.match(/(\d+)\s*(?:szt\.?|sztuk)/i);if(mSzt)szt=parseInt(mSzt[1])||1;
       if(!szer||!wys||isNaN(szer)||isNaN(wys))return;
       var obwodCM=(szer+wys)*2;var obwodTotal=obwodCM*szt;totalObwodCM+=obwodTotal;
