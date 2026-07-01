@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260629.208</title>
+<title>MosquitoApp v20260629.209</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260629.208';
+   window.__MOSK_VERSION='20260629.209';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -19265,18 +19265,34 @@ function App() {
     var wycText = wycenaText || '';
     var lines = wycText.split('\n').filter(function(l){return l.trim();});
     var results = []; var totalObwodCM = 0;
+    var pendingWys=null,pendingSzer=null,pendingSzt=1;
+    function flushPending(){
+      if(pendingWys!==null&&pendingSzer!==null){
+        var ob=(pendingSzer+pendingWys)*2,obt=ob*pendingSzt;
+        totalObwodCM+=obt;
+        results.push({szer:pendingSzer,wys:pendingWys,szt:pendingSzt,obwodCM:ob.toFixed(1),unitsRaw:(obt/10).toFixed(2)});
+      }
+      pendingWys=null;pendingSzer=null;pendingSzt=1;
+    }
     lines.forEach(function(line){
-      var szer, wys, szt = 1;
-      var mWS = line.match(/wys\s+(\d+[.,]?\d*)\s*[x×]\s*szer\s+(\d+[.,]?\d*)/i);
-      var mSW = line.match(/szer\s+(\d+[.,]?\d*)\s*[x×]\s*wys\s+(\d+[.,]?\d*)/i);
-      if (mWS) { wys=parseFloat(mWS[1].replace(',','.')); szer=parseFloat(mWS[2].replace(',','.')); }
-      else if (mSW) { szer=parseFloat(mSW[1].replace(',','.')); wys=parseFloat(mSW[2].replace(',','.')); }
-      else { var mS=line.match(/(\d+[.,]?\d*)\s*[\/x×]\s*(\d+[.,]?\d*)/i); if(!mS)return; szer=parseFloat(mS[1].replace(',','.')); wys=parseFloat(mS[2].replace(',','.')); }
-      var mSzt=line.match(/(\d+)\s*(?:szt\.?|sztuk)/i); if(mSzt) szt=parseInt(mSzt[1])||1;
+      var l=line.trim();
+      var mH=l.match(/wysoko[sś][sśc][ćc]\w*\s*[-:]\s*(\d+[.,]?\d*)\s*(?:cm)?/i);
+      var mW=l.match(/szeroko[sś][sśc][ćc]\w*\s*[-:]\s*(\d+[.,]?\d*)\s*(?:cm)?/i);
+      if(mH){if(pendingWys!==null&&pendingSzer!==null)flushPending();pendingWys=parseFloat(mH[1].replace(',','.'));return;}
+      if(mW){pendingSzer=parseFloat(mW[1].replace(',','.'));if(pendingWys!==null&&pendingSzer!==null)flushPending();return;}
+      if(pendingWys!==null||pendingSzer!==null)flushPending();
+      var szer,wys,szt=1;
+      var mWS=l.match(/wys\s+(\d+[.,]?\d*)\s*[x×]\s*szer\s+(\d+[.,]?\d*)/i);
+      var mSW=l.match(/szer\s+(\d+[.,]?\d*)\s*[x×]\s*wys\s+(\d+[.,]?\d*)/i);
+      if(mWS){wys=parseFloat(mWS[1].replace(',','.'));szer=parseFloat(mWS[2].replace(',','.');}
+      else if(mSW){szer=parseFloat(mSW[1].replace(',','.'));wys=parseFloat(mSW[2].replace(',','.');}
+      else{var mS=l.match(/(\d+[.,]?\d*)\s*[\/x×]\s*(\d+[.,]?\d*)/i);if(!mS)return;szer=parseFloat(mS[1].replace(',','.'));wys=parseFloat(mS[2].replace(',','.');}
+      var mSzt=l.match(/(\d+)\s*(?:szt\.?|sztuk)/i);if(mSzt)szt=parseInt(mSzt[1])||1;
       if(!szer||!wys||isNaN(szer)||isNaN(wys))return;
-      var obwodCM=(szer+wys)*2; var obwodTotal=obwodCM*szt; totalObwodCM+=obwodTotal;
+      var obwodCM=(szer+wys)*2;var obwodTotal=obwodCM*szt;totalObwodCM+=obwodTotal;
       results.push({szer:szer,wys:wys,szt:szt,obwodCM:obwodCM.toFixed(1),unitsRaw:(obwodTotal/10).toFixed(2)});
     });
+    flushPending();
     var totalUnits=Math.ceil(totalObwodCM/10); var total=totalUnits*3;
     var tableHtml='';
     if(results.length>0){
