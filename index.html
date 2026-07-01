@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260629.212</title>
+<title>MosquitoApp v20260629.213</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260629.212';
+   window.__MOSK_VERSION='20260629.213';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -3346,6 +3346,11 @@ function App() {
     }
     setWiadomosc(imp.buyerMsg || ""); // zawsze czyść przy nowym imporcie
     setWiadomoscDrzwi('');
+    // Auto-wykryj typ (drzwi/okno) z tytułu oferty i wiadomości
+    const _offerL = (imp.offerNames || '').toLowerCase();
+    const _msgL = (imp.buyerMsg || '').toLowerCase();
+    const _isDrzwiImport = _offerL.includes('drzwi') || _offerL.includes('balkon') || _offerL.includes('taras') || _msgL.includes('drzwi') || _msgL.includes('balkon');
+    setParseTyp(_isDrzwiImport ? 'drzwi' : 'okno');
     setImportModal({
       imp,
       mode: kalNum ? "kal" : parsedPozycje ? "parse" : "manual",
