@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260629.214</title>
+<title>MosquitoApp v20260629.215</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260629.214';
+   window.__MOSK_VERSION='20260629.215';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -5205,9 +5205,17 @@ function App() {
       weight: 5
     });
     setExtraParcels([]);
+    // Przywróć createdShipmentId jeśli etykieta już istnieje dla tego zamówienia
+    const _savedShipments = JSON.parse(localStorage.getItem('allegro_shipments') || '{}');
+    const _existingShipment = imp.allegroOrderId ? _savedShipments[imp.allegroOrderId] : null;
+    const _restoredShipmentId = _existingShipment?.shipmentId || null;
+    if (_existingShipment?.extraShipmentIds?.length > 0) {
+      setExtraParcels(_existingShipment.extraShipmentIds.map(id => ({ shipmentId: id, description: '', size: 'A', customSize: { length: 64, width: 38, height: 15, weight: 5 } })));
+    }
     setShipmentModal({
       imp,
-      services: []
+      services: [],
+      createdShipmentId: _restoredShipmentId || undefined
     });
     setShipmentLoading(true);
     setShipmentError("");
