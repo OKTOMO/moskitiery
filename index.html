@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260629.218</title>
+<title>MosquitoApp v20260629.219</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260629.218';
+   window.__MOSK_VERSION='20260629.219';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -25292,18 +25292,17 @@ function App() {
       // Utwórz dodatkowy shipment — pełny format Allegro API (jak główny shipment)
       try {
         const imp = shipmentModal.imp;
-        const totalParcels = 1 + extraParcels.length; // 1 główna + extra
+        const totalParcels = 1 + extraParcels.length;
         const insurancePerParcel = Math.max((parseFloat(imp.kwotaBrutto) || 0) / totalParcels, 1);
-        // Buduj wymiary paczki
-        const _epSize = ep.size === 'custom' ? null : ep.size;
-        const SIZES_DEF = { A: {length:64,width:38,height:8,weight:5}, B: {length:64,width:38,height:19,weight:5}, C: {length:64,width:38,height:41,weight:5} };
-        const szDef = SIZES_DEF[_epSize] || SIZES_DEF['A'];
+        // Sender
+        const _firma = FIRMY_DANE[imp.firma] || FIRMY_DANE['F'];
+        // Wymiary paczki
+        const SIZES_DEF = { A:{length:64,width:38,height:8,weight:5}, B:{length:64,width:38,height:19,weight:5}, C:{length:64,width:38,height:41,weight:5} };
+        const szDef = SIZES_DEF[ep.size] || SIZES_DEF['A'];
         const pkgDims = ep.size === 'custom'
-          ? { weight: { value: ep.customSize.weight || 5, unit: 'KILOGRAMS' }, length: { value: ep.customSize.length || 64, unit: 'CENTIMETER' }, width: { value: ep.customSize.width || 38, unit: 'CENTIMETER' }, height: { value: ep.customSize.height || 10, unit: 'CENTIMETER' } }
-          : { weight: { value: szDef.weight, unit: 'KILOGRAMS' }, length: { value: szDef.length, unit: 'CENTIMETER' }, width: { value: szDef.width, unit: 'CENTIMETER' }, height: { value: szDef.height, unit: 'CENTIMETER' } };
-        // Sender z aktywnej firmy
-        const _firmaKey = imp.kontoId === 'arlis_pl' ? 'AR' : 'F';
-        const _firma = FIRMY_DANE[_firmaKey] || FIRMY_DANE['F'];
+          ? { weight:{value:ep.customSize.weight||5,unit:'KILOGRAMS'}, length:{value:ep.customSize.length||64,unit:'CENTIMETER'}, width:{value:ep.customSize.width||38,unit:'CENTIMETER'}, height:{value:ep.customSize.height||10,unit:'CENTIMETER'} }
+          : { weight:{value:szDef.weight,unit:'KILOGRAMS'}, length:{value:szDef.length,unit:'CENTIMETER'}, width:{value:szDef.width,unit:'CENTIMETER'}, height:{value:szDef.height,unit:'CENTIMETER'} };
+        // Receiver — rozdziel ulicę i numer
         const rawStreet = (imp.klientUlica || '').trim();
         const m1 = rawStreet.match(/^(.+?)\s+(\d+[a-zA-Z]?(?:\/\d+[a-zA-Z]?)?)$/);
         const m2 = !m1 && rawStreet.match(/^([a-zA-ZąćęłńóśźżĄĆĘŁŃŚŹŻ\s\.\-]+?)(\d+.*)$/);
@@ -25311,18 +25310,21 @@ function App() {
         const parsedStreet = mx ? mx[1].trim() : rawStreet;
         const parsedBuilding = mx ? mx[2].trim() : undefined;
         const fullStreet = parsedBuilding ? parsedStreet + ' ' + parsedBuilding : rawStreet;
+        // Pobierz credentialsId z aktualnie wybranej usługi
+        const _svc = (shipmentModal.services || []).find(s => s.id === shipmentServiceId) || {};
         const body = {
           commandId: crypto.randomUUID(),
           input: {
-            orderId: imp.allegroOrderId,
-            service: { id: shipmentServiceId },
+            orders: [{ orderId: imp.allegroOrderId }],
+            deliveryMethodId: shipmentServiceId,
+            ...(_svc.credentialsId ? { credentialsId: _svc.credentialsId } : {}),
             sender: {
               name: _firma.nazwa,
               street: _firma.adres,
               postalCode: _firma.kod,
               city: _firma.miasto,
               countryCode: 'PL',
-              phone: _firma.telefon || '+48605361191',
+              phone: '+48605361191',
               email: _firma.email
             },
             receiver: {
@@ -25335,7 +25337,7 @@ function App() {
               phone: imp.telefon || '',
               email: imp.klientEmail || ''
             },
-            parcels: [{ type: 'PACKAGE', ...pkgDims, textOnLabel: ep.description || shipmentDescription || '' }],
+            packages: [{ type: 'PACKAGE', ...pkgDims, textOnLabel: ep.description || shipmentDescription || '' }],
             insurance: { amount: insurancePerParcel.toFixed(2), currency: 'PLN' }
           }
         };
