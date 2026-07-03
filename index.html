@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260629.222</title>
+<title>MosquitoApp v20260629.223</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260629.222';
+   window.__MOSK_VERSION='20260629.223';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2112,6 +2112,10 @@ function App() {
   const [offSaveMsg, setOffSaveMsg] = useState('');
   const [offMode, setOffMode] = useState('visual');
   const [wycenaText, setWycenaText] = useState('');
+  const [wycKolorRamki, setWycKolorRamki] = useState('Antracyt');
+  const [wycKolorSiatki, setWycKolorSiatki] = useState('Czarna');
+  const [wycFelc, setWycFelc] = useState('2');
+  const [wycAdres, setWycAdres] = useState({imie:'',ulica:'',kod:'',miasto:''});
   const [offSaveMode, setOffSaveMode] = useState('textonly');
   const [offPreviewSecs, setOffPreviewSecs] = useState(new Set());
   const [offStructures, setOffStructures] = useState({});
@@ -19331,6 +19335,33 @@ function App() {
         onChange: function(e){setWycenaText(e.target.value);},
         style:{width:'100%',minHeight:160,background:'#0a1a1a',color:'#7acfdf',border:'1px solid #2a4a4a',borderRadius:6,padding:10,fontSize:13,fontFamily:'monospace',boxSizing:'border-box',marginBottom:10,resize:'vertical'}
       }),
+      React.createElement("div",{style:{display:'grid',gridTemplateColumns:'1fr 1fr 80px',gap:8,marginBottom:8}},
+        React.createElement("div",null,
+          React.createElement("div",{style:{fontSize:11,color:'#5a8a8a',marginBottom:3}},"Kolor ramki"),
+          React.createElement("select",{value:wycKolorRamki,onChange:function(e){setWycKolorRamki(e.target.value);},style:{width:'100%',padding:'5px 8px',background:'#0a1a1a',color:'#7acfdf',border:'1px solid #2a4a4a',borderRadius:5,fontSize:13}},
+            React.createElement('option',{value:'Antracyt'},'Antracyt'),React.createElement('option',{value:'Biały'},'Biały'),React.createElement('option',{value:'Brąz'},'Brąz'),React.createElement('option',{value:'Czarny'},'Czarny'),React.createElement('option',{value:'Złoty Dąb'},'Złoty Dąb'),React.createElement('option',{value:'Ciemny Dąb'},'Ciemny Dąb'),React.createElement('option',{value:'Turner Oak'},'Turner Oak'),React.createElement('option',{value:'Orzech'},'Orzech'),React.createElement('option',{value:'Winchester'},'Winchester'),React.createElement('option',{value:'Mahoń'},'Mahoń'),null)
+        ),
+        React.createElement("div",null,
+          React.createElement("div",{style:{fontSize:11,color:'#5a8a8a',marginBottom:3}},"Kolor siatki"),
+          React.createElement("select",{value:wycKolorSiatki,onChange:function(e){setWycKolorSiatki(e.target.value);},style:{width:'100%',padding:'5px 8px',background:'#0a1a1a',color:'#7acfdf',border:'1px solid #2a4a4a',borderRadius:5,fontSize:13}},
+            React.createElement('option',{value:'Czarna'},'Czarna'),React.createElement('option',{value:'Szara'},'Szara'),null)
+        ),
+        React.createElement("div",null,
+          React.createElement("div",{style:{fontSize:11,color:'#5a8a8a',marginBottom:3}},"Felc (cm)"),
+          React.createElement("input",{type:"number",value:wycFelc,onChange:function(e){setWycFelc(e.target.value);},step:"0.5",min:"0",style:{width:'100%',padding:'5px 8px',background:'#0a1a1a',color:'#7acfdf',border:'1px solid #2a4a4a',borderRadius:5,fontSize:13}})
+        )
+      ),
+      React.createElement("div",{style:{background:'#060e10',border:'1px solid #1a3a3a',borderRadius:6,padding:'8px 10px',marginBottom:10}},
+        React.createElement("div",{style:{fontSize:11,color:'#5a8a8a',marginBottom:6}},"📍 Adres klienta (opcjonalnie — przeniesie się do zlecenia)"),
+        React.createElement("div",{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,marginBottom:6}},
+          React.createElement("input",{placeholder:"Imię i nazwisko",value:wycAdres.imie,onChange:function(e){setWycAdres(function(p){return {...p,imie:e.target.value};});},style:{padding:'5px 8px',background:'#0a1a1a',color:'#cfdfcf',border:'1px solid #2a4a4a',borderRadius:5,fontSize:13}}),
+          React.createElement("input",{placeholder:"Ulica i numer",value:wycAdres.ulica,onChange:function(e){setWycAdres(function(p){return {...p,ulica:e.target.value};});},style:{padding:'5px 8px',background:'#0a1a1a',color:'#cfdfcf',border:'1px solid #2a4a4a',borderRadius:5,fontSize:13}})
+        ),
+        React.createElement("div",{style:{display:'grid',gridTemplateColumns:'100px 1fr',gap:6}},
+          React.createElement("input",{placeholder:"Kod (00-000)",value:wycAdres.kod,onChange:function(e){setWycAdres(function(p){return {...p,kod:e.target.value};});},style:{padding:'5px 8px',background:'#0a1a1a',color:'#cfdfcf',border:'1px solid #2a4a4a',borderRadius:5,fontSize:13}}),
+          React.createElement("input",{placeholder:"Miasto",value:wycAdres.miasto,onChange:function(e){setWycAdres(function(p){return {...p,miasto:e.target.value};});},style:{padding:'5px 8px',background:'#0a1a1a',color:'#cfdfcf',border:'1px solid #2a4a4a',borderRadius:5,fontSize:13}})
+        )
+      ),
       results.length>0
         ? React.createElement("div",{dangerouslySetInnerHTML:{__html:tableHtml},style:{marginTop:8}})
         : wycText.trim()
@@ -19339,16 +19370,21 @@ function App() {
       results.length > 0 && React.createElement("button", {
         onClick: function() {
           var newForm = pustyForm(form.firma);
+          var felcVal = parseFloat(wycFelc) || 2;
           newForm.pozycje = results.map(function(r) {
             return {
               szerokosc: String(r.szer),
               wysokosc: String(r.wys),
-              glebokosc: String(DOMYSLNA_GLEBOKOS),
-              kolorRamki: 'Antracyt',
-              kolorSiatki: 'Czarna',
+              glebokosc: String(felcVal !== 2 ? Math.round(felcVal * 10) : DOMYSLNA_GLEBOKOS),
+              kolorRamki: wycKolorRamki || 'Antracyt',
+              kolorSiatki: wycKolorSiatki || 'Czarna',
               ilosc: r.szt || 1
             };
           });
+          if (wycAdres.imie) newForm.klientImie = wycAdres.imie;
+          if (wycAdres.ulica) newForm.klientUlica = wycAdres.ulica;
+          if (wycAdres.kod) newForm.klientKod = wycAdres.kod;
+          if (wycAdres.miasto) newForm.klientMiasto = wycAdres.miasto;
           setForm(newForm);
           setTab('nowe');
         },
