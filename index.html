@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260629.217</title>
+<title>MosquitoApp v20260629.218</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260629.217';
+   window.__MOSK_VERSION='20260629.218';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -25303,7 +25303,7 @@ function App() {
           : { weight: { value: szDef.weight, unit: 'KILOGRAMS' }, length: { value: szDef.length, unit: 'CENTIMETER' }, width: { value: szDef.width, unit: 'CENTIMETER' }, height: { value: szDef.height, unit: 'CENTIMETER' } };
         // Sender z aktywnej firmy
         const _firmaKey = imp.kontoId === 'arlis_pl' ? 'AR' : 'F';
-        const _firma = FIRMY[_firmaKey] || FIRMY['F'];
+        const _firma = FIRMY_DANE[_firmaKey] || FIRMY_DANE['F'];
         const rawStreet = (imp.klientUlica || '').trim();
         const m1 = rawStreet.match(/^(.+?)\s+(\d+[a-zA-Z]?(?:\/\d+[a-zA-Z]?)?)$/);
         const m2 = !m1 && rawStreet.match(/^([a-zA-ZąćęłńóśźżĄĆĘŁŃŚŹŻ\s\.\-]+?)(\d+.*)$/);
