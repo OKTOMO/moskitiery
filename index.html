@@ -6186,6 +6186,30 @@ function App() {
       return orders;
     }
   }
+  // Otwiera formularz DPD Online z wypelnionymi danymi zamowienia (omija zepsute DPD SOAP API).
+  // Wymaga jednorazowej instalacji userscriptu "dpd-autofill.user.js" (Tampermonkey) w przegladarce.
+  function dpdOtworzOnline() {
+    if (!dpdModal) return;
+    const o = dpdModal;
+    if (!o.klientUlica || !o.klientKod || !o.klientMiasto) {
+      alert('Brak adresu klienta w zamówieniu — uzupełnij przed otwarciem DPD Online.');
+      return;
+    }
+    const payload = {
+      imie: o.klientImie || '',
+      ulica: o.klientUlica,
+      kod: o.klientKod,
+      miasto: o.klientMiasto,
+      telefon: o.telefon || '',
+      referencja: o.numerZlecenia || '',
+      waga: dpdWaga || '5',
+      sizeX: '10',
+      sizeY: '10',
+      sizeZ: '150'
+    };
+    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+    window.open('https://online.dpd.com.pl/shipment/editPackagePrepare.do?serial=false#dpdauto=' + encoded, '_blank');
+  }
   async function dpdNadaj() {
     if (!dpdModal) return;
     const o = dpdModal;
@@ -23983,6 +24007,18 @@ function App() {
       cursor: "pointer"
     }
   }, "Anuluj"), /*#__PURE__*/React.createElement("button", {
+    onClick: dpdOtworzOnline,
+    style: {
+      padding: "8px 18px",
+      borderRadius: 6,
+      border: "1px solid #4a7a9a",
+      background: "#1a3a5a",
+      color: "#7fbfdf",
+      cursor: "pointer",
+      fontWeight: 700,
+      fontSize: 14
+    }
+  }, "🌐 Otwórz w DPD Online"), /*#__PURE__*/React.createElement("button", {
     onClick: dpdNadaj,
     disabled: dpdLoading,
     style: {
