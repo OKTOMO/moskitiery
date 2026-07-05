@@ -2418,7 +2418,12 @@ function App() {
   const [kalInputNumer, setKalInputNumer] = useState(""); // pole wpisywania nr kalkulatora
   const [kalImporting, setKalImporting] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState(""); // wartosc widoczna w polu, aktualizowana natychmiast
+  const [search, setSearch] = useState(""); // wartosc uzywana do filtrowania listy zamowien, z opoznieniem (debounce)
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput), 300);
+    return () => clearTimeout(t);
+  }, [searchInput]);
   const [filterMonth, setFilterMonth] = useState("");
   const [filterKolor, setFilterKolor] = useState("");
   const [filterFirma, setFilterFirma] = useState("");
@@ -15437,8 +15442,8 @@ function App() {
       alignItems: "center"
     }
   }, /*#__PURE__*/React.createElement("input", {
-    value: search,
-    onChange: e => setSearch(e.target.value),
+    value: searchInput,
+    onChange: e => setSearchInput(e.target.value),
     placeholder: "🔍 Szukaj...",
     style: {
       width: 220
