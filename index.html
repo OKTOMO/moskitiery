@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260706.230</title>
+<title>MosquitoApp v20260706.231</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260706.230';
+   window.__MOSK_VERSION='20260706.231';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -1988,16 +1988,16 @@ function App() {
     if (!kwotaBrutto || !pozycje || pozycje.length === 0) return null;
     const kwota = parseFloat(kwotaBrutto) || 0;
     if (kwota <= 0) return null;
-    // Licz jednostki z pozycji (obwód w mb / 0.058 ≈ jednostki po 3 zł)
+    // Licz jednostki z pozycji (obwód w cm / 10 = jednostki po 3 zł)
     let jedn = 0;
     pozycje.forEach(p => {
       const sz = parseFloat(p.szerokosc) || 0;
       const wys = parseFloat(p.wysokosc) || 0;
       const il = parseInt(p.ilosc) || 1;
       if (sz > 0 && wys > 0) {
-        // obwód = 2*(sz+wys) cm → mb, jedn = obwód / 5.8 * 100
-        const obwod = 2 * (sz + wys) / 100; // mb
-        const j = Math.round(obwod / 0.058);
+        // obwód w cm / 10 = jednostki (np. 52x172cm → obwód 448cm → 45 jedn.)
+        const obwod = 2 * (sz + wys); // cm
+        const j = Math.round(obwod / 10);
         jedn += j * il;
       }
     });
@@ -9613,8 +9613,8 @@ function App() {
           const wy = parseFloat(p.wysokosc) || 0;
           const il = parseInt(p.ilosc) || 1;
           if (sz > 0 && wy > 0) {
-            const obwod = 2 * (sz + wy) / 100; // mb
-            potrzebne += Math.round(obwod / 0.058) * il;
+            const obwod = 2 * (sz + wy); // cm
+            potrzebne += Math.round(obwod / 10) * il;
           }
         });
         const zaMalo = potrzebne > 0 && potrzebne - ile3 > 1; // klient kupił mniej jednostek niż wychodzi z wymiarów
