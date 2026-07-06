@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260706.228</title>
+<title>MosquitoApp v20260706.230</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260706.228';
+   window.__MOSK_VERSION='20260706.230';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -9598,22 +9598,40 @@ function App() {
         const szt = imp.pozycje.reduce((s, p) => s + (parseInt(p.ilosc) || 1), 0);
         const ile3 = Math.round(jedn / 3);
         if (ile3 <= 0) return null;
-        const roznicaJedn = Math.abs(ile3 - szt);
-        const zgadzaSie = roznicaJedn <= 1; // tolerancja 1 jedn. na zaokrąglenia
+        // Policz ile jednostek POWINNO wyjść z realnych wymiarów podanych przez klienta w wiadomości —
+        // niezależnie od tego, ile faktycznie kupił/zapłacił — żeby wyłapać sytuację, gdy klient pomylił się i wpisał za mało jednostek.
+        let realPoz = null;
+        try {
+          realPoz = parseMultiDimsFromMsg(imp.buyerMsg);
+          if ((!realPoz || realPoz.length === 0) && imp.offerNames) realPoz = [parseDimsFromOfferName(imp.offerNames)].filter(Boolean);
+        } catch (e) {
+          realPoz = null;
+        }
+        let potrzebne = 0;
+        (realPoz || []).forEach(p => {
+          const sz = parseFloat(p.szerokosc) || 0;
+          const wy = parseFloat(p.wysokosc) || 0;
+          const il = parseInt(p.ilosc) || 1;
+          if (sz > 0 && wy > 0) {
+            const obwod = 2 * (sz + wy) / 100; // mb
+            potrzebne += Math.round(obwod / 0.058) * il;
+          }
+        });
+        const zaMalo = potrzebne > 0 && potrzebne - ile3 > 1; // klient kupił mniej jednostek niż wychodzi z wymiarów
         return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
           style: {
             fontSize: 10,
             color: '#7a9a7a',
             marginTop: 1
           }
-        }, "~", ile3, " jedn. × 3 zł (", szt, " szt.)"), /*#__PURE__*/React.createElement("div", {
+        }, "~", ile3, " jedn. × 3 zł (", szt, " szt. kupione)"), potrzebne > 0 && /*#__PURE__*/React.createElement("div", {
           style: {
             fontSize: 10,
-            color: zgadzaSie ? '#5a9a5a' : '#df8a4a',
-            fontWeight: zgadzaSie ? 400 : 700,
+            color: zaMalo ? '#df6a4a' : '#5a9a5a',
+            fontWeight: zaMalo ? 700 : 400,
             marginTop: 1
           }
-        }, zgadzaSie ? "✓ " : "⚠️ ", "wg Allegro zakupiono: ", szt, " jedn.", !zgadzaSie && ` (wycena z ceny wskazuje ${ile3})`));
+        }, zaMalo ? "⚠️ " : "✓ ", "z wymiarów w wiadomości wychodzi ~", potrzebne, " jedn.", zaMalo ? ` — klient kupił tylko ${ile3}, sprawdź czy się nie pomylił!` : null));
       })()), /*#__PURE__*/React.createElement("select", {
         value: as || effStatus,
         onChange: e => {
