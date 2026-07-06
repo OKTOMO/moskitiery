@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260706.231</title>
+<title>MosquitoApp v20260706.232</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260706.231';
+   window.__MOSK_VERSION='20260706.232';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -3118,7 +3118,7 @@ function App() {
       }
     }
     // Format 3: szerokość 65cm, wysokość 135cm / szerokosc: 65 cm
-    const dimRe3 = /(?:szeroko[sś][śc]\w*|szer\.?)\s*[:\-]?\s*(\d{2,3}[,.]?\d*)\s*(?:cm|CM)?\s*[,;]?\s*(?:wysoko[sś][śc]\w*|wys\.?)\s*[:\-]?\s*(\d{2,3}[,.]?\d*)\s*(?:cm|CM)?/gi;
+    const dimRe3 = /(?:szerok[^\d\s,;:\-]*|szer\.)\s*[:\-]?\s*(\d{2,3}[,.]?\d*)\s*(?:cm|CM)?\s*[,;]?\s*(?:wysok[^\d\s,;:\-]*|wys\.)\s*[:\-]?\s*(\d{2,3}[,.]?\d*)\s*(?:cm|CM)?/gi;
     while ((m = dimRe3.exec(msg)) !== null) {
       let s = parseFloat(m[1].replace(",", ".")),
         w = parseFloat(m[2].replace(",", "."));
