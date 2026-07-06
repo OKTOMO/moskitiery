@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260629.223</title>
+<title>MosquitoApp v20260703.227</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
@@ -2031,6 +2031,10 @@ function App() {
   }); // max 5 zapisanych adresów [{label,name,street,zipCode,city,countryCode}]
 
   const [shipmentServiceId, setShipmentServiceId] = useState("");
+  const [shipmentCodOverride, setShipmentCodOverride] = useState(""); // reczna zmiana kwoty pobrania (COD) w etykiecie Allegro; puste = licz automatycznie
+  useEffect(() => {
+    setShipmentCodOverride(""); // resetuj przy kazdym nowym/innym zamowieniu w modalu wysylki
+  }, [shipmentModal?.imp?.allegroOrderId]);
   // ── Import modal state ──
   const [importModal, setImportModal] = useState(null); // {imp, mode, kalNum, kalLoading, kalError, kalData, pozycje}
   const [zamOpenBox, setZamOpenBox] = useState({});
@@ -5564,7 +5568,9 @@ function App() {
     const isPickupPoint = !!imp.pickupPointId;
     const isCOD = (service?.name || '').toLowerCase().includes('pobranie') || (service?.name || '').toLowerCase().includes('cod') || imp.isCOD;
     // imp.codAmount już zawiera kwotaBrutto+deliveryCost (z workera) — nie dodawaj deliveryCost ponownie
-    const codAmount = isCOD ? imp.codAmount ? parseFloat(imp.codAmount) : (parseFloat(imp.kwotaBrutto) || 0) + (parseFloat(imp.deliveryCost) || 0) : 0;
+    const autoCodAmount = isCOD ? imp.codAmount ? parseFloat(imp.codAmount) : (parseFloat(imp.kwotaBrutto) || 0) + (parseFloat(imp.deliveryCost) || 0) : 0;
+    // pozwól recznie nadpisac kwote pobrania w modalu wysylki (shipmentCodOverride)
+    const codAmount = isCOD && shipmentCodOverride !== '' && !isNaN(parseFloat(shipmentCodOverride)) ? parseFloat(shipmentCodOverride) : autoCodAmount;
     console.log('[SHIPMENT] isCOD:', isCOD, 'codAmount:', codAmount, 'serviceName:', service?.name);
     const isInternational = imp.klientKraj && imp.klientKraj !== 'PL' || (service?.name || '').toLowerCase().includes('international');
     const maxWeight = isInternational ? 15 : 25;
@@ -14916,7 +14922,40 @@ function App() {
         fontSize: 12
       }
     }, "⚠️ Automat zagraniczny: limit 57×43×33 cm. Dla większych paczek wybierz ", /*#__PURE__*/React.createElement("strong", null, "kuriera"), ".");
-  })()), /*#__PURE__*/React.createElement("div", {
+  })()), (() => {
+    const _svcCod = shipmentModal.services.find(s => s.id === shipmentServiceId);
+    const _isCod = (_svcCod?.name || '').toLowerCase().includes('pobranie') || (_svcCod?.name || '').toLowerCase().includes('cod') || shipmentModal.imp?.isCOD;
+    if (!_isCod) return null;
+    const _autoAmt = shipmentModal.imp?.codAmount ? parseFloat(shipmentModal.imp.codAmount) : (parseFloat(shipmentModal.imp?.kwotaBrutto) || 0) + (parseFloat(shipmentModal.imp?.deliveryCost) || 0);
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginBottom: 14
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 14,
+        color: "#dfaf4a",
+        marginBottom: 6
+      }
+    }, "💵 Kwota pobrania (COD):"), /*#__PURE__*/React.createElement("input", {
+      type: "number",
+      step: "0.01",
+      min: "0",
+      value: shipmentCodOverride !== '' ? shipmentCodOverride : (isNaN(_autoAmt) ? '' : _autoAmt.toFixed(2)),
+      onChange: e => setShipmentCodOverride(e.target.value),
+      style: {
+        width: "100%",
+        boxSizing: "border-box",
+        background: "#1a1408",
+        border: "1px solid #7a5a0a",
+        borderRadius: 5,
+        color: "#dfaf4a",
+        padding: "6px 10px",
+        fontSize: 14,
+        fontWeight: 700
+      }
+    }));
+  })(), /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: 14
     }
@@ -25215,7 +25254,40 @@ function App() {
   }, shipmentModal.services.map(s => /*#__PURE__*/React.createElement("option", {
     key: s.id,
     value: s.id
-  }, s.name)))), /*#__PURE__*/React.createElement("div", {
+  }, s.name)))), (() => {
+    const _svcCod = shipmentModal.services.find(s => s.id === shipmentServiceId);
+    const _isCod = (_svcCod?.name || '').toLowerCase().includes('pobranie') || (_svcCod?.name || '').toLowerCase().includes('cod') || shipmentModal.imp?.isCOD;
+    if (!_isCod) return null;
+    const _autoAmt = shipmentModal.imp?.codAmount ? parseFloat(shipmentModal.imp.codAmount) : (parseFloat(shipmentModal.imp?.kwotaBrutto) || 0) + (parseFloat(shipmentModal.imp?.deliveryCost) || 0);
+    return /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginBottom: 14
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 13,
+        color: "#dfaf4a",
+        marginBottom: 6
+      }
+    }, "💵 Kwota pobrania (COD):"), /*#__PURE__*/React.createElement("input", {
+      type: "number",
+      step: "0.01",
+      min: "0",
+      value: shipmentCodOverride !== '' ? shipmentCodOverride : (isNaN(_autoAmt) ? '' : _autoAmt.toFixed(2)),
+      onChange: e => setShipmentCodOverride(e.target.value),
+      style: {
+        width: "100%",
+        boxSizing: "border-box",
+        background: "#1a1408",
+        border: "1px solid #7a5a0a",
+        borderRadius: 5,
+        color: "#dfaf4a",
+        padding: "6px 10px",
+        fontSize: 13,
+        fontWeight: 700
+      }
+    }));
+  })(), /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: 14
     }
