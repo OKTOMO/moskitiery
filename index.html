@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260710.234</title>
+<title>MosquitoApp v20260710.235</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260710.234';
+   window.__MOSK_VERSION='20260710.235';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -1702,6 +1702,26 @@ function NowyRzablon({
       ...upd2
     })),
     onStworzFakture: () => {}
+  });
+}
+// Izolowany input wyszukiwania dla zakladki Zlecenia.
+// Trzyma wpisywany tekst w LOKALNYM stanie (nie w App), zeby kazde
+// nacisniecie klawisza nie wymuszalo przerenderowania calej (bardzo duzej)
+// listy zlecen. Dopiero po 300ms ciszy przekazuje wartosc wyzej (onSearch),
+// co powoduje JEDEN re-render App zamiast jednego na kazdy znak.
+function ZleceniaSearchBox(props) {
+  const [value, setValue] = React.useState(props.initialValue || "");
+  React.useEffect(() => {
+    const t = setTimeout(() => props.onSearch(value), 300);
+    return () => clearTimeout(t);
+  }, [value]);
+  return /*#__PURE__*/React.createElement("input", {
+    value: value,
+    onChange: e => setValue(e.target.value),
+    placeholder: "🔍 Szukaj...",
+    style: {
+      width: 220
+    }
   });
 }
 function App() {
@@ -6871,19 +6891,19 @@ function App() {
     };
   }
   const currentProfile = PROFILE.find(p => p.id === activeProfile) || PROFILE[0];
-  const filteredOrders = orders.filter(o => {
+  const filteredOrders = React.useMemo(() => orders.filter(o => {
     if (filterFirma && o.firma !== filterFirma) return false;
     if (filterMonth && getMonth(o.data) !== filterMonth) return false;
     if (filterKolor && !o.pozycje.some(p => p.kolorRamki?.includes(filterKolor))) return false;
     if (filterYear && filterYear !== "wszystkie" && !(o.data && o.data.startsWith(filterYear))) return false;
     if (search && !`${o.numerZlecenia || ""} ${o.klientImie} ${o.klientMiasto}`.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
-  });
-  const months = [...new Set(orders.map(o => getMonth(o.data)))].sort().reverse();
-  const years = [...new Set(orders.map(o => o.data ? o.data.slice(0, 4) : "").filter(Boolean))].sort().reverse();
-  const profileOrders = orders.filter(o => !o.firma || o.firma === currentProfile.id);
-  const statsAll = getStats(profileOrders);
-  const statsFilt = getStats(filteredOrders);
+  }), [orders, filterFirma, filterMonth, filterKolor, filterYear, search]);
+  const months = React.useMemo(() => [...new Set(orders.map(o => getMonth(o.data)))].sort().reverse(), [orders]);
+  const years = React.useMemo(() => [...new Set(orders.map(o => o.data ? o.data.slice(0, 4) : "").filter(Boolean))].sort().reverse(), [orders]);
+  const profileOrders = React.useMemo(() => orders.filter(o => !o.firma || o.firma === currentProfile.id), [orders, currentProfile.id]);
+  const statsAll = React.useMemo(() => getStats(profileOrders), [profileOrders]);
+  const statsFilt = React.useMemo(() => getStats(filteredOrders), [filteredOrders]);
   function exportCSV() {
     const rows = [["Nr zlecenia", "Firma", "Data", "Klient", "Miasto", "Tel", "Szer", "Wys", "Głęb", "Kolor ramki", "Kolor siatki", "Blaszka", "Blaszek", "Linka", "Ilość"]];
     orders.forEach(o => o.pozycje.forEach(p => {
@@ -15562,13 +15582,10 @@ function App() {
       flexWrap: "wrap",
       alignItems: "center"
     }
-  }, /*#__PURE__*/React.createElement("input", {
-    value: searchInput,
-    onChange: e => setSearchInput(e.target.value),
-    placeholder: "🔍 Szukaj...",
-    style: {
-      width: 220
-    }
+  }, /*#__PURE__*/React.createElement(ZleceniaSearchBox, {
+    key: "zlecenia-search",
+    initialValue: searchInput,
+    onSearch: setSearch
   }), /*#__PURE__*/React.createElement("select", {
     value: filterFirma,
     onChange: e => setFilterFirma(e.target.value),
