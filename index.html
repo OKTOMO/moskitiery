@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260706.232</title>
+<title>MosquitoApp v20260710.234</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260706.232';
+   window.__MOSK_VERSION='20260710.234';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2524,6 +2524,11 @@ function App() {
   const [dpdWaga, setDpdWaga] = React.useState('5');
   const [dpdCod, setDpdCod] = React.useState(false);
   const [dpdCodAmount, setDpdCodAmount] = React.useState('');
+  const [dpdSzybkie, setDpdSzybkie] = React.useState({
+    wklejony: '', imie: '', telefon: '', email: '', ulica: '', kod: '', miasto: '',
+    referencja: '', waga: '5', sizeX: '10', sizeY: '10', sizeZ: '150',
+    cod: false, kwotaCod: ''
+  });
   const [dpdError, setDpdError] = React.useState('');
   const [dpdLoading, setDpdLoading] = React.useState(false);
   const [dpdConfig, setDpdConfig] = React.useState(() => JSON.parse(localStorage.getItem('dpd_config') || '{}'));
@@ -6216,7 +6221,60 @@ function App() {
       waga: dpdWaga || '5',
       sizeX: '10',
       sizeY: '10',
-      sizeZ: '150'
+      sizeZ: '150',
+      ...(dpdCod && dpdCodAmount ? { pobranie: true, kwotaPobrania: parseFloat(dpdCodAmount) } : {})
+    };
+    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+    window.open('https://online.dpd.com.pl/shipment/editPackagePrepare.do?serial=false#dpdauto=' + encoded, '_blank');
+  }
+  // Parsuje wklejony blok tekstu (np. z maila) na pola formularza szybkiej wysylki DPD
+  function parseSzybkieDPD() {
+    const tekst = dpdSzybkie.wklejony || '';
+    if (!tekst.trim()) return;
+    const lines = tekst.split('\n').map(l => l.trim()).filter(Boolean);
+    const next = { ...dpdSzybkie };
+    const phoneM = tekst.match(/(?:\+?48[\s-]?)?(\d{3}[\s-]?\d{3}[\s-]?\d{3})\b/);
+    if (phoneM) next.telefon = phoneM[1].replace(/[\s-]/g, '');
+    const emailM = tekst.match(/[\w.+-]+@[\w-]+\.[\w.-]+/);
+    if (emailM) next.email = emailM[0];
+    let kodIdx = -1;
+    for (let i = 0; i < lines.length; i++) {
+      const m = lines[i].match(/(\d{2}-\d{3})\s*(.*)/);
+      if (m) {
+        next.kod = m[1];
+        next.miasto = (m[2] || '').trim() || (lines[i + 1] || '').trim();
+        kodIdx = i;
+        break;
+      }
+    }
+    if (kodIdx > 0) {
+      next.ulica = lines[kodIdx - 1];
+      if (kodIdx > 1) next.imie = lines[0];
+    } else if (lines.length > 0 && !next.imie) {
+      next.imie = lines[0];
+    }
+    setDpdSzybkie(next);
+  }
+  // Otwiera DPD Online z danymi z formularza szybkiej wysylki (bez powiazania ze zleceniem)
+  function dpdOtworzOnlineSzybkie() {
+    const o = dpdSzybkie;
+    if (!o.ulica || !o.kod || !o.miasto) {
+      alert('Uzupelnij ulice, kod pocztowy i miasto przed otwarciem DPD Online.');
+      return;
+    }
+    const payload = {
+      imie: o.imie || '',
+      ulica: o.ulica,
+      kod: o.kod,
+      miasto: o.miasto,
+      telefon: o.telefon || '',
+      email: o.email || '',
+      referencja: o.referencja || '',
+      waga: o.waga || '5',
+      sizeX: o.sizeX || '10',
+      sizeY: o.sizeY || '10',
+      sizeZ: o.sizeZ || '150',
+      ...(o.cod && o.kwotaCod ? { pobranie: true, kwotaPobrania: parseFloat(o.kwotaCod) } : {})
     };
     const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
     window.open('https://online.dpd.com.pl/shipment/editPackagePrepare.do?serial=false#dpdauto=' + encoded, '_blank');
@@ -7656,7 +7714,7 @@ function App() {
       color: '#df7a7a',
       cursor: 'pointer'
     }
-  }, "🔄 Sprawdź ponownie")), [["zamowienia", "📦 Zamówienia"], ["al_zam", "🛒 Allegro"], ["baza", "📋 Zlecenia"], ["zapytania", "📨 KAL"], ["stat", "📊 Stat"], ["produkcja", "🏭 Produkcja"], ["kalk", "🧮 Kalkulator"], ["wycena", "🔢 Wycena"], ["wystaw", "🏪 Wystaw"]].map(([id, l]) => /*#__PURE__*/React.createElement("button", {
+  }, "🔄 Sprawdź ponownie")), [["zamowienia", "📦 Zamówienia"], ["al_zam", "🛒 Allegro"], ["baza", "📋 Zlecenia"], ["zapytania", "📨 KAL"], ["stat", "📊 Stat"], ["produkcja", "🏭 Produkcja"], ["kalk", "🧮 Kalkulator"], ["wycena", "🔢 Wycena"], ["wystaw", "🏪 Wystaw"], ["dpd_szybkie", "🚚 DPD"]].map(([id, l]) => /*#__PURE__*/React.createElement("button", {
     key: id,
     className: `tab ${tab === id ? "on" : ""}`,
     onClick: () => setTab(id)
@@ -12072,12 +12130,12 @@ function App() {
         }
         // Pokaż tylko zamówienia DO wystawienia faktury (invoiceRequired=true, brak faktury, ostatnie 60 dni)
         const _60dni = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
-        const fvList = allegroImportResults.filter(imp => imp.invoiceRequired && !_hasFaktura(imp) && (imp.boughtAt || imp.data || '') >= _60dni.slice(0, 10)).map(imp => {
-          const orderId = imp.allegroOrderId;
-          const v = invoicesSent[orderId] || {};
+        // POPRAWKA: ta lista ma pokazywac NAPRAWDE wystawione faktury (z numerem i data),
+        // wczesniej byla zle podpieta pod zamowienia OCZEKUJACE na fakture (stad puste nr/daty).
+        const fvList = Object.values(invoicesSent).filter(v => v.number).map(v => {
+          const imp = allegroImportResults.find(i => i.allegroOrderId === v.allegroOrderId);
           return {
             ...v,
-            allegroOrderId: orderId,
             klientNazwa: v.klientNazwa || imp?.klientImie || imp?.nabywcaNazwa || '',
             klientMiasto: v.klientMiasto || imp?.klientMiasto || '',
             offerNames: v.offerNames || imp?.offerNames || '',
@@ -12087,11 +12145,7 @@ function App() {
             klientUlica: v.klientUlica || imp?.klientUlica || '',
             klientKod: v.klientKod || imp?.klientKod || ''
           };
-        }).sort((a, b) => {
-          const da = b.boughtAt || b.data || '';
-          const db = a.boughtAt || a.data || '';
-          return da.localeCompare(db);
-        });
+        }).sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
         // Otwórz modal faktury z danymi klienta (pusta kwota/opis do uzupełnienia)
         const openFvFromClient = fv => {
@@ -19490,6 +19544,45 @@ function App() {
           color: '#7acf7a', cursor: 'pointer', width: '100%'
         }
       }, "➡️ Przenieś do zlecenia (" + results.length + " poz.)")
+    );
+  })(), tab === "dpd_szybkie" && (() => {
+    const pole = (label, key) => /*#__PURE__*/React.createElement("div", { style: { marginBottom: 10, flex: 1 } },
+      /*#__PURE__*/React.createElement("div", { style: { fontSize: 11, color: '#7a9a7a', marginBottom: 3 } }, label),
+      /*#__PURE__*/React.createElement("input", {
+        value: dpdSzybkie[key],
+        onChange: e => setDpdSzybkie({ ...dpdSzybkie, [key]: e.target.value }),
+        style: { width: '100%', boxSizing: 'border-box', background: '#0a1a0a', border: '1px solid #3a6a3a', borderRadius: 5, color: '#cfdfcf', padding: '6px 10px', fontSize: 13 }
+      })
+    );
+    return /*#__PURE__*/React.createElement("div", { style: { padding: '16px', maxWidth: 560 } },
+      /*#__PURE__*/React.createElement("div", { style: { color: '#cfdfcf', fontWeight: 700, fontSize: 15, marginBottom: 4 } }, "🚚 Szybka wysyłka DPD"),
+      /*#__PURE__*/React.createElement("div", { style: { fontSize: 12, color: '#7a9a7a', marginBottom: 12 } }, "Do wysyłek spoza zleceń/Allegro (np. inny sklep) — wklej dane odbiorcy albo wpisz ręcznie, otwórz DPD Online (dane wypełnią się same, wymaga zainstalowanego userscriptu)."),
+      /*#__PURE__*/React.createElement("textarea", {
+        value: dpdSzybkie.wklejony,
+        onChange: e => setDpdSzybkie({ ...dpdSzybkie, wklejony: e.target.value }),
+        placeholder: "Wklej tu np.:\nJan Kowalski\nul. Kwiatowa 5\n02-796 Warszawa\n+48 600 100 200",
+        rows: 4,
+        style: { width: '100%', boxSizing: 'border-box', background: '#0a1a0a', border: '1px solid #3a6a3a', borderRadius: 6, color: '#cfdfcf', padding: '8px 10px', fontSize: 13, fontFamily: 'monospace', marginBottom: 8, resize: 'vertical' }
+      }),
+      /*#__PURE__*/React.createElement("button", {
+        onClick: parseSzybkieDPD,
+        style: { padding: '6px 14px', fontSize: 13, fontWeight: 700, background: '#1a2a4a', border: '1px solid #3a5a8a', borderRadius: 6, color: '#9aafdf', cursor: 'pointer', marginBottom: 18 }
+      }, "🔍 Rozpoznaj dane z wklejonego tekstu"),
+      pole("Imię i nazwisko", 'imie'),
+      /*#__PURE__*/React.createElement("div", { style: { display: 'flex', gap: 8 } }, pole("Telefon", 'telefon'), pole("E-mail (opcjonalnie)", 'email')),
+      pole("Ulica i nr", 'ulica'),
+      /*#__PURE__*/React.createElement("div", { style: { display: 'flex', gap: 8 } }, pole("Kod pocztowy", 'kod'), pole("Miasto", 'miasto')),
+      pole("Referencja / opis zawartości", 'referencja'),
+      /*#__PURE__*/React.createElement("div", { style: { display: 'flex', gap: 8 } }, pole("Waga (kg)", 'waga'), pole("Dł (cm)", 'sizeX'), pole("Szer (cm)", 'sizeY'), pole("Wys (cm)", 'sizeZ')),
+      /*#__PURE__*/React.createElement("div", { style: { display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, marginBottom: 4 } },
+        /*#__PURE__*/React.createElement("input", { type: 'checkbox', checked: dpdSzybkie.cod, onChange: e => setDpdSzybkie({ ...dpdSzybkie, cod: e.target.checked }) }),
+        /*#__PURE__*/React.createElement("span", { style: { fontSize: 13, color: '#dfaf4a' } }, "Pobranie (COD)")
+      ),
+      dpdSzybkie.cod && pole("Kwota pobrania (zł)", 'kwotaCod'),
+      /*#__PURE__*/React.createElement("button", {
+        onClick: dpdOtworzOnlineSzybkie,
+        style: { marginTop: 16, padding: '10px 18px', fontSize: 14, fontWeight: 700, background: '#1a3a1a', border: '1px solid #4a8a4a', borderRadius: 6, color: '#7acf7a', cursor: 'pointer', width: '100%' }
+      }, "🌐 Otwórz w DPD Online")
     );
   })(), tab === "wystaw" && /*#__PURE__*/React.createElement("div", {
     style: {
