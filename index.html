@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260710.239</title>
+<title>MosquitoApp v20260710.240</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260710.239';
+   window.__MOSK_VERSION='20260710.240';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -118,6 +118,16 @@ const FIRMY = [{
 }];
 const AUTORESPONDER_URL = "https://allegro-autoresponder.favour-biuro.workers.dev";
 const AUTORESPONDER_KEY = "Kuke&300219";
+// Cloudflare Workers Free: limit "Quick Actions" (m.in. /pdf) to 1 zadanie / 10 sek
+// NA CALE KONTO (nie per-zamowienie). Ten globalny znacznik czasu pilnuje odstepu
+// >=11s miedzy KAZDYM wywolaniem /pdf/render w calej aplikacji, niezaleznie od
+// tego, z ktorego zamowienia/maila pochodzi wywolanie.
+let _lastPdfRenderAt = 0;
+async function _throttlePdfRender() {
+  const czekaj = 11000 - (Date.now() - _lastPdfRenderAt);
+  if (czekaj > 0) await new Promise(r => setTimeout(r, czekaj));
+  _lastPdfRenderAt = Date.now();
+}
 const FIRMY_DANE = {
   "F": {
     nazwa: "Favour Magdalena Rudnicka",
@@ -4363,6 +4373,7 @@ function App() {
           let pd = null;
           for (let _try = 0; _try < 10; _try++) {
             if (_try > 0) await new Promise(r => setTimeout(r, Math.min(10000 * _try, 30000)));
+            await _throttlePdfRender();
             const pr = await fetch(AUTORESPONDER_URL + '/pdf/render', {
               method: 'POST',
               headers: {
