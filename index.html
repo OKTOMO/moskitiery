@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260710.235</title>
+<title>MosquitoApp v20260710.238</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260710.235';
+   window.__MOSK_VERSION='20260710.238';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2448,6 +2448,14 @@ function App() {
     const t = setTimeout(() => setSearch(searchInput), 300);
     return () => clearTimeout(t);
   }, [searchInput]);
+  // Lista Zlecen (zakladka "baza") potrafi miec kilkaset/kilka tysiecy pozycji.
+  // Renderowanie calej listy naraz (setki skomplikowanych wierszy) zawieszalo
+  // przegladarke na dlugo. Pokazujemy wiec liste stronami po 60 i doladowujemy
+  // wiecej na zadanie, resetujac do 60 gdy zmieni sie filtr/wyszukiwanie.
+  const [zlVisibleCount, setZlVisibleCount] = useState(60);
+  useEffect(() => {
+    setZlVisibleCount(60);
+  }, [search, filterFirma, filterMonth, filterKolor, filterYear]);
   const [filterMonth, setFilterMonth] = useState("");
   const [filterKolor, setFilterKolor] = useState("");
   const [filterFirma, setFilterFirma] = useState("");
@@ -3092,9 +3100,18 @@ function App() {
       }
     }
     const pozycje = [];
-    // Format 1: 84x215 - 2 szt / 84x215 2szt / 84x215
+    // Format 1: 84x215 - 2 szt / 84x215 2szt / 2szt 84x215 / 84x215
     // 34x128x2 — trzecia liczba BEZ słowa "szt" i BEZ spacji/myślnika przed nią to grubość ramy — ignoruj
-    const dimRe1 = /(\d{2,3}[,.]?\d*)\s*(?:cm)?\s*[xX\u00d7\u0445]\s*(\d{2,3}[,.]?\d*)\s*(?:cm)?(?:\s*[-–]\s*(\d+)\s*(?:szt(?:uk[ia]?)?)?|\s+(\d+)\s*szt(?:uk[ia]?)?|[xX]\s*(\d+)\s+szt(?:uk[ia]?)?|\s*[xX]\s+(\d+))?/gi;
+    // NAPRAWA: whitespace przed opcjonalnym "cm" jest teraz zwiazany Z TYM "cm"
+    // (nie zjada juz separatora przed liczba sztuk, gdy "cm" nie wystepuje —
+    // to powodowalo, ze np. "84x215 2szt" gubilo ilosc i zawsze wychodzilo 1 szt).
+    // Dodatkowo wiadomosc jest teraz przetwarzana LINIA PO LINII zamiast jednym
+    // globalnym dopasowaniem na calym tekscie — to naprawia przypadek, w ktorym
+    // liczba sztuk z POCZATKU kolejnej linii (np. "3szt" w drugiej linii) potrafila
+    // "wciec" jako ilosc wymiaru z linii poprzedniej.
+    const dimRe1 = /(\d{2,3}[,.]?\d*)(?:\s*cm)?\s*[xX\u00d7\u0445]\s*(\d{2,3}[,.]?\d*)(?:\s*cm)?(?:\s*[-–]\s*(\d+)\s*(?:szt(?:uk[ia]?)?)?|\s+(\d+)\s*szt(?:uk[ia]?)?|[xX]\s*(\d+)\s+szt(?:uk[ia]?)?|\s*[xX]\s+(\d+))?/gi;
+    // Format 1b: ilość PRZED wymiarem, np. "2szt 98x60cm" / "3 szt 127,5x60"
+    const dimRe1Prefix = /(\d+)\s*(?:szt(?:uk[ia]?)?)\.?\s*[:\-]?\s*(\d{2,3}[,.]?\d*)(?:\s*cm)?\s*[xX\u00d7\u0445]\s*(\d{2,3}[,.]?\d*)(?:\s*cm)?/i;
     // Format 2: 878mm/996mm x2 sztuki / 878mm/996mm
     const dimRe2 = /(\d{3,4})\s*mm\s*[\/\\]\s*(\d{3,4})\s*mm\s*[xX]?\s*(\d+)?\s*(?:szt(?:uk[ia]?)?)?/gi;
     let m;
@@ -3121,25 +3138,56 @@ function App() {
         found = true;
       }
     }
-    // Jeśli nie znaleziono formatu mm — próbuj cm
+    // Jeśli nie znaleziono formatu mm — próbuj cm, linia po linii
     if (!found) {
-      while ((m = dimRe1.exec(msg)) !== null) {
-        let s = parseFloat(m[1].replace(",", ".")),
-          w = parseFloat(m[2].replace(",", "."));
-        if (s > w && w > 0) {
-          const tmp = s;
-          s = w;
-          w = tmp;
+      const _mdMsgLines = msg.split(/\r?\n/);
+      for (const _mdLn of _mdMsgLines) {
+        const mPre = _mdLn.match(dimRe1Prefix);
+        if (mPre) {
+          let s = parseFloat(mPre[2].replace(",", ".")),
+            w = parseFloat(mPre[3].replace(",", "."));
+          if (s > w && w > 0) {
+            const tmp = s;
+            s = w;
+            w = tmp;
+          }
+          const ilosc = parseInt(mPre[1]) || 1;
+          if (s > 10 && w > 10) {
+            pozycje.push({
+              szerokosc: String(s),
+              wysokosc: String(w),
+              glebokosc: String(DOMYSLNA_GLEBOKOS),
+              kolorRamki,
+              kolorSiatki,
+              ilosc
+            });
+            found = true;
+          }
+          continue;
         }
-        const ilosc = parseInt(m[3] || m[4] || m[5] || m[6]) || 1;
-        if (s > 10 && w > 10) pozycje.push({
-          szerokosc: String(s),
-          wysokosc: String(w),
-          glebokosc: String(DOMYSLNA_GLEBOKOS),
-          kolorRamki,
-          kolorSiatki,
-          ilosc
-        });
+        dimRe1.lastIndex = 0;
+        let mm2;
+        while ((mm2 = dimRe1.exec(_mdLn)) !== null) {
+          let s = parseFloat(mm2[1].replace(",", ".")),
+            w = parseFloat(mm2[2].replace(",", "."));
+          if (s > w && w > 0) {
+            const tmp = s;
+            s = w;
+            w = tmp;
+          }
+          const ilosc = parseInt(mm2[3] || mm2[4] || mm2[5] || mm2[6]) || 1;
+          if (s > 10 && w > 10) {
+            pozycje.push({
+              szerokosc: String(s),
+              wysokosc: String(w),
+              glebokosc: String(DOMYSLNA_GLEBOKOS),
+              kolorRamki,
+              kolorSiatki,
+              ilosc
+            });
+            found = true;
+          }
+        }
       }
     }
     // Format 3: szerokość 65cm, wysokość 135cm / szerokosc: 65 cm
@@ -4304,10 +4352,13 @@ function App() {
           // Pauza między PDF-ami żeby nie trafić w rate limit Cloudflare Browser Rendering
           if (_pdfIdx > 0) await new Promise(r => setTimeout(r, 12000));
           console.log('[PDF] wysyłam HTML do workera:', name, 'długość:', html.length);
-          // Retry z backoffem przy 429 - dłuższe odstępy
+          // Retry z backoffem przy 429 - zwiększone z 5 do 10 prob, odstep
+          // rosnie do 10s/20s/30s i dalej trzyma sie 30s (limit Cloudflare
+          // zazwyczaj resetuje sie w ciagu minuty, wiec dajemy wiecej czasu
+          // zamiast szybko sie poddawac).
           let pd = null;
-          for (let _try = 0; _try < 5; _try++) {
-            if (_try > 0) await new Promise(r => setTimeout(r, 10000 * _try));
+          for (let _try = 0; _try < 10; _try++) {
+            if (_try > 0) await new Promise(r => setTimeout(r, Math.min(10000 * _try, 30000)));
             const pr = await fetch(AUTORESPONDER_URL + '/pdf/render', {
               method: 'POST',
               headers: {
@@ -4320,6 +4371,7 @@ function App() {
             });
             pd = await pr.json();
             if (pd.ok || pr.status !== 429) break;
+            console.log('[PDF] 429 rate limit, próba', _try + 1, 'z 10 —', name);
           }
           if (!pd || !pd.ok) throw new Error('PDF render fail: ' + JSON.stringify(pd));
           console.log('[PDF] rozmiar:', pd.size, 'bytes, nazwa:', name);
@@ -15751,7 +15803,7 @@ function App() {
       color: "#4a7a4a",
       fontSize: 14
     }
-  }, "Brak zamówień"), filteredOrders.map(function (o) {
+  }, "Brak zamówień"), filteredOrders.slice(0, zlVisibleCount).map(function (o) {
     const il = o.pozycje.reduce(function (a, p) {
       return a + (parseFloat(p.ilosc) || 1);
     }, 0);
@@ -16113,7 +16165,15 @@ function App() {
         color: "#cfcf7a"
       }
     }, o.uwagi))));
-  }))), tab === "narzedzia" && (() => {
+  })), filteredOrders.length > zlVisibleCount && /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: "center",
+      padding: "14px"
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "btn-sm",
+    onClick: () => setZlVisibleCount(c => c + 60)
+  }, "Pokaż więcej — wyświetlono ", Math.min(zlVisibleCount, filteredOrders.length), " z ", filteredOrders.length))), tab === "narzedzia" && (() => {
     const nrLog2 = (msg, c = '#7acf7a') => setNrLog(p => [...p, {
       msg,
       c,
