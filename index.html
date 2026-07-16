@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260710.238</title>
+<title>MosquitoApp v20260710.239</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260710.238';
+   window.__MOSK_VERSION='20260710.239';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -2448,18 +2448,22 @@ function App() {
     const t = setTimeout(() => setSearch(searchInput), 300);
     return () => clearTimeout(t);
   }, [searchInput]);
-  // Lista Zlecen (zakladka "baza") potrafi miec kilkaset/kilka tysiecy pozycji.
-  // Renderowanie calej listy naraz (setki skomplikowanych wierszy) zawieszalo
-  // przegladarke na dlugo. Pokazujemy wiec liste stronami po 60 i doladowujemy
-  // wiecej na zadanie, resetujac do 60 gdy zmieni sie filtr/wyszukiwanie.
-  const [zlVisibleCount, setZlVisibleCount] = useState(60);
-  useEffect(() => {
-    setZlVisibleCount(60);
-  }, [search, filterFirma, filterMonth, filterKolor, filterYear]);
   const [filterMonth, setFilterMonth] = useState("");
   const [filterKolor, setFilterKolor] = useState("");
   const [filterFirma, setFilterFirma] = useState("");
   const [filterYear, setFilterYear] = useState("wszystkie");
+  // Lista Zlecen (zakladka "baza") potrafi miec kilkaset/kilka tysiecy pozycji.
+  // Renderowanie calej listy naraz (setki skomplikowanych wierszy) zawieszalo
+  // przegladarke na dlugo. Pokazujemy wiec liste stronami po 60 i doladowujemy
+  // wiecej na zadanie, resetujac do 60 gdy zmieni sie filtr/wyszukiwanie.
+  // (Ten blok MUSI byc PO powyzszych deklaracjach filterFirma/filterMonth/
+  // filterKolor/filterYear - wczesniej byl PRZED nimi, co powodowalo
+  // "ReferenceError: Cannot access 'filterFirma' before initialization"
+  // i bialy ekran zamiast calej aplikacji.)
+  const [zlVisibleCount, setZlVisibleCount] = useState(60);
+  useEffect(() => {
+    setZlVisibleCount(60);
+  }, [search, filterFirma, filterMonth, filterKolor, filterYear]);
   const [settings, setSettings] = useState(() => window.jsonbinSettings.getSettings());
   const [settingsSaved, setSettingsSaved] = useState(false);
   const [allegroTokens, setAllegroTokens] = useState(() => {
