@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260710.240</title>
+<title>MosquitoApp v20260710.241</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260710.240';
+   window.__MOSK_VERSION='20260710.241';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -12999,7 +12999,7 @@ function App() {
   }, allegroImportLoading ? "⟳ Pobieranie..." : "📥 Pobierz zamówienia"), /*#__PURE__*/React.createElement("input", {
     value: alZamSearch,
     onChange: e => setAlZamSearch(e.target.value),
-    placeholder: "🔍 Szukaj: klient, login, miasto...",
+    placeholder: "🔍 Szukaj: klient, login, miasto, produkt...",
     style: {
       fontSize: 14,
       width: 220,
@@ -13123,7 +13123,7 @@ function App() {
     if (alZamKonto && imp.kontoId !== alZamKonto) return false;
     if (alZamSearch) {
       const q = alZamSearch.toLowerCase();
-      return (imp.klientImie || "").toLowerCase().includes(q) || (imp.klientLogin || "").toLowerCase().includes(q) || (imp.klientMiasto || "").toLowerCase().includes(q) || (imp.allegroOrderId || "").toLowerCase().includes(q);
+      return (imp.klientImie || "").toLowerCase().includes(q) || (imp.klientLogin || "").toLowerCase().includes(q) || (imp.klientMiasto || "").toLowerCase().includes(q) || (imp.allegroOrderId || "").toLowerCase().includes(q) || (imp.offerNames || "").toLowerCase().includes(q);
     }
     return true;
   }).map((imp, idx) => {
