@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260710.244</title>
+<title>MosquitoApp v20260710.245</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260710.244';
+   window.__MOSK_VERSION='20260710.245';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -4662,7 +4662,7 @@ function App() {
       imie: src.klientImie || '',
       kwota: src.totalAmount || src.kwota || '',
       opis: imp?.offerNames || order?.pozycje?.map(p => `Moskitiera ${p.szerokosc}×${p.wysokosc}cm`).join(', ') || 'Moskitiera na wymiar',
-      vat: (function(n){ return /^[A-Z]{2}/.test(n) && n !== 'PL' ? 0 : 23; })((src.nabywcaNip||src.klientKraj||'').replace(/[^A-Za-z]/g,'')),
+      vat: (function(n){ return /^[A-Z]{2}/.test(n) && n !== 'PL' ? 0 : 23; })((src.nabywcaNip||'').replace(/[^A-Za-z]/g,'')), // 0% tylko dla realnego zagranicznego NIP-u (B2B/WDT), nie dla samego kraju dostawy (B2C = zawsze 23%, bo jesteś pod limitem 10 000 EUR)
       platnosc,
       sellDate,
       terminPlatnosci: sellDate,
