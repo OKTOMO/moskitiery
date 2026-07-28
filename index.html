@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260710.242</title>
+<title>MosquitoApp v20260710.243</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260710.242';
+   window.__MOSK_VERSION='20260710.243';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -4667,7 +4667,8 @@ function App() {
       sellDate,
       terminPlatnosci: sellDate,
       _deliveryCost: parseFloat(imp?.deliveryCost || 0),
-      waluta: (function(n){ return n.startsWith('CZ')?'CZK':n.startsWith('DE')||n.startsWith('AT')||n.startsWith('FR')||n.startsWith('IT')||n.startsWith('ES')||n.startsWith('NL')?'EUR':'PLN'; })((src.nabywcaNip||src.klientKraj||'').toUpperCase()),
+      waluta: 'PLN', // faktura zawsze domyslnie w PLN - dropdown ponizej pozwala recznie zmienic w wyjatkowych przypadkach
+      zrodloWaluta: (src.kwotaWaluta || 'PLN').toUpperCase(), // faktyczna waluta transakcji z Allegro (np. CZK dla klienta z Czech) - do przeliczenia na PLN
       krajNabywcy: (function(n){ return /^[A-Z]{2}/.test(n)?n.slice(0,2):'PL'; })(src.nabywcaNip||src.klientKraj||'')
     };
     const _allegroId = imp?.allegroOrderId || order?.allegroOrderId || '';
@@ -4849,23 +4850,38 @@ function App() {
       const nameParts = buyerFullName.trim().split(/\s+/);
       const buyerLastName = buyerCompany ? '' : nameParts[0] || '';
       const buyerFirstName = buyerCompany ? '' : nameParts.slice(1).join(' ') || nameParts[0] || '';
-      // Kwoty z Allegro (kwota, pozycje) sa zawsze w PLN. Jesli wybrana waluta faktury
-      // to nie PLN, trzeba je NAPRAWDE przeliczyc po kursie NBP z dnia sprzedazy -
-      // wczesniej faktura dostawala tylko inna etykiete waluty przy TEJ SAMEJ liczbie
-      // (np. "1016 CZK" zamiast poprawnych ok. 6050 CZK). Jesli kurs nie da sie pobrac
-      // (np. brak sieci), bezpiecznie wracamy do PLN zamiast wystawic fakture z bledna kwota.
+      // Kwoty z Allegro (kwota, pozycje) sa w WALUCIE FAKTYCZNEJ TRANSAKCJI (f.zrodloWaluta,
+      // np. CZK dla klienta z Czech - Allegro rozlicza zagraniczne zamowienia od razu w
+      // walucie lokalnej kupujacego, nie w zl). Faktura ma byc w PLN (f.waluta, domyslnie
+      // 'PLN'), wiec gdy zrodlo != PLN trzeba PRZEMNOZYC przez kurs NBP (nie dzielic -
+      // to byl blad poprzedniej wersji, ktora zakladala ze zrodlo zawsze jest w PLN i
+      // dzielac przez kurs jeszcze bardziej zawyzala kwote). Obsluzone ogolnie przez PLN
+      // jako "pivot": zrodlo -> PLN -> waluta docelowa (w typowym przypadku docelowa = PLN,
+      // wiec drugi krok jest pomijany).
+      const _zrodloWaluta = (f.zrodloWaluta || 'PLN').toUpperCase();
       let _fakWaluta = f.waluta || 'PLN';
-      let _fakKurs = null;
+      let _kursZrodlo = null; // ile PLN za 1 jednostke zrodlowej waluty
+      let _kursDocelowy = null; // ile PLN za 1 jednostke docelowej waluty
+      if (_zrodloWaluta !== 'PLN') {
+        const _r1 = await fetchNbpRate(_zrodloWaluta, f.sellDate);
+        if (_r1 && _r1.rate) { _kursZrodlo = _r1.rate; }
+        else {
+          alert('Nie udało się pobrać kursu NBP dla waluty zamówienia (' + _zrodloWaluta + ') — kwota na fakturze może być niepoprawna, sprawdź ręcznie.');
+        }
+      }
       if (_fakWaluta !== 'PLN') {
-        const _rateInfo = await fetchNbpRate(_fakWaluta, f.sellDate);
-        if (_rateInfo && _rateInfo.rate) {
-          _fakKurs = _rateInfo.rate;
-        } else {
-          alert('Nie udało się pobrać kursu NBP dla waluty ' + _fakWaluta + ' — faktura zostanie wystawiona w PLN.');
+        const _r2 = await fetchNbpRate(_fakWaluta, f.sellDate);
+        if (_r2 && _r2.rate) { _kursDocelowy = _r2.rate; }
+        else {
+          alert('Nie udało się pobrać kursu NBP dla waluty faktury (' + _fakWaluta + ') — faktura zostanie wystawiona w PLN.');
           _fakWaluta = 'PLN';
         }
       }
-      const przelicz = (pln) => _fakKurs ? Math.round((pln / _fakKurs) * 100) / 100 : pln;
+      const przelicz = (kwotaZrodlowa) => {
+        const wPln = _zrodloWaluta === 'PLN' ? kwotaZrodlowa : (_kursZrodlo ? kwotaZrodlowa * _kursZrodlo : kwotaZrodlowa);
+        const wDocelowej = _fakWaluta === 'PLN' ? wPln : (_kursDocelowy ? wPln / _kursDocelowy : wPln);
+        return Math.round(wDocelowej * 100) / 100;
+      };
       const payload = {
         api_token: cfg.token,
         invoice: {
@@ -4893,7 +4909,7 @@ function App() {
           currency: _fakWaluta,
           department_id: deptId,
           oid: order?.numerZlecenia || fakModal.imp?.allegroOrderId || '',
-          description: (f.uwagi || '') + (_fakKurs ? ` (kurs NBP ${_fakWaluta}: ${_fakKurs})` : ''),
+          description: (f.uwagi || '') + (_kursZrodlo ? ` (przeliczono z ${_zrodloWaluta} po kursie NBP ${_kursZrodlo})` : ''),
           buyer_name: buyerFullName,
           buyer_first_name: buyerFirstName,
           buyer_last_name: buyerLastName,
