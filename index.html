@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260710.241</title>
+<title>MosquitoApp v20260710.242</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260710.241';
+   window.__MOSK_VERSION='20260710.242';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -4667,7 +4667,7 @@ function App() {
       sellDate,
       terminPlatnosci: sellDate,
       _deliveryCost: parseFloat(imp?.deliveryCost || 0),
-      waluta: (function(n){ return n.startsWith('CZ')?'CZK':n.startsWith('DE')||n.startsWith('AT')||n.startsWith('FR')||n.startsWith('IT')||n.startsWith('ES')||n.startsWith('NL')?'EUR':'PLN'; })(src.nabywcaNip||''),
+      waluta: (function(n){ return n.startsWith('CZ')?'CZK':n.startsWith('DE')||n.startsWith('AT')||n.startsWith('FR')||n.startsWith('IT')||n.startsWith('ES')||n.startsWith('NL')?'EUR':'PLN'; })((src.nabywcaNip||src.klientKraj||'').toUpperCase()),
       krajNabywcy: (function(n){ return /^[A-Z]{2}/.test(n)?n.slice(0,2):'PL'; })(src.nabywcaNip||src.klientKraj||'')
     };
     const _allegroId = imp?.allegroOrderId || order?.allegroOrderId || '';
@@ -4799,6 +4799,28 @@ function App() {
       }));
     }
   }
+  // Pobiera sredni kurs NBP dla danej waluty na dzien sprzedazy (lub najblizszy
+  // wczesniejszy dzien roboczy, jesli podany dzien jest weekendem/swietem - NBP
+  // publikuje kursy tylko w dni robocze). Zwraca null gdy sie nie uda (np. brak
+  // sieci) - wtedy faktura NIE powinna byc wystawiana w walucie obcej z
+  // nieprzeliczonym zlotowym numerem.
+  async function fetchNbpRate(kodWaluty, dataSprzedazy) {
+    if (!kodWaluty || kodWaluty === 'PLN') return null;
+    let d = new Date((dataSprzedazy || new Date().toISOString().slice(0, 10)) + 'T00:00:00');
+    for (let i = 0; i < 8; i++) {
+      const ds = d.toISOString().slice(0, 10);
+      try {
+        const r = await fetch(`https://api.nbp.pl/api/exchangerates/rates/a/${kodWaluty}/${ds}/?format=json`);
+        if (r.ok) {
+          const data = await r.json();
+          const mid = data && data.rates && data.rates[0] && data.rates[0].mid;
+          if (mid) return { rate: mid, date: data.rates[0].effectiveDate };
+        }
+      } catch (e) {}
+      d.setDate(d.getDate() - 1);
+    }
+    return null;
+  }
   async function wyslijFakture() {
     if (!fakModal) return;
     const cfg = fakturowniaConfig;
@@ -4827,6 +4849,23 @@ function App() {
       const nameParts = buyerFullName.trim().split(/\s+/);
       const buyerLastName = buyerCompany ? '' : nameParts[0] || '';
       const buyerFirstName = buyerCompany ? '' : nameParts.slice(1).join(' ') || nameParts[0] || '';
+      // Kwoty z Allegro (kwota, pozycje) sa zawsze w PLN. Jesli wybrana waluta faktury
+      // to nie PLN, trzeba je NAPRAWDE przeliczyc po kursie NBP z dnia sprzedazy -
+      // wczesniej faktura dostawala tylko inna etykiete waluty przy TEJ SAMEJ liczbie
+      // (np. "1016 CZK" zamiast poprawnych ok. 6050 CZK). Jesli kurs nie da sie pobrac
+      // (np. brak sieci), bezpiecznie wracamy do PLN zamiast wystawic fakture z bledna kwota.
+      let _fakWaluta = f.waluta || 'PLN';
+      let _fakKurs = null;
+      if (_fakWaluta !== 'PLN') {
+        const _rateInfo = await fetchNbpRate(_fakWaluta, f.sellDate);
+        if (_rateInfo && _rateInfo.rate) {
+          _fakKurs = _rateInfo.rate;
+        } else {
+          alert('Nie udało się pobrać kursu NBP dla waluty ' + _fakWaluta + ' — faktura zostanie wystawiona w PLN.');
+          _fakWaluta = 'PLN';
+        }
+      }
+      const przelicz = (pln) => _fakKurs ? Math.round((pln / _fakKurs) * 100) / 100 : pln;
       const payload = {
         api_token: cfg.token,
         invoice: {
@@ -4849,12 +4888,12 @@ function App() {
           payment_type: f.platnosc.startsWith('przelew') ? 'transfer' : f.platnosc === 'gotowka' ? 'cash' : f.platnosc === 'karta' ? 'card' : 'cod',
           // Allegro Pay = już opłacone
           status: f.platnosc === 'przelew' ? 'paid' : 'issued',
-          paid: f.platnosc === 'przelew' ? String(parseFloat(f.kwota || 0).toFixed(2)) : '0',
+          paid: f.platnosc === 'przelew' ? String(przelicz(parseFloat(f.kwota || 0)).toFixed(2)) : '0',
           paid_date: f.platnosc === 'przelew' ? f.sellDate || new Date().toISOString().slice(0, 10) : null,
-          currency: f.waluta || 'PLN',
+          currency: _fakWaluta,
           department_id: deptId,
           oid: order?.numerZlecenia || fakModal.imp?.allegroOrderId || '',
-          description: f.uwagi || '',
+          description: (f.uwagi || '') + (_fakKurs ? ` (kurs NBP ${_fakWaluta}: ${_fakKurs})` : ''),
           buyer_name: buyerFullName,
           buyer_first_name: buyerFirstName,
           buyer_last_name: buyerLastName,
@@ -4874,13 +4913,13 @@ function App() {
             return {
               name: p.nazwa || p.name || f.opis,
               quantity: qty,
-              total_price_gross: gross,
+              total_price_gross: przelicz(gross),
               tax: vat
             };
           }) : [{
             name: f.opis,
             quantity: 1,
-            total_price_gross: kwota,
+            total_price_gross: przelicz(kwota),
             tax: f.vat === 0 ? 0 : parseInt(f.vat) || 23
           }]
         }
