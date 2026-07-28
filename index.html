@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260710.243</title>
+<title>MosquitoApp v20260710.244</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260710.243';
+   window.__MOSK_VERSION='20260710.244';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -4667,8 +4667,10 @@ function App() {
       sellDate,
       terminPlatnosci: sellDate,
       _deliveryCost: parseFloat(imp?.deliveryCost || 0),
-      waluta: 'PLN', // faktura zawsze domyslnie w PLN - dropdown ponizej pozwala recznie zmienic w wyjatkowych przypadkach
-      zrodloWaluta: (src.kwotaWaluta || 'PLN').toUpperCase(), // faktyczna waluta transakcji z Allegro (np. CZK dla klienta z Czech) - do przeliczenia na PLN
+      // Domyslnie waluta faktury = faktyczna waluta transakcji z Allegro (np. CZK dla
+      // klienta z Czech - Allegro rozlicza zagraniczne zamowienia od razu w walucie
+      // lokalnej kupujacego). Dropdown nizej pozwala to recznie zmienic w razie potrzeby.
+      waluta: (src.kwotaWaluta || 'PLN').toUpperCase(),
       krajNabywcy: (function(n){ return /^[A-Z]{2}/.test(n)?n.slice(0,2):'PL'; })(src.nabywcaNip||src.klientKraj||'')
     };
     const _allegroId = imp?.allegroOrderId || order?.allegroOrderId || '';
@@ -4850,38 +4852,17 @@ function App() {
       const nameParts = buyerFullName.trim().split(/\s+/);
       const buyerLastName = buyerCompany ? '' : nameParts[0] || '';
       const buyerFirstName = buyerCompany ? '' : nameParts.slice(1).join(' ') || nameParts[0] || '';
-      // Kwoty z Allegro (kwota, pozycje) sa w WALUCIE FAKTYCZNEJ TRANSAKCJI (f.zrodloWaluta,
-      // np. CZK dla klienta z Czech - Allegro rozlicza zagraniczne zamowienia od razu w
-      // walucie lokalnej kupujacego, nie w zl). Faktura ma byc w PLN (f.waluta, domyslnie
-      // 'PLN'), wiec gdy zrodlo != PLN trzeba PRZEMNOZYC przez kurs NBP (nie dzielic -
-      // to byl blad poprzedniej wersji, ktora zakladala ze zrodlo zawsze jest w PLN i
-      // dzielac przez kurs jeszcze bardziej zawyzala kwote). Obsluzone ogolnie przez PLN
-      // jako "pivot": zrodlo -> PLN -> waluta docelowa (w typowym przypadku docelowa = PLN,
-      // wiec drugi krok jest pomijany).
-      const _zrodloWaluta = (f.zrodloWaluta || 'PLN').toUpperCase();
-      let _fakWaluta = f.waluta || 'PLN';
-      let _kursZrodlo = null; // ile PLN za 1 jednostke zrodlowej waluty
-      let _kursDocelowy = null; // ile PLN za 1 jednostke docelowej waluty
-      if (_zrodloWaluta !== 'PLN') {
-        const _r1 = await fetchNbpRate(_zrodloWaluta, f.sellDate);
-        if (_r1 && _r1.rate) { _kursZrodlo = _r1.rate; }
-        else {
-          alert('Nie udało się pobrać kursu NBP dla waluty zamówienia (' + _zrodloWaluta + ') — kwota na fakturze może być niepoprawna, sprawdź ręcznie.');
-        }
-      }
-      if (_fakWaluta !== 'PLN') {
-        const _r2 = await fetchNbpRate(_fakWaluta, f.sellDate);
-        if (_r2 && _r2.rate) { _kursDocelowy = _r2.rate; }
-        else {
-          alert('Nie udało się pobrać kursu NBP dla waluty faktury (' + _fakWaluta + ') — faktura zostanie wystawiona w PLN.');
-          _fakWaluta = 'PLN';
-        }
-      }
-      const przelicz = (kwotaZrodlowa) => {
-        const wPln = _zrodloWaluta === 'PLN' ? kwotaZrodlowa : (_kursZrodlo ? kwotaZrodlowa * _kursZrodlo : kwotaZrodlowa);
-        const wDocelowej = _fakWaluta === 'PLN' ? wPln : (_kursDocelowy ? wPln / _kursDocelowy : wPln);
-        return Math.round(wDocelowej * 100) / 100;
-      };
+      // Kwota/pozycje z Allegro sa juz w rzeczywistej walucie transakcji (f.waluta,
+      // domyslnie ustawione z imp.kwotaWaluta przy otwieraniu okna - np. CZK dla
+      // klienta z Czech, bo Allegro rozlicza zagraniczne zamowienia od razu w
+      // walucie lokalnej kupujacego). Uzywamy ich WPROST, bez wlasnego przeliczania -
+      // Fakturownia ma wbudowana obsluge faktur walutowych (parametry
+      // exchange_currency/exchange_kind), ktora sama pobiera wlasciwy kurs NBP
+      // (z dnia roboczego poprzedzajacego sprzedaz, zgodnie z polskimi przepisami)
+      // i dopisuje na fakturze przeliczona kwote VAT w PLN - dokladnie tak jak
+      // widac to na przykladowej fakturze z konta.
+      const _fakWaluta = (f.waluta || 'PLN').toUpperCase();
+      const przelicz = (kwota) => Math.round(kwota * 100) / 100;
       const payload = {
         api_token: cfg.token,
         invoice: {
@@ -4907,9 +4888,10 @@ function App() {
           paid: f.platnosc === 'przelew' ? String(przelicz(parseFloat(f.kwota || 0)).toFixed(2)) : '0',
           paid_date: f.platnosc === 'przelew' ? f.sellDate || new Date().toISOString().slice(0, 10) : null,
           currency: _fakWaluta,
+          ...(_fakWaluta !== 'PLN' ? { exchange_currency: 'PLN', exchange_kind: 'nbp' } : {}),
           department_id: deptId,
           oid: order?.numerZlecenia || fakModal.imp?.allegroOrderId || '',
-          description: (f.uwagi || '') + (_kursZrodlo ? ` (przeliczono z ${_zrodloWaluta} po kursie NBP ${_kursZrodlo})` : ''),
+          description: f.uwagi || '',
           buyer_name: buyerFullName,
           buyer_first_name: buyerFirstName,
           buyer_last_name: buyerLastName,
