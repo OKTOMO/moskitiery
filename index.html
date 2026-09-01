@@ -17269,14 +17269,18 @@ function App() {
     });
     const _kosmKey = statMonth + '_' + statYear;
     const _kosmEx = statKosmExtra[_kosmKey] || {};
+    const _kosmExItems = _kosmEx.items || {};
+    const katSztKor = function (i) {
+      return katSzt[i] + (parseInt(_kosmExItems[KAT[i].nazwa]) || 0);
+    };
     const gr1Szt = KAT.reduce(function (s, k, i) {
-      return s + (k.gr === 1 ? katSzt[i] : 0);
+      return s + (k.gr === 1 ? katSztKor(i) : 0);
     }, 0) + (parseInt(_kosmEx.gr1) || 0);
     const gr2Szt = KAT.reduce(function (s, k, i) {
-      return s + (k.gr === 2 ? katSzt[i] : 0);
+      return s + (k.gr === 2 ? katSztKor(i) : 0);
     }, 0) + (parseInt(_kosmEx.gr2) || 0);
     const pomSzt = KAT.reduce(function (s, k, i) {
-      return s + (k.gr === 3 ? katSzt[i] : 0);
+      return s + (k.gr === 3 ? katSztKor(i) : 0);
     }, 0) + (parseInt(_kosmEx.pom) || 0);
     const gr1Fakt = Math.floor(gr1Szt * 17.5 / 19.5);
     const gr2Fakt = Math.floor(gr2Szt * 22.5 / 24.0);
@@ -17327,7 +17331,7 @@ function App() {
       const m = miesNazwy[statMonth] + ' ' + statYear;
       let rows = '';
       KAT.forEach(function (k, i) {
-        const s = katSzt[i];
+        const s = katSztKor(i);
         rows += '<tr><td style="padding:6px 10px;border-bottom:1px solid #eee">' + k.nazwa + '</td><td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:center">' + s + '</td><td style="padding:6px 10px;border-bottom:1px solid #eee;text-align:center">' + (k.gr === 1 ? 'Gr I' : k.gr === 2 ? 'Gr II' : 'Pomadka') + '</td></tr>';
       });
       return '<div style="font-family:Arial,sans-serif;font-size:14px;color:#222;max-width:600px">' + '<h2 style="color:#1a3a1a">Zestawienie kosmetyków — ' + m + '</h2>' + '<table style="border-collapse:collapse;width:100%">' + '<thead><tr style="background:#1a3a1a;color:#fff">' + '<th style="padding:8px 10px;text-align:left">Produkt</th>' + '<th style="padding:8px 10px">Ilość sprzed.</th>' + '<th style="padding:8px 10px">Grupa</th>' + '</tr></thead><tbody>' + rows + '</tbody></table>' + '<div style="margin-top:16px;padding:12px;background:#f5f5f5;border-radius:6px">' + '<b>Podsumowanie:</b><br>' + 'Gr I: ' + gr1Szt + ' szt sprzedanych → <b>' + gr1Fakt + ' szt na fakturze</b> × 19,50 zł = <b>' + gr1Wart + ' zł</b><br>' + 'Gr II: ' + gr2Szt + ' szt sprzedanych → <b>' + gr2Fakt + ' szt na fakturze</b> × 24,00 zł = <b>' + gr2Wart + ' zł</b><br>' + 'Pomadki: <b>' + pomSzt + ' szt</b> × 1,85 zł = <b>' + pomWart + ' zł</b><br><br>' + '<b style="font-size:16px">RAZEM: ' + razemWart + ' zł netto</b>' + (gratisSzt > 0 ? '<br><small>Gratisy (0,01 zł): ' + gratisSzt + ' szt — pominięte</small>' : '') + '</div></div>';
@@ -17702,15 +17706,18 @@ function App() {
         textAlign: 'right'
       }
     }, "Gr")), KAT.map(function (k, i) {
+      const _itemKor = parseInt(_kosmExItems[k.nazwa]) || 0;
+      const _itemSzt = katSzt[i] + _itemKor;
       return /*#__PURE__*/React.createElement("div", {
         key: k.nazwa,
         style: {
           display: 'grid',
-          gridTemplateColumns: '1fr auto auto',
-          gap: '2px 8px',
+          gridTemplateColumns: '1fr auto auto auto',
+          gap: '2px 6px',
           padding: '3px 0',
           borderBottom: '1px solid #12122a',
-          opacity: katSzt[i] === 0 ? 0.4 : 1
+          alignItems: 'center',
+          opacity: _itemSzt === 0 ? 0.4 : 1
         }
       }, /*#__PURE__*/React.createElement("span", {
         style: {
@@ -17719,10 +17726,31 @@ function App() {
       }, k.nazwa), /*#__PURE__*/React.createElement("span", {
         style: {
           color: '#afffaf',
-          fontWeight: katSzt[i] > 0 ? 700 : 400,
+          fontWeight: _itemSzt > 0 ? 700 : 400,
           textAlign: 'right'
         }
-      }, katSzt[i]), /*#__PURE__*/React.createElement("span", {
+      }, _itemSzt), /*#__PURE__*/React.createElement("input", {
+        type: "number",
+        value: _itemKor,
+        title: "Korekta ręczna dla tej pozycji (np. -2 przy zwrocie)",
+        onChange: function (e) {
+          const v = parseInt(e.target.value) || 0;
+          const key = statMonth + '_' + statYear;
+          setStatKosmExtra(function (prev) {
+            const prevForKey = prev[key] || {};
+            const prevItems = prevForKey.items || {};
+            const next = { ...prev, [key]: { ...prevForKey, items: { ...prevItems, [k.nazwa]: v } } };
+            localStorage.setItem('stat_kosm_extra', JSON.stringify(next));
+            return next;
+          });
+        },
+        style: {
+          width: 42, fontSize: 11, padding: '1px 3px',
+          borderRadius: 3, border: '1px solid #3a3a6a',
+          background: '#0a0a1a', color: _itemKor < 0 ? '#cf7a7a' : _itemKor > 0 ? '#7acf7a' : '#5a5a8a',
+          textAlign: 'center'
+        }
+      }), /*#__PURE__*/React.createElement("span", {
         style: {
           color: '#3a3a6a',
           fontSize: 11,
