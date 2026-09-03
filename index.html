@@ -6000,7 +6000,7 @@ function App() {
             const _svcName = (service?.name || '').toLowerCase();
             const _isAutomat = _svcName.includes('automat') || _svcName.includes('paczkomat') || _svcName.includes('parcel locker') || _svcName.includes('box');
             const _isDHLCzechy = _svcName.includes('dhl') && (_kraj === 'CZ' || _svcName.includes('czech'));
-            const _isInternational = _svcName.includes('international') || _kraj === 'SK' || _kraj === 'CZ' || _kraj === 'DE' || _kraj === 'AT' || _kraj === 'HU';
+            const _isInternational = _svcName.includes('international') || _kraj === 'DE' || _kraj === 'AT';
             if (isDHLAutomat || isORLEN || _isDHLCzechy || _isInternational) return {};
             // Zagraniczne paczkomaty - nie zawsze obsługują ubezpieczenie
             if (_ins && !_isAutomat) return {
