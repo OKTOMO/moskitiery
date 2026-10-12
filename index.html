@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20260710.245</title>
+<title>MosquitoApp v20261012.246</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20260710.245';
+   window.__MOSK_VERSION='20261012.246';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -21,6 +21,52 @@
 </head><body>
 <div id="root"></div>
 <script>
+// Kraje UE: ISO 3166-1 alpha-2 (VAT UE Grecji używa prefiksu EL).
+const FAK_KRAJE_UE = [
+  ['PL','Polska'], ['AT','Austria'], ['BE','Belgia'], ['BG','Bułgaria'],
+  ['HR','Chorwacja'], ['CY','Cypr'], ['CZ','Czechy'], ['DK','Dania'],
+  ['EE','Estonia'], ['FI','Finlandia'], ['FR','Francja'], ['GR','Grecja'],
+  ['ES','Hiszpania'], ['NL','Holandia'], ['IE','Irlandia'], ['LT','Litwa'],
+  ['LU','Luksemburg'], ['LV','Łotwa'], ['MT','Malta'], ['DE','Niemcy'],
+  ['PT','Portugalia'], ['RO','Rumunia'], ['SK','Słowacja'], ['SI','Słowenia'],
+  ['SE','Szwecja'], ['HU','Węgry'], ['IT','Włochy']
+];
+function fakBuyerCountry(country, taxNo) {
+  const explicit = String(country || '').trim().toUpperCase();
+  if (/^[A-Z]{2}$/.test(explicit)) return explicit;
+  const prefix = String(taxNo || '').trim().toUpperCase().match(/^([A-Z]{2})/);
+  if (prefix && prefix[1] === 'EL') return 'GR';
+  if (prefix && FAK_KRAJE_UE.some(k => k[0] === prefix[1])) return prefix[1];
+  return 'PL';
+}
+function fakBuyerTaxFields(taxNo, country, selectedKind = 'auto') {
+  const raw = String(taxNo || '').trim();
+  if (!raw) return {buyer_tax_no: '', buyer_tax_no_kind: 'empty'};
+  const compact = raw.replace(/\s/g, '').toUpperCase();
+  const euPrefix = compact.slice(0, 2);
+  const hasEuPrefix = euPrefix === 'EL' || FAK_KRAJE_UE.some(k => k[0] === euPrefix);
+  let kind = selectedKind;
+  if (!kind || kind === 'auto') {
+    kind = hasEuPrefix && euPrefix !== 'PL' ? 'nip_ue' : country === 'PL' ? 'polski' : 'other';
+  }
+  if (kind === 'polski') {
+    if (country !== 'PL') throw Error('Dla zagranicznego nabywcy wybierz VAT UE lub numer krajowy / inny.');
+    return {buyer_tax_no: raw, buyer_tax_no_kind: ''};
+  }
+  if (kind === 'nip_ue') {
+    if (euPrefix === 'HU' && !/^HU[0-9]{8}$/.test(compact)) {
+      throw Error('Węgierski VAT UE ma format HU + 8 cyfr. Numer krajowy 13535894-2-16 wybierz jako numer krajowy / inny.');
+    }
+    if (!hasEuPrefix || !/^[A-Z]{2}[A-Z0-9]+$/.test(compact)) {
+      throw Error('VAT UE wymaga prefiksu kraju i numeru. Nie wpisuj tu pełnego numeru krajowego.');
+    }
+    return {buyer_tax_no: compact, buyer_tax_no_kind: 'nip_ue'};
+  }
+  if (kind !== 'other') throw Error('Nieznany rodzaj identyfikatora podatkowego.');
+  // Numer krajowy zachowujemy w całości, bez dopisywania HU i bez polskiej walidacji NIP.
+  return {buyer_tax_no: raw, buyer_tax_no_kind: 'other'};
+}
+
 const WORKER_URL = 'https://allegro-autoresponder.favour-biuro.workers.dev';
 
 function getWorkerKey() {
@@ -1879,6 +1925,7 @@ function App() {
       ulica,
       kod,
       miasto,
+      krajNabywcy: invAddr.countryCode || billingAddr.countryCode || delAddr.countryCode || '',
       kwotaBrutto,
       pozycje,
       orderId,
@@ -2970,6 +3017,9 @@ function App() {
                     kwota: kwota,
                     klientNazwa: inv.buyer_name || '',
                     nip: inv.buyer_tax_no || '',
+                    krajNabywcy: inv.buyer_country || '',
+                    rodzajNumeru: inv.buyer_tax_no_kind || 'auto',
+                    waluta: inv.currency || 'PLN',
                     allegroOrderId: matchedImp ? matchedImp.allegroOrderId : '',
                     kontoId: matchedImp ? matchedImp.kontoId : '',
                     firma: matchedImp ? KONTO_DO_FIRMY[matchedImp.kontoId] || 'F' : 'F',
@@ -4572,7 +4622,7 @@ function App() {
         oid_unique: 'yes',
         buyer_name: buyerName,
         buyer_company: buyerCompany,
-        buyer_tax_no: buyerNip,
+        ...fakBuyerTaxFields(buyerNip, kraj, imp.rodzajNumeru || order?.rodzajNumeru || 'auto'),
         buyer_street: imp.klientUlica || order?.klientUlica || '',
         buyer_post_code: imp.klientKod || order?.klientKod || '',
         buyer_city: imp.klientMiasto || order?.klientMiasto || '',
@@ -4627,6 +4677,9 @@ function App() {
               klientNazwa: _f?.nazwaFirmy || _f?.imie || _imp?.klientImie || _ord?.klientImie || '',
               klientMiasto: _imp?.klientMiasto || _ord?.klientMiasto || '',
               nip: _f?.nip || '',
+              krajNabywcy: fakBuyerCountry(_f?.krajNabywcy, _f?.nip),
+              rodzajNumeru: _f?.rodzajNumeru || 'auto',
+              waluta: _f?.waluta || 'PLN',
               kwota: parseFloat(_f?.kwota) || 0,
               numerZlecenia: _ord?.numerZlecenia || '',
               offerNames: _imp?.offerNames || ''
@@ -4662,7 +4715,7 @@ function App() {
       imie: src.klientImie || '',
       kwota: src.totalAmount || src.kwota || '',
       opis: imp?.offerNames || order?.pozycje?.map(p => `Moskitiera ${p.szerokosc}×${p.wysokosc}cm`).join(', ') || 'Moskitiera na wymiar',
-      vat: (function(n){ return /^[A-Z]{2}/.test(n) && n !== 'PL' ? 0 : 23; })((src.nabywcaNip||'').replace(/[^A-Za-z]/g,'')), // 0% tylko dla realnego zagranicznego NIP-u (B2B/WDT), nie dla samego kraju dostawy (B2C = zawsze 23%, bo jesteś pod limitem 10 000 EUR)
+      vat: 23, // Stawkę wybiera użytkownik; kraj i typ numeru jej nie zmieniają.
       platnosc,
       sellDate,
       terminPlatnosci: sellDate,
@@ -4671,7 +4724,8 @@ function App() {
       // klienta z Czech - Allegro rozlicza zagraniczne zamowienia od razu w walucie
       // lokalnej kupujacego). Dropdown nizej pozwala to recznie zmienic w razie potrzeby.
       waluta: (src.kwotaWaluta || 'PLN').toUpperCase(),
-      krajNabywcy: (function(n){ return /^[A-Z]{2}/.test(n)?n.slice(0,2):'PL'; })(src.nabywcaNip||src.klientKraj||'')
+      krajNabywcy: fakBuyerCountry(src.krajNabywcy || src.klientKraj || imp?.klientKraj, src.nabywcaNip),
+      rodzajNumeru: src.rodzajNumeru || 'auto'
     };
     const _allegroId = imp?.allegroOrderId || order?.allegroOrderId || '';
     const _hasMeaningfulId = _allegroId && !_allegroId.startsWith('manual_');
@@ -4711,6 +4765,7 @@ function App() {
             form: {
               ...m.form,
               nip: res.nip || m.form.nip,
+              krajNabywcy: m.form.krajNabywcy === f.krajNabywcy ? fakBuyerCountry(res.krajNabywcy || m.form.krajNabywcy, res.nip || m.form.nip) : m.form.krajNabywcy,
               nazwaFirmy: res.nazwa || m.form.nazwaFirmy || m.form.imie,
               imie: res.nazwa || m.form.imie,
               ulica: res.ulica || m.form.ulica,
@@ -4755,8 +4810,13 @@ function App() {
   }
   async function gusLookup() {
     if (!fakModal) return;
-    const nip = fakModal.form.nip.replace(/[\s-]/g, '');
-    if (nip.length !== 10) {
+    const f = fakModal.form;
+    if (fakBuyerCountry(f.krajNabywcy, f.nip) !== 'PL' || ['nip_ue', 'other'].includes(f.rodzajNumeru)) {
+      setFakModal(m => ({...m, gusError: 'GUS / biała lista MF obsługuje wyłącznie polski NIP. Dane zagranicznego nabywcy wpisz ręcznie.'}));
+      return;
+    }
+    const nip = String(f.nip || '').replace(/^PL/i, '').replace(/[\s-]/g, '');
+    if (!/^[0-9]{10}$/.test(nip)) {
       setFakModal(m => ({
         ...m,
         gusError: 'NIP musi mieć 10 cyfr'
@@ -4896,11 +4956,11 @@ function App() {
           buyer_first_name: buyerFirstName,
           buyer_last_name: buyerLastName,
           buyer_company: buyerCompany,
-          buyer_tax_no: f.nip || '',
+          ...fakBuyerTaxFields(f.nip, fakBuyerCountry(f.krajNabywcy, f.nip), f.rodzajNumeru || 'auto'),
           buyer_street: f.ulica,
           buyer_post_code: f.kod,
           buyer_city: f.miasto,
-          buyer_country: f.krajNabywcy || 'PL',
+          buyer_country: fakBuyerCountry(f.krajNabywcy, f.nip),
           positions: f.pozycjeAllegro && f.pozycjeAllegro.length > 0 ? f.pozycjeAllegro.map(p => {
             const qty = parseFloat(p.ilosc || p.quantity) || 1;
             const cenaJedn = parseFloat(p.cena || p.price || p.total_price_gross) || 0;
@@ -4957,6 +5017,9 @@ function App() {
               klientUlica: _imp?.klientUlica || _ord?.klientUlica || '',
               klientKod: _imp?.klientKod || _ord?.klientKod || '',
               nip: _f?.nip || '',
+              krajNabywcy: fakBuyerCountry(_f?.krajNabywcy, _f?.nip),
+              rodzajNumeru: _f?.rodzajNumeru || 'auto',
+              waluta: _f?.waluta || 'PLN',
               kwota: parseFloat(_f?.kwota) || 0,
               offerNames: _imp?.offerNames || ''
             }
@@ -12280,6 +12343,9 @@ function App() {
             imp: null,
             form: {
               nip: fv.nip || '',
+              krajNabywcy: fakBuyerCountry(fv.krajNabywcy, fv.nip),
+              rodzajNumeru: fv.rodzajNumeru || 'auto',
+              waluta: fv.waluta || 'PLN',
               nazwaFirmy: fv.klientNazwa || '',
               imie: fv.klientNazwa || '',
               ulica: fv.klientUlica || '',
@@ -12350,7 +12416,10 @@ function App() {
                       number: inv.number,
                       date: (inv.sell_date || inv.issue_date || inv.created_at || '').slice(0, 10),
                       kwota: Math.abs(parseFloat((inv.price_gross || '0').toString().replace(',', '.')) || 0),
-                      nip: nip,
+                      nip: inv.buyer_tax_no || '',
+                      krajNabywcy: inv.buyer_country || '',
+                      rodzajNumeru: inv.buyer_tax_no_kind || 'auto',
+                      waluta: inv.currency || 'PLN',
                       klientNazwa: inv.buyer_name || inv.client_name || existing.klientNazwa || '',
                       klientMiasto: inv.buyer_city || existing.klientMiasto || '',
                       firma: inv.department_id === 1978591 ? 'E' : inv.department_id === 1978589 ? 'AR' : inv.department_id === 1978585 ? 'F' : 'F',
@@ -12452,6 +12521,8 @@ function App() {
               imp: null,
               form: {
                 nip: k.nip || '',
+                krajNabywcy: fakBuyerCountry(k.krajNabywcy, k.nip),
+                rodzajNumeru: k.rodzajNumeru || 'auto',
                 nazwaFirmy: k.nazwa || '',
                 imie: k.nazwa || '',
                 ulica: k.ulica || '',
@@ -24625,6 +24696,8 @@ function App() {
         form: {
           ...m.form,
           nip: k.nip || '',
+          krajNabywcy: fakBuyerCountry(k.krajNabywcy, k.nip),
+          rodzajNumeru: k.rodzajNumeru || 'auto',
           nazwaFirmy: k.nazwa || '',
           imie: k.nazwa || '',
           ulica: k.ulica || '',
@@ -24655,7 +24728,7 @@ function App() {
     }
   }, /*#__PURE__*/React.createElement("span", {
     className: "lbl"
-  }, "NIP nabywcy (firma)"), /*#__PURE__*/React.createElement("div", {
+  }, "Identyfikator podatkowy nabywcy (firma)"), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 6
@@ -24669,7 +24742,7 @@ function App() {
         nip: e.target.value
       }
     })),
-    placeholder: "np. 5222317450",
+    placeholder: fakBuyerCountry(fakModal.form.krajNabywcy, fakModal.form.nip) === 'HU' ? '13535894-2-16 lub VAT UE HU13535894' : 'NIP / numer krajowy / VAT UE',
     style: {
       flex: 1,
       padding: '6px 10px',
@@ -24682,7 +24755,8 @@ function App() {
     }
   }), /*#__PURE__*/React.createElement("button", {
     onClick: gusLookup,
-    disabled: fakModal.gusLoading,
+    disabled: fakModal.gusLoading || fakBuyerCountry(fakModal.form.krajNabywcy, fakModal.form.nip) !== 'PL' || ['nip_ue', 'other'].includes(fakModal.form.rodzajNumeru),
+    title: 'Wyszukiwanie w GUS / MF tylko dla polskiego NIP',
     style: {
       padding: '6px 12px',
       borderRadius: 4,
@@ -24703,6 +24777,8 @@ function App() {
       }
       upsertKontrahent({
         nip: f.nip || '',
+        krajNabywcy: fakBuyerCountry(f.krajNabywcy, f.nip),
+        rodzajNumeru: f.rodzajNumeru || 'auto',
         nazwa,
         ulica: f.ulica || '',
         kod: f.kod || '',
@@ -24833,19 +24909,37 @@ function App() {
     },
       React.createElement("option",{value:'PLN'},"PLN — złoty"),
       React.createElement("option",{value:'CZK'},"CZK — korona czeska"),
-      React.createElement("option",{value:'EUR'},"EUR — euro")
+      React.createElement("option",{value:'EUR'},"EUR — euro"),
+      React.createElement("option",{value:'HUF'},"HUF — forint węgierski")
     )
   ),
   React.createElement("div", { style:{flex:1} },
     React.createElement("span", {className:"lbl"}, "Kraj nabywcy"),
-    React.createElement("input", {
-      value: fakModal.form.krajNabywcy || 'PL',
-      onChange: e => setFakModal(m => ({...m, form:{...m.form, krajNabywcy:e.target.value.toUpperCase(), vat:e.target.value.toUpperCase()!=='PL'&&e.target.value.trim()!==''?0:23}})),
-      maxLength: 2,
-      placeholder: "PL / CZ / DE...",
+    React.createElement("select", {
+      value: fakBuyerCountry(fakModal.form.krajNabywcy, fakModal.form.nip),
+      onChange: e => setFakModal(m => ({...m, gusError:'', form:{...m.form, krajNabywcy:e.target.value}})),
       style:{width:'100%',padding:'6px 10px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#9acf9a',fontSize:13}
-    })
-  )), /*#__PURE__*/React.createElement("div", {
+    },
+      FAK_KRAJE_UE.map(k => React.createElement("option", {key:k[0],value:k[0]}, k[0] + ' — ' + k[1])),
+      !FAK_KRAJE_UE.some(k => k[0] === fakBuyerCountry(fakModal.form.krajNabywcy, fakModal.form.nip)) &&
+        React.createElement("option", {value:fakBuyerCountry(fakModal.form.krajNabywcy, fakModal.form.nip)}, fakBuyerCountry(fakModal.form.krajNabywcy, fakModal.form.nip))
+    )
+  )), React.createElement("div", {style:{marginBottom:10}},
+    React.createElement("span", {className:"lbl"}, "Rodzaj identyfikatora podatkowego"),
+    React.createElement("select", {
+      value:fakModal.form.rodzajNumeru || 'auto',
+      onChange:e => setFakModal(m => ({...m, gusError:'', form:{...m.form, rodzajNumeru:e.target.value}})),
+      style:{width:'100%',padding:'6px 10px',background:'#0a1a0a',border:'1px solid #2a4a2a',borderRadius:4,color:'#9acf9a',fontSize:13}
+    },
+      React.createElement("option", {value:'auto'}, "Automatycznie według kraju i formatu numeru"),
+      React.createElement("option", {value:'polski'}, "Polski NIP"),
+      React.createElement("option", {value:'nip_ue'}, "VAT UE (np. HU13535894)"),
+      React.createElement("option", {value:'other'}, "Numer krajowy / inny (np. 13535894-2-16)")
+    ),
+    React.createElement("div", {style:{fontSize:11,color:'#9acf9a',marginTop:4}},
+      "Numer krajowy i VAT UE to odrębne identyfikatory. Wpisz numer przekazany przez nabywcę; aplikacja nie tworzy VAT UE z numeru krajowego. Kraj, waluta i rodzaj numeru nie zmieniają stawki VAT."
+    )
+  ), /*#__PURE__*/React.createElement("div", {
     style: {
       marginBottom: 10
     }
