@@ -3,11 +3,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20261012.246</title>
+<title>MosquitoApp v20261012.247</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script>
-   window.__MOSK_VERSION='20261012.246';
+   window.__MOSK_VERSION='20261012.247';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -5456,13 +5456,16 @@ function App() {
       setShipmentModal(prev => ({
         ...prev,
         imp,
-        services: svcs
+        services: svcs,
+        proposals: d.proposals || null,
+        proposalsError: d.proposalsError || ''
       }));
       // Auto-wybór: pierwsza pasująca usługa (InPost lub pierwsza)
       if (svcs.length > 0) {
         // Dopasuj po nazwie metody dostawy - szukaj nazwy przewoźnika
         // Dopasuj dokładnie po deliveryMethodId z zamówienia
-        const matched = svcs.find(s => s.id === imp.deliveryMethodId) || svcs[0];
+        const methodId=d.proposals?.suggestedInput?.deliveryMethodId || imp.deliveryMethodId;
+        const matched = svcs.find(s => s.id === methodId) || svcs[0];
         console.log("deliveryMethodId:", imp.deliveryMethodId, "→", matched?.name);
         setShipmentServiceId(matched.id || "");
       }
@@ -5993,6 +5996,17 @@ function App() {
             additionalServices: ["sendingAtPoint"]
           } : {}),
           ...(() => {
+            const _foreign=(imp.klientKraj || 'PL').toUpperCase() !== 'PL';
+            if (_foreign) {
+              const suggested=shipmentModal.proposals?.suggestedInput;
+              if (!suggested) throw Error(shipmentModal.proposalsError || 'Brak ustawień zagranicznej wysyłki. Zaktualizuj Worker i ponownie otwórz formularz etykiety.');
+              const fields={};
+              if (suggested.insurance) fields.insurance={...suggested.insurance};
+              if (suggested.cashOnDelivery) fields.cashOnDelivery={...suggested.cashOnDelivery,
+                ...(shipmentCodOverride !== '' ? {amount:codAmount.toFixed(2)} : {})};
+              return fields;
+            }
+            // Dotychczasowa gałąź krajowa
             // Waluta ubezpieczenia zależna od kraju odbiorcy
             const _INS = {
               HU: {
@@ -25835,6 +25849,7 @@ function App() {
         const _svc = (shipmentModal.services || []).find(s => s.id === shipmentServiceId) || {};
         const body = {
           commandId: crypto.randomUUID(),
+          ...((imp.klientKraj || 'PL').toUpperCase() !== 'PL' ? {insuranceParcelCount:totalParcels} : {}),
           input: {
             orders: [{ orderId: imp.allegroOrderId }],
             deliveryMethodId: shipmentServiceId,
@@ -25851,7 +25866,8 @@ function App() {
             receiver: {
               name: imp.klientImie || '',
               street: fullStreet,
-              ...(parsedBuilding ? { buildingNumber: parsedBuilding } : {}),
+              ...(parsedBuilding && (imp.klientKraj || 'PL') === 'PL' ? { buildingNumber: parsedBuilding } : {}),
+              ...(imp.pickupPointId ? {point:imp.pickupPointId} : {}),
               postalCode: imp.klientKod || '',
               city: imp.klientMiasto || '',
               countryCode: imp.klientKraj || 'PL',
@@ -25859,7 +25875,13 @@ function App() {
               email: imp.klientEmail || ''
             },
             packages: [{ type: 'PACKAGE', ...pkgDims, textOnLabel: ep.description || shipmentDescription || '' }],
-            insurance: { amount: insurancePerParcel.toFixed(2), currency: 'PLN' }
+            ...((imp.klientKraj || 'PL').toUpperCase() !== 'PL'
+              ? (()=>{
+                  const suggested=shipmentModal.proposals?.suggestedInput;
+                  if(!suggested) throw Error(shipmentModal.proposalsError || 'Brak ustawień zagranicznej wysyłki. Zaktualizuj Worker.');
+                  return suggested.insurance?{insurance:{...suggested.insurance,amount:(Number(suggested.insurance.amount)/totalParcels).toFixed(2)}}:{};
+                })()
+              : {insurance:{amount:insurancePerParcel.toFixed(2),currency:'PLN'}})
           }
         };
         const r = await fetch(AUTORESPONDER_URL + '/shipment/create?kontoId=' + encodeURIComponent(imp.kontoId || ''), {
