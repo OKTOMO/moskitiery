@@ -6,7 +6,7 @@
 <title>MosquitoApp v20261012.247</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="./gallery-messages.js?v=20261120-1"></script>
+<script src="./gallery-messages.js?v=20261120-2"></script>
 <script>
    window.__MOSK_VERSION='20261012.247';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
@@ -164,7 +164,7 @@ const FIRMY = [{
   nazwa: "Albama"
 }];
 const AUTORESPONDER_URL = "https://allegro-autoresponder.favour-biuro.workers.dev";
-const AUTORESPONDER_KEY = "Kuke&300219";
+const AUTORESPONDER_KEY = getWorkerKey();
 // Cloudflare Workers Free: limit "Quick Actions" (m.in. /pdf) to 1 zadanie / 10 sek
 // NA CALE KONTO (nie per-zamowienie). Ten globalny znacznik czasu pilnuje odstepu
 // >=11s miedzy KAZDYM wywolaniem /pdf/render w calej aplikacji, niezaleznie od
@@ -11327,80 +11327,8 @@ function App() {
           wordBreak: 'break-word',
           lineHeight: 1.4
         }
-      }, m.text));
-    })), /*#__PURE__*/React.createElement("textarea", {
-      id: "wiad_reply_input",
-      placeholder: "Wpisz odpowiedź...",
-      rows: 3,
-      style: {
-        width: '100%',
-        padding: '6px 10px',
-        borderRadius: 5,
-        border: '1px solid #1a5a5a',
-        background: '#0a1a1a',
-        color: '#9adfdf',
-        fontSize: 12,
-        fontFamily: 'monospace',
-        resize: 'vertical',
-        boxSizing: 'border-box'
-      }
-    }), /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: 'flex',
-        justifyContent: 'flex-end',
-        marginTop: 6
-      }
-    }, /*#__PURE__*/React.createElement("button", {
-      onClick: function () {
-        var txt = document.getElementById('wiad_reply_input').value.trim();
-        if (!txt) return;
-        fetch(AUTORESPONDER_URL + '/messaging/threads/' + wiadActiveThread.id + '/messages?kontoId=' + wiadActiveThread._kontoId, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': AUTORESPONDER_KEY
-          },
-          body: JSON.stringify({
-            text: txt
-          })
-        }).then(function (r) {
-          return r.json();
-        }).then(function (d) {
-          if (d && d.id) {
-            document.getElementById('wiad_reply_input').value = '';
-            setWiadMessages(function (prev) {
-              return [...prev, {
-                text: txt,
-                author: {
-                  role: 'OPERATOR'
-                },
-                createdAt: new Date().toISOString()
-              }];
-            });
-            setMsgReplied(function (prev) {
-              var n = new Set(prev);
-              n.add(wiadActiveThread.id);
-              localStorage.setItem('msg_replied', JSON.stringify([...n]));
-              return n;
-            });
-          } else {
-            alert('❌ Błąd wysyłania: ' + (d && d.error || JSON.stringify(d)));
-          }
-        }).catch(function (e) {
-          alert('Błąd: ' + e.message);
-        });
-      },
-      style: {
-        padding: '6px 18px',
-        background: '#1a4a3a',
-        border: '1px solid #2a7a5a',
-        borderRadius: 5,
-        color: '#afffaf',
-        cursor: 'pointer',
-        fontWeight: 700,
-        fontSize: 12
-      }
-    }, "✉️ Wyślij"))) : /*#__PURE__*/React.createElement("div", null, (() => {
+      }, m.text, (m.attachments||[]).map(function(att,ai){return React.createElement("div",{key:ai},React.createElement("div",{style:{fontSize:14}},"📎 "+(att.fileName||"załącznik")),React.createElement(window.MosqGalleryAttachmentActions,{attachment:att,kontoId:wiadActiveThread._kontoId,apiKey:AUTORESPONDER_KEY}));})));
+    })), React.createElement(window.MosqGalleryConversationComposer, {key:wiadActiveThread.id+"-"+wiadActiveThread._kontoId,threadId:wiadActiveThread.id,kontoId:wiadActiveThread._kontoId,apiKey:AUTORESPONDER_KEY,onSent:function(message){setWiadMessages(function(prev){return prev.concat(message);});setMsgReplied(function(prev){var next=new Set(prev);next.add(wiadActiveThread.id);localStorage.setItem("msg_replied",JSON.stringify([...next]));return next;});}})) : /*#__PURE__*/React.createElement("div", null, (() => {
       const watki = (msgThreads || []).filter(function (t) {
         return !t.hasDispute && !t.isDispute && !msgReplied.has(t.id);
       });
