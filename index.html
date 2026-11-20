@@ -7915,7 +7915,7 @@ function App() {
       color: '#df7a7a',
       cursor: 'pointer'
     }
-  }, "🔄 Sprawdź ponownie")), [["zamowienia", "📦 Zamówienia"], ["al_zam", "🛒 Allegro"], ["baza", "📋 Zlecenia"], ["zapytania", "📨 KAL"], ["stat", "📊 Stat"], ["produkcja", "🏭 Produkcja"], ["kalk", "🧮 Kalkulator"], ["wycena", "🔢 Wycena"], ["wystaw", "🏪 Wystaw"], ["dpd_szybkie", "🚚 DPD"]].map(([id, l]) => /*#__PURE__*/React.createElement("button", {
+  }, "🔄 Sprawdź ponownie")), [["zamowienia", "📦 Zamówienia"], ["al_zam", "🛒 Allegro"], ["baza", "📋 Zlecenia"], ["zapytania", "📨 KAL"], ["stat", "📊 Stat"], ["produkcja", "🏭 Produkcja"], ["kalk", "🧮 Kalkulator"], ["wycena", "🔢 Wycena"], ["wystaw", "🏪 Wystaw"], ["dpd_szybkie", "🚚 DPD"], ["galerie", "📷 Galerie"]].map(([id, l]) => /*#__PURE__*/React.createElement("button", {
     key: id,
     className: `tab ${tab === id ? "on" : ""}`,
     onClick: () => setTab(id)
@@ -8016,7 +8016,7 @@ function App() {
       maxWidth: 1100,
       margin: "0 auto"
     }
-  }, tab === "fakturownia_cfg" && /*#__PURE__*/React.createElement("div", {
+  }, tab === "galerie" && React.createElement("iframe", {src: "./galerie.html", title: "Prywatna biblioteka zdjęć", style: {width: "100%", height: "85vh", border: 0, borderRadius: 12}}), tab === "fakturownia_cfg" && /*#__PURE__*/React.createElement("div", {
     style: {
       maxWidth: 600
     }
