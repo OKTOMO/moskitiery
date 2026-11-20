@@ -6,6 +6,7 @@
 <title>MosquitoApp v20261012.247</title>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="./gallery-messages.js?v=20261120-1"></script>
 <script>
    window.__MOSK_VERSION='20261012.247';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
@@ -7209,7 +7210,7 @@ function App() {
         const id = await msgUploadAttachment(msgNewAttachments[ai].file);
         if (id) attIds.push({
           id: id
-        });
+        }); else {throw new Error("Nie udało się przygotować załącznika. Wiadomość nie została wysłana.");}
       }
       const msgBody = {
         text: msgNewText.trim()
@@ -18626,7 +18627,7 @@ function App() {
       resize: "vertical",
       boxSizing: "border-box"
     }
-  })), msgNewAttachments.length > 0 && /*#__PURE__*/React.createElement("div", {
+  })), React.createElement(window.MosqGalleryMessageButton, {disabled: msgNewSending, onFiles: function(items){setMsgNewAttachments(function(prev){return prev.concat(items.map(function(item){return {file:item.file,name:item.file.name,preview:URL.createObjectURL(item.file),galleryId:item.galleryId};}));});}}), msgNewAttachments.length > 0 && /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       flexWrap: "wrap",
@@ -18898,7 +18899,7 @@ function App() {
         gap: 4
       }
     }, m.attachments.map(function (att, ai) {
-      return React.createElement("a", {
+      return React.createElement(React.Fragment, {key:ai}, React.createElement("a", {
         key: ai,
         href: "#",
         onClick: function (e) {
@@ -18936,7 +18937,7 @@ function App() {
           borderRadius: 4,
           cursor: "pointer"
         }
-      }, "📎 " + (att.fileName || "załącznik"));
+      }, "📎 " + (att.fileName || "załącznik")), React.createElement(window.MosqGalleryAttachmentActions, {attachment:att,kontoId:msgKontoRef.current,apiKey:AUTORESPONDER_KEY}));
     }))), React.createElement("span", {
       style: {
         fontSize: 14,
@@ -18949,7 +18950,7 @@ function App() {
       borderTop: "1px solid #1a2a1a",
       background: "#0a120a"
     }
-  }, msgAttachments.length > 0 && React.createElement("div", {
+  }, React.createElement(window.MosqGalleryMessageButton, {disabled: msgSending, onFiles: function(items){setMsgAttachments(function(prev){return prev.concat(items.map(function(item){return {file:item.file,name:item.file.name,preview:URL.createObjectURL(item.file),galleryId:item.galleryId};}));});}}), msgAttachments.length > 0 && React.createElement("div", {
     style: {
       display: "flex",
       flexWrap: "wrap",
