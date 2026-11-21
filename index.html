@@ -4,7 +4,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>MosquitoApp v20261012.247</title>
-<script src="./shopify-production.js?v=20261121-4"></script>
+<script src="./shopify-production.js?v=20261121-5"></script>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="./gallery-messages.js?v=20261120-2"></script>
@@ -6809,6 +6809,7 @@ function App() {
       };
     });
   }
+  const [manualStatRecords,setManualStatRecords]=useState([]);
   const [shopifyStatRecords,setShopifyStatRecords]=useState([]);
   const [allegroStatRecords,setAllegroStatRecords]=useState(null);
   const [shopifyStatStatus,setShopifyStatStatus]=useState({loading:false,error:''});
@@ -17166,7 +17167,7 @@ function App() {
       const d = new Date(imp.boughtAt);
       return d.getFullYear() === statYear && d.getMonth() + 1 === statMonth;
     });
-    const matyStats=window.MosquitoShopify.matStatistics(allegroStatRecords||allegroImportResults,shopifyStatRecords,statYear,statMonth);
+    const matyStats=window.MosquitoShopify.matStatistics(allegroStatRecords||allegroImportResults,shopifyStatRecords,statYear,statMonth,window.MosquitoShopify.manualWithLegacy(manualStatRecords,statYear,statMonth,statMatyMalaExtra,statMatyDuzaExtra));
     // ── KOSMETYKI — definicja kategorii ──
     const KAT = [{
       nazwa: 'Pomada broda',
@@ -17463,7 +17464,7 @@ function App() {
         gridTemplateColumns: '1fr 1fr',
         gap: 14
       }
-    }, React.createElement(window.MosquitoShopify.MatSalesPanel,{groups:matyStats,loading:shopifyStatStatus.loading,error:shopifyStatStatus.error,onRefresh:()=>setShopifyStatRefresh(n=>n+1),smallExtra:statMatyMalaExtra,largeExtra:statMatyDuzaExtra}), /*#__PURE__*/React.createElement("div", {
+    }, React.createElement(window.MosquitoShopify.MatSalesPanel,{groups:matyStats,year:statYear,month:statMonth,apiUrl:AUTORESPONDER_URL,apiKey:AUTORESPONDER_KEY,onManualChange:setManualStatRecords,loading:shopifyStatStatus.loading,error:shopifyStatStatus.error,onRefresh:()=>setShopifyStatRefresh(n=>n+1),smallExtra:statMatyMalaExtra,largeExtra:statMatyDuzaExtra}), /*#__PURE__*/React.createElement("div", {
       style: {
         background: '#0a0a1a',
         border: '1px solid #2a2a5a',

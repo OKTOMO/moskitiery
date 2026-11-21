@@ -98,8 +98,8 @@
     const unit=moneyCents(item.unitPrice??item.cenaBrutto??item.price?.amount),qty=Number(item.quantity??item.ilosc??1);
     return unit!==null&&Number.isInteger(qty)&&qty>0?unit*qty:null;
   }
-  function matStatistics(allegro,shopify,year,month){
-    const groups=Object.fromEntries(['favour','arlis','albama','everis'].map(k=>[k,{small:0,large:0,orders:0,unknown:0,allegro:0,shopify:0,revenue:{},unpricedLines:0,unknownDetails:[]}])) ;
+  function matStatistics(allegro,shopify,year,month,manual=[]){
+    const groups=Object.fromEntries(['favour','arlis','albama','everis','shared'].map(k=>[k,{small:0,large:0,orders:0,unknown:0,allegro:0,shopify:0,manual:0,revenue:{},unpricedLines:0,unknownDetails:[]}])) ;
     const account={favo5:'favour',staroleska_pl:'favour',sinlook_pl:'favour',arlis_pl:'arlis',arlis:'arlis',albama_eu:'albama',pedroshop_pl_365:'albama',everis_pl:'everis'};
     const byStore={arlis:'arlis',oktomo:'favour',albama:'albama',everis:'everis'},seen=new Set();
     function add(key,group,date,items,cancelled,channel,currency,goodsTotal,number){
@@ -126,6 +126,13 @@
     for(const r of shopify||[]){const o=r.order,store=Object.keys(stores).find(k=>stores[k].domain===o?.shop);if(!store)continue;
       add('shopify:'+store+':'+o.id,byStore[store],o.createdAt,o.items||[],o.cancelled||o.financialStatus==='refunded','shopify',o.currency,null,o.number);
     }
+    const manualGroups={F:'favour',AR:'arlis',AL:'albama',E:'everis',F_AR:'shared'};
+    for(const e of manual){
+      const group=manualGroups[e.firma],key='manual:'+e.id;
+      if(!group||e.cancelled||seen.has(key)||e.period!==year+'-'+String(month).padStart(2,'0'))continue;
+      seen.add(key);const g=groups[group];g.small+=Number(e.small)||0;g.large+=Number(e.large)||0;g.manual++;if(!e.legacy)g.orders++;
+      const cents=moneyCents(e.gross);if(cents===null)g.unpricedLines++;else g.revenue[e.currency||'PLN']=(g.revenue[e.currency||'PLN']||0)+cents;
+    }
     return groups;
   }
   function MatSalesPanel(props){
@@ -138,16 +145,17 @@
         h('div',null,'Małe: ',h('strong',null,small),' szt. · Duże: ',h('strong',null,large),' szt.'),
         h('div',{style:{marginTop:9,fontSize:17,color:'#d3f3db'}},'Wartość mat: ',h('strong',null,amounts(revenue))),
         h('div',{style:{fontSize:11,color:'#7fa58d',marginTop:5}},'Faktyczna wartość pozycji po rabatach, bez dostawy. ',rows.reduce((n,r)=>n+r.orders,0),' zamówień.'),
-        missing>0&&h('p',{style:{color:'#ffd189',fontSize:12}},'Brak ceny dla '+missing+' pozycji. Powyższa wartość jest niepełna — odśwież dane źródłowe.'),
+        missing>0&&h('p',{style:{color:'#ffd189',fontSize:12}},'Brak ceny dla '+missing+' pozycji. Powyższa wartość jest niepełna — uzupełnij ręczny wpis lub odśwież dane źródłowe.'),
         unknown>0&&h('details',null,h('summary',{style:{color:'#ffd189'}},'Do sprawdzenia rozmiar/zestaw: '+unknown+' kupionych pozycji'),...rows.flatMap(r=>r.unknownDetails).map((d,i)=>h('div',{key:i,style:{fontSize:12,marginTop:6}},d.number+' · '+d.quantity+' × '+d.title))),
         rows.length>1&&h('div',{style:{fontSize:12,color:'#8cb69c',marginTop:12}},'Favour / OKTOMO: '+g.favour.small+' małe, '+g.favour.large+' duże · '+amounts(g.favour.revenue),h('br'),'ARLIS: '+g.arlis.small+' małe, '+g.arlis.large+' duże · '+amounts(g.arlis.revenue)),
-        extras&&h('p',{style:{color:'#ffd189',fontSize:12}},'Dotychczasowe korekty ręczne: '+props.smallExtra+' małych / '+props.largeExtra+' dużych. Pokazane osobno; nie tworzą fikcyjnej wartości sprzedaży.')
+        rows.some(r=>r.manual)&&h('p',{style:{color:'#b8d8c3',fontSize:12}},'W sumie uwzględniono wpisy ręczne.'+(rows.includes(g.shared)&&g.shared.manual?' Starsza wspólna korekta Favour + ARLIS: '+g.shared.small+' małych / '+g.shared.large+' dużych.':''))
       );
     }
     return h('div',null,h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}},h('strong',null,'Maty PC — rozliczenia firm'),h('button',{className:'btn',onClick:props.onRefresh,disabled:props.loading},props.loading?'Pobieram…':'Odśwież ceny i sztuki')),
       props.error&&h('p',{style:{color:'#ffd189',fontSize:12}},props.error),
-      card('Favour + ARLIS',[g.favour,g.arlis],!!(props.smallExtra||props.largeExtra)),
-      card('ALBAMA — osobne rozliczenie',[g.albama]),card('EVERIS — osobne rozliczenie',[g.everis]));
+      card('Favour + ARLIS',[g.favour,g.arlis,g.shared]),
+      card('ALBAMA — osobne rozliczenie',[g.albama]),card('EVERIS — osobne rozliczenie',[g.everis]),
+      h(root.MosquitoShopify.ManualMatSales,{...props,groups:undefined}));
   }
   function parcelPlan(order){
     const mats=(order.items||[]).map(matUnits),mosquito=(order.items||[]).filter(isMosquito),nonMats=(order.items||[]).filter((item,i)=>!mats[i].isMat&&!isMosquito(item));
@@ -167,4 +175,45 @@
   }
   Object.assign(root.MosquitoShopify,{matUnits,matStatistics,parcelPlan,moneyCents,lineRevenue,MatSalesPanel});
 
+})(typeof window==='object'?window:globalThis);
+
+(function(root){
+ const api=root.MosquitoShopify;
+ function manualWithLegacy(entries,year,month,small,large){
+  const id='legacy_'+year+'_'+month;
+  return entries.some(e=>e.id===id)||!(small||large)?entries:[...entries,{id,period:year+'-'+String(month).padStart(2,'0'),firma:'F_AR',small,large,gross:null,currency:'PLN',legacy:true,note:'Dotychczasowe ręczne wpisy'}];
+ }
+ function ManualMatSales(p){
+  const R=root.React,h=R.createElement,[entries,setEntries]=R.useState([]),[revision,setRevision]=R.useState(null),[ready,setReady]=R.useState(false),[error,setError]=R.useState(''),[busy,setBusy]=R.useState(false),[form,setForm]=R.useState(null);
+  const period=p.year+'-'+String(p.month).padStart(2,'0'),effective=manualWithLegacy(entries,p.year,p.month,p.smallExtra,p.largeExtra),labels={F:'Favour / OKTOMO',AR:'ARLIS',AL:'ALBAMA',E:'EVERIS',F_AR:'Favour + ARLIS — stare wpisy'};
+  const headers={'x-api-key':p.apiKey,'Content-Type':'application/json'},url=p.apiUrl+'/stats/mats/manual';
+  async function load(){setReady(false);setError('');try{const r=await fetch(url,{headers,cache:'no-store'}),d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'Nie udało się odczytać wpisów ręcznych.');setEntries(d.entries);setRevision(d.revision);p.onManualChange(d.entries);setReady(true);}catch(e){setError(e.message);}}
+  R.useEffect(()=>{load();},[period]);
+  async function save(entry){
+   setBusy(true);setError('');try{
+    const r=await fetch(url,{method:'POST',headers,body:JSON.stringify({entry,revision})}),d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'Nie udało się zapisać wpisu.');
+    setEntries(d.entries);setRevision(d.revision);p.onManualChange(d.entries);setForm(null);
+   }catch(e){setError(e.message);}finally{setBusy(false);}
+  }
+  function field(label,name,type='text',optional=false){return h('label',{style:{display:'grid',gap:4}},label,h('input',{type,value:form[name]??'',min:type==='number'?0:undefined,step:name==='gross'?'0.01':1,required:!optional,onChange:e=>setForm({...form,[name]:e.target.value}),style:{width:'100%',boxSizing:'border-box'}}));}
+  const rows=effective.filter(e=>e.period===period);
+  return h('section',{style:{border:'1px solid #3b6750',borderRadius:8,padding:14,marginTop:16}},h('strong',null,'Zamówienia mat spoza Allegro i sklepów'),
+   h('p',{style:{fontSize:12,color:'#a9c4b3'}},'Wpisy są zapisywane na Twoim serwerze i doliczane do wybranej firmy. Podaj faktyczną wartość samych mat, bez wysyłki. Puste pole ceny oznacza brak danych.'),
+   h('button',{className:'btn',disabled:!ready||busy,onClick:()=>setForm({id:crypto.randomUUID(),firma:'F',date:period===new Date().toLocaleDateString('en-CA').slice(0,7)?new Date().toLocaleDateString('en-CA'):period+'-01',period,small:0,large:0,gross:'',currency:'PLN',note:''})},'➕ Dodaj zamówienie ręczne'),
+   h('button',{className:'btn',disabled:busy,onClick:load,style:{marginLeft:8}},'Odśwież ręczne wpisy'),
+   error&&h('p',{role:'alert',style:{color:'#ffd189'}},error),!ready&&!error&&h('p',null,'Wczytuję ręczne wpisy…'),
+   form&&h('form',{onSubmit:e=>{e.preventDefault();save({...form,period:form.legacy?period:form.date.slice(0,7)});},style:{display:'grid',gap:10,marginTop:14}},
+    h('strong',null,form.legacy?'Uzupełnij stare wpisy':'Ręczne zamówienie'),
+    !form.legacy&&field('Data sprzedaży','date','date'),
+    h('label',null,'Firma ',h('select',{value:form.firma,disabled:form.legacy,onChange:e=>setForm({...form,firma:e.target.value})},...Object.entries(labels).filter(([k])=>form.legacy||k!=='F_AR').map(([k,v])=>h('option',{key:k,value:k},v)))),
+    field('Małe maty — sztuki','small','number'),field('Duże maty — sztuki','large','number'),field('Wartość mat bez dostawy (opcjonalnie)','gross','number',true),
+    h('label',null,'Waluta ',h('select',{value:form.currency,onChange:e=>setForm({...form,currency:e.target.value})},...['PLN','EUR','CZK','HUF'].map(v=>h('option',{key:v,value:v},v)))),
+    field('Notatka lub numer zamówienia (opcjonalnie)','note','text',true),h('div',null,h('button',{type:'submit',className:'btn',disabled:busy},busy?'Zapisuję…':'Zapisz wpis'),h('button',{type:'button',className:'btn',disabled:busy,onClick:()=>setForm(null),style:{marginLeft:8}},'Anuluj'))),
+   ...rows.map(e=>h('div',{key:e.id,style:{padding:'10px 0',borderBottom:'1px solid #284535',opacity:e.cancelled ? 0.6 : 1}},
+    h('div',null,(e.legacy?'Stara korekta — '+period:e.date)+' · '+labels[e.firma]+(e.cancelled?' · WYŁĄCZONY':'')),
+    h('div',null,e.small+' małych + '+e.large+' dużych · '+(e.gross===null?'brak ceny':e.gross+' '+e.currency)+(e.note?' · '+e.note:'')),
+    h('button',{className:'btn',disabled:!ready||busy,onClick:()=>setForm({...e,gross:e.gross??''})},'Edytuj'),
+    h('button',{className:'btn',disabled:!ready||busy,onClick:()=>save({...e,cancelled:!e.cancelled}),style:{marginLeft:8}},e.cancelled?'Przywróć do statystyk':'Wyłącz ze statystyk'))));
+ }
+ Object.assign(api,{manualWithLegacy,ManualMatSales});
 })(typeof window==='object'?window:globalThis);
