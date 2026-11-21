@@ -63,18 +63,22 @@
     const variant=folded(item.properties?.Zestaw||item.variantTitle||item.variant_title||'');
     const selected=variant||title;
     if(!/\bmat(?:a|y|e|)\b|podkladk/.test(title))return {small:0,large:0,unknown:0,isMat:false};
+    const pc=/poliwegl|polycarb|policarbon|\bpc\b/.test(title);
+    const knownDimensions=/(?:125\s*[x×*]\s*(?:102|100|205)|(?:102|100|205)\s*[x×*]\s*125)/.test(title);
+    if(!pc&&(/wanny|wanna|prysznic|lazienk|piankow|masaz|silikon|gumow|filcow/.test(title)||!knownDimensions&&!/ochronn.*(?:fotel|krzesl|podlog)|(?:fotel|krzesl|podlog).*ochronn/.test(title)))return {small:0,large:0,unknown:0,isMat:false};
     const qty=Number(item.quantity??item.ilosc??1);
     if(!Number.isInteger(qty)||qty<=0)return {small:0,large:0,unknown:1,isMat:true};
     const parse=n=>{
-      if(/\bmix\b|mala\s*(?:i|\+)\s*duza|duza\s*(?:i|\+)\s*mala/.test(n))return {small:1,large:1};
-      const count=word=>{const a=n.match(new RegExp('(\\d+)\\s*(?:x\\s*)?(?:szt\\.?\\s*)?'+word)),b=n.match(new RegExp(word+'\\s*(?:x\\s*)?(\\d+)\\s*(?:szt|mat)'));return a?Number(a[1]):b?Number(b[1]):0};
+      const countText=n.replace(/(?<!\d)(?:125\s*[x×*]\s*(?:102|100|205)|(?:102|100|205)\s*[x×*]\s*125)(?!\d)/g,' ').replace(/\bcm\b/g,' ');
+      const count=word=>{const a=countText.match(new RegExp('(\\d+)\\s*(?:x\\s*)?(?:szt\\.?\\s*)?'+word)),b=countText.match(new RegExp(word+'\\s*(?:x\\s*)?(\\d+)\\s*(?:szt|mat)'));return a?Number(a[1]):b?Number(b[1]):0};
       const small=count('mal(?:e|a|ych)'),large=count('duz(?:e|a|ych)');
       if(small||large)return {small,large};
+      if(/\bmix\b|mala\s*(?:i|\+)\s*duza|duza\s*(?:i|\+)\s*mala/.test(n))return {small:1,large:1};
       const dims=n.replace(/[×*]/g,'x').replace(/\s/g,'');
       const hasSmall=/(?:125x102|102x125|125x100|100x125)/.test(dims)||/\bmal(?:a|e|ych)\b/.test(n);
       const hasLarge=/(?:205x125|125x205)/.test(dims)||/\bduz(?:a|e|ych)\b/.test(n);
       if(hasSmall&&hasLarge)return null;
-      const bundle=n.match(/\b(\d+)\s*(?:szt\.?|mat(?:y|a)?\b)/),units=bundle?Number(bundle[1]):1;
+      const bundle=countText.match(/\b(\d+)\s*(?:szt\.?|mat(?:y|a)?\b)|\b(\d+)\s*x(?!\d)/),units=bundle?Number(bundle[1]||bundle[2]):1;
       return hasSmall?{small:units,large:0}:hasLarge?{small:0,large:units}:null;
     };
     const parsed=parse(selected)||(!variant?null:parse(title));
