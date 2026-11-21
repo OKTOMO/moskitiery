@@ -4,7 +4,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>MosquitoApp v20261012.247</title>
-<script src="./shopify-production.js?v=20261121-5"></script>
+<script src="./shopify-production.js?v=20261121-6"></script>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="./gallery-messages.js?v=20261120-2"></script>
@@ -7975,7 +7975,7 @@ function App() {
       color: '#df7a7a',
       cursor: 'pointer'
     }
-  }, "🔄 Sprawdź ponownie")), [["zamowienia", "📦 Zamówienia"], ["al_zam", "🛒 Allegro"], ["baza", "📋 Zlecenia"], ["zapytania", "📨 KAL"], ["stat", "📊 Stat"], ["produkcja", "🏭 Produkcja"], ["kalk", "🧮 Kalkulator"], ["wycena", "🔢 Wycena"], ["wystaw", "🏪 Wystaw"], ["dpd_szybkie", "🚚 DPD"], ["shopify", "🛍️ ARLIS"], ["shopify_albama", "🛍️ ALBAMA"], ["shopify_oktomo", "🛍️ OKTOMO"], ["shopify_everis", "🛍️ EVERIS"], ["galerie", "📷 Galerie"]].map(([id, l]) => /*#__PURE__*/React.createElement("button", {
+  }, "🔄 Sprawdź ponownie")), [["zamowienia", "📦 Zamówienia"], ["al_zam", "🛒 Allegro"], ["baza", "📋 Zlecenia"], ["zapytania", "📨 KAL"], ["stat", "📊 Stat"], ["produkcja", "🏭 Produkcja"], ["kalk", "🧮 Kalkulator"], ["wycena", "🔢 Wycena"], ["wystaw", "🏪 Wystaw"], ["marza", "💰 Marża"], ["dpd_szybkie", "🚚 DPD"], ["shopify", "🛍️ ARLIS"], ["shopify_albama", "🛍️ ALBAMA"], ["shopify_oktomo", "🛍️ OKTOMO"], ["shopify_everis", "🛍️ EVERIS"], ["galerie", "📷 Galerie"]].map(([id, l]) => /*#__PURE__*/React.createElement("button", {
     key: id,
     className: `tab ${tab === id ? "on" : ""}`,
     onClick: () => setTab(id)
@@ -19579,7 +19579,7 @@ function App() {
         style: { marginTop: 16, padding: '10px 18px', fontSize: 14, fontWeight: 700, background: '#1a3a1a', border: '1px solid #4a8a4a', borderRadius: 6, color: '#7acf7a', cursor: 'pointer', width: '100%' }
       }, "🌐 Otwórz w DPD Online")
     );
-  })(), tab === "wystaw" && /*#__PURE__*/React.createElement("div", {
+  })(), tab === "marza" && React.createElement(window.MosquitoShopify.MarginCalculator), tab === "wystaw" && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: '16px'
     }

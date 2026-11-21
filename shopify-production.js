@@ -217,3 +217,53 @@
  }
  Object.assign(api,{manualWithLegacy,ManualMatSales});
 })(typeof window==='object'?window:globalThis);
+
+(function(root){
+ const api=root.MosquitoShopify;
+ const keys=['purchaseNet','saleNet','quantity','shippingCostNet','shippingPaidNet','packagingNet','commission','goodsVat','feeVat'];
+ function smartDpdGross(gross,mode,parcels=1){
+  gross=Math.round((gross+Number.EPSILON)*100)/100;
+  if(gross<30||!Number.isInteger(parcels)||parcels<1||!['smartStandard','smartDelivery'].includes(mode))return null;
+  const rates=mode==='smartDelivery'?[1.79,3.69,5.59,8.99,11.29]:[1.99,3.99,6.09,9.49,11.89];
+  const i=gross<45?0:gross<65?1:gross<100?2:gross<150?3:4;
+  return rates[i]+(parcels-1)*rates[i===4?3:i];
+ }
+ function marginResult(f){
+  const automatic=/^smart/.test(f.shippingMode||'');
+  const n={};for(const k of keys){if(automatic&&k==='shippingCostNet'){n[k]=0;continue;}const s=String(f[k]??'').trim().replace(',','.');if(!/^\d+(?:\.\d{1,4})?$/.test(s))return {valid:false};n[k]=Number(s);}
+  if(!Number.isInteger(n.quantity)||n.quantity<1||n.goodsVat>100||n.feeVat>100||!['net','gross','percent'].includes(f.commissionMode)||f.commissionMode==='percent'&&n.commission>100)return {valid:false};
+  const goodsNet=n.saleNet*n.quantity,revenueNet=goodsNet+n.shippingPaidNet,gross=revenueNet*(1+n.goodsVat/100);
+  const feeNet=f.commissionMode==='net'?n.commission:f.commissionMode==='gross'?n.commission/(1+n.feeVat/100):gross*n.commission/100;
+  const shippingGross=automatic?smartDpdGross(goodsNet*(1+n.goodsVat/100),f.shippingMode,Number(f.parcels||1)):null;
+  if(automatic&&(shippingGross===null||!Number.isFinite(Number(f.shippingVat))||Number(f.shippingVat)<0||Number(f.shippingVat)>100||n.shippingPaidNet!==0))return {valid:false};
+  const shippingNet=automatic?shippingGross/(1+Number(f.shippingVat)/100):n.shippingCostNet;
+  const costs=n.purchaseNet*n.quantity+shippingNet+n.packagingNet+feeNet,result=revenueNet-costs;
+  return {valid:true,goodsNet,revenueNet,gross,feeNet,costs,result,shippingNet,shippingGross,margin:revenueNet?result/revenueNet*100:null,beforeAds:Math.max(0,result)};
+ }
+ function MarginCalculator(){
+  const R=root.React,h=R.createElement,blank=()=>({id:'',name:'',firma:'AR',purchaseNet:'',saleNet:'',quantity:'1',shippingMode:'manual',parcels:'1',shippingVat:'23',shippingCostNet:'',shippingPaidNet:'0',packagingNet:'0',commissionMode:'net',commission:'',goodsVat:'23',feeVat:'23'});
+  const [profiles,setProfiles]=R.useState(()=>{try{return JSON.parse(localStorage.getItem('mat_margin_profiles_v1')||'[]')}catch{return []}}),[f,setF]=R.useState(blank),[message,setMessage]=R.useState('');
+  const result=marginResult(f),money=n=>n.toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2})+' zł';
+  function field(label,key,help){return h('label',{style:{display:'grid',gap:5}},label,h('input',{type:'number',min:0,step:key==='quantity'?1:0.0001,value:f[key],onChange:e=>{setMessage('');setF({...f,[key]:e.target.value})},style:{width:'100%',boxSizing:'border-box'}}),help&&h('small',{style:{color:'#a4b8ad'}},help));}
+  function save(){if(!f.name.trim()){setMessage('Podaj nazwę produktu lub zestawu.');return;}const record={...f,id:f.id||crypto.randomUUID(),updatedAt:new Date().toISOString()},next=[record,...profiles.filter(p=>p.id!==record.id)];localStorage.setItem('mat_margin_profiles_v1',JSON.stringify(next));setProfiles(next);setF(record);setMessage('Kalkulacja zapisana w tej przeglądarce.'+(!result.valid?' Uzupełnij brakujące dane, aby otrzymać wynik.':''));}
+  return h('section',{style:{maxWidth:1000,margin:'20px auto',padding:20,border:'1px solid #385c46',borderRadius:12,background:'#0d1d15'}},h('h2',null,'Marża netto — przed reklamą'),
+   h('p',{style:{color:'#abc5b5'}},'Zakup i sprzedaż podaj netto za jedną sztukę. Koszty dostawy, kartonu i prowizji dotyczą całego zamówienia. Dla zestawu wpisz łączny zakup i sprzedaż jednego zestawu.'),
+   h('div',{style:{display:'flex',gap:8,flexWrap:'wrap',marginBottom:16}},h('button',{className:'btn',onClick:()=>{setF(blank());setMessage('')}},'Nowa kalkulacja'),...profiles.map(p=>h('button',{key:p.id,className:'btn',onClick:()=>{setF({...blank(),...p});setMessage('')}},p.name+' · '+p.firma))),
+   h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(230px,1fr))',gap:16}},
+    h('label',null,'Nazwa produktu / zestawu',h('input',{value:f.name,onChange:e=>setF({...f,name:e.target.value}),placeholder:'np. Mata PC mała — 1 szt.',style:{display:'block',width:'100%',boxSizing:'border-box'}})),
+    h('label',null,'Firma',h('select',{value:f.firma,onChange:e=>setF({...f,firma:e.target.value}),style:{display:'block'}},...Object.entries({F:'Favour / OKTOMO',AR:'ARLIS',AL:'ALBAMA',E:'EVERIS'}).map(([k,v])=>h('option',{key:k,value:k},v)))),
+    field('Cena zakupu netto / szt.','purchaseNet'),field('Cena sprzedaży netto / szt.','saleNet'),field('Liczba sztuk lub zestawów','quantity'),
+    h('label',null,'Wysyłka — sposób liczenia',h('select',{value:f.shippingMode,onChange:e=>setF({...f,shippingMode:e.target.value,shippingPaidNet:e.target.value==='manual'?f.shippingPaidNet:'0'}),style:{display:'block',width:'100%'}},h('option',{value:'manual'},'Rzeczywisty koszt — wpisz netto'),h('option',{value:'smartStandard'},'Smart! Kurier DPD poza Allegro Delivery'),h('option',{value:'smartDelivery'},'Smart! Kurier DPD w Allegro Delivery'))),
+    f.shippingMode==='manual'?field('Koszt kuriera netto / zamówienie','shippingCostNet'):h('label',null,'Liczba paczek Smart!',h('input',{type:'number',min:1,step:1,value:f.parcels,onChange:e=>setF({...f,parcels:e.target.value})})),
+    field('Dostawa pobrana od klienta netto','shippingPaidNet','Dla Smart! pozostaw 0.'),field('Karton i pakowanie netto','packagingNet'),
+    h('label',null,'Prowizja Allegro — sposób podania',h('select',{value:f.commissionMode,onChange:e=>setF({...f,commissionMode:e.target.value}),style:{display:'block',width:'100%'}},h('option',{value:'net'},'Kwota netto za zamówienie (zł)'),h('option',{value:'gross'},'Kwota brutto za zamówienie (zł)'),h('option',{value:'percent'},'Stawka netto (%) od towaru i dostawy brutto'))),
+    field(f.commissionMode==='percent'?'Prowizja Allegro (%) netto':'Prowizja Allegro (zł)','commission','Podaj faktyczną opłatę lub własną stawkę. Wpisz 0 dla sprzedaży bez prowizji.'),field('VAT towaru i dostawy (%)','goodsVat'),field('VAT prowizji (%)','feeVat','Używany przy kwocie prowizji brutto.'),f.shippingMode!=='manual'&&field('VAT kosztu Smart! (%)','shippingVat')),
+   h('p',{style:{fontSize:12,color:'#a4b8ad'}},'Kwoty netto. Stawka prowizji netto jest naliczana od sprzedaży brutto razem z dostawą. Zmień VAT zgodnie z transakcją. Wynik nie obejmuje reklam, podatku dochodowego ani kosztów stałych firmy.'),
+   f.shippingMode!=='manual'&&h('p',{style:{fontSize:12,color:'#ffd18b'}},'Smart!: szacunek opłaty podstawowej dla kwalifikującego się zamówienia; bez pobrania, dopłat gabarytowych i usług dodatkowych. Tabela sprawdzona 21.11.2026. ',h('a',{href:'https://help.allegro.com/pl/sell/c/metody-dostawy-dpd',target:'_blank',rel:'noopener'},'Cennik DPD'), ' · ',h('a',{href:'https://help.allegro.com/pl/sell/c/allegro-smart',target:'_blank',rel:'noopener'},'Allegro Smart!')),
+   result.valid?h('div',{style:{padding:18,marginTop:16,border:'1px solid #457657',borderRadius:10}},
+    ...[['Przychód netto z towarem i dostawą',money(result.revenueNet)],['Sprzedaż towaru brutto',money(result.goodsNet*(1+Number(f.goodsVat)/100))],['Prowizja netto',money(result.feeNet)],['Koszt wysyłki netto',money(result.shippingNet)],['Wszystkie wpisane koszty netto',money(result.costs)],['Wynik przed reklamą i kosztami stałymi',money(result.result)],['Marża od przychodu netto',result.margin===null?'—':result.margin.toFixed(2)+'%'],['Pozostaje przed reklamą / zamówienie',money(result.beforeAds)]].map(([label,value])=>h('div',{key:label,style:{display:'flex',justifyContent:'space-between',gap:15,padding:'6px 0'}},h('span',null,label),h('strong',{style:{color:result.result<0?'#ffaaa2':'#a6e7b4'}},value)))):
+    h('p',{role:'status',style:{color:'#ffd18b'}},'Uzupełnij ceny zakupu i sprzedaży, koszt wysyłki oraz prowizję. Brakujące dane nie są traktowane jako zerowy koszt.'),
+   h('button',{className:'btn',onClick:save,style:{marginTop:16}},'Zapisz kalkulację'),h('p',{role:'status'},message),h('p',{style:{fontSize:12,color:'#8ca795'}},'Zapisane kalkulacje są dostępne w tej przeglądarce. Nie zmieniają cen w Allegro ani sklepach.'));
+ }
+ Object.assign(api,{marginResult,smartDpdGross,MarginCalculator});
+})(typeof window==='object'?window:globalThis);
