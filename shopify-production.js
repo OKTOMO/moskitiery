@@ -68,6 +68,11 @@
     if(!pc&&(/wanny|wanna|prysznic|lazienk|piankow|masaz|silikon|gumow|filcow/.test(title)||!knownDimensions&&!/ochronn.*(?:fotel|krzesl|podlog)|(?:fotel|krzesl|podlog).*ochronn/.test(title)))return {small:0,large:0,unknown:0,isMat:false};
     const qty=Number(item.quantity??item.ilosc??1);
     if(!Number.isInteger(qty)||qty<=0)return {small:0,large:0,unknown:1,isMat:true};
+    // Allegro product bundles keep a singular offer name and quantity=number of sets.
+    // Composition verified in ARLIS order details on 2026-11-21; never infer from price.
+    const smallBundleUnits={'19083863587':2,'19083863585':3,'19083863586':4};
+    const bundleUnits=smallBundleUnits[String(item.offerId??item.offer?.id??'')];
+    if(bundleUnits)return {small:bundleUnits*qty,large:0,unknown:0,isMat:true};
     const parse=n=>{
       const countText=n.replace(/(?<!\d)(?:125\s*[x×*]\s*(?:102|100|205)|(?:102|100|205)\s*[x×*]\s*125)(?!\d)/g,' ').replace(/\bcm\b/g,' ');
       const count=word=>{const a=countText.match(new RegExp('(\\d+)\\s*(?:x\\s*)?(?:szt\\.?\\s*)?'+word)),b=countText.match(new RegExp(word+'\\s*(?:x\\s*)?(\\d+)\\s*(?:szt|mat)'));return a?Number(a[1]):b?Number(b[1]):0};
