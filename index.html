@@ -6809,6 +6809,28 @@ function App() {
       };
     });
   }
+  const [shopifyStatRecords,setShopifyStatRecords]=useState([]);
+  const [allegroStatRecords,setAllegroStatRecords]=useState(null);
+  const [shopifyStatStatus,setShopifyStatStatus]=useState({loading:false,error:''});
+  const [shopifyStatRefresh,setShopifyStatRefresh]=useState(0);
+  React.useEffect(()=>{
+    if(tab!=='stat')return;
+    let stopped=false;
+    async function refresh(){
+      setShopifyStatStatus({loading:true,error:''});
+      const stores=Object.keys(window.MosquitoShopify.stores),urls=[AUTORESPONDER_URL+'/orders?statsYear='+statYear+'&statsMonth='+statMonth,...stores.map(s=>AUTORESPONDER_URL+'/integrations/shopify/'+s+'/inbox')];
+      const results=await Promise.allSettled(urls.map(async url=>{const response=await fetch(url,{headers:{'x-api-key':AUTORESPONDER_KEY},cache:'no-store'});if(!response.ok)throw new Error('HTTP '+response.status);const data=await response.json();if(data.ok!==true)throw new Error('Niepełna odpowiedź źródła');return data;}));
+      if(stopped)return;
+      const errors=[],records=[];
+      if(results[0].status==='fulfilled'){
+        setAllegroStatRecords(results[0].value.orders||[]);
+        for(const e of results[0].value.errors||[])errors.push('Allegro '+(e.konto||'')+': niepełne dane');
+      }else errors.push('Nie udało się odświeżyć Allegro — pokazano zapisane dane.');
+      results.slice(1).forEach((result,i)=>{if(result.status==='fulfilled')records.push(...result.value.records||[]);else errors.push(stores[i].toUpperCase()+': nie udało się pobrać zamówień sklepowych');});
+      setShopifyStatRecords(records);setShopifyStatStatus({loading:false,error:errors.length?'Uwaga: '+errors.join('; ')+'. Rozliczenie może być niepełne.':''});
+    }
+    refresh();return()=>{stopped=true};
+  },[tab,statYear,statMonth,shopifyStatRefresh]);
   // Store iframe only requests opening a draft; final save remains in the existing production form.
   React.useEffect(() => {
     async function fromShopify(event) {
@@ -17144,50 +17166,7 @@ function App() {
       const d = new Date(imp.boughtAt);
       return d.getFullYear() === statYear && d.getMonth() + 1 === statMonth;
     });
-    // ── MATY ──
-    const isMata = function (imp) {
-      const n = (imp.offerNames || '').toLowerCase();
-      return (n.includes('mata') || n.includes('maty')) && (imp.kontoId === 'favo5' || imp.kontoId === 'arlis_pl' || imp.kontoId === 'arlis');
-    };
-    const isMataDuza = function (imp) {
-      const n = (imp.offerNames || '').toLowerCase();
-      return isMata(imp) && (n.includes('125x205') || n.includes('205x125') || n.includes('duż') || n.includes('duz') || n.includes('large'));
-    };
-    const isMataMala = function (imp) {
-      return isMata(imp) && !isMataDuza(imp);
-    };
-    const countSzt = function (list) {
-      return list.reduce(function (s, imp) {
-        return s + (imp.pozycje && imp.pozycje.length > 0 ? imp.pozycje.reduce(function (a, p) {
-          return a + (parseInt(p.ilosc) || 1);
-        }, 0) : 1);
-      }, 0);
-    };
-    const sumWart = function (list) {
-      return list.reduce(function (s, imp) {
-        return s + parseFloat(imp.totalAmount || 0);
-      }, 0);
-    };
-    const matyDuza = zamMies.filter(isMataDuza);
-    const matyMala = zamMies.filter(isMataMala);
-    const matyDuzaSzt = countSzt(matyDuza) + (parseInt(statMatyDuzaExtra) || 0);
-    const matyMalaSzt = countSzt(matyMala) + (parseInt(statMatyMalaExtra) || 0);
-    const AVG_DUZA = 167.5;
-    const AVG_MALA = 85.5;
-    const matyDuzaWartRazem = countSzt(matyDuza) * AVG_DUZA + (parseInt(statMatyDuzaExtra) || 0) * AVG_DUZA;
-    const matyMalaWartRazem = countSzt(matyMala) * AVG_MALA + (parseInt(statMatyMalaExtra) || 0) * AVG_MALA;
-    const matySzt = matyDuzaSzt + matyMalaSzt;
-    const matyWart = matyDuzaWartRazem + matyMalaWartRazem;
-    const matyFavo = zamMies.filter(function (i) {
-      return isMata(i) && i.kontoId === 'favo5';
-    });
-    const matyArlis = zamMies.filter(function (i) {
-      return isMata(i) && (i.kontoId === 'arlis_pl' || i.kontoId === 'arlis');
-    });
-    const calcMatyWart = function(list) {
-      return list.filter(isMataDuza).reduce(function(s,i){return s+(parseInt((i.pozycje&&i.pozycje.length>0?i.pozycje.reduce(function(a,p){return a+(parseInt(p.ilosc)||1);},0):1))||1)*AVG_DUZA;},0)
-           + list.filter(isMataMala).reduce(function(s,i){return s+(parseInt((i.pozycje&&i.pozycje.length>0?i.pozycje.reduce(function(a,p){return a+(parseInt(p.ilosc)||1);},0):1))||1)*AVG_MALA;},0);
-    };
+    const matyStats=window.MosquitoShopify.matStatistics(allegroStatRecords||allegroImportResults,shopifyStatRecords,statYear,statMonth);
     // ── KOSMETYKI — definicja kategorii ──
     const KAT = [{
       nazwa: 'Pomada broda',
@@ -17484,199 +17463,7 @@ function App() {
         gridTemplateColumns: '1fr 1fr',
         gap: 14
       }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        background: '#0a1a0a',
-        border: '1px solid #1a4a2a',
-        borderRadius: 8,
-        padding: '12px 16px'
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 10
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontWeight: 700,
-        color: '#7acf9f',
-        fontSize: 14
-      }
-    }, "🟩 Maty — Arlis + Favo5"), /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 11,
-        color: '#3a6a3a'
-      }
-    }, matySzt, " szt / ", matyWart.toFixed(2), " zł")), /*#__PURE__*/React.createElement("div", {
-      style: {
-        background: '#0f1f0f',
-        borderRadius: 6,
-        padding: '8px 10px',
-        marginBottom: 6
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 4
-      }
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: '#7acf9f',
-        fontSize: 12,
-        fontWeight: 700
-      }
-    }, "Duża 125×205"), /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: '#afffaf',
-        fontWeight: 700,
-        fontSize: 14
-      }
-    }, matyDuzaSzt, " szt")), /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: 'flex',
-        gap: 6,
-        alignItems: 'center'
-      }
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 11,
-        color: '#3a6a3a'
-      }
-    }, "Allegro: ", countSzt(matyDuza)), /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 11,
-        color: '#3a6a3a'
-      }
-    }, "korekta:"), /*#__PURE__*/React.createElement("input", {
-      type: "number",
-      value: statMatyDuzaExtra,
-      onChange: function (e) {
-        var v = parseInt(e.target.value) || 0;
-        setStatMatyDuzaExtra(v);
-        localStorage.setItem('stat_maty_duza_extra_' + statYear + '_' + statMonth, String(v));
-      },
-      style: {
-        width: 50,
-        padding: '2px 4px',
-        fontSize: 12,
-        background: '#0a1a0a',
-        border: '1px solid #2a5a2a',
-        borderRadius: 4,
-        color: '#afffaf',
-        textAlign: 'center'
-      }
-    }), /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 11,
-        color: '#3a6a3a',
-        marginLeft: 'auto'
-      }
-    }, matyDuzaWartRazem.toFixed(2), " zł", (parseInt(statMatyDuzaExtra) || 0) > 0 && AVG_DUZA > 0 ? /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: '#5a9a7a'
-      }
-    }, " (+", ((parseInt(statMatyDuzaExtra) || 0) * AVG_DUZA).toFixed(2), ")") : null))), /*#__PURE__*/React.createElement("div", {
-      style: {
-        background: '#0f1f0f',
-        borderRadius: 6,
-        padding: '8px 10px',
-        marginBottom: 8
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 4
-      }
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: '#5abf8a',
-        fontSize: 12,
-        fontWeight: 700
-      }
-    }, "Mała 102×125"), /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: '#afffaf',
-        fontWeight: 700,
-        fontSize: 14
-      }
-    }, matyMalaSzt, " szt")), /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: 'flex',
-        gap: 6,
-        alignItems: 'center'
-      }
-    }, /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 11,
-        color: '#3a6a3a'
-      }
-    }, "Allegro: ", countSzt(matyMala)), /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 11,
-        color: '#3a6a3a'
-      }
-    }, "korekta:"), /*#__PURE__*/React.createElement("input", {
-      type: "number",
-      value: statMatyMalaExtra,
-      onChange: function (e) {
-        var v = parseInt(e.target.value) || 0;
-        setStatMatyMalaExtra(v);
-        localStorage.setItem('stat_maty_mala_extra_' + statYear + '_' + statMonth, String(v));
-      },
-      style: {
-        width: 50,
-        padding: '2px 4px',
-        fontSize: 12,
-        background: '#0a1a0a',
-        border: '1px solid #2a5a2a',
-        borderRadius: 4,
-        color: '#afffaf',
-        textAlign: 'center'
-      }
-    }), /*#__PURE__*/React.createElement("span", {
-      style: {
-        fontSize: 11,
-        color: '#3a6a3a',
-        marginLeft: 'auto'
-      }
-    }, matyMalaWartRazem.toFixed(2), " zł", (parseInt(statMatyMalaExtra) || 0) > 0 && AVG_MALA > 0 ? /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: '#5a9a7a'
-      }
-    }, " (+", ((parseInt(statMatyMalaExtra) || 0) * AVG_MALA).toFixed(2), ")") : null))), /*#__PURE__*/React.createElement("div", {
-      style: {
-        fontSize: 11,
-        color: '#3a7a5a',
-        borderTop: '1px solid #0f2a1a',
-        paddingTop: 6
-      }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        padding: '2px 0'
-      }
-    }, /*#__PURE__*/React.createElement("span", null, "favo5"), /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: '#9fcf9f'
-      }
-    }, matyFavo.length, " zam. / ", calcMatyWart(matyFavo).toFixed(2), " zł")), /*#__PURE__*/React.createElement("div", {
-      style: {
-        display: 'flex',
-        justifyContent: 'space-between',
-        padding: '2px 0'
-      }
-    }, /*#__PURE__*/React.createElement("span", null, "arlis"), /*#__PURE__*/React.createElement("span", {
-      style: {
-        color: '#9fcf9f'
-      }
-    }, matyArlis.length, " zam. / ", calcMatyWart(matyArlis).toFixed(2), " zł")))), /*#__PURE__*/React.createElement("div", {
+    }, React.createElement(window.MosquitoShopify.MatSalesPanel,{groups:matyStats,loading:shopifyStatStatus.loading,error:shopifyStatStatus.error,onRefresh:()=>setShopifyStatRefresh(n=>n+1),smallExtra:statMatyMalaExtra,largeExtra:statMatyDuzaExtra}), /*#__PURE__*/React.createElement("div", {
       style: {
         background: '#0a0a1a',
         border: '1px solid #2a2a5a',
