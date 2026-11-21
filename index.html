@@ -4,6 +4,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <title>MosquitoApp v20261012.247</title>
+<script src="./shopify-production.js"></script>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="./gallery-messages.js?v=20261120-2"></script>
@@ -161,8 +162,8 @@ const FIRMY = [{
   nazwa: "Everis"
 }, {
   kod: "AP",
-  nazwa: "Albama"
-}];
+  nazwa: "Albama (AP)"
+}, {kod:"AL",nazwa:"Albama"}];
 const AUTORESPONDER_URL = "https://allegro-autoresponder.favour-biuro.workers.dev";
 const AUTORESPONDER_KEY = getWorkerKey();
 // Cloudflare Workers Free: limit "Quick Actions" (m.in. /pdf) to 1 zadanie / 10 sek
@@ -222,6 +223,7 @@ const FIRMY_DANE = {
     kontakt: "Piotr Rudnicki"
   }
 };
+FIRMY_DANE.AL = FIRMY_DANE.AP;
 const PROFILE = [{
   id: "F",
   nazwa: "Favour",
@@ -6807,10 +6809,42 @@ function App() {
       };
     });
   }
+  // Store iframe only requests opening a draft; final save remains in the existing production form.
+  React.useEffect(() => {
+    async function fromShopify(event) {
+      const frame=document.getElementById('shopify-store-frame');
+      if(event.origin!==window.location.origin||!frame||event.source!==frame.contentWindow||event.data?.type!=='mosquito:production-draft')return;
+      const store=event.data.store,cfg=window.MosquitoShopify.stores[store],id=String(event.data.orderId||'');
+      if(!cfg||!/^\d+$/.test(id))return;
+      try {
+        const res=await fetch(AUTORESPONDER_URL+'/integrations/shopify/'+store+'/inbox',{headers:{'x-api-key':AUTORESPONDER_KEY},cache:'no-store'});
+        if(!res.ok)throw new Error('Nie udało się odczytać zamówienia ze sklepu.');
+        const data=await res.json(),record=data.records?.find(r=>String(r.order?.id)===id&&r.order?.shop===cfg.domain);
+        if(!record)throw new Error('Zamówienie nie jest dostępne w tym sklepie.');
+        const draft=window.MosquitoShopify.buildForm(store,record.order),live=await freshOrders();
+        const existing=window.MosquitoShopify.linked([...orders,...live],draft.shopifySource);
+        if(existing.length){alert('To zamówienie ma już zlecenie: '+[...new Set(existing.map(o=>o.numerZlecenia))].join(', ')+'. Otwórz je w Zleceniach.');setTab('baza');return;}
+        if(!saved&&form.pozycje?.some(p=>p.szerokosc||p.wysokosc)&&!confirm('Otworzyć zlecenie ze sklepu i zastąpić niezapisany formularz?'))return;
+        setForm(draft);setEditingId(null);setNumerOverride('');setAllegroOrderIdForForm('');setKalNumerForForm('');
+        setSaved(false);setLastSavedOrder(null);setWiadomosc('');setAdres('');setWithDrzwi(false);setParseTyp(draft.pozycje.every(p=>p.isDrzwi)?'drzwi':'okno');setTab('nowe');
+        const missing=window.MosquitoShopify.validate(draft);
+        if(missing.length)alert('Przed zapisaniem uzupełnij dane zlecenia:\n'+missing.join('\n'));
+      } catch(error){alert(error.message||'Nie udało się otworzyć zlecenia.');}
+    }
+    window.addEventListener('message',fromShopify);
+    return ()=>window.removeEventListener('message',fromShopify);
+  },[orders,form,saved]);
   async function handleSave() {
+    const _shopifySource=form.shopifySource||orders.find(o=>o.id===editingId)?.shopifySource||null;
+    if(_shopifySource){const errors=window.MosquitoShopify.validate({...form,shopifySource:_shopifySource});if(errors.length){alert('Uzupełnij przed zapisaniem:\n'+errors.join('\n'));return;}}
+
     const _liveOrds = await freshOrders();
     const _allIds = new Set(orders.map(o => o.id));
     const _ordBase = [...orders, ..._liveOrds.filter(o => !_allIds.has(o.id))];
+    if (_shopifySource && editingId === null) {
+      const duplicates=window.MosquitoShopify.linked(_ordBase,_shopifySource);
+      if(duplicates.length){alert('Zlecenie dla tego zamówienia już istnieje: '+duplicates.map(o=>o.numerZlecenia).join(', '));return;}
+    }
     if (_liveOrds.length > orders.length) setOrders(_liveOrds);
     const _hasDrzwi = form.pozycje.some(p => p.isDrzwi);
     const _hasOkna = form.pozycje.some(p => !p.isDrzwi);
@@ -6834,6 +6868,7 @@ function App() {
         data: form.data,
         allegroOrderId: allegroOrderIdForForm || "",
         kalNumer: kalNumerForForm || "",
+        shopifySource: _shopifySource,
         klientImie: form.klientImie,
         klientUlica: form.klientUlica || "",
         klientKod: form.klientKod || "",
@@ -6849,7 +6884,7 @@ function App() {
           glebokosc: p.glebokosc || String(DOMYSLNA_GLEBOKOS),
           kolorSiatki: p.kolorSiatki || "Czarna",
           linka: obliczLinke(p.szerokosc, p.wysokosc),
-          blaszRozmiar: obliczRozmiarBlaszki(p.glebokosc)
+          blaszRozmiar: p.sourceSkokBlaszki || obliczRozmiarBlaszki(p.glebokosc)
         }))
       };
       const orderDrzwi = {
@@ -6932,6 +6967,7 @@ function App() {
       data: form.data,
       allegroOrderId: allegroOrderIdForForm || "",
       kalNumer: kalNumerForForm || "",
+      shopifySource: _shopifySource,
       klientImie: form.klientImie,
       klientUlica: form.klientUlica || "",
       klientKod: form.klientKod || "",
@@ -6946,7 +6982,7 @@ function App() {
         glebokosc: p.glebokosc || String(DOMYSLNA_GLEBOKOS),
         kolorSiatki: p.kolorSiatki || "Czarna",
         linka: obliczLinke(p.szerokosc, p.wysokosc),
-        blaszRozmiar: obliczRozmiarBlaszki(p.glebokosc)
+        blaszRozmiar: p.sourceSkokBlaszki || obliczRozmiarBlaszki(p.glebokosc)
       })
     };
     if (editingId !== null) {
@@ -7916,7 +7952,7 @@ function App() {
       color: '#df7a7a',
       cursor: 'pointer'
     }
-  }, "🔄 Sprawdź ponownie")), [["zamowienia", "📦 Zamówienia"], ["al_zam", "🛒 Allegro"], ["baza", "📋 Zlecenia"], ["zapytania", "📨 KAL"], ["stat", "📊 Stat"], ["produkcja", "🏭 Produkcja"], ["kalk", "🧮 Kalkulator"], ["wycena", "🔢 Wycena"], ["wystaw", "🏪 Wystaw"], ["dpd_szybkie", "🚚 DPD"], ["shopify", "🛍️ Sklep ARLIS"], ["galerie", "📷 Galerie"]].map(([id, l]) => /*#__PURE__*/React.createElement("button", {
+  }, "🔄 Sprawdź ponownie")), [["zamowienia", "📦 Zamówienia"], ["al_zam", "🛒 Allegro"], ["baza", "📋 Zlecenia"], ["zapytania", "📨 KAL"], ["stat", "📊 Stat"], ["produkcja", "🏭 Produkcja"], ["kalk", "🧮 Kalkulator"], ["wycena", "🔢 Wycena"], ["wystaw", "🏪 Wystaw"], ["dpd_szybkie", "🚚 DPD"], ["shopify", "🛍️ ARLIS"], ["shopify_albama", "🛍️ ALBAMA"], ["shopify_oktomo", "🛍️ OKTOMO"], ["shopify_everis", "🛍️ EVERIS"], ["galerie", "📷 Galerie"]].map(([id, l]) => /*#__PURE__*/React.createElement("button", {
     key: id,
     className: `tab ${tab === id ? "on" : ""}`,
     onClick: () => setTab(id)
@@ -8017,7 +8053,7 @@ function App() {
       maxWidth: 1100,
       margin: "0 auto"
     }
-  }, tab === "shopify" && React.createElement("iframe", {src: "./shopify-zamowienia.html", title: "Zamówienia ze sklepu ARLIS", style: {width: "100%", height: "85vh", border: 0, borderRadius: 12}}), tab === "galerie" && React.createElement("iframe", {src: "./galerie.html", title: "Prywatna biblioteka zdjęć", style: {width: "100%", height: "85vh", border: 0, borderRadius: 12}}), tab === "fakturownia_cfg" && /*#__PURE__*/React.createElement("div", {
+  }, (tab === "shopify" || tab.startsWith("shopify_")) && React.createElement("iframe", {key:tab,id:"shopify-store-frame",src: "./shopify-zamowienia.html?store="+(tab === "shopify"?"arlis":tab.slice(8)), title: "Zamówienia ze sklepu "+(tab === "shopify"?"ARLIS":tab.slice(8).toUpperCase()), style: {width: "100%", height: "85vh", border: 0, borderRadius: 12}}), tab === "galerie" && React.createElement("iframe", {src: "./galerie.html", title: "Prywatna biblioteka zdjęć", style: {width: "100%", height: "85vh", border: 0, borderRadius: 12}}), tab === "fakturownia_cfg" && /*#__PURE__*/React.createElement("div", {
     style: {
       maxWidth: 600
     }
