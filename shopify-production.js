@@ -267,3 +267,86 @@
  }
  Object.assign(api,{marginResult,smartDpdGross,MarginCalculator});
 })(typeof window==='object'?window:globalThis);
+
+(function(root){
+ const api=root.MosquitoShopify,fold=v=>String(v||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ł/g,'l');
+ const money=n=>Number(n).toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2})+' zł';
+ function meshCut(width,height,rules){
+  const specific=(rules.meshOverrides||[]).find(o=>o.widthCm===Number(width)&&o.heightCm===Number(height)||o.widthCm===Number(height)&&o.heightCm===Number(width));
+  if(specific)return {rollCm:specific.rollCm,cutCm:specific.cutCm,areaM2:specific.rollCm*specific.cutCm/10000};
+  if(!rules.meshRuleConfirmed)return null;
+  const a=Number(width)+rules.meshPaddingCm,b=Number(height)+rules.meshPaddingCm,candidates=[];
+  for(const roll of rules.meshRollWidthsCm){if(a<=roll)candidates.push({rollCm:roll,cutCm:b,areaM2:roll*b/10000});if(b<=roll)candidates.push({rollCm:roll,cutCm:a,areaM2:roll*a/10000});}
+  return candidates.sort((x,y)=>x.areaM2-y.areaM2||x.rollCm-y.rollCm)[0]||null;
+ }
+ function mosquitoMaterialCost(catalog,order,options={}){
+  const missing=[],warnings=[],lines=[],frames=[],rules=catalog.rules,firm=options.firm||order.firma;
+  const normalizedFirm=firm==='A'?'AR':firm;
+  if(!catalog.firms[normalizedFirm])return {complete:false,missing:['Wybierz cennik ARLIS albo FAVOUR.'],warnings,lines,knownSubtotal:0};
+  function rate(group,key){
+   const entries=catalog.firms[normalizedFirm][group]||{},matched=Object.keys(entries).find(k=>fold(k)===fold(key));let r=entries[matched];
+   if(!r&&options.allowSharedRates&&normalizedFirm!=='AR'){const fallback=catalog.firms.AR[group]||{},fk=Object.keys(fallback).find(k=>fold(k)===fold(key));r=fallback[fk];if(r)warnings.push('Część stawek przyjęta z faktury ARLIS — szacunek dla '+normalizedFirm+'.');}
+   if(!r)missing.push('Brak ceny '+key+' w cenniku '+normalizedFirm+'.');return r;
+  }
+  function add(label,qty,unit,r){if(!r)return;lines.push({label,quantity:qty,unit,unitNet:r.net,net:qty*r.net,source:r.source,sku:r.sku});}
+  const items=order.pozycje||[];if(!items.length)missing.push('Brak zapisanych wymiarów moskitiery.');
+  for(const p of items){
+   if(p.isDrzwi){missing.push('Drzwi wymagają osobnych zasad zużycia materiału.');continue;}
+   const w=Number(p.szerokosc),h=Number(p.wysokosc),qty=Number(p.ilosc??1);
+   if(!(w>rules.cutDeductionCm&&h>rules.cutDeductionCm&&Number.isInteger(qty)&&qty>0&&qty<=1000)){missing.push('Nieprawidłowe lub brakujące wymiary / liczba ramek.');continue;}
+   const a=w-rules.cutDeductionCm,b=h-rules.cutDeductionCm,perimeter=(w+h)*2/100;
+   add('Profil '+(p.kolorRamki||'—')+' · 2×'+a.toFixed(1)+' + 2×'+b.toFixed(1)+' cm, zapas '+rules.profileWaste*100+'%',2*(a+b)/100*(1+rules.profileWaste)*qty,'mb',rate('profile',p.kolorRamki||''));
+   const mesh=meshCut(w,h,rules);if(mesh)add('Siatka '+(p.kolorSiatki||'—')+' · '+mesh.cutCm+'×'+mesh.rollCm+' cm',mesh.areaM2*qty,'m²',rate('parts','mesh'));else missing.push(rules.meshRuleConfirmed?'Siatka: żaden dostępny rulon nie mieści wymiaru z zapasem.':'Potwierdź zasadę zapasu siatki.');
+   add('Uszczelka · obwód + '+rules.gasketWaste*100+'%',perimeter*(1+rules.gasketWaste)*qty,'mb',rate('parts','gasket'));
+   add('Narożniki',rules.cornersPerFrame*qty,'szt.',rate('parts','corner'));add('Uchwyt PCV',rules.pvcHandlesPerFrame*qty,'szt.',rate('parts','pvcHandle'));
+   const clip=Number(p.sourceSkokBlaszki??p.blaszRozmiar);if(!Number.isFinite(clip))warnings.push('Sprawdź skok uchwytów obrotowych; użyto stawki typowej.');else if(![0,5,7,9,15,18,20].includes(clip))warnings.push('Brak osobnej ceny uchwytu '+clip+' mm na fakturze; użyto stawki typowej.');
+   add('Uchwyty obrotowe'+(Number.isFinite(clip)?' '+clip+' mm':''),rules.rotaryPerFrame*qty,'szt.',rate('parts',clip===20?'rotary20':'rotaryStandard'));
+   add('Wkręty',rules.screwsPerFrame*qty,'szt.',rate('parts','screw'));
+   if(p.poprzeczka){const length=Number(p.poprzeczkaDlugoscCm);if(!(length>0))missing.push('Podaj rzeczywistą długość cięcia poprzeczki.');else add('Poprzeczka',length/100*(1+rules.profileWaste)*qty,'mb',rate('parts',/bia|braz|antracyt|czarn/.test(fold(p.kolorRamki))?'crossbarPlain':'crossbarWood'));add('Łączniki poprzeczki',2*qty,'szt.',rate('parts','crossbarConnector'));}
+   for(let i=0;i<qty;i++)frames.push(Math.max(a,b));
+  }
+  frames.sort((a,b)=>b-a);let parcels=0;
+  for(let i=0;i<frames.length;i+=rules.maxFramesPerParcel){parcels++;const longest=frames[i],carton=catalog.cartons.filter(b=>b.lengthCm>=longest).sort((a,b)=>a.lengthCm-b.lengthCm)[0];
+   if(!carton)missing.push('Brak ceny kartonu dla odcinka '+longest.toFixed(1)+' cm.');else if(normalizedFirm===catalog.cartonFirm||options.allowSharedRates){add('Karton '+carton.lengthCm+' cm · paczka '+parcels,1,'szt.',carton);if(normalizedFirm!==catalog.cartonFirm)warnings.push('Cena kartonu z faktury ARLIS — sprawdź stawkę dla '+normalizedFirm+'.');}else missing.push('Brak ceny kartonu w cenniku '+normalizedFirm+'.');
+  }
+  add('Radełko · raz na paczkę',parcels*rules.toolsPerParcel,'szt.',rate('parts','tool'));
+  const knownSubtotal=lines.reduce((n,l)=>n+l.net,0),complete=missing.length===0;
+  const assembly=complete&&rules.assemblyBasis==='materials_and_cartons'?knownSubtotal*rules.assemblyRate:null;
+  return {complete,lines,missing:[...new Set(missing)],warnings:[...new Set(warnings)],frames:frames.length,parcels,knownSubtotal,assembly,totalNet:assembly===null?null:knownSubtotal+assembly};
+ }
+ const base='https://allegro-autoresponder.favour-biuro.workers.dev';let cachedKey='',catalogPromise;
+ function loadMosquitoCatalog(key,force=false){if(force||!catalogPromise||cachedKey!==key){cachedKey=key;catalogPromise=fetch(base+'/pricing/mosquito-catalog',{headers:{'x-api-key':key},cache:'no-store'}).then(async r=>{const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'Nie udało się wczytać cennika.');return d;});}return catalogPromise;}
+ function MosquitoCostSettings(p){
+  const R=root.React,h=R.createElement,[data,setData]=R.useState(null),[message,setMessage]=R.useState('Wczytuję cennik…');
+  R.useEffect(()=>{loadMosquitoCatalog(p.apiKey).then(d=>{setData(d);setMessage(d.catalog?'Cennik zapisany prywatnie na serwerze.':'Wczytaj cennik, aby liczyć materiały przy zamówieniach.');}).catch(e=>setMessage(e.message));},[]);
+  async function upload(e){const file=e.target.files[0];if(!file)return;try{setMessage('Zapisuję prywatny cennik…');const catalog=JSON.parse(await file.text()),r=await fetch(base+'/pricing/mosquito-catalog',{method:'POST',headers:{'x-api-key':p.apiKey,'Content-Type':'application/json'},body:JSON.stringify({catalog,revision:data?.revision||null})}),d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||'Zapis nie powiódł się.');setData(d);await loadMosquitoCatalog(p.apiKey,true);setMessage('Cennik zapisany. Odśwież aplikację, aby przeliczyć wszystkie zamówienia.');}catch(err){setMessage(err.message);}e.target.value='';}
+  const example=data?.catalog&&mosquitoMaterialCost(data.catalog,{firma:'AR',pozycje:[{szerokosc:60,wysokosc:130,ilosc:1,kolorRamki:'Biały',kolorSiatki:'Czarna',blaszRozmiar:9}]});
+  return h('section',{style:{padding:16,border:'1px solid #345c45',borderRadius:10,margin:'18px auto',maxWidth:1000}},h('h3',null,'Koszty materiałów moskitier'),h('p',null,message),data?.catalog&&h('p',null,'Faktury: '+data.catalog.sourceInvoices.join(', ')+' · ceny netto z '+data.catalog.effectiveDate),example&&h('div',null,h('strong',null,'Przykład ARLIS: biała ramka 60×130 cm, 1 szt., typowe uchwyty, karton 130 cm'),...example.lines.map((l,i)=>h('div',{key:i,style:{display:'flex',justifyContent:'space-between',gap:15,padding:3}},h('span',null,l.label+' · '+Number(l.quantity.toFixed(4))+' '+l.unit),h('span',null,money(l.net)))),h('p',null,example.complete?'Z kompletacją: '+money(example.totalNet)+' netto':'Do potwierdzenia: '+example.missing.join(' '))),h('label',null,'Wczytaj prywatny cennik moskitier ',h('input',{type:'file',accept:'application/json,.json',onChange:upload})),h('p',{style:{fontSize:12}},'Ceny zakupu są chronione kluczem aplikacji. Wczytanie cennika nie zmienia cen sprzedaży ani zleceń produkcyjnych.'));
+ }
+ function MosquitoOrderCost(p){
+  const R=root.React,h=R.createElement,storageKey='mosquito_order_cost_'+p.orderKey;
+  const [catalog,setCatalog]=R.useState(null),[error,setError]=R.useState(''),[extra,setExtra]=R.useState(()=>{try{return JSON.parse(localStorage.getItem(storageKey)||'{}')}catch{return {}}});
+  R.useEffect(()=>{let active=true;loadMosquitoCatalog(p.apiKey).then(d=>{if(active)setCatalog(d.catalog);}).catch(e=>{if(active)setError(e.message)});return()=>{active=false};},[p.apiKey]);
+  function update(name,value){const next={...extra,[name]:value};setExtra(next);localStorage.setItem(storageKey,JSON.stringify(next));}
+  const firm=extra.firm||(p.order?.firma==='A'?'AR':p.order?.firma),cost=catalog&&mosquitoMaterialCost(catalog,p.order||{}, {firm,allowSharedRates:extra.shared===true});
+  const saleGross=p.saleGross===null||p.saleGross===undefined||p.saleGross===''?null:Number(p.saleGross),vat=catalog?.rules.salesVat??23,saleNet=saleGross===null||!Number.isFinite(saleGross)||p.currency&&p.currency!=='PLN'?null:saleGross/(1+vat/100);
+  const number=v=>v===undefined||v===null||String(v).trim()===''?null:Number(String(v).replace(',','.'));
+  const sourceDelivery=p.deliveryGross===null||p.deliveryGross===undefined?null:Number(p.deliveryGross)/(1+vat/100),deliveryNet=number(extra.delivery)??sourceDelivery;
+  const fee=number(extra.fee),shipping=number(extra.shipping),full=cost?.complete&&cost.totalNet!==null&&saleNet!==null&&Number.isFinite(deliveryNet)&&fee!==null&&shipping!==null&&fee>=0&&shipping>=0&&!p.mixed;
+  const contribution=cost?.totalNet!==null&&cost?.totalNet!==undefined&&saleNet!==null?saleNet+(deliveryNet??0)-cost.totalNet:null,result=full?contribution-fee-shipping:null;
+  return h('details',{style:{margin:'8px 12px 12px',padding:10,border:'1px solid #34533f',borderRadius:7,background:'#0b1b12'}},h('summary',{style:{cursor:'pointer',color:'#b5dcc3'}},'💰 Rentowność · '+(cost?.totalNet!==null&&cost?.totalNet!==undefined?'materiały z kompletacją: '+money(cost.totalNet)+' netto':'materiały: '+(error||(!catalog?'cennik do wczytania':'dane do uzupełnienia')))+' · sprzedaż: '+(saleNet===null?'brak ceny':money(saleNet)+' netto')),
+   error&&h('p',null,error),!catalog&&h('p',null,'Cennik materiałów jest dostępny w zakładce Marża. Niepełne dane nie są traktowane jako zerowy koszt.'),
+   catalog&&h('div',null,
+    h('label',null,'Cennik zakupu ',h('select',{value:firm||'',onChange:e=>update('firm',e.target.value)},h('option',{value:''},'Wybierz'),h('option',{value:'AR'},'ARLIS'),h('option',{value:'F'},'FAVOUR'))),
+    firm!=='AR'&&h('label',{style:{display:'block'}},h('input',{type:'checkbox',checked:extra.shared===true,onChange:e=>update('shared',e.target.checked)}),' Brakujące stawki uzupełnij cenami ARLIS jako szacunek'),
+    ...cost.lines.map((l,i)=>h('div',{key:i,style:{display:'flex',gap:10,justifyContent:'space-between',padding:'4px 0',fontSize:12}},h('span',null,l.label+' · '+Number(l.quantity.toFixed(4))+' '+l.unit),h('span',null,money(l.net)))),
+    cost.missing.length>0&&h('p',{style:{color:'#ffd391'}},'Niepełna wycena: '+cost.missing.join(' ')),cost.warnings.length>0&&h('p',{style:{color:'#ffd391'}},cost.warnings.join(' ')),
+    cost.complete&&h('p',null,'Kompletacja '+catalog.rules.assemblyRate*100+'% materiałów i kartonów: '+money(cost.assembly)+' netto. Paczki / radełka: '+cost.parcels+'. Kartony są propozycją według długości odcinków, do sprawdzenia przy pakowaniu.'),
+    contribution!==null&&!p.mixed&&h('p',null,'Pozostaje po materiałach i kompletacji: '+money(contribution)+' netto — przed kurierem, prowizją, reklamą i kosztami stałymi.'),
+    p.mixed&&h('p',{style:{color:'#ffd391'}},'Zamówienie mieszane: brak kosztów pozostałych produktów. Pełna marża nie jest wyliczana.'),
+    h('div',{style:{display:'flex',gap:15,flexWrap:'wrap'}},...['shipping','fee','delivery'].map((name,i)=>h('label',{key:name},['Koszt kuriera netto / zamówienie','Prowizja netto / zamówienie','Dostawa pobrana od klienta netto'][i],h('input',{type:'number',min:0,step:0.01,value:extra[name]??(name==='delivery'&&sourceDelivery!==null?sourceDelivery.toFixed(2):''),onChange:e=>update(name,e.target.value),style:{display:'block'}})))),
+    full?h('strong',{style:{color:result<0?'#ffb2a9':'#a7e2ba'}},'Wynik przed reklamą i kosztami stałymi: '+money(result)+' netto · marża '+((saleNet+deliveryNet)>0?100*result/(saleNet+deliveryNet):0).toFixed(2)+'%'):h('p',null,'Pełny wynik wymaga kompletnych materiałów, ceny sprzedaży, opłaty za dostawę od klienta, kuriera i prowizji. Wpisz 0 tylko, gdy kwota nie występuje.'),
+    h('p',{style:{fontSize:11,color:'#97afa1'}},'Wycena szacunkowa według faktur. Doliczenia do zamówienia są zapamiętane w tej przeglądarce. Kwoty sprzedaży nie są zmieniane.')));
+ }
+ Object.assign(api,{meshCut,mosquitoMaterialCost,loadMosquitoCatalog,MosquitoCostSettings,MosquitoOrderCost});
+})(typeof window==='object'?window:globalThis);

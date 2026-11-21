@@ -8,7 +8,7 @@
 <form id="login" hidden><h2>Połącz z MosquitoApp</h2><p>Otwórz tę stronę w tej samej przeglądarce co aplikację. Jeśli klucz nie jest zapisany, podaj dotychczasowy klucz MosquitoApp.</p><input id="key" type="password" autocomplete="off" placeholder="Klucz MosquitoApp" aria-label="Klucz MosquitoApp"><button>Otwórz zamówienia</button><p class="muted">Klucz jest używany tylko do odczytu z Twojego serwera i pozostaje w pamięci tej karty.</p></form>
 <div class="counts"><div class="count"><strong id="all">—</strong><span>Odebrane zamówienia</span></div><div class="count"><strong id="paid">—</strong><span>Opłacone przy imporcie</span></div><div class="count"><strong id="cancelled">—</strong><span>Anulowane przy imporcie</span></div></div>
 <div class="toolbar"><input id="search" type="search" placeholder="Szukaj numeru, klienta, produktu…" aria-label="Szukaj zamówienia"><button id="refresh">Odśwież</button></div><p id="status" role="status" aria-live="polite"></p><section id="orders" aria-label="Odebrane zamówienia"></section>
-</main><script src="./shopify-production.js?v=20261121-4"></script>
+</main><script src="https://unpkg.com/react@18/umd/react.production.min.js"></script><script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script><script src="./shopify-production.js?v=20261121-7"></script>
 <script>
 
 const stores=window.MosquitoShopify.stores;
@@ -76,7 +76,9 @@ function buildDpdSection(o){
  return {node,load};
 }
 
+let costRoots=[];
 function render(){
+ costRoots.forEach(r=>r.unmount());costRoots=[];
  $('all').textContent=records.length;$('paid').textContent=records.filter(r=>r.order.financialStatus==='paid'&&!r.order.cancelled).length;$('cancelled').textContent=records.filter(r=>r.order.cancelled).length;
  const q=$('search').value.toLocaleLowerCase('pl');const shown=records.filter(r=>JSON.stringify(r.order).toLocaleLowerCase('pl').includes(q));$('orders').replaceChildren();
  if(!shown.length){$('orders').append(el('div',records.length?'Nie znaleziono pasujących zamówień.':'Nie odebrano jeszcze zamówień ze sklepu.','empty'));return}
@@ -91,6 +93,12 @@ function render(){
     production.append(button,el('p','Otworzy formularz moskitier do sprawdzenia. Pozostałe produkty nie trafią na produkcję.','muted'));
     if(!o.cancelled){const missing=window.MosquitoShopify.validate(window.MosquitoShopify.buildForm(store,o));if(missing.length)production.append(el('p','Do uzupełnienia: '+missing.join('; '),'muted'));}
     card.append(production);
+    if(!o.cancelled){const costNode=el('div');card.append(costNode);const costRoot=window.ReactDOM.createRoot(costNode);costRoots.push(costRoot);
+      const priced=o.items.every(i=>i.lineGross!==null&&i.lineGross!==undefined&&Number.isFinite(Number(i.lineGross)));
+      const goods=priced?o.items.reduce((n,i)=>n+Number(i.lineGross),0):null;
+      const grossShipping=o.shippingAmount??null;
+      costRoot.render(window.React.createElement(window.MosquitoShopify.MosquitoOrderCost,{apiKey:key,orderKey:'shopify_'+store+'_'+o.id,order:window.MosquitoShopify.buildForm(store,o),saleGross:goods,deliveryGross:grossShipping,currency:o.currency,mixed:o.items.some(i=>!window.MosquitoShopify.isMosquito(i))}));}
+
   }
   card.append(el('p',s.name||'Brak danych klienta'));const details=el('details');details.append(el('summary','Produkty i dostawa'));const grid=el('div',undefined,'details-grid'),contact=el('div');contact.append(el('strong','Adres dostawy'),el('address',[s.name,s.company,s.address1,s.address2,[s.postcode,s.city].filter(Boolean).join(' '),s.countryCode].filter(Boolean).join('\n')),el('p',[s.phone,o.email].filter(Boolean).join(' · ')));const items=el('div');
   for(const item of o.items||[]){const row=el('div',undefined,'item');row.append(el('strong',item.quantity+' × '+item.title));if(item.sku)row.append(el('div','SKU: '+item.sku,'muted'));for(const [name,value]of Object.entries(item.properties||{}))row.append(el('div',name+': '+value,'props'));items.append(row)}grid.append(contact,items);details.append(grid);card.append(details);
