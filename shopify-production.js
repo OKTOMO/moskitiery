@@ -248,6 +248,7 @@
  function MarginCalculator(){
   const R=root.React,h=R.createElement,blank=()=>({id:'',name:'',firma:'AR',purchaseNet:'',saleNet:'',quantity:'1',shippingMode:'manual',parcels:'1',shippingVat:'23',shippingCostNet:'',shippingPaidNet:'0',packagingNet:'0',commissionMode:'net',commission:'',goodsVat:'23',feeVat:'23'});
   const [profiles,setProfiles]=R.useState(()=>{try{return JSON.parse(localStorage.getItem('mat_margin_profiles_v1')||'[]')}catch{return []}}),[f,setF]=R.useState(blank),[message,setMessage]=R.useState('');
+  R.useEffect(()=>{const choose=e=>{setF({...blank(),...e.detail});setMessage('Koszt z katalogu wczytany. Ustal cenę sprzedaży i pozostałe koszty.');};root.addEventListener('mosquito-component-cost',choose);return()=>root.removeEventListener('mosquito-component-cost',choose);},[]);
   const result=marginResult(f),money=n=>n.toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2})+' zł';
   function field(label,key,help){return h('label',{style:{display:'grid',gap:5}},label,h('input',{type:'number',min:0,step:key==='quantity'?1:0.0001,value:f[key],onChange:e=>{setMessage('');setF({...f,[key]:e.target.value})},style:{width:'100%',boxSizing:'border-box'}}),help&&h('small',{style:{color:'#a4b8ad'}},help));}
   function save(){if(!f.name.trim()){setMessage('Podaj nazwę produktu lub zestawu.');return;}const record={...f,id:f.id||crypto.randomUUID(),updatedAt:new Date().toISOString()},next=[record,...profiles.filter(p=>p.id!==record.id)];localStorage.setItem('mat_margin_profiles_v1',JSON.stringify(next));setProfiles(next);setF(record);setMessage('Kalkulacja zapisana w tej przeglądarce.'+(!result.valid?' Uzupełnij brakujące dane, aby otrzymać wynik.':''));}
@@ -354,4 +355,32 @@
     h('p',{style:{fontSize:11,color:'#97afa1'}},'Wycena szacunkowa według faktur. Doliczenia do zamówienia są zapamiętane w tej przeglądarce. Kwoty sprzedaży nie są zmieniane.')));
  }
  Object.assign(api,{meshCut,mosquitoMaterialCost,loadMosquitoCatalog,MosquitoCostSettings,MosquitoOrderCost});
+})(typeof window==='object'?window:globalThis);
+
+// Private supplier catalog: costs are loaded from the authenticated catalog, never embedded here.
+(function(root){
+ const api=root.MosquitoShopify,Original=api.MosquitoCostSettings;
+ const fold=s=>String(s||'').toLocaleLowerCase('pl').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/ł/g,'l');
+ function ComponentCatalog(p){
+  const R=root.React,h=R.createElement,[rows,setRows]=R.useState([]),[query,setQuery]=R.useState(''),[category,setCategory]=R.useState('Wszystkie'),[error,setError]=R.useState(''),[chosen,setChosen]=R.useState(null);
+  R.useEffect(()=>{let active=true;api.loadMosquitoCatalog(p.apiKey,true).then(d=>{if(active)setRows(Object.values(d.catalog?.firms?.SUPERIS_HURT?.parts||{}))}).catch(e=>{if(active)setError(e.message)});return()=>{active=false}},[p.apiKey]);
+  const visible=rows.filter(r=>(category==='Wszystkie'||r.category===category)&&fold([r.sku,r.name,r.color].join(' ')).includes(fold(query)));
+  const money=n=>Number(n).toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:3})+' zł';
+  function useCost(r,net){root.dispatchEvent(new CustomEvent('mosquito-component-cost',{detail:{name:r.name+(r.color==='—'?'':' · '+r.color)+' / '+r.unit,purchaseNet:String(net),goodsVat:'23'}}));setChosen(r.sku);}
+  return h('section',{style:{maxWidth:1000,margin:'20px auto',padding:20,border:'1px solid #385c46',borderRadius:12,background:'#0d1d15'}},
+   h('h2',null,'Katalog komponentów — ceny zakupu'),
+   h('p',null,rows.length+' wariantów · Superis · ceny netto + VAT 23% · sprzedaż do ustalenia.'),
+   h('p',{style:{color:'#ffd18b'}},'Okna: dokument z 20.05.2026. Drzwi: plik opisany jako 2026, wewnątrz data 20.05.2025. Ceny z faktur do wyceny ramek pozostają osobno.'),
+   error&&h('p',{role:'alert'},error),
+   h('label',null,'Szukaj komponentu',h('input',{value:query,onChange:e=>setQuery(e.target.value),placeholder:'Nazwa, kod lub kolor',style:{display:'block',width:'100%',boxSizing:'border-box',margin:'8px 0'}})),
+   h('label',null,'Rodzaj komponentów ',h('select',{value:category,onChange:e=>setCategory(e.target.value)},...['Wszystkie','Okienne','Drzwiowe','Wspólne'].map(c=>h('option',{key:c},c)))),
+   h('p',{role:'status'},'Widoczne: '+visible.length+(chosen?' · Wczytano koszt '+chosen+' do kalkulatora powyżej. Ceny sprzedaży nie zapisano.':'')),
+   h('div',{style:{maxHeight:640,overflow:'auto'}},...visible.map(r=>h('article',{key:r.sku,style:{padding:'12px 0',borderBottom:'1px solid #34533f'}},
+    h('strong',null,r.name+' · '+r.color),h('div',null,r.sku+' · '+money(r.net)+' netto / '+r.unit+' · '+money(r.net*1.23)+' brutto / '+r.unit),
+    h('small',null,r.pack+' · '+r.source),
+    r.notes&&h('p',{style:{color:'#ffd18b',fontSize:12}},r.notes),
+    h('div',{style:{display:'flex',flexWrap:'wrap',gap:6,marginTop:8}},h('button',{className:'btn',onClick:()=>useCost(r,r.net)},'Użyj kosztu '+money(r.net)),...(r.tiers||[]).filter(t=>t.net!==r.net).map((t,i)=>h('button',{key:i,className:'btn',onClick:()=>useCost(r,t.net)},String(t.threshold)+(typeof t.threshold==='number'?' '+r.unit:'')+' → '+money(t.net)))),
+    h('small',{style:{display:'block',marginTop:8}},'Cena sprzedaży: do ustalenia · EAN: '+(r.ean||'do weryfikacji GS1'))))))
+ }
+ api.MosquitoCostSettings=function(p){return root.React.createElement(root.React.Fragment,null,root.React.createElement(ComponentCatalog,p),root.React.createElement(Original,p));};
 })(typeof window==='object'?window:globalThis);
