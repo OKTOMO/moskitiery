@@ -3,13 +3,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20261012.247</title>
+<title>MosquitoApp v20261124.248</title>
 <script src="./shopify-production.js?v=20261123-catalog-1"></script>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="./gallery-messages.js?v=20261120-2"></script>
 <script>
-   window.__MOSK_VERSION='20261012.247';
+   window.__MOSK_VERSION='20261124.248';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -165,7 +165,7 @@ const FIRMY = [{
   nazwa: "Albama (AP)"
 }, {kod:"AL",nazwa:"Albama"}];
 const AUTORESPONDER_URL = "https://allegro-autoresponder.favour-biuro.workers.dev";
-const AUTORESPONDER_KEY = getWorkerKey();
+// Read the current device key for each request, including after mobile setup.
 // Cloudflare Workers Free: limit "Quick Actions" (m.in. /pdf) to 1 zadanie / 10 sek
 // NA CALE KONTO (nie per-zamowienie). Ten globalny znacznik czasu pilnuje odstepu
 // >=11s miedzy KAZDYM wywolaniem /pdf/render w calej aplikacji, niezaleznie od
@@ -2641,7 +2641,7 @@ function App() {
     try {
       const r = await fetch(AUTORESPONDER_URL + "/status", {
         headers: {
-          "x-api-key": AUTORESPONDER_KEY
+          "x-api-key": getWorkerKey()
         }
       });
       const d = await r.json();
@@ -2686,7 +2686,7 @@ function App() {
     try {
       const r = await fetch(AUTORESPONDER_URL + '/kalkulator/leads', {
         headers: {
-          'x-api-key': AUTORESPONDER_KEY
+          'x-api-key': getWorkerKey()
         }
       });
       const d = await r.json();
@@ -2700,7 +2700,7 @@ function App() {
     await fetch(AUTORESPONDER_URL + '/kalkulator/lead/' + id, {
       method: 'DELETE',
       headers: {
-        'x-api-key': AUTORESPONDER_KEY
+        'x-api-key': getWorkerKey()
       }
     });
     setLeads(prev => prev.filter(l => l.id !== id));
@@ -2714,7 +2714,7 @@ function App() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": AUTORESPONDER_KEY
+          "x-api-key": getWorkerKey()
         },
         body: JSON.stringify({
           tokens
@@ -2734,7 +2734,7 @@ function App() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": AUTORESPONDER_KEY
+          "x-api-key": getWorkerKey()
         },
         body: JSON.stringify({
           quickReplyText: autoQuickText
@@ -2759,7 +2759,7 @@ function App() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": AUTORESPONDER_KEY
+          "x-api-key": getWorkerKey()
         },
         body: JSON.stringify({})
       });
@@ -2784,7 +2784,7 @@ function App() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": AUTORESPONDER_KEY
+          "x-api-key": getWorkerKey()
         },
         body: JSON.stringify({})
       });
@@ -2802,7 +2802,7 @@ function App() {
     try {
       const r = await fetch(AUTORESPONDER_URL + "/instructions", {
         headers: {
-          "x-api-key": AUTORESPONDER_KEY
+          "x-api-key": getWorkerKey()
         }
       });
       const d = await r.json();
@@ -2824,7 +2824,7 @@ function App() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": AUTORESPONDER_KEY
+          "x-api-key": getWorkerKey()
         },
         body: JSON.stringify({
           instructions: list
@@ -2942,16 +2942,23 @@ function App() {
 
   // ── POBIERZ ZAMÓWIENIA Z ALLEGRO (przez autoresponder worker) ──
   async function fetchAllegroOrders() {
+    if (!getWorkerKey()) {
+      setAllegroImportError("Brak połączenia na tym urządzeniu. Uzupełnij klucz Workera w ustawieniach aplikacji i spróbuj ponownie. Dotychczasowe zamówienia pozostają na liście.");
+      return;
+    }
     setAllegroImportLoading(true);
     setAllegroImportError("");
-    setAllegroImportResults([]);
+    // Keep the last successful list visible while loading or after a failed request.
     try {
       const r = await fetch(AUTORESPONDER_URL + "/orders", {
         headers: {
-          "x-api-key": AUTORESPONDER_KEY
+          "x-api-key": getWorkerKey()
         }
       });
       if (!r.ok) {
+        if (r.status === 401 || r.status === 403) {
+          throw new Error("Połączenie odrzucone. Sprawdź klucz Workera zapisany na tym urządzeniu w ustawieniach aplikacji.");
+        }
         const txt = await r.text().catch(() => "");
         throw new Error("HTTP " + r.status + ": " + txt.slice(0, 200));
       }
@@ -2985,7 +2992,7 @@ function App() {
           localStorage.setItem('fakturownia_last_sync', String(Date.now()));
           fetch(AUTORESPONDER_URL + '/fakturownia/invoices?token=' + encodeURIComponent(_cfg.token) + '&domain=' + encodeURIComponent(_cfg.domain) + '&period=this_month&per_page=100&page=1', {
             headers: {
-              'x-api-key': AUTORESPONDER_KEY
+              'x-api-key': getWorkerKey()
             }
           }).then(function (r) {
             return r.json();
@@ -3449,7 +3456,7 @@ function App() {
     if (!imp.buyerMsg && imp.allegroOrderId && imp.kontoId) {
       fetch(AUTORESPONDER_URL + '/order/details?allegroOrderId=' + imp.allegroOrderId + '&kontoId=' + imp.kontoId, {
         headers: {
-          'x-api-key': AUTORESPONDER_KEY
+          'x-api-key': getWorkerKey()
         }
       }).then(r => r.json()).then(d => {
         if (d.ok) {
@@ -3526,7 +3533,7 @@ function App() {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'x-api-key': AUTORESPONDER_KEY
+              'x-api-key': getWorkerKey()
             },
             body: JSON.stringify({
               msg: imp.buyerMsg,
@@ -3711,7 +3718,7 @@ function App() {
     try {
       const r = await fetch(AUTORESPONDER_URL + '/gus/nip?nip=' + encodeURIComponent(nipClean), {
         headers: {
-          'x-api-key': AUTORESPONDER_KEY
+          'x-api-key': getWorkerKey()
         }
       });
       const d = await r.json();
@@ -3732,7 +3739,7 @@ function App() {
     try {
       const r = await fetch(AUTORESPONDER_URL + '/fakturownia/client?nip=' + encodeURIComponent(nipClean) + '&domain=' + encodeURIComponent(domain) + '&token=' + encodeURIComponent(token), {
         headers: {
-          'x-api-key': AUTORESPONDER_KEY
+          'x-api-key': getWorkerKey()
         }
       });
       const d = await r.json();
@@ -3752,7 +3759,7 @@ function App() {
     try {
       const r = await fetch(AUTORESPONDER_URL + '/kalkulator/order/' + encodeURIComponent(n.toLowerCase()), {
         headers: {
-          'x-api-key': AUTORESPONDER_KEY
+          'x-api-key': getWorkerKey()
         }
       });
       const d = await r.json();
@@ -3937,12 +3944,12 @@ function App() {
 
   // Zapis statusów do KV workera (w tle, fire-and-forget)
   function syncAppStatusesToKV(statuses) {
-    if (!AUTORESPONDER_KEY) return;
+    if (!getWorkerKey()) return;
     fetch(AUTORESPONDER_URL + '/app-statuses', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': AUTORESPONDER_KEY
+        'x-api-key': getWorkerKey()
       },
       body: JSON.stringify({
         statuses
@@ -3952,11 +3959,11 @@ function App() {
 
   // Pobierz statusy z KV i zmerguj z lokalnymi
   async function loadAppStatusesFromKV() {
-    if (!AUTORESPONDER_KEY) return;
+    if (!getWorkerKey()) return;
     try {
       const r = await fetch(AUTORESPONDER_URL + '/app-statuses', {
         headers: {
-          'x-api-key': AUTORESPONDER_KEY
+          'x-api-key': getWorkerKey()
         }
       });
       const d = await r.json();
@@ -3977,11 +3984,11 @@ function App() {
 
   // Pobierz tokeny Allegro z KV (desktop ↔ mobile sync)
   async function loadAllegroTokensFromKV() {
-    if (!AUTORESPONDER_KEY) return;
+    if (!getWorkerKey()) return;
     try {
       const r = await fetch(AUTORESPONDER_URL + '/allegro/tokens', {
         headers: {
-          'x-api-key': AUTORESPONDER_KEY
+          'x-api-key': getWorkerKey()
         }
       });
       const d = await r.json();
@@ -4026,7 +4033,7 @@ function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': AUTORESPONDER_KEY
+          'x-api-key': getWorkerKey()
         },
         body: JSON.stringify(sub.toJSON())
       });
@@ -4041,7 +4048,7 @@ function App() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': AUTORESPONDER_KEY
+        'x-api-key': getWorkerKey()
       },
       body: '{}'
     });
@@ -4049,11 +4056,11 @@ function App() {
     alert(d.ok ? '✅ Testowe powiadomienie wysłane!' : '❌ ' + JSON.stringify(d));
   }
   async function loadSettingsFromKV() {
-    if (!AUTORESPONDER_KEY) return;
+    if (!getWorkerKey()) return;
     try {
       const r = await fetch(AUTORESPONDER_URL + '/settings', {
         headers: {
-          'x-api-key': AUTORESPONDER_KEY
+          'x-api-key': getWorkerKey()
         }
       });
       const d = await r.json();
@@ -4148,7 +4155,7 @@ function App() {
     try {
       const r = await fetch(AUTORESPONDER_URL + "/kalkulator/orders", {
         headers: {
-          "x-api-key": AUTORESPONDER_KEY
+          "x-api-key": getWorkerKey()
         }
       });
       if (!r.ok) throw new Error("Błąd " + r.status);
@@ -4167,7 +4174,7 @@ function App() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": AUTORESPONDER_KEY
+          "x-api-key": getWorkerKey()
         },
         body: JSON.stringify({
           status: "zrealizowane"
@@ -4191,7 +4198,7 @@ function App() {
     try {
       const r = await fetch(AUTORESPONDER_URL + '/email/recent', {
         headers: {
-          'x-api-key': AUTORESPONDER_KEY
+          'x-api-key': getWorkerKey()
         }
       });
       const d = await r.json();
@@ -4203,7 +4210,7 @@ function App() {
     try {
       const r = await fetch(AUTORESPONDER_URL + '/email/thread/' + encodeURIComponent(allegroOrderId), {
         headers: {
-          'x-api-key': AUTORESPONDER_KEY
+          'x-api-key': getWorkerKey()
         }
       });
       const d = await r.json();
@@ -4238,7 +4245,7 @@ function App() {
     setOffLoading(true); setOffErr(''); setOffList([]);
     try {
       const r = await fetch(AUTORESPONDER_URL + '/allegro/offers?kontoId=' + offKonto + '&limit=50', {
-        headers: {'x-api-key': wKey || AUTORESPONDER_KEY}
+        headers: {'x-api-key': wKey || getWorkerKey()}
       });
       const d = await r.json();
       if (!d.ok) { setOffErr(d.error || 'Błąd'); return; }
@@ -4253,7 +4260,7 @@ function App() {
     setOffErr('Ładuję opis...');
     try {
       const r = await fetch(AUTORESPONDER_URL + '/allegro/offer/' + offerId + '?kontoId=' + offKonto, {
-        headers: {'x-api-key': wKey || AUTORESPONDER_KEY}
+        headers: {'x-api-key': wKey || getWorkerKey()}
       });
       const d = await r.json();
       console.log('[OFF] opis response:', JSON.stringify(d).slice(0,500));
@@ -4272,7 +4279,7 @@ function App() {
     await Promise.all(offList.map(async function(o) {
       try {
         const r = await fetch(AUTORESPONDER_URL + '/allegro/offer/' + o.id + '?kontoId=' + offKonto, {
-          headers: {'x-api-key': wKey || AUTORESPONDER_KEY}
+          headers: {'x-api-key': wKey || getWorkerKey()}
         });
         const d = await r.json();
         const secs = (d.ok && d.offer && d.offer.description && d.offer.description.sections) ? d.offer.description.sections.length : 0;
@@ -4302,7 +4309,7 @@ function App() {
         if (offSaveMode === 'textonly') {
           // Pobierz aktualny opis aukcji, podmień tylko TEXT, zachowaj IMAGE
           const fetchR = await fetch(AUTORESPONDER_URL + '/allegro/offer/' + id + '?kontoId=' + offKonto, {
-            headers: {'x-api-key': wKey || AUTORESPONDER_KEY}
+            headers: {'x-api-key': wKey || getWorkerKey()}
           });
           const fetchD = await fetchR.json();
           if (fetchD.ok && fetchD.offer && fetchD.offer.description && fetchD.offer.description.sections) {
@@ -4318,7 +4325,7 @@ function App() {
         }
         const r = await fetch(AUTORESPONDER_URL + '/allegro/offer/' + id + '/description', {
           method: 'PUT',
-          headers: {'Content-Type': 'application/json', 'x-api-key': wKey || AUTORESPONDER_KEY},
+          headers: {'Content-Type': 'application/json', 'x-api-key': wKey || getWorkerKey()},
           body: JSON.stringify({kontoId: offKonto, description: descToSave})
         });
         const d = await r.json();
@@ -4431,7 +4438,7 @@ function App() {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': AUTORESPONDER_KEY
+                'x-api-key': getWorkerKey()
               },
               body: JSON.stringify({
                 html
@@ -4463,7 +4470,7 @@ function App() {
           const lr = await fetch(AUTORESPONDER_URL + "/shipment/label?kontoId=" + sh.kontoId, {
             method: "POST",
             headers: {
-              "x-api-key": AUTORESPONDER_KEY,
+              "x-api-key": getWorkerKey(),
               "Content-Type": "application/json"
             },
             body: JSON.stringify({
@@ -4499,7 +4506,7 @@ function App() {
               const lr = await fetch(AUTORESPONDER_URL + "/shipment/label?kontoId=" + biSh.kontoId, {
                 method: "POST",
                 headers: {
-                  "x-api-key": AUTORESPONDER_KEY,
+                  "x-api-key": getWorkerKey(),
                   "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
@@ -4526,7 +4533,7 @@ function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': AUTORESPONDER_KEY
+          'x-api-key': getWorkerKey()
         },
         body: JSON.stringify({
           to,
@@ -5235,7 +5242,7 @@ function App() {
       try {
         const vr = await fetch(AUTORESPONDER_URL + '/shipment/exists?kontoId=' + imp.kontoId + '&shipmentId=' + savedSh.shipmentId, {
           headers: {
-            'x-api-key': AUTORESPONDER_KEY
+            'x-api-key': getWorkerKey()
           }
         });
         const vd = await vr.json();
@@ -5450,7 +5457,7 @@ function App() {
     try {
       const r = await fetch(AUTORESPONDER_URL + "/shipment/services?kontoId=" + imp.kontoId + "&orderId=" + imp.allegroOrderId, {
         headers: {
-          "x-api-key": AUTORESPONDER_KEY
+          "x-api-key": getWorkerKey()
         }
       });
       const d = await r.json();
@@ -5486,7 +5493,7 @@ function App() {
       const r = await fetch(AUTORESPONDER_URL + '/shipment/pickup-proposals?kontoId=' + kontoId, {
         method: 'POST',
         headers: {
-          'x-api-key': AUTORESPONDER_KEY,
+          'x-api-key': getWorkerKey(),
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -5672,7 +5679,7 @@ function App() {
       const r = await fetch(AUTORESPONDER_URL + '/shipment/pickup-create?kontoId=' + kontoId, {
         method: 'POST',
         headers: {
-          'x-api-key': AUTORESPONDER_KEY,
+          'x-api-key': getWorkerKey(),
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -5699,7 +5706,7 @@ function App() {
           try {
             const sr = await fetch(AUTORESPONDER_URL + '/shipment/pickup-status?kontoId=' + kontoId + '&commandId=' + d.commandId, {
               headers: {
-                'x-api-key': AUTORESPONDER_KEY
+                'x-api-key': getWorkerKey()
               }
             });
             const sd = await sr.json();
@@ -6098,7 +6105,7 @@ function App() {
       const r1 = await fetch(AUTORESPONDER_URL + "/shipment/create?kontoId=" + imp.kontoId, {
         method: "POST",
         headers: {
-          "x-api-key": AUTORESPONDER_KEY,
+          "x-api-key": getWorkerKey(),
           "Content-Type": "application/json"
         },
         body: JSON.stringify(createBody)
@@ -6109,7 +6116,7 @@ function App() {
       const r2 = await fetch(AUTORESPONDER_URL + "/shipment/label?kontoId=" + imp.kontoId, {
         method: "POST",
         headers: {
-          "x-api-key": AUTORESPONDER_KEY,
+          "x-api-key": getWorkerKey(),
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
@@ -6152,7 +6159,7 @@ function App() {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'x-api-key': _wKey || AUTORESPONDER_KEY
+              'x-api-key': _wKey || getWorkerKey()
             },
             body: JSON.stringify({
               allegroOrderId: shipmentModal.imp.allegroOrderId,
@@ -6199,7 +6206,7 @@ function App() {
     // Wczytaj reguły AI z KV
     fetch(AUTORESPONDER_URL + '/kv/get?key=ai_rules', {
       headers: {
-        'x-api-key': AUTORESPONDER_KEY
+        'x-api-key': getWorkerKey()
       }
     }).then(r => r.json()).then(d => {
       if (d.value) {
@@ -6330,7 +6337,7 @@ function App() {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': AUTORESPONDER_KEY
+                'x-api-key': getWorkerKey()
               },
               body: JSON.stringify({
                 tokens: workerToks
@@ -6339,7 +6346,7 @@ function App() {
               // Weryfikacja — sprawdź czy token zgadza się z kontoId
               return fetch(AUTORESPONDER_URL + '/debug/me?kontoId=' + kontaId, {
                 headers: {
-                  'x-api-key': AUTORESPONDER_KEY
+                  'x-api-key': getWorkerKey()
                 }
               });
             }).then(r => r.json()).then(me => {
@@ -6496,7 +6503,7 @@ function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': AUTORESPONDER_KEY
+          'x-api-key': getWorkerKey()
         },
         body: JSON.stringify({
           odbiorca: {
@@ -6820,7 +6827,7 @@ function App() {
     async function refresh(){
       setShopifyStatStatus({loading:true,error:''});
       const stores=Object.keys(window.MosquitoShopify.stores),urls=[AUTORESPONDER_URL+'/orders?statsYear='+statYear+'&statsMonth='+statMonth,...stores.map(s=>AUTORESPONDER_URL+'/integrations/shopify/'+s+'/inbox')];
-      const results=await Promise.allSettled(urls.map(async url=>{const response=await fetch(url,{headers:{'x-api-key':AUTORESPONDER_KEY},cache:'no-store'});if(!response.ok)throw new Error('HTTP '+response.status);const data=await response.json();if(data.ok!==true)throw new Error('Niepełna odpowiedź źródła');return data;}));
+      const results=await Promise.allSettled(urls.map(async url=>{const response=await fetch(url,{headers:{'x-api-key':getWorkerKey()},cache:'no-store'});if(!response.ok)throw new Error('HTTP '+response.status);const data=await response.json();if(data.ok!==true)throw new Error('Niepełna odpowiedź źródła');return data;}));
       if(stopped)return;
       const errors=[],records=[];
       if(results[0].status==='fulfilled'){
@@ -6840,7 +6847,7 @@ function App() {
       const store=event.data.store,cfg=window.MosquitoShopify.stores[store],id=String(event.data.orderId||'');
       if(!cfg||!/^\d+$/.test(id))return;
       try {
-        const res=await fetch(AUTORESPONDER_URL+'/integrations/shopify/'+store+'/inbox',{headers:{'x-api-key':AUTORESPONDER_KEY},cache:'no-store'});
+        const res=await fetch(AUTORESPONDER_URL+'/integrations/shopify/'+store+'/inbox',{headers:{'x-api-key':getWorkerKey()},cache:'no-store'});
         if(!res.ok)throw new Error('Nie udało się odczytać zamówienia ze sklepu.');
         const data=await res.json(),record=data.records?.find(r=>String(r.order?.id)===id&&r.order?.shop===cfg.domain);
         if(!record)throw new Error('Zamówienie nie jest dostępne w tym sklepie.');
@@ -7052,7 +7059,7 @@ function App() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-api-key': AUTORESPONDER_KEY
+            'x-api-key': getWorkerKey()
           },
           body: JSON.stringify({
             allegroOrderId: savedAllegroId,
@@ -7072,7 +7079,7 @@ function App() {
       if (sh.waybill && sh.carrierId && sh.carrierId.toLowerCase().includes('dpd') && !sh.delivered) {
         fetch(AUTORESPONDER_URL + '/dpd/track?waybill=' + encodeURIComponent(sh.waybill), {
           headers: {
-            'x-api-key': AUTORESPONDER_KEY
+            'x-api-key': getWorkerKey()
           }
         }).then(r => r.json()).then(d => {
           if (d.ok && (d.isPickedUp || d.isDelivered || d.isSent)) {
@@ -7226,7 +7233,7 @@ function App() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-api-key': AUTORESPONDER_KEY
+            'x-api-key': getWorkerKey()
           },
           body: JSON.stringify({
             tokens: workerToks2
@@ -7278,7 +7285,7 @@ function App() {
       const r = await fetch(AUTORESPONDER_URL + "/messaging/new?kontoId=" + msgKonto, {
         method: "POST",
         headers: {
-          "x-api-key": AUTORESPONDER_KEY,
+          "x-api-key": getWorkerKey(),
           "Content-Type": "application/json"
         },
         body: JSON.stringify(Object.assign({
@@ -7334,7 +7341,7 @@ function App() {
     await Promise.allSettled(kontoIds.map(function (k) {
       return fetch(AUTORESPONDER_URL + '/messaging/threads?kontoId=' + k + '&limit=1', {
         headers: {
-          'x-api-key': AUTORESPONDER_KEY
+          'x-api-key': getWorkerKey()
         }
       }).then(function (r) {
         if (r.status === 422 || r.status === 401) expired.push(k);
@@ -7366,7 +7373,7 @@ function App() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': AUTORESPONDER_KEY
+        'x-api-key': getWorkerKey()
       },
       body: JSON.stringify({
         tokens: _wt
@@ -7379,7 +7386,7 @@ function App() {
     const results = await Promise.allSettled(kontoIds.map(async function (k) {
       const r = await fetch(AUTORESPONDER_URL + '/messaging/threads?kontoId=' + k + '&limit=20', {
         headers: {
-          'x-api-key': AUTORESPONDER_KEY
+          'x-api-key': getWorkerKey()
         }
       });
       if (!r.ok) return [];
@@ -7409,7 +7416,7 @@ function App() {
     const disputeResults = await Promise.allSettled(kontoIds.map(function (k) {
       return fetch(AUTORESPONDER_URL + '/sale/disputes?kontoId=' + k + '&limit=20', {
         headers: {
-          'x-api-key': AUTORESPONDER_KEY
+          'x-api-key': getWorkerKey()
         }
       }).then(function (r) {
         return r.json();
@@ -7460,7 +7467,7 @@ function App() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": AUTORESPONDER_KEY
+          "x-api-key": getWorkerKey()
         },
         body: JSON.stringify({
           tokens: _wt
@@ -7470,7 +7477,7 @@ function App() {
     try {
       const r = await fetch(AUTORESPONDER_URL + "/messaging/threads?kontoId=" + k + "&limit=20&offset=0", {
         headers: {
-          "x-api-key": AUTORESPONDER_KEY
+          "x-api-key": getWorkerKey()
         }
       });
       if (r.status === 401) {
@@ -7530,7 +7537,7 @@ function App() {
     try {
       const r = await fetch(AUTORESPONDER_URL + "/messaging/threads/" + thread.id + "/messages?kontoId=" + k, {
         headers: {
-          "x-api-key": AUTORESPONDER_KEY
+          "x-api-key": getWorkerKey()
         }
       });
       if (r.status === 401 && !retried) {
@@ -7553,7 +7560,7 @@ function App() {
     const r1 = await fetch(AUTORESPONDER_URL + "/messaging/attachments?kontoId=" + msgKontoRef.current, {
       method: "POST",
       headers: {
-        "x-api-key": AUTORESPONDER_KEY,
+        "x-api-key": getWorkerKey(),
         "Content-Type": "application/vnd.allegro.public.v1+json"
       },
       body: JSON.stringify({
@@ -7579,7 +7586,7 @@ function App() {
     const r2 = await fetch(AUTORESPONDER_URL + "/messaging/attachments/" + d1.id + "?kontoId=" + msgKontoRef.current, {
       method: "PUT",
       headers: {
-        "x-api-key": AUTORESPONDER_KEY,
+        "x-api-key": getWorkerKey(),
         "Content-Type": file.type || "application/octet-stream"
       },
       body: file
@@ -7624,7 +7631,7 @@ function App() {
       const r = await fetch(AUTORESPONDER_URL + "/messaging/threads/" + msgActiveThread.id + "/messages?kontoId=" + msgKontoRef.current, {
         method: "POST",
         headers: {
-          "x-api-key": AUTORESPONDER_KEY,
+          "x-api-key": getWorkerKey(),
           "Content-Type": "application/json"
         },
         body: JSON.stringify(body)
@@ -7660,7 +7667,7 @@ function App() {
     try {
       const r = await fetch(AUTORESPONDER_URL + '/messaging/threads?kontoId=' + activeKonto + '&limit=20', {
         headers: {
-          'x-api-key': AUTORESPONDER_KEY
+          'x-api-key': getWorkerKey()
         }
       });
       if (r.status === 401) {
@@ -7686,7 +7693,7 @@ function App() {
       for (const t of threads.slice(0, 10)) {
         const mr = await fetch(AUTORESPONDER_URL + '/messaging/threads/' + t.id + '/messages?kontoId=' + activeKonto, {
           headers: {
-            'x-api-key': AUTORESPONDER_KEY
+            'x-api-key': getWorkerKey()
           }
         });
         const md = await mr.json();
@@ -8236,7 +8243,7 @@ function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': AUTORESPONDER_KEY
+          'x-api-key': getWorkerKey()
         },
         body: JSON.stringify({
           key: 'ai_rules',
@@ -8308,7 +8315,7 @@ function App() {
         try {
           const r = await fetch(AUTORESPONDER_URL + '/kv/get?key=ai_rules', {
             headers: {
-              'x-api-key': AUTORESPONDER_KEY
+              'x-api-key': getWorkerKey()
             }
           });
           const d = await r.json();
@@ -10207,7 +10214,7 @@ function App() {
           fetch(AUTORESPONDER_URL + '/shipment/label?kontoId=' + sh.kontoId, {
             method: 'POST',
             headers: {
-              'x-api-key': AUTORESPONDER_KEY,
+              'x-api-key': getWorkerKey(),
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
@@ -10330,7 +10337,7 @@ function App() {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': AUTORESPONDER_KEY
+                'x-api-key': getWorkerKey()
               },
               body: JSON.stringify({
                 kontoId: imp.kontoId,
@@ -10371,7 +10378,7 @@ function App() {
           if (zamOpenBox[_oid] === 'chat') return;
           fetch(AUTORESPONDER_URL + '/messaging/threads?kontoId=' + imp.kontoId + '&orderId=' + _oid + '&limit=10', {
             headers: {
-              'x-api-key': AUTORESPONDER_KEY
+              'x-api-key': getWorkerKey()
             }
           }).then(function (r) {
             return r.json();
@@ -10385,7 +10392,7 @@ function App() {
             if (thread && thread.id) {
               fetch(AUTORESPONDER_URL + '/messaging/threads/' + thread.id + '/messages?kontoId=' + imp.kontoId, {
                 headers: {
-                  'x-api-key': AUTORESPONDER_KEY
+                  'x-api-key': getWorkerKey()
                 }
               }).then(function (r2) {
                 return r2.json();
@@ -10655,7 +10662,7 @@ function App() {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'x-api-key': AUTORESPONDER_KEY
+              'x-api-key': getWorkerKey()
             },
             body: JSON.stringify({
               allegroOrderId: imp.allegroOrderId,
@@ -10723,7 +10730,7 @@ function App() {
           marginTop: 4,
           color: '#9a7a3a'
         }
-      }, imp.nabywcaUlica, " ", imp.nabywcaKod, " ", imp.nabywcaMiasto)), isMosk && React.createElement(window.MosquitoShopify.MosquitoOrderCost,{apiKey:AUTORESPONDER_KEY,orderKey:"allegro_"+imp.kontoId+"_"+imp.allegroOrderId,order:{firma:_costFirm,pozycje:_costOrders.flatMap(o=>o.pozycje||[])},saleGross:imp._isManual&&!(imp.kwotaBrutto||imp.totalAmount)?null:(imp.kwotaBrutto??imp.totalAmount??null),deliveryGross:imp.deliveryCost||0,currency:imp.kwotaWaluta||"PLN",mixed:!!imp.pozycje?.some(x=>!window.MosquitoShopify.isMosquito({title:x.nazwa||""}))}));
+      }, imp.nabywcaUlica, " ", imp.nabywcaKod, " ", imp.nabywcaMiasto)), isMosk && React.createElement(window.MosquitoShopify.MosquitoOrderCost,{apiKey:getWorkerKey(),orderKey:"allegro_"+imp.kontoId+"_"+imp.allegroOrderId,order:{firma:_costFirm,pozycje:_costOrders.flatMap(o=>o.pozycje||[])},saleGross:imp._isManual&&!(imp.kwotaBrutto||imp.totalAmount)?null:(imp.kwotaBrutto??imp.totalAmount??null),deliveryGross:imp.deliveryCost||0,currency:imp.kwotaWaluta||"PLN",mixed:!!imp.pozycje?.some(x=>!window.MosquitoShopify.isMosquito({title:x.nazwa||""}))}));
     };
     return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
       style: {
@@ -11388,8 +11395,8 @@ function App() {
           wordBreak: 'break-word',
           lineHeight: 1.4
         }
-      }, m.text, (m.attachments||[]).map(function(att,ai){return React.createElement("div",{key:ai},React.createElement("div",{style:{fontSize:14}},"📎 "+(att.fileName||"załącznik")),React.createElement(window.MosqGalleryAttachmentActions,{attachment:att,kontoId:wiadActiveThread._kontoId,apiKey:AUTORESPONDER_KEY}));})));
-    })), React.createElement(window.MosqGalleryConversationComposer, {key:wiadActiveThread.id+"-"+wiadActiveThread._kontoId,threadId:wiadActiveThread.id,kontoId:wiadActiveThread._kontoId,apiKey:AUTORESPONDER_KEY,onSent:function(message){setWiadMessages(function(prev){return prev.concat(message);});setMsgReplied(function(prev){var next=new Set(prev);next.add(wiadActiveThread.id);localStorage.setItem("msg_replied",JSON.stringify([...next]));return next;});}})) : /*#__PURE__*/React.createElement("div", null, (() => {
+      }, m.text, (m.attachments||[]).map(function(att,ai){return React.createElement("div",{key:ai},React.createElement("div",{style:{fontSize:14}},"📎 "+(att.fileName||"załącznik")),React.createElement(window.MosqGalleryAttachmentActions,{attachment:att,kontoId:wiadActiveThread._kontoId,apiKey:getWorkerKey()}));})));
+    })), React.createElement(window.MosqGalleryConversationComposer, {key:wiadActiveThread.id+"-"+wiadActiveThread._kontoId,threadId:wiadActiveThread.id,kontoId:wiadActiveThread._kontoId,apiKey:getWorkerKey(),onSent:function(message){setWiadMessages(function(prev){return prev.concat(message);});setMsgReplied(function(prev){var next=new Set(prev);next.add(wiadActiveThread.id);localStorage.setItem("msg_replied",JSON.stringify([...next]));return next;});}})) : /*#__PURE__*/React.createElement("div", null, (() => {
       const watki = (msgThreads || []).filter(function (t) {
         return !t.hasDispute && !t.isDispute && !msgReplied.has(t.id);
       });
@@ -11429,7 +11436,7 @@ function App() {
             setWiadLoading(true);
             fetch(AUTORESPONDER_URL + '/messaging/threads/' + t.id + '/messages?kontoId=' + (t._kontoId || konto), {
               headers: {
-                'x-api-key': AUTORESPONDER_KEY
+                'x-api-key': getWorkerKey()
               }
             }).then(function (r) {
               return r.json();
@@ -11567,7 +11574,7 @@ function App() {
             setWiadLoading(true);
             fetch(AUTORESPONDER_URL + '/sale/disputes/' + t.id + '/messages?kontoId=' + t._kontoId, {
               headers: {
-                'x-api-key': AUTORESPONDER_KEY
+                'x-api-key': getWorkerKey()
               }
             }).then(function (r) {
               return r.json();
@@ -12386,7 +12393,7 @@ function App() {
               // Przez workera żeby ominąć CORS
               const r = await fetch(AUTORESPONDER_URL + '/fakturownia/invoices?token=' + encodeURIComponent(cfg.token) + '&domain=' + encodeURIComponent(cfg.domain) + '&period=all&per_page=100&page=1', {
                 headers: {
-                  'x-api-key': AUTORESPONDER_KEY
+                  'x-api-key': getWorkerKey()
                 }
               });
               if (!r.ok) throw new Error('Błąd workera: ' + r.status);
@@ -13556,7 +13563,7 @@ function App() {
             const r = await fetch(AUTORESPONDER_URL + "/shipment/label?kontoId=" + sh.kontoId, {
               method: "POST",
               headers: {
-                "x-api-key": AUTORESPONDER_KEY,
+                "x-api-key": getWorkerKey(),
                 "Content-Type": "application/json"
               },
               body: JSON.stringify({
@@ -13592,7 +13599,7 @@ function App() {
           try {
             const r = await fetch(AUTORESPONDER_URL + "/shipment/tracking?kontoId=" + sh.kontoId + "&waybill=" + encodeURIComponent(sh.waybill) + "&carrierId=" + encodeURIComponent(sh.carrierId || ""), {
               headers: {
-                "x-api-key": AUTORESPONDER_KEY
+                "x-api-key": getWorkerKey()
               }
             });
             const d = await r.json();
@@ -13782,7 +13789,7 @@ function App() {
       try {
         await fetch(AUTORESPONDER_URL + '/email/recent/delete', {
           method: 'POST',
-          headers: {'Content-Type':'application/json','x-api-key':AUTORESPONDER_KEY},
+          headers: {'Content-Type':'application/json','x-api-key':getWorkerKey()},
           body: JSON.stringify({email: em})
         });
       } catch(e) {}
@@ -14346,7 +14353,7 @@ function App() {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "x-api-key": AUTORESPONDER_KEY
+              "x-api-key": getWorkerKey()
             },
             body: JSON.stringify({
               msg,
@@ -14842,7 +14849,7 @@ function App() {
         const r = await fetch(AUTORESPONDER_URL + '/shipment/label?kontoId=' + docsModal.sh.kontoId, {
           method: 'POST',
           headers: {
-            'x-api-key': AUTORESPONDER_KEY,
+            'x-api-key': getWorkerKey(),
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
@@ -17378,7 +17385,7 @@ function App() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-api-key': AUTORESPONDER_KEY
+            'x-api-key': getWorkerKey()
           },
           body: JSON.stringify({
             to: adres,
@@ -17466,7 +17473,7 @@ function App() {
         gridTemplateColumns: '1fr 1fr',
         gap: 14
       }
-    }, React.createElement(window.MosquitoShopify.MatSalesPanel,{groups:matyStats,year:statYear,month:statMonth,apiUrl:AUTORESPONDER_URL,apiKey:AUTORESPONDER_KEY,onManualChange:setManualStatRecords,loading:shopifyStatStatus.loading,error:shopifyStatStatus.error,onRefresh:()=>setShopifyStatRefresh(n=>n+1),smallExtra:statMatyMalaExtra,largeExtra:statMatyDuzaExtra}), /*#__PURE__*/React.createElement("div", {
+    }, React.createElement(window.MosquitoShopify.MatSalesPanel,{groups:matyStats,year:statYear,month:statMonth,apiUrl:AUTORESPONDER_URL,apiKey:getWorkerKey(),onManualChange:setManualStatRecords,loading:shopifyStatStatus.loading,error:shopifyStatStatus.error,onRefresh:()=>setShopifyStatRefresh(n=>n+1),smallExtra:statMatyMalaExtra,largeExtra:statMatyDuzaExtra}), /*#__PURE__*/React.createElement("div", {
       style: {
         background: '#0a0a1a',
         border: '1px solid #2a2a5a',
@@ -17875,7 +17882,7 @@ function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': AUTORESPONDER_KEY
+          'x-api-key': getWorkerKey()
         },
         body: JSON.stringify({
           allegroClientCreds: {
@@ -17947,7 +17954,7 @@ function App() {
         try {
           const me = await fetch(AUTORESPONDER_URL + '/debug/me?kontoId=' + k.id, {
             headers: {
-              'x-api-key': AUTORESPONDER_KEY
+              'x-api-key': getWorkerKey()
             }
           }).then(r => r.json());
           if (me.ok && me.allegroLogin && me.allegroLogin.toLowerCase() !== k.id.toLowerCase()) {
@@ -18022,7 +18029,7 @@ function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': AUTORESPONDER_KEY
+          'x-api-key': getWorkerKey()
         },
         body: JSON.stringify({
           tokens: tok
@@ -18665,7 +18672,7 @@ function App() {
           var proxyUrl = AUTORESPONDER_URL + "/messaging/attachments?id=" + attId + "&kontoId=" + (msgKontoRef.current || "");
           fetch(proxyUrl, {
             headers: {
-              "x-api-key": AUTORESPONDER_KEY
+              "x-api-key": getWorkerKey()
             }
           }).then(function (r) {
             if (!r.ok) throw new Error("HTTP " + r.status);
@@ -18691,7 +18698,7 @@ function App() {
           borderRadius: 4,
           cursor: "pointer"
         }
-      }, "📎 " + (att.fileName || "załącznik")), React.createElement(window.MosqGalleryAttachmentActions, {attachment:att,kontoId:msgKontoRef.current,apiKey:AUTORESPONDER_KEY}));
+      }, "📎 " + (att.fileName || "załącznik")), React.createElement(window.MosqGalleryAttachmentActions, {attachment:att,kontoId:msgKontoRef.current,apiKey:getWorkerKey()}));
     }))), React.createElement("span", {
       style: {
         fontSize: 14,
@@ -19581,7 +19588,7 @@ function App() {
         style: { marginTop: 16, padding: '10px 18px', fontSize: 14, fontWeight: 700, background: '#1a3a1a', border: '1px solid #4a8a4a', borderRadius: 6, color: '#7acf7a', cursor: 'pointer', width: '100%' }
       }, "🌐 Otwórz w DPD Online")
     );
-  })(), tab === "marza" && React.createElement(React.Fragment,null,React.createElement(window.MosquitoShopify.MarginCalculator),React.createElement(window.MosquitoShopify.MosquitoCostSettings,{apiKey:AUTORESPONDER_KEY})), tab === "wystaw" && /*#__PURE__*/React.createElement("div", {
+  })(), tab === "marza" && React.createElement(React.Fragment,null,React.createElement(window.MosquitoShopify.MarginCalculator),React.createElement(window.MosquitoShopify.MosquitoCostSettings,{apiKey:getWorkerKey()})), tab === "wystaw" && /*#__PURE__*/React.createElement("div", {
     style: {
       padding: '16px'
     }
@@ -20303,7 +20310,7 @@ function App() {
       setEdSaveLog([]);
       fetch(AUTORESPONDER_URL + '/allegro/offers?kontoId=' + edKonto + '&limit=100', {
         headers: {
-          'x-api-key': AUTORESPONDER_KEY
+          'x-api-key': getWorkerKey()
         }
       }).then(function (r) {
         return r.json();
@@ -20567,7 +20574,7 @@ function App() {
         fetch(AUTORESPONDER_URL + '/allegro/offer/' + oferta.id + '/description', {
           method: 'PUT',
           headers: {
-            'x-api-key': AUTORESPONDER_KEY,
+            'x-api-key': getWorkerKey(),
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
@@ -22910,7 +22917,7 @@ function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': AUTORESPONDER_KEY
+          'x-api-key': getWorkerKey()
         },
         body: JSON.stringify({
           config: {
@@ -22939,7 +22946,7 @@ function App() {
         const r = await fetch(AUTORESPONDER_URL + '/email/recent', {
           method: 'DELETE',
           headers: {
-            'x-api-key': AUTORESPONDER_KEY
+            'x-api-key': getWorkerKey()
           }
         });
         const d = await r.json();
@@ -23000,7 +23007,7 @@ function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': AUTORESPONDER_KEY
+          'x-api-key': getWorkerKey()
         },
         body: JSON.stringify(dpdConfig)
       });
@@ -23339,7 +23346,7 @@ function App() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': AUTORESPONDER_KEY
+          'x-api-key': getWorkerKey()
         },
         body: JSON.stringify({
           config: {
@@ -23712,7 +23719,7 @@ function App() {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              "x-api-key": AUTORESPONDER_KEY
+              "x-api-key": getWorkerKey()
             },
             body: JSON.stringify({
               msg,
@@ -25643,7 +25650,7 @@ function App() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-api-key': AUTORESPONDER_KEY
+            'x-api-key': getWorkerKey()
           },
           body: JSON.stringify(body)
         });
@@ -25689,7 +25696,7 @@ function App() {
       const r = await fetch(AUTORESPONDER_URL + '/shipment/label?kontoId=' + imp.kontoId, {
         method: 'POST',
         headers: {
-          'x-api-key': AUTORESPONDER_KEY,
+          'x-api-key': getWorkerKey(),
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -25819,7 +25826,7 @@ function App() {
         const r = await fetch(AUTORESPONDER_URL + '/shipment/label?kontoId=' + imp.kontoId, {
           method: 'POST',
           headers: {
-            'x-api-key': AUTORESPONDER_KEY,
+            'x-api-key': getWorkerKey(),
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
