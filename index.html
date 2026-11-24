@@ -3,13 +3,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20261124.248</title>
+<title>MosquitoApp v20261124.250</title>
 <script src="./shopify-production.js?v=20261123-catalog-1"></script>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="./gallery-messages.js?v=20261120-2"></script>
 <script>
-   window.__MOSK_VERSION='20261124.248';
+   window.__MOSK_VERSION='20261124.250';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -1989,6 +1989,7 @@ function App() {
   const [recentEmails, setRecentEmails] = useState([]); // ostatnio użyte adresy (z KV)
   const [allegroImportShow, setAllegroImportShow] = useState(false);
   const [allegroImportError, setAllegroImportError] = useState("");
+  const [allegroImportInfo, setAllegroImportInfo] = useState("");
   const [shipmentModal, setShipmentModal] = useState(null);
   const [docsModal, setDocsModal] = useState(null); // {imp, order, sh}
   const [shipmentLoading, setShipmentLoading] = useState(false);
@@ -2613,6 +2614,7 @@ function App() {
   const [lastSavedOrder, setLastSavedOrder] = React.useState(null);
   const [nadajDPD, setNadajDPD] = React.useState(false);
   const [kvMasterKey, setKvMasterKey] = React.useState(() => localStorage.getItem('mosk_worker_key') || '');
+  const [kvKeyVisible, setKvKeyVisible] = React.useState(false);
   const [dpdWaga, setDpdWaga] = React.useState('5');
   const [dpdCod, setDpdCod] = React.useState(false);
   const [dpdCodAmount, setDpdCodAmount] = React.useState('');
@@ -2948,9 +2950,13 @@ function App() {
     }
     setAllegroImportLoading(true);
     setAllegroImportError("");
+    setAllegroImportInfo("");
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
     // Keep the last successful list visible while loading or after a failed request.
     try {
       const r = await fetch(AUTORESPONDER_URL + "/orders", {
+        cache: "no-store", signal: controller.signal,
         headers: {
           "x-api-key": getWorkerKey()
         }
@@ -2964,7 +2970,8 @@ function App() {
       }
       const d = await r.json();
       if (!d.ok) throw new Error(JSON.stringify(d));
-      const rawOrders = d.orders || [];
+      if (!Array.isArray(d.orders)) throw new Error("Serwer nie zwrócił listy zamówień.");
+      const rawOrders = d.orders;
       // Zaznacz które już są w bazie
       const allResults = rawOrders.map(imp => ({
         ...imp,
@@ -2976,6 +2983,7 @@ function App() {
         return new Date(b.data) - new Date(a.data);
       });
       setAllegroImportResults(allResults);
+      setAllegroImportInfo("Odświeżono " + new Date().toLocaleTimeString("pl-PL") + " — pobrano " + allResults.length + " zamówień ze wszystkich kont. Filtry poniżej mogą ograniczać widoczną listę.");
       try {
         localStorage.setItem('allegro_import_results', JSON.stringify(allResults));
       } catch (e) {
@@ -3072,10 +3080,15 @@ function App() {
         return changed ? next : prev;
       });
       if (allResults.length === 0) setAllegroImportError("Brak zamówień — sprawdź czy tokeny są zsynchronizowane w Admin → Autoresponder → Synchronizuj tokeny");
-      if (d.errors && d.errors.length > 0) console.warn("Błędy pobierania:", d.errors);
+      if (d.errors && d.errors.length > 0) {
+        setAllegroImportError("Pobrano niepełną listę. Nie udało się odświeżyć kont: " + d.errors.map(e => e.konto || "nieznane konto").join(", ") + ". Spróbuj ponownie; statystyki mogą być niepełne.");
+        console.warn("Błędy pobierania:", d.errors);
+      }
     } catch (e) {
-      setAllegroImportError("❌ " + e.message);
+      setAllegroImportError(e.name === "AbortError" ? "Pobieranie trwało ponad 30 sekund. Sprawdź połączenie i spróbuj ponownie. Zachowano poprzednią listę." : "❌ " + e.message);
       console.error("fetchAllegroOrders:", e);
+    } finally {
+      clearTimeout(timeout);
     }
     setAllegroImportLoading(false);
   }
@@ -10831,7 +10844,7 @@ function App() {
         color: '#afffaf',
         marginLeft: 'auto'
       }
-    }, "➕ Dodaj ręcznie")), /*#__PURE__*/React.createElement("div", {
+    }, "➕ Dodaj ręcznie")), (allegroImportError || allegroImportInfo ? React.createElement("p", {role: allegroImportError ? "alert" : "status", style: {padding: "10px 14px", border: "1px solid " + (allegroImportError ? "#9f5555" : "#3c7361"), borderRadius: 6, color: allegroImportError ? "#ffaaaa" : "#a4dbc5", overflowWrap: "anywhere"}}, allegroImportError || allegroImportInfo) : null), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         borderBottom: '2px solid #1a2a1a',
@@ -13157,17 +13170,7 @@ function App() {
         fontWeight: 700
       }
     }, k) : null;
-  }))), allegroImportError && /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginBottom: 12,
-      padding: "8px 14px",
-      background: "#2a1a1a",
-      border: "1px solid #5a2a2a",
-      borderRadius: 6,
-      color: "#df8080",
-      fontSize: 14
-    }
-  }, allegroImportError), !allegroImportShow && !allegroImportLoading && /*#__PURE__*/React.createElement("div", {
+  }))), (allegroImportError || allegroImportInfo ? React.createElement("p", {role: allegroImportError ? "alert" : "status", style: {padding: "10px 14px", border: "1px solid " + (allegroImportError ? "#9f5555" : "#3c7361"), borderRadius: 6, color: allegroImportError ? "#ffaaaa" : "#a4dbc5", overflowWrap: "anywhere"}}, allegroImportError || allegroImportInfo) : null), !allegroImportShow && !allegroImportLoading && /*#__PURE__*/React.createElement("div", {
     style: {
       textAlign: "center",
       padding: "60px 0",
@@ -17171,7 +17174,7 @@ function App() {
   }), tab === "stat" && /*#__PURE__*/React.createElement("div", null, function () {
     const miesNazwy = ['', 'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec', 'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień'];
     // Filtruj zamówienia Allegro wg miesiąca
-    const zamMies = allegroImportResults.filter(function (imp) {
+    const zamMies = (allegroStatRecords ?? allegroImportResults).filter(function (imp) {
       if (!imp.boughtAt) return false;
       const d = new Date(imp.boughtAt);
       return d.getFullYear() === statYear && d.getMonth() + 1 === statMonth;
@@ -22714,7 +22717,9 @@ function App() {
   }, /*#__PURE__*/React.createElement("span", {
     className: "lbl"
   }, "Klucz Workera (masterKey)"), /*#__PURE__*/React.createElement("input", {
-    type: "password",
+    type: kvKeyVisible ? "text" : "password",
+    autoComplete: "off",
+    spellCheck: false,
     value: kvMasterKey,
     onChange: e => {
       setKvMasterKey(e.target.value);
@@ -22725,7 +22730,12 @@ function App() {
       fontFamily: "monospace",
       fontSize: 14
     }
-  })), /*#__PURE__*/React.createElement("div", {
+  }), React.createElement("button", {
+    type: "button", className: "btn",
+    "aria-pressed": kvKeyVisible,
+    onClick: () => setKvKeyVisible(v => !v),
+    style: {marginTop: 8}
+  }, kvKeyVisible ? "Ukryj klucz" : "Pokaż klucz"), React.createElement("p", {style: {fontSize: 12, color: "#8ab89a"}}, "Na drugim urządzeniu wpisz ten sam klucz. Nie przesyłaj go na czacie.")), /*#__PURE__*/React.createElement("div", {
     style: {
       display: "flex",
       gap: 8,
