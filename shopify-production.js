@@ -384,3 +384,94 @@
  }
  api.MosquitoCostSettings=function(p){return root.React.createElement(root.React.Fragment,null,root.React.createElement(ComponentCatalog,p),root.React.createElement(Original,p));};
 })(typeof window==='object'?window:globalThis);
+
+(function(root){
+  'use strict';
+  const BASE='https://allegro-autoresponder.favour-biuro.workers.dev';
+  const STORES={arlis:{label:'ARLIS',domain:'ryzndf-kr.myshopify.com',admin:'ryzndf-kr'},albama:{label:'ALBAMA',domain:'jsxh4r-00.myshopify.com',admin:'jsxh4r-00'},oktomo:{label:'OKTOMO',domain:'3vbipt-6t.myshopify.com',admin:'3vbipt-6t'},everis:{label:'EVERIS',domain:'ut0xgk-5n.myshopify.com',admin:'ut0xgk-5n'}};
+  const sourceName=i=>i._isShopify?'S · '+STORES[i._store].label:i._isManual?'R · Ręczne':'A · '+(i.kontoId||'nieznane konto');
+  const identity=i=>i._isShopify?'shopify:'+i._store+':'+i._shopifyOrder.id:i._isManual?'manual:'+i.allegroOrderId:'allegro:'+(i.kontoId||'')+':'+i.allegroOrderId;
+  function normalize(store,records){
+    const cfg=STORES[store];if(!cfg||!Array.isArray(records))throw Error('Nieprawidłowa odpowiedź sklepu.');
+    const seen=new Set(),out=[];
+    for(const r of records){const o=r?.order;if(r?.version!==1||o?.source!=='shopify'||o.shop!==cfg.domain||!/^\d+$/.test(String(o.id)))continue;
+      const id='shopify:'+store+':'+o.id;if(seen.has(id))continue;seen.add(id);
+      const s=o.shipping||{};out.push({_isShopify:true,_store:store,_shopifyOrder:o,_receivedAt:r.receivedAt,
+        allegroOrderId:id,kontoId:'shopify:'+store,klientImie:s.name||'',klientMiasto:s.city||'',klientUlica:s.address1||'',klientKod:s.postcode||'',telefon:s.phone||'',
+        offerNames:(o.items||[]).map(i=>i.quantity+' × '+i.title).join(', '),boughtAt:o.createdAt||r.receivedAt,updatedAt:o.updatedAt||r.receivedAt,
+        totalAmount:o.amount,currency:o.currency,fulfillmentStatus:o.cancelled?'CANCELLED':o.fulfillmentStatus||'NEW',invoiceRequired:false});
+    }return out;
+  }
+  function matchesSource(i,filter){return !filter||(filter==='__allegro__'?!i._isShopify&&!i._isManual:filter==='__shops__'?!!i._isShopify:i.kontoId===filter);}
+  async function readInbox(store,key,fetcher=fetch){
+    if(!key)throw Error('Brak klucza połączenia na tym urządzeniu.');
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),25000);
+    try{const res=await fetcher(BASE+'/integrations/shopify/'+store+'/inbox',{headers:{'x-api-key':key},cache:'no-store',signal:controller.signal});
+      if(!res.ok)throw Error(res.status===401?'Połączenie odrzucone':'Błąd importu HTTP '+res.status);
+      const data=await res.json();if(data.ok!==true||!Array.isArray(data.records))throw Error('Serwer nie zwrócił archiwum zamówień.');
+      return {records:normalize(store,data.records),connected:data.connected!==false};
+    }finally{clearTimeout(timer);}
+  }
+  function useQueue(keyProvider,active){
+    const R=root.React,[byStore,setByStore]=R.useState({}),[sources,setSources]=R.useState({}),[loading,setLoading]=R.useState(false),[selection,setSelection]=R.useState([]),[opened,setOpened]=R.useState('');
+    const running=R.useRef(false),generation=R.useRef(0);
+    const refresh=R.useCallback(async()=>{if(running.current)return;running.current=true;setLoading(true);const key=keyProvider(),run=++generation.current;
+      await Promise.all(Object.keys(STORES).map(async store=>{try{const data=await readInbox(store,key);if(run!==generation.current)return;
+        setByStore(prev=>({...prev,[store]:data.records}));setSources(prev=>({...prev,[store]:{ok:true,count:data.records.length,connected:data.connected,time:new Date().toISOString()}}));
+      }catch(e){if(run===generation.current)setSources(prev=>({...prev,[store]:{...prev[store],ok:false,error:e.name==='AbortError'?'Przekroczono czas pobierania':e.message}}));}}));
+      running.current=false;setLoading(false);
+    },[]);
+    R.useEffect(()=>{if(active)refresh();},[active,refresh]);
+    const toggle=id=>setSelection(prev=>prev.includes(id)?prev.filter(x=>x!==id):[...prev,id]);
+    return {records:Object.values(byStore).flat(),sources,loading,refresh,selection,toggle,clear:()=>setSelection([]),opened,setOpened};
+  }
+  async function readLabel(i,shipments,key,fetcher=fetch){
+    if(!key)throw Error('Brak klucza połączenia.');let res;
+    if(i._isShopify){
+      res=await fetcher(BASE+'/integrations/shopify/'+i._store+'/orders/'+encodeURIComponent(i._shopifyOrder.id)+'/dpd',{headers:{'x-api-key':key},cache:'no-store'});
+    }else{
+      const sh=shipments[i.allegroOrderId];if(!sh?.shipmentId)throw Error('Brak utworzonej etykiety.');
+      if(!sh.kontoId||sh.kontoId!==i.kontoId)throw Error('Konto etykiety jest inne niż konto zamówienia.');
+      res=await fetcher(BASE+'/shipment/label?kontoId='+encodeURIComponent(sh.kontoId),{method:'POST',headers:{'x-api-key':key,'Content-Type':'application/json'},body:JSON.stringify({shipmentIds:[sh.shipmentId,...(sh.extraShipmentIds||[])],pageSize:'A6'})});
+    }
+    const data=await res.json();if(!res.ok||data.ok===false)throw Error('Nie udało się pobrać etykiety.');
+    // No order_send, shipment creation, or automatic re-registration in this operation.
+    if(!data.pdf)throw Error(i._isShopify?'Brak etykiety w naszej aplikacji. Etykiety utworzone w Alsendo nie są jeszcze synchronizowane.':'Brak pliku etykiety PDF.');
+    if(typeof data.pdf!=='string'||data.pdf.length>20000000||!/^JVBERi0/.test(data.pdf))throw Error('Nieprawidłowy lub zbyt duży plik PDF.');
+    const number=i._isShopify?i._shopifyOrder.number:i.allegroOrderId;
+    return {name:('Etykieta '+sourceName(i)+' '+number).replace(/[^\p{L}\p{N} ._-]/gu,'_')+'.pdf',content:data.pdf,mimeType:'application/pdf'};
+  }
+  async function collectLabels(selected,all,shipments,key,fetcher=fetch){
+    if(!selected.length||selected.length>20)throw Error('Zaznacz od 1 do 20 zamówień.');
+    const map=new Map(all.map(i=>[identity(i),i]));const files=[],errors=[];
+    for(const id of [...new Set(selected)]){const i=map.get(id);if(!i){errors.push(id+': zamówienie jest niedostępne');continue;}
+      try{files.push(await readLabel(i,shipments,key,fetcher));}catch(e){errors.push(sourceName(i)+' · '+(i._shopifyOrder?.number||i.allegroOrderId)+': '+e.message);}
+    }
+    if(errors.length){const e=Error('Nie zebrano kompletu etykiet:\n'+errors.join('\n'));e.errors=errors;throw e;}return files;
+  }
+  function download(file){const bytes=Uint8Array.from(atob(file.content),c=>c.charCodeAt(0)),url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'})),a=document.createElement('a');a.href=url;a.download=file.name;a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);}
+  const ui={background:'#102336',color:'#deedf5',border:'1px solid #31506a',borderRadius:7,padding:'7px 10px',cursor:'pointer'};
+  function SourceBadge({item}){return root.React.createElement('span',{style:{...ui,cursor:'default',fontWeight:700,fontSize:12,whiteSpace:'nowrap',background:item._isShopify?'#123b36':'#2b2549'},title:item._isShopify?'Sklep internetowy':'Konto Allegro'},sourceName(item));}
+  function LabelCheckbox({item,queue}){return root.React.createElement('input',{type:'checkbox','aria-label':'Etykiety: '+sourceName(item)+' '+(item._shopifyOrder?.number||item.allegroOrderId),title:'Zaznacz etykietę do pobrania lub przekazania',checked:queue.selection.includes(identity(item)),onChange:()=>queue.toggle(identity(item)),style:{width:18,height:18,accentColor:'#b59aff'}});}
+  function Toolbar({queue,all,shipments,keyProvider,onForward}){
+    const R=root.React,h=R.createElement,[busy,setBusy]=R.useState(false),[message,setMessage]=R.useState('');
+    async function labels(forward){setBusy(true);setMessage('Pobieram istniejące etykiety — bez nadawania paczek…');try{const files=await collectLabels(queue.selection,all,shipments,keyProvider());if(forward)onForward(files);else files.forEach(download);setMessage('Pobrano '+files.length+' etykiet.');}catch(e){setMessage(e.message);}finally{setBusy(false);}}
+    return h('section',{'aria-label':'Wspólna obsługa zamówień',style:{padding:14,background:'#0e1b2a',border:'1px solid #284159',borderRadius:10,marginBottom:12}},
+      h('strong',null,'Jedna kolejka: Allegro + sklepy'),h('p',{style:{fontSize:12,color:'#a3bccd',margin:'7px 0'}},'A = Allegro · S = sklep. Zakładki sklepów zachowują archiwum. Status realizacji jest wspólny, dane sklepu pokazują stan z importu.'),
+      h('div',{style:{display:'flex',gap:7,flexWrap:'wrap'}},...Object.entries(STORES).map(([s,c])=>{const info=queue.sources[s];return h('span',{key:s,style:{...ui,cursor:'default',fontSize:12,color:info?.ok===false?'#ffb99e':'#bddccf'}},'S · '+c.label+': '+(!info?'sprawdzam…':info.ok?info.count+' odebranych'+(!info.connected?' · import niepołączony':''):info.error+' · zachowano poprzednią listę'));})),
+      h('div',{style:{display:'flex',gap:8,flexWrap:'wrap',marginTop:10}},h('button',{style:ui,disabled:queue.loading,onClick:queue.refresh},queue.loading?'Pobieram sklepy…':'Odśwież sklepy'),h('span',{style:{alignSelf:'center'}},'Etykiety: '+queue.selection.length),h('button',{style:ui,disabled:busy||!queue.selection.length,onClick:()=>labels(false)},'Pobierz zaznaczone PDF'),h('button',{style:ui,disabled:busy||!queue.selection.length,onClick:()=>labels(true)},'Przekaż etykiety…'),h('button',{style:ui,disabled:busy||!queue.selection.length,onClick:queue.clear},'Odznacz etykiety')),
+      message&&h('p',{role:'status',style:{whiteSpace:'pre-wrap',color:'#ffe0a3',fontSize:13}},message));
+  }
+  function ShopRow({item,queue,status,onStatus}){
+    const h=root.React.createElement,o=item._shopifyOrder,cfg=STORES[item._store],opened=queue.opened===identity(item);
+    return h('article',{style:{border:'1px solid #31566a',borderRadius:9,margin:'8px 0',padding:12,background:'#102530'}},
+      h('div',{style:{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}},h(LabelCheckbox,{item,queue}),h(SourceBadge,{item}),h('strong',null,o.number),h('span',null,item.klientImie||'Brak danych odbiorcy'),h('span',null,Number.isFinite(Number(o.amount))?Number(o.amount).toFixed(2)+' '+o.currency:'Brak kwoty'),h('span',null,o.cancelled?'Anulowane':status),
+        h('button',{style:ui,onClick:()=>queue.setOpened(opened?'':identity(item))},opened?'Zwiń obsługę':'Produkty, realizacja i etykiety'),
+        !o.cancelled&&h('select',{'aria-label':'Status '+sourceName(item)+' '+o.number,value:status,onChange:e=>onStatus(item.allegroOrderId,e.target.value,true),style:ui},...['Nowe','W realizacji','Wstrzymano','Problem','Wysłano'].map(s=>h('option',{key:s,value:s},s)))),
+      h('p',{style:{color:'#bdd1d8',fontSize:13}},item.offerNames),
+      opened&&h('div',null,h('p',{style:{fontSize:12,color:'#f6d49b'}},'Archiwum importu — przed nadaniem sprawdź aktualną płatność, adres i wybrany punkt. Apaczka/Alsendo w Shopify działa osobno od etykiet DPD na naszej umowie.'),
+        h('a',{href:'https://admin.shopify.com/store/'+cfg.admin+'/orders/'+encodeURIComponent(o.id),target:'_blank',rel:'noopener noreferrer',style:{color:'#9de3ed'}},'Sprawdź bieżące zamówienie w Shopify ↗'),
+        h('iframe',{id:'shopify-store-frame',src:'./shopify-zamowienia.html?v=20261127-queue&store='+item._store+'&order='+encodeURIComponent(o.id)+'&work=1',title:'Obsługa '+sourceName(item)+' '+o.number,style:{width:'100%',height:'76vh',border:0,borderRadius:8,marginTop:10}})));
+  }
+  root.MosquitoUnified={STORES,sourceName,identity,normalize,matchesSource,readInbox,readLabel,collectLabels,useQueue,SourceBadge,LabelCheckbox,Toolbar,ShopRow};
+})(typeof window!=='undefined'?window:globalThis);

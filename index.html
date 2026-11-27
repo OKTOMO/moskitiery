@@ -3,13 +3,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>MosquitoApp v20261124.250</title>
-<script src="./shopify-production.js?v=20261123-catalog-1"></script>
+<title>MosquitoApp v20261127.251</title>
+<script src="./shopify-production.js?v=20261127-queue-1"></script>
 <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
 <script src="./gallery-messages.js?v=20261120-2"></script>
 <script>
-   window.__MOSK_VERSION='20261124.250';
+   window.__MOSK_VERSION='20261127.251';
   console.log('%c🦟 MosquitoApp v'+window.__MOSK_VERSION,'color:#7acf7a;font-weight:bold;font-size:14px');
 
   // Rejestracja Service Workera dla Web Push
@@ -1786,6 +1786,11 @@ function ZleceniaSearchBox(props) {
 function App() {
   const [activeProfile, setActiveProfile] = useState(() => localStorage.getItem('active_profile') || "");
   const [tab, setTab] = useState(() => new URLSearchParams(window.location.search).has("code") ? "allegro" : "zamowienia");
+  const unifiedQueue = window.MosquitoUnified.useQueue(getWorkerKey, tab === "zamowienia");
+  function forwardUnifiedLabels(files) {
+    setMailPreview({imp:{allegroOrderId:"unified-labels",kontoId:""},order:{pozycje:[]},to:"",subject:"Etykiety do realizacji — "+files.length+" PDF",hasEtykieta:false,extraFiles:files,removedFiles:["zlecenie","etykieta"],_unifiedLabels:true});
+    loadRecentEmails();
+  }
   async function fetchInvoiceFromAllegro(orderId, firma, kontoIdHint) {
     const kontaMap = {
       "F": "favo5",
@@ -4553,7 +4558,7 @@ function App() {
           subject,
           content,
           attachments,
-          allegroOrderId: imp.allegroOrderId || '',
+          allegroOrderId: mailPreview._unifiedLabels ? '' : imp.allegroOrderId || '',
           inReplyTo: mailPreview.threadMessageId || undefined
         })
       });
@@ -4565,7 +4570,7 @@ function App() {
         loadRecentEmails();
         setTab("zamowienia"); // wróć do zakładki Zamówienia po wysłaniu
         // Mail wysłany → przesuń do W realizacji
-        if (imp.allegroOrderId) {
+        if (!mailPreview._unifiedLabels && imp.allegroOrderId) {
           setOrderAppStatus(imp.allegroOrderId, 'W realizacji');
           setAllegroShipments(prev => {
             const next = {
@@ -9598,8 +9603,9 @@ function App() {
       if (manual) return manual;
       return ALLEGRO_STATUS_MAP[imp.fulfillmentStatus || ''] || 'Nowe';
     };
-    const filteredAll = allegroImportResults.filter(imp => {
-      if (zamKonto && imp.kontoId !== zamKonto) return false;
+    const operationalImports = [...allegroImportResults, ...unifiedQueue.records].sort((a,b)=>String(b.boughtAt||b.data||'').localeCompare(String(a.boughtAt||a.data||'')));
+    const filteredAll = operationalImports.filter(imp => {
+      if (!window.MosquitoUnified.matchesSource(imp, zamKonto)) return false;
       if (zamOnlyInvoice && (!imp.invoiceRequired || invoicesSent[imp.allegroOrderId])) return false;
       if (zamOnlyInvoice && zamInvoiceFrom && imp.boughtAt && imp.boughtAt.slice(0, 10) < zamInvoiceFrom) return false;
       if (zamSearch) {
@@ -9615,7 +9621,7 @@ function App() {
     const _statusTimes = JSON.parse(localStorage.getItem('app_status_times') || '{}');
     // Ręczne zamówienia (bez allegroOrderId) w statusie W realizacji
     const reczneWRealizacji = orders.filter(o => {
-      if (o.allegroOrderId) return false; // ma Allegro — już jest w allegroImportResults
+      if (o.allegroOrderId || o.shopifySource) return false; // już jest w kolejce źródłowej
       if (zamKonto) return false; // filtr konta nie dotyczy ręcznych
       const s = o.status || 'nowe';
       return s === 'realizacja' || s === 'W realizacji';
@@ -9665,6 +9671,7 @@ function App() {
       [id]: prev[id] === box ? null : box
     }));
     const renderRow = (imp, idx) => {
+      if (imp._isShopify) return React.createElement(window.MosquitoUnified.ShopRow,{key:window.MosquitoUnified.identity(imp),item:imp,queue:unifiedQueue,status:getEffectiveStatus(imp),onStatus:setOrderAppStatus});
       const [kBg, kCol] = imp._isManual ? ['#2a2a3a', '#9a9adf'] : KONTO_COLORS[imp.kontoId] || ['#2a2a2a', '#9a9a9a'];
       const effStatus = getEffectiveStatus(imp);
       const as = appStatuses[imp.allegroOrderId] || '';
@@ -9715,7 +9722,7 @@ function App() {
           cursor: 'pointer',
           accentColor: '#7acf7a'
         }
-      }), isRealizacja && false && /*#__PURE__*/React.createElement("input", {
+      }), !imp._isManual && React.createElement(window.MosquitoUnified.LabelCheckbox,{item:imp,queue:unifiedQueue}), React.createElement(window.MosquitoUnified.SourceBadge,{item:imp}), isRealizacja && false && /*#__PURE__*/React.createElement("input", {
         type: "checkbox",
         checked: _batchSel.includes(imp.allegroOrderId),
         title: "Dodaj do wysyłki zbiorczej (fioletowy)",
@@ -10745,7 +10752,7 @@ function App() {
         }
       }, imp.nabywcaUlica, " ", imp.nabywcaKod, " ", imp.nabywcaMiasto)), isMosk && React.createElement(window.MosquitoShopify.MosquitoOrderCost,{apiKey:getWorkerKey(),orderKey:"allegro_"+imp.kontoId+"_"+imp.allegroOrderId,order:{firma:_costFirm,pozycje:_costOrders.flatMap(o=>o.pozycje||[])},saleGross:imp._isManual&&!(imp.kwotaBrutto||imp.totalAmount)?null:(imp.kwotaBrutto??imp.totalAmount??null),deliveryGross:imp.deliveryCost||0,currency:imp.kwotaWaluta||"PLN",mixed:!!imp.pozycje?.some(x=>!window.MosquitoShopify.isMosquito({title:x.nazwa||""}))}));
     };
-    return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    return /*#__PURE__*/React.createElement("div", null, React.createElement(window.MosquitoUnified.Toolbar,{queue:unifiedQueue,all:operationalImports,shipments:allegroShipments,keyProvider:getWorkerKey,onForward:forwardUnifiedLabels}), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         alignItems: 'center',
@@ -10754,7 +10761,7 @@ function App() {
         flexWrap: 'wrap'
       }
     }, /*#__PURE__*/React.createElement("button", {
-      onClick: fetchAllegroOrders,
+      onClick: () => { fetchAllegroOrders(); unifiedQueue.refresh(); },
       disabled: allegroImportLoading,
       style: {
         padding: '6px 16px',
@@ -10792,10 +10799,10 @@ function App() {
       }
     }, /*#__PURE__*/React.createElement("option", {
       value: ""
-    }, "Wszystkie konta"), [...new Set(allegroImportResults.map(i => i.kontoId))].map(k => /*#__PURE__*/React.createElement("option", {
+    }, "Wszystkie źródła"), React.createElement("option",{value:"__allegro__"},"A · Wszystkie konta Allegro"), React.createElement("option",{value:"__shops__"},"S · Wszystkie sklepy"), [...new Set([...operationalImports.map(i => i.kontoId).filter(Boolean),...Object.keys(window.MosquitoUnified.STORES).map(s=>'shopify:'+s)])].map(k => /*#__PURE__*/React.createElement("option", {
       key: k,
       value: k
-    }, k))), /*#__PURE__*/React.createElement("button", {
+    }, k.startsWith('shopify:')?'S · '+window.MosquitoUnified.STORES[k.slice(8)].label:'A · '+k))), /*#__PURE__*/React.createElement("button", {
       onClick: () => setZamOnlyInvoice(v => !v),
       title: "Pokaż tylko zamówienia z żądaniem faktury (jeszcze nie wystawionej)",
       style: {
