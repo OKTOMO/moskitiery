@@ -403,6 +403,7 @@
     }return out;
   }
   function matchesSource(i,filter){return !filter||(filter==='__allegro__'?!i._isShopify&&!i._isManual:filter==='__shops__'?!!i._isShopify:i.kontoId===filter);}
+  function pageRows(rows,count=50){return rows.slice(0,Number.isInteger(count)&&count>=50?count:50);}
   async function readInbox(store,key,fetcher=fetch){
     if(!key)throw Error('Brak klucza połączenia na tym urządzeniu.');
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),25000);
@@ -414,7 +415,7 @@
   }
   function useQueue(keyProvider,active){
     const R=root.React,[byStore,setByStore]=R.useState({}),[sources,setSources]=R.useState({}),[loading,setLoading]=R.useState(false),[selection,setSelection]=R.useState([]),[opened,setOpened]=R.useState('');
-    const running=R.useRef(false),generation=R.useRef(0);
+    const running=R.useRef(false),generation=R.useRef(0),[page,setPage]=R.useState({key:'',count:50});
     const refresh=R.useCallback(async()=>{if(running.current)return;running.current=true;setLoading(true);const key=keyProvider(),run=++generation.current;
       await Promise.all(Object.keys(STORES).map(async store=>{try{const data=await readInbox(store,key);if(run!==generation.current)return;
         setByStore(prev=>({...prev,[store]:data.records}));setSources(prev=>({...prev,[store]:{ok:true,count:data.records.length,connected:data.connected,time:new Date().toISOString()}}));
@@ -423,7 +424,7 @@
     },[]);
     R.useEffect(()=>{if(active)refresh();},[active,refresh]);
     const toggle=id=>setSelection(prev=>prev.includes(id)?prev.filter(x=>x!==id):[...prev,id]);
-    return {records:Object.values(byStore).flat(),sources,loading,refresh,selection,toggle,clear:()=>setSelection([]),opened,setOpened};
+    return {records:Object.values(byStore).flat(),sources,loading,refresh,selection,toggle,clear:()=>setSelection([]),opened,setOpened,pageFor:key=>page.key===key?page.count:50,more:key=>setPage(prev=>({key,count:(prev.key===key?prev.count:50)+50})),less:key=>setPage({key,count:50})};
   }
   async function readLabel(i,shipments,key,fetcher=fetch){
     if(!key)throw Error('Brak klucza połączenia.');let res;
@@ -451,6 +452,7 @@
   }
   function download(file){const bytes=Uint8Array.from(atob(file.content),c=>c.charCodeAt(0)),url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'})),a=document.createElement('a');a.href=url;a.download=file.name;a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);}
   const ui={background:'#102336',color:'#deedf5',border:'1px solid #31506a',borderRadius:7,padding:'7px 10px',cursor:'pointer'};
+  function Pager({total,shown,pageKey,queue}){const h=root.React.createElement;return total>50&&h('div',{'aria-label':'Wyświetlanie zamówień',style:{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',padding:'12px 0'}},h('span',null,'Wyświetlono '+shown+' z '+total+' zamówień. Wyszukiwanie obejmuje całą listę.'),shown<total&&h('button',{style:ui,onClick:()=>queue.more(pageKey)},'Pokaż kolejne '+Math.min(50,total-shown)),shown>50&&h('button',{style:ui,onClick:()=>queue.less(pageKey)},'Pokaż pierwsze 50'));}
   function SourceBadge({item}){return root.React.createElement('span',{style:{...ui,cursor:'default',fontWeight:700,fontSize:12,whiteSpace:'nowrap',background:item._isShopify?'#123b36':'#2b2549'},title:item._isShopify?'Sklep internetowy':'Konto Allegro'},sourceName(item));}
   function LabelCheckbox({item,queue}){return root.React.createElement('input',{type:'checkbox','aria-label':'Etykiety: '+sourceName(item)+' '+(item._shopifyOrder?.number||item.allegroOrderId),title:'Zaznacz etykietę do pobrania lub przekazania',checked:queue.selection.includes(identity(item)),onChange:()=>queue.toggle(identity(item)),style:{width:18,height:18,accentColor:'#b59aff'}});}
   function Toolbar({queue,all,shipments,keyProvider,onForward}){
@@ -473,5 +475,5 @@
         h('a',{href:'https://admin.shopify.com/store/'+cfg.admin+'/orders/'+encodeURIComponent(o.id),target:'_blank',rel:'noopener noreferrer',style:{color:'#9de3ed'}},'Sprawdź bieżące zamówienie w Shopify ↗'),
         h('iframe',{id:'shopify-store-frame',src:'./shopify-zamowienia.html?v=20261127-queue&store='+item._store+'&order='+encodeURIComponent(o.id)+'&work=1',title:'Obsługa '+sourceName(item)+' '+o.number,style:{width:'100%',height:'76vh',border:0,borderRadius:8,marginTop:10}})));
   }
-  root.MosquitoUnified={STORES,sourceName,identity,normalize,matchesSource,readInbox,readLabel,collectLabels,useQueue,SourceBadge,LabelCheckbox,Toolbar,ShopRow};
+  root.MosquitoUnified={STORES,sourceName,identity,normalize,matchesSource,pageRows,readInbox,readLabel,collectLabels,useQueue,SourceBadge,LabelCheckbox,Toolbar,ShopRow,Pager};
 })(typeof window!=='undefined'?window:globalThis);
